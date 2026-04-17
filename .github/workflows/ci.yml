@@ -1,11 +1,9 @@
-# Thin caller for Python CI - delegates to Workflows repo reusable workflow
+# Thin caller for CI - delegates to Workflows repo reusable workflows
 # No local scripts required - all logic is centralized in iamkayleb/Workflows
 #
 # This workflow runs:
-# - Lint (Ruff)
-# - Format check (Black)
-# - Type checking (mypy)
-# - Tests (pytest) on Python 3.11 and 3.12
+# - Python: Lint (Ruff), Format check (Black), Type checking (mypy), Tests (pytest)
+# - Node: Lint (ESLint), Format check (Prettier), Type check (tsc), Build (next build)
 #
 # NOTE: Do NOT add a top-level 'permissions:' block here. It causes
 # startup_failure when calling reusable workflows. The reusable workflow
@@ -31,4 +29,14 @@ jobs:
       typecheck: true
       coverage: true
       coverage-min: '80'
+    secrets: inherit
+
+  node:
+    name: Node CI
+    uses: iamkayleb/Workflows/.github/workflows/reusable-11-ci-node.yml@main
+    with:
+      working-directory: web
+      package-manager: pnpm
+      tests: false
+      coverage: false
     secrets: inherit
