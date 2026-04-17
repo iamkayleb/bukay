@@ -1,0 +1,257 @@
+name: Maint Coverage Guard
+
+'on':
+  schedule:
+    - cron: '45 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Rate limit gate: skip non-critical coverage checks when API quota is low
+  # This ensures keepalive and core workflows get priority (threshold: 2000)
+  rate-limit-check:
+    name: Rate limit gate
+    runs-on: ubuntu-latest
+    outputs:
+      proceed: ${{ steps.check.outputs.proceed || 'true' }}
+    steps:
+      # Mint GitHub App token early to use for API calls (avoids rate limits)
+      - name: Mint GitHub App Token
+        id: app_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2
+        continue-on-error: true
+        with:
+          app-id: ${{ secrets.WORKFLOWS_APP_ID || '0' }}
+          private-key: ${{ secrets.WORKFLOWS_APP_PRIVATE_KEY || 'dummy' }}
+
+      - name: Checkout retry helpers
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          token: ${{ steps.app_token.outputs.token || github.token }}
+          sparse-checkout: |
+            .github/actions/setup-api-client
+            .github/scripts/github-api-with-retry.js
+            .github/scripts/token_load_balancer.js
+          sparse-checkout-cone-mode: false
+
+      - name: Setup API client
+        uses: ./.github/actions/setup-api-client
+        with:
+          secrets: ${{ toJSON(secrets) }}
+          github_token: ${{ github.token }}
+
+
+
+      - name: Check API quota
+        id: check
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          # Higher threshold than orchestrator (1000) so keepalive runs first
+          RATE_LIMIT_THRESHOLD: '2000'
+        with:
+          script: |
+            const threshold = parseInt(process.env.RATE_LIMIT_THRESHOLD || '2000', 10);
+            const fs = require('fs');
+            const retryHelperPath = './.github/scripts/github-api-with-retry.js';
+            const retryHelpers = fs.existsSync(retryHelperPath)
+              ? require(retryHelperPath)
+              : {
+                  withRetry: (fn) => fn(),
+                  paginateWithRetry: (githubInstance, method, params) =>
+                    githubInstance.paginate(method, params),
+                };
+            const { withRetry } = retryHelpers;
+            try {
+              const { data } = await withRetry(() => github.rest.rateLimit.get());
+              const remaining = data?.resources?.core?.remaining || 0;
+              const limit = data?.resources?.core?.limit || 5000;
+              const proceed = remaining >= threshold;
+
+              core.setOutput('proceed', proceed ? 'true' : 'false');
+              core.setOutput('remaining', String(remaining));
+
+              if (!proceed) {
+                const reset = data?.resources?.core?.reset || 0;
+                const resetTime = new Date(reset * 1000).toISOString();
+                const notice = `Deferring coverage guard: API quota low (${remaining}/${limit}).`;
+                core.notice(`${notice} Resets at ${resetTime}`);
+                const quotaMessage = [
+                  'API quota too low for non-critical health checks',
+                  `(${remaining}/${limit} remaining).`,
+                ].join(' ');
+                await core.summary
+                  .addHeading('Coverage Guard Deferred', 3)
+                  .addRaw(quotaMessage)
+                  .addEOL()
+                  .addRaw(`Threshold: ${threshold}. Resets at: ${resetTime}`)
+                  .write();
+              }
+            } catch (error) {
+              core.warning(`Rate limit check failed: ${error.message}. Proceeding anyway.`);
+              core.setOutput('proceed', 'true');
+            }
+
+  guard:
+    name: coverage baseline monitor
+    needs: rate-limit-check
+    if: needs.rate-limit-check.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      # Mint GitHub App token early to use for API calls (avoids rate limits)
+      - name: Mint GitHub App Token
+        id: app_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2
+        continue-on-error: true
+        with:
+          app-id: ${{ secrets.WORKFLOWS_APP_ID || '0' }}
+          private-key: ${{ secrets.WORKFLOWS_APP_PRIVATE_KEY || 'dummy' }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Checkout retry helpers
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+
+          token: ${{ steps.app_token.outputs.token || github.token }}
+          sparse-checkout: |
+            .github/scripts/github-api-with-retry.js
+            .github/scripts/token_load_balancer.js
+          sparse-checkout-cone-mode: false
+
+      - name: Locate latest Gate workflow run
+        id: discover
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const workflowId = '.github/workflows/pr-00-gate.yml';
+            const fs = require('fs');
+            const retryHelperPath = './.github/scripts/github-api-with-retry.js';
+            const retryHelpers = fs.existsSync(retryHelperPath)
+              ? require(retryHelperPath)
+              : {
+                  withRetry: (fn) => fn(),
+                  paginateWithRetry: (githubInstance, method, params) =>
+                    githubInstance.paginate(method, params),
+                };
+            const { paginateWithRetry } = retryHelpers;
+
+            const runs = await paginateWithRetry(
+              github, github.rest.actions.listWorkflowRuns,
+              {
+                owner,
+                repo,
+                workflow_id: workflowId,
+                status: 'completed',
+                per_page: 50,
+              },
+            );
+
+            if (!runs.length) {
+              core.warning('No Gate workflow runs found.');
+              core.setOutput('run_id', '');
+              return;
+            }
+
+            runs.sort(
+              (a, b) =>
+                new Date(b.run_started_at || b.created_at || 0) -
+                new Date(a.run_started_at || a.created_at || 0),
+            );
+            const candidate =
+              runs.find((run) => ['success', 'neutral'].includes(run.conclusion || '')) || runs[0];
+
+            if (!candidate) {
+              core.warning('Unable to locate a completed Gate workflow run.');
+              core.setOutput('run_id', '');
+              return;
+            }
+
+            core.setOutput('run_id', String(candidate.id || ''));
+            core.setOutput('run_number', String(candidate.run_number || ''));
+            core.setOutput('run_url', candidate.html_url || '');
+            const url = candidate.html_url || 'no url';
+            core.notice(`Using Gate workflow run ${candidate.id} (${url})`);
+
+      - name: Download coverage trend artifact
+        if: ${{ steps.discover.outputs.run_id }}
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
+        continue-on-error: true
+        with:
+          name: gate-coverage-trend
+          run-id: ${{ steps.discover.outputs.run_id }}
+          path: coverage_artifacts/trend
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download coverage payload artifact
+        if: ${{ steps.discover.outputs.run_id }}
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
+        continue-on-error: true
+        with:
+          name: gate-coverage
+          run-id: ${{ steps.discover.outputs.run_id }}
+          path: coverage_artifacts/payload
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run coverage guard
+        if: ${{ steps.discover.outputs.run_id }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COVERAGE_RUN_URL: ${{ steps.discover.outputs.run_url }}
+          COVERAGE_RUN_NUMBER: ${{ steps.discover.outputs.run_number }}
+        run: |
+          # Try multiple possible artifact paths (workflow uses different naming)
+          TREND_PATH=""
+          COVERAGE_PATH=""
+
+          # Check for trend artifact
+          for candidate in \
+            "coverage_artifacts/trend/coverage-trend.json" \
+            "coverage_artifacts/coverage-trend.json"; do
+            if [ -f "$candidate" ]; then
+              TREND_PATH="$candidate"
+              break
+            fi
+          done
+
+          # Check for coverage json
+          for candidate in \
+            "coverage_artifacts/payload/artifacts/coverage/runtimes/3.11/coverage.json" \
+            "coverage_artifacts/payload/coverage.json" \
+            "coverage_artifacts/coverage.json"; do
+            if [ -f "$candidate" ]; then
+              COVERAGE_PATH="$candidate"
+              break
+            fi
+          done
+
+          # Build args
+          ARGS=(
+            --repo "${{ github.repository }}"
+            --run-url "${{ steps.discover.outputs.run_url }}"
+          )
+
+          if [ -n "$TREND_PATH" ]; then
+            ARGS+=(--trend-path "$TREND_PATH")
+          fi
+
+          if [ -n "$COVERAGE_PATH" ]; then
+            ARGS+=(--coverage-path "$COVERAGE_PATH")
+          fi
+
+          if [ -f "config/coverage-baseline.json" ]; then
+            ARGS+=(--baseline-path "config/coverage-baseline.json")
+          fi
+
+          python tools/coverage_guard.py "${ARGS[@]}"

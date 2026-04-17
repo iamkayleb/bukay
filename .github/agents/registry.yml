@@ -1,0 +1,70 @@
+version: 1
+
+default_agent: codex
+
+# Shared keepalive marker prefix (agent-agnostic)
+keepalive_marker_prefix: agent-keepalive
+
+agents:
+  codex:
+    runner_workflow: .github/workflows/reusable-codex-run.yml
+    required_secrets:
+      - CODEX_AUTH_JSON
+    branch_prefix: codex/issue-
+    ui_mentions_allowed: false
+    automation_logins:
+      - chatgpt-codex-connector
+    readiness_candidates:
+      - chatgpt-codex-connector
+    preflight:
+      assign_user: chatgpt-codex-connector
+      command_phrase: ''
+      enabled: true
+    capabilities:
+      pr_keepalive: true
+      pr_autofix: true
+      belt: true
+      verifier_checkbox: true
+
+  claude:
+    runner_workflow: .github/workflows/reusable-claude-run.yml
+    required_secrets:
+      - CLAUDE_CODE_OAUTH_TOKEN  # preferred: long-lived token from `claude setup-token`
+      - CLAUDE_AUTH_JSON          # fallback: credentials.json (short-lived OAuth)
+    required_secrets_mode: any    # at least one must be present
+    branch_prefix: claude/issue-
+    ui_mentions_allowed: false
+    automation_logins:
+      - kayleb-automation-bot
+    readiness_candidates:
+      - kayleb-automation-bot
+    preflight:
+      assign_user: kayleb-automation-bot
+      command_phrase: ''
+      enabled: true
+    capabilities:
+      pr_keepalive: true
+      pr_autofix: true
+      belt: true
+      verifier_checkbox: true
+
+  gemini:
+    display_name: Gemini
+    runner_workflow: .github/workflows/reusable-gemini-run.yml
+    required_secrets:
+      - GEMINI_API_KEY
+    branch_prefix: gemini/issue-
+    ui_mentions_allowed: false
+    automation_logins:
+      - kayleb-automation-bot
+    readiness_candidates:
+      - kayleb-automation-bot
+    preflight:
+      assign_user: kayleb-automation-bot
+      command_phrase: ''
+      enabled: true
+    capabilities:
+      pr_keepalive: true
+      pr_autofix: true
+      belt: true
+      verifier_checkbox: true

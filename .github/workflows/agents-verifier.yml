@@ -1,0 +1,220 @@
+# Thin caller for Agents Verifier - delegates to Workflows repo reusable workflow
+# Verifies acceptance criteria were met and opens follow-up issues if not
+#
+# Triggers:
+# - Label 'verify:checkbox' added to merged PR (opt-in checkbox verification)
+# - Label 'verify:evaluate' added to merged PR (LLM-based evaluation)
+# - Label 'verify:compare' added to merged PR (compare-based verification)
+# - Manual dispatch from Actions tab (allows model/provider selection)
+# Note: No longer runs automatically on every merge. Add a verify:* label to trigger.
+#
+# Required secrets (via secrets: inherit):
+# - CODEX_AUTH_JSON: Authentication for Codex API
+# - OPENAI_API_KEY: For OpenAI provider (optional, falls back to Claude/GitHub Models)
+# - CLAUDE_API_STRANSKE: For Claude provider (optional, falls back to GitHub Models)
+# - Ensure repository/org secrets are configured for verification to work
+#
+# Note: Uses pull_request_target instead of pull_request to ensure secrets
+# are available for PRs from forks after merge.
+name: Agents Verifier
+
+on:
+  pull_request_target:
+    types:
+      - labeled
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to verify (must be merged)'
+        required: true
+        type: string
+      mode:
+        description: 'Verification mode'
+        required: true
+        type: choice
+        options:
+          - evaluate
+          - checkbox
+          - compare
+        default: 'evaluate'
+      model:
+        description: >-
+          Model override for evaluation. Leave empty to use slot 1.
+          For stricter evaluation, use compare mode with different providers.
+        required: false
+        type: string
+        default: ''
+      model2:
+        description: >-
+          Second model for compare mode (cross-provider verification).
+          Leave empty to use slot 2.
+        required: false
+        type: string
+        default: ''
+      provider:
+        description: 'LLM provider override (auto uses slot order)'
+        required: true
+        type: choice
+        options:
+          - auto
+          - github-models
+          - openai
+          - anthropic
+        default: 'auto'
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  actions: read
+  models: read  # Required for GitHub Models API access
+
+jobs:
+  # Gate: only proceed if PR is merged AND has verify:* label (for label trigger)
+  # Or if triggered manually via workflow_dispatch
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      mode: ${{ steps.check.outputs.mode }}
+      model: ${{ steps.check.outputs.model }}
+      model2: ${{ steps.check.outputs.model2 }}
+      provider: ${{ steps.check.outputs.provider }}
+      pr_number: ${{ steps.check.outputs.pr_number }}
+    steps:
+      - name: Checkout retry helpers
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          sparse-checkout: |
+            .github/actions/setup-api-client
+            .github/scripts/github-api-with-retry.js
+            .github/scripts/token_load_balancer.js
+          sparse-checkout-cone-mode: false
+      - name: Setup API client
+        uses: ./.github/actions/setup-api-client
+        with:
+          secrets: ${{ toJSON(secrets) }}
+          github_token: ${{ github.token }}
+
+
+      - name: Check trigger conditions
+        id: check
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const fs = require('fs');
+            const retryHelperPath = './.github/scripts/github-api-with-retry.js';
+            const retryHelpers = fs.existsSync(retryHelperPath)
+              ? require(retryHelperPath)
+              : {
+                  createTokenAwareRetry: async ({ github }) => ({
+                    github,
+                    withRetry: (fn) => fn(github),
+                  }),
+                };
+            const { github: balancedGithub, withRetry } = await retryHelpers.createTokenAwareRetry({
+              github,
+              core,
+              env: process.env,
+              task: 'verifier',
+              capabilities: ['read-repo'],
+              minRemaining: 50,
+            });
+            github = balancedGithub;
+
+            // Handle workflow_dispatch trigger
+            if (context.eventName === 'workflow_dispatch') {
+              const prNumber = context.payload.inputs.pr_number;
+              const mode = context.payload.inputs.mode;
+              const model = context.payload.inputs.model;
+              const model2 = context.payload.inputs.model2 || '';
+              const provider = context.payload.inputs.provider;
+
+              // Verify PR exists and is merged
+              try {
+                const { data: pr } = await withRetry((client) => client.rest.pulls.get({
+                  ...context.repo,
+                  pull_number: parseInt(prNumber),
+                }));
+
+                if (!pr.merged) {
+                  const msg = `PR #${prNumber} is not merged. Verifier only runs on merged PRs.`;
+                  core.setFailed(msg);
+                  core.setOutput('should_run', 'false');
+                  return;
+                }
+
+                const logMsg = `Manual dispatch: PR #${prNumber}, mode=${mode}`;
+                core.info(`${logMsg}, model=${model}, model2=${model2}, provider=${provider}`);
+                core.setOutput('should_run', 'true');
+                core.setOutput('mode', mode);
+                core.setOutput('model', model);
+                core.setOutput('model2', model2);
+                core.setOutput('provider', provider);
+                core.setOutput('pr_number', prNumber);
+                return;
+              } catch (err) {
+                core.setFailed(`Failed to get PR #${prNumber}: ${err.message}`);
+                core.setOutput('should_run', 'false');
+                return;
+              }
+            }
+
+            // Handle pull_request_target trigger (label added)
+            const pr = context.payload.pull_request;
+            const label = context.payload.label;
+
+            // Must be a merged PR
+            if (!pr || !pr.merged) {
+              core.info('PR not merged; skipping verifier.');
+              core.setOutput('should_run', 'false');
+              return;
+            }
+
+            // Must be a verify:* label
+            const labelName = label?.name || '';
+            const verifyModes = {
+              'verify:checkbox': 'checkbox',
+              'verify:evaluate': 'evaluate',
+              'verify:compare': 'compare',
+            };
+
+            const mode = verifyModes[labelName];
+            if (!mode) {
+              core.info(`Label '${labelName}' is not a verify trigger; skipping.`);
+              core.setOutput('should_run', 'false');
+              return;
+            }
+
+            core.info(`Verifier triggered with mode: ${mode}`);
+            core.setOutput('should_run', 'true');
+            core.setOutput('mode', mode);
+            // For compare mode, use slot defaults (OpenAI + Claude)
+            if (mode === 'compare') {
+              core.setOutput('model', '');
+              core.setOutput('model2', '');
+            } else {
+              core.setOutput('model', '');
+              core.setOutput('model2', '');
+            }
+            core.setOutput('provider', '');
+            core.setOutput('pr_number', pr.number.toString());
+
+  verifier:
+    needs: check
+    if: needs.check.outputs.should_run == 'true'
+    uses: iamkayleb/Workflows/.github/workflows/reusable-agents-verifier.yml@main
+    with:
+      # CI workflows to wait for before running verifier
+      ci_workflows: '["ci.yml", "pr-00-gate.yml"]'
+      # Verification mode from label or manual input
+      mode: ${{ needs.check.outputs.mode }}
+      # PR number from label trigger
+      pr_number: ${{ needs.check.outputs.pr_number }}
+      # Model selection (empty string uses default)
+      model: ${{ needs.check.outputs.model }}
+      # Provider selection (empty string uses default)
+      provider: ${{ needs.check.outputs.provider }}
+      # Second model for compare mode (empty string uses default)
+      model2: ${{ needs.check.outputs.model2 }}
+    secrets: inherit

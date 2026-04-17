@@ -1,0 +1,744 @@
+'use strict';
+
+const normalizeNewlines = (value) => String(value || '').replace(/\r\n/g, '\n');
+const stripBlockquotePrefixes = (value) =>
+  String(value || '').replace(/^[ \t]*>+[ \t]?/gm, '');
+
+/**
+ * Check if a line is a code fence delimiter (``` or ~~~).
+ * Used to track code block boundaries when processing content.
+ */
+const isCodeFenceLine = (line) => /^(`{3,}|~{3,})/.test(line.trim());
+
+const LIST_ITEM_REGEX = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
+const DETAILS_OPEN_REGEX = /^<details\b[^>]*>\s*$/i;
+const DETAILS_CLOSE_REGEX = /^<\/details>\s*$/i;
+const SUMMARY_OPEN_REGEX = /^<summary\b[^>]*>\s*$/i;
+const SUMMARY_CLOSE_REGEX = /^<\/summary>\s*$/i;
+const SUMMARY_INLINE_REGEX = /^<summary\b[^>]*>.*<\/summary>\s*$/i;
+
+const SECTION_DEFS = [
+  { key: 'scope', label: 'Scope', aliases: ['Scope', 'Issue Scope', 'Why', 'Background', 'Context', 'Overview'], optional: true },
+  {
+    key: 'tasks',
+    label: 'Tasks',
+    aliases: ['Tasks', 'Task', 'Task List', 'Implementation', 'Implementation notes', 'To Do', 'Todo', 'To-Do'],
+    optional: false,
+  },
+  {
+    key: 'acceptance',
+    label: 'Acceptance Criteria',
+    aliases: ['Acceptance Criteria', 'Acceptance', 'Acceptance criteria', 'Definition of Done', 'Done Criteria'],
+    optional: false,
+  },
+];
+
+const PLACEHOLDERS = {
+  scope: '_No scope information provided_',
+  tasks: '- [ ] _No tasks defined_',
+  acceptance: '- [ ] _No acceptance criteria defined_',
+};
+
+// Fallback placeholders used by PR meta manager when source issue lacks sections
+// Note: scope uses plain text (not checkbox) since it's informational, not actionable
+const PR_META_FALLBACK_PLACEHOLDERS = {
+  scope: '_Scope section missing from source issue._',
+  tasks: '- [ ] Tasks section missing from source issue.',
+  acceptance: '- [ ] Acceptance criteria section missing from source issue.',
+};
+
+const CHECKBOX_SECTIONS = new Set(['tasks', 'acceptance']);
+const ACCEPTANCE_CUE_REGEX = /(acceptance|definition of done|done criteria)/i;
+
+function normaliseSectionContent(sectionKey, content) {
+  const cleaned = stripDetailsTags(content);
+  const trimmed = String(cleaned || '').trim();
+  if (!trimmed) {
+    return '';
+  }
+  if (CHECKBOX_SECTIONS.has(sectionKey)) {
+    return normaliseChecklist(trimmed).trim();
+  }
+  return trimmed;
+}
+
+function isPlaceholderContent(sectionKey, content) {
+  const normalized = normaliseSectionContent(sectionKey, content);
+  if (!normalized) {
+    return false;
+  }
+
+  // Check against standard placeholders
+  const placeholder = PLACEHOLDERS[sectionKey];
+  if (placeholder) {
+    const placeholderNormalized = normaliseSectionContent(sectionKey, placeholder);
+    if (normalized === placeholderNormalized) {
+      return true;
+    }
+  }
+
+  // Check against PR meta manager fallback placeholders
+  const fallbackPlaceholder = PR_META_FALLBACK_PLACEHOLDERS[sectionKey];
+  if (fallbackPlaceholder) {
+    const fallbackNormalized = normaliseSectionContent(sectionKey, fallbackPlaceholder);
+    if (normalized === fallbackNormalized) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function normaliseChecklist(content) {
+  const raw = String(content || '');
+  if (!raw.trim()) {
+    return raw;
+  }
+
+  const lines = raw.split('\n');
+  let mutated = false;
+  let insideCodeBlock = false;
+  
+  const updated = lines.map((line) => {
+    // Track code fence boundaries - don't add checkboxes inside code blocks
+    if (isCodeFenceLine(line)) {
+      insideCodeBlock = !insideCodeBlock;
+      return line;
+    }
+    
+    // Skip checkbox normalization for lines inside code blocks
+    if (insideCodeBlock) {
+      return line;
+    }
+    
+    const match = line.match(LIST_ITEM_REGEX);
+    if (!match) {
+      return line;
+    }
+    const [, indent, bullet, remainderRaw] = match;
+    const remainder = remainderRaw.trim();
+    if (!remainder) {
+      return line;
+    }
+    if (/^\[[ xX]\]/.test(remainder)) {
+      return `${indent}${bullet} ${remainder}`;
+    }
+    
+    mutated = true;
+    return `${indent}${bullet} [ ] ${remainder}`;
+  });
+
+  return mutated ? updated.join('\n') : raw;
+}
+
+function stripDetailsTags(content) {
+  const raw = String(content || '');
+  if (!raw.trim()) {
+    return raw;
+  }
+
+  const lines = raw.split('\n');
+  const cleaned = [];
+  let insideCodeBlock = false;
+  let insideSummary = false;
+
+  for (const line of lines) {
+    if (isCodeFenceLine(line)) {
+      insideCodeBlock = !insideCodeBlock;
+      cleaned.push(line);
+      continue;
+    }
+
+    if (insideCodeBlock) {
+      cleaned.push(line);
+      continue;
+    }
+
+    const trimmed = line.trim();
+    const listMatch = trimmed ? line.match(LIST_ITEM_REGEX) : null;
+    const candidate = listMatch ? listMatch[3].trim() : trimmed;
+    const summaryCandidate = candidate.replace(/^\[[ xX]\]\s*/, '').trim();
+
+    if (insideSummary) {
+      if (SUMMARY_CLOSE_REGEX.test(summaryCandidate) || SUMMARY_CLOSE_REGEX.test(candidate)) {
+        insideSummary = false;
+      }
+      continue;
+    }
+
+    if (SUMMARY_INLINE_REGEX.test(summaryCandidate) || SUMMARY_INLINE_REGEX.test(candidate)) {
+      continue;
+    }
+    if (SUMMARY_OPEN_REGEX.test(summaryCandidate) || SUMMARY_OPEN_REGEX.test(candidate)) {
+      insideSummary = true;
+      continue;
+    }
+    if (SUMMARY_CLOSE_REGEX.test(summaryCandidate) || SUMMARY_CLOSE_REGEX.test(candidate)) {
+      continue;
+    }
+    if (DETAILS_OPEN_REGEX.test(candidate) || DETAILS_CLOSE_REGEX.test(candidate)) {
+      continue;
+    }
+
+    cleaned.push(line);
+  }
+
+  return cleaned.join('\n');
+}
+
+function stripHeadingMarkers(rawLine) {
+  if (!rawLine) {
+    return '';
+  }
+  let text = String(rawLine).trim();
+  if (!text) {
+    return '';
+  }
+  text = text.replace(/^#{1,6}\s+/, '');
+  text = text.replace(/\s*:\s*$/, '');
+
+  const boldMatch = text.match(/^(?:\*\*|__)(.+)(?:\*\*|__)$/);
+  if (boldMatch) {
+    text = boldMatch[1].trim();
+  }
+
+  text = text.replace(/\s*:\s*$/, '');
+  return text.trim();
+}
+
+function extractHeadingLabel(rawLine) {
+  const cleaned = stripHeadingMarkers(rawLine);
+  if (!cleaned) {
+    const listMatch = String(rawLine || '').match(LIST_ITEM_REGEX);
+    if (!listMatch) {
+      return '';
+    }
+    const remainder = listMatch[3]?.trim() || '';
+    if (!remainder || /^\[[ xX]\]/.test(remainder)) {
+      return '';
+    }
+    return stripHeadingMarkers(remainder);
+  }
+  return cleaned;
+}
+
+function isExplicitHeadingLine(rawLine) {
+  const line = String(rawLine || '').trim();
+  if (!line) {
+    return false;
+  }
+  if (/^#{1,6}\s+\S/.test(line)) {
+    return true;
+  }
+  return /^(?:\*\*|__)(.+?)(?:\*\*|__)\s*:?\s*$/.test(line);
+}
+
+function extractListBlocks(lines) {
+  const blocks = [];
+  let current = [];
+  let insideCodeBlock = false;
+
+  const flush = () => {
+    if (current.length) {
+      const block = current.join('\n').trim();
+      if (block) {
+        blocks.push(block);
+      }
+      current = [];
+    }
+  };
+
+  for (const line of lines) {
+    // Track code fence boundaries
+    if (isCodeFenceLine(line)) {
+      insideCodeBlock = !insideCodeBlock;
+      // Include code fence lines in current block if we're building one
+      if (current.length) {
+        current.push(line);
+      }
+      continue;
+    }
+    
+    // Lines inside code blocks are treated as continuation (don't break the block)
+    if (insideCodeBlock) {
+      if (current.length) {
+        current.push(line);
+      }
+      continue;
+    }
+    
+    if (LIST_ITEM_REGEX.test(line)) {
+      current.push(line);
+      continue;
+    }
+    if (current.length) {
+      if (!line.trim()) {
+        current.push(line);
+        continue;
+      }
+      flush();
+    }
+  }
+  flush();
+
+  return blocks;
+}
+
+function extractListBlocksWithOffsets(lines) {
+  const blocks = [];
+  let current = [];
+  let blockStart = null;
+  let blockEnd = null;
+  let offset = 0;
+  let insideCodeBlock = false;
+
+  const flush = () => {
+    if (!current.length) {
+      return;
+    }
+    const content = current.join('\n').trim();
+    if (content) {
+      blocks.push({ start: blockStart, end: blockEnd, content });
+    }
+    current = [];
+    blockStart = null;
+    blockEnd = null;
+  };
+
+  for (const line of lines) {
+    // Track code fence boundaries
+    if (isCodeFenceLine(line)) {
+      insideCodeBlock = !insideCodeBlock;
+      if (current.length) {
+        current.push(line);
+        blockEnd = offset + line.length;
+      }
+      offset += line.length + 1;
+      continue;
+    }
+    
+    // Lines inside code blocks continue the current block
+    if (insideCodeBlock) {
+      if (current.length) {
+        current.push(line);
+        blockEnd = offset + line.length;
+      }
+      offset += line.length + 1;
+      continue;
+    }
+    
+    const isList = LIST_ITEM_REGEX.test(line);
+    if (isList) {
+      if (!current.length) {
+        blockStart = offset;
+      }
+      current.push(line);
+      blockEnd = offset + line.length;
+    } else if (current.length) {
+      if (!line.trim()) {
+        current.push(line);
+        blockEnd = offset + line.length;
+      } else {
+        flush();
+      }
+    }
+    offset += line.length + 1;
+  }
+  flush();
+
+  return blocks;
+}
+
+function removeTrailingBlock(content, block) {
+  const trimmedContent = String(content || '').trim();
+  const trimmedBlock = String(block || '').trim();
+  if (!trimmedContent || !trimmedBlock) {
+    return content;
+  }
+  if (!trimmedContent.endsWith(trimmedBlock)) {
+    return content;
+  }
+  const index = trimmedContent.lastIndexOf(trimmedBlock);
+  if (index === -1) {
+    return content;
+  }
+  return trimmedContent.slice(0, index).trimEnd();
+}
+
+function blockInsideRange(block, range) {
+  if (!range) {
+    return false;
+  }
+  return block.start >= range.start && block.end <= range.end;
+}
+
+function hasAcceptanceCue(content) {
+  const lines = String(content || '').split('\n');
+  return lines.some((line) => {
+    if (LIST_ITEM_REGEX.test(line)) {
+      return false;
+    }
+    const cleaned = stripHeadingMarkers(line);
+    if (!cleaned) {
+      return false;
+    }
+    return ACCEPTANCE_CUE_REGEX.test(cleaned);
+  });
+}
+
+function inferSectionsFromLists(segment) {
+  const sections = { scope: '', tasks: '', acceptance: '' };
+  const lines = String(segment || '').split('\n');
+  const firstListIndex = lines.findIndex((line) => LIST_ITEM_REGEX.test(line));
+  if (firstListIndex === -1) {
+    return sections;
+  }
+
+  const preListText = lines.slice(0, firstListIndex).join('\n').trim();
+  if (preListText) {
+    sections.scope = preListText;
+  }
+
+  const listBlocks = extractListBlocks(lines.slice(firstListIndex));
+  if (listBlocks.length > 0) {
+    sections.tasks = listBlocks[0];
+  }
+  if (listBlocks.length > 1) {
+    sections.acceptance = listBlocks[1];
+  }
+
+  return sections;
+}
+
+function applyListFallbacks({ segment, sections, listBlocks, ranges }) {
+  const updated = { ...sections };
+  const tasksMissing = !String(updated.tasks || '').trim();
+  const acceptanceMissing = !String(updated.acceptance || '').trim();
+
+  if (!tasksMissing && !acceptanceMissing) {
+    return updated;
+  }
+
+  if (tasksMissing && String(updated.scope || '').trim()) {
+    const inferred = inferSectionsFromLists(updated.scope);
+    if (inferred.tasks) {
+      updated.tasks = inferred.tasks;
+      updated.scope = inferred.scope || '';
+      if (acceptanceMissing && inferred.acceptance) {
+        updated.acceptance = inferred.acceptance;
+      }
+    }
+  }
+
+  const acceptanceStillMissing = !String(updated.acceptance || '').trim();
+  if (acceptanceStillMissing && String(updated.tasks || '').trim()) {
+    const taskBlocks = extractListBlocks(String(updated.tasks || '').split('\n'));
+    if (taskBlocks.length > 1 && hasAcceptanceCue(updated.tasks)) {
+      const acceptanceBlock = taskBlocks[taskBlocks.length - 1];
+      updated.acceptance = acceptanceBlock;
+      updated.tasks = removeTrailingBlock(updated.tasks, acceptanceBlock);
+    }
+  }
+
+  const tasksStillMissing = !String(updated.tasks || '').trim();
+  if (tasksStillMissing && listBlocks.length) {
+    const acceptanceRange = ranges.acceptance;
+    const candidates = listBlocks.filter((block) => !blockInsideRange(block, acceptanceRange));
+    if (candidates.length) {
+      if (acceptanceRange) {
+        const before = candidates.filter((block) => block.end <= acceptanceRange.start);
+        updated.tasks = (before.length ? before[before.length - 1] : candidates[0]).content;
+      } else {
+        updated.tasks = candidates[0].content;
+      }
+    }
+  }
+
+  const acceptanceStillMissingAfter = !String(updated.acceptance || '').trim();
+  if (acceptanceStillMissingAfter && listBlocks.length) {
+    const tasksRange = ranges.tasks;
+    const candidates = listBlocks.filter((block) => !blockInsideRange(block, tasksRange));
+    if (candidates.length) {
+      if (tasksRange) {
+        const after = candidates.filter((block) => block.start >= tasksRange.end);
+        updated.acceptance = (after.length ? after[0] : candidates[candidates.length - 1]).content;
+      } else {
+        updated.acceptance = candidates[candidates.length - 1].content;
+      }
+    }
+  }
+
+  return updated;
+}
+
+function collectSections(source) {
+  const normalized = stripBlockquotePrefixes(normalizeNewlines(source));
+  if (!normalized.trim()) {
+    return { segment: '', sections: {}, labels: {} };
+  }
+
+  const startMarker = '<!-- auto-status-summary:start -->';
+  const endMarker = '<!-- auto-status-summary:end -->';
+  const startIndex = normalized.indexOf(startMarker);
+  const endIndex = normalized.indexOf(endMarker);
+
+  let segment = normalized;
+  if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+    segment = normalized.slice(startIndex + startMarker.length, endIndex);
+  }
+
+  const aliasLookup = SECTION_DEFS.reduce((acc, section) => {
+    section.aliases.forEach((alias) => {
+      acc[alias.toLowerCase()] = section;
+    });
+    return acc;
+  }, {});
+
+  const headings = [];
+  const allHeadings = [];
+  const lines = segment.split('\n');
+  const listBlocks = extractListBlocksWithOffsets(lines);
+  let offset = 0;
+  let insideCodeBlock = false;
+  for (const line of lines) {
+    // Track code fence boundaries - skip heading detection inside code blocks
+    if (isCodeFenceLine(line)) {
+      insideCodeBlock = !insideCodeBlock;
+      offset += line.length + 1;
+      continue;
+    }
+    
+    if (!insideCodeBlock) {
+      const matchedLabel = extractHeadingLabel(line);
+      if (matchedLabel) {
+        const title = matchedLabel.toLowerCase();
+        if (aliasLookup[title]) {
+          const section = aliasLookup[title];
+          // Detect heading level (number of # characters)
+          const headingMatch = line.match(/^(#{1,6})\s+/);
+          const level = headingMatch ? headingMatch[1].length : 2; // Default to level 2 for non-# headings
+          headings.push({
+            title: section.key,
+            label: section.label,
+            index: offset,
+            length: line.length,
+            matchedLabel,
+            level,
+          });
+          // Also add recognized section headings to allHeadings so they act as boundaries
+          // Only add if not already present (avoid duplicates with isExplicitHeadingLine)
+          const alreadyAdded = allHeadings.some(h => h.index === offset);
+          if (!alreadyAdded && level <= 2) {
+            allHeadings.push({ index: offset, length: line.length, level });
+          }
+        }
+      }
+      if (isExplicitHeadingLine(line)) {
+        // Detect heading level for all headings
+        // NOTE: Trim line before matching to handle indented headings consistently
+        // isExplicitHeadingLine already trims, so we should too
+        const trimmedLine = line.trim();
+        const headingMatch = trimmedLine.match(/^(#{1,6})\s+/);
+        const level = headingMatch ? headingMatch[1].length : 2; // Default to level 2 for non-# headings
+        allHeadings.push({ index: offset, length: line.length, level });
+      }
+    }
+    offset += line.length + 1;
+  }
+
+  const headingIndexSet = new Set(allHeadings.map((heading) => heading.index));
+  for (const header of headings) {
+    if (!headingIndexSet.has(header.index)) {
+      allHeadings.push({ index: header.index, length: header.length });
+      headingIndexSet.add(header.index);
+    }
+  }
+
+  const extracted = SECTION_DEFS.reduce((acc, section) => {
+    acc[section.key] = '';
+    return acc;
+  }, {});
+  const labels = SECTION_DEFS.reduce((acc, section) => {
+    acc[section.key] = section.label;
+    return acc;
+  }, {});
+  const ranges = SECTION_DEFS.reduce((acc, section) => {
+    acc[section.key] = null;
+    return acc;
+  }, {});
+
+  if (headings.length === 0) {
+    const inferred = inferSectionsFromLists(segment);
+    const merged = {
+      ...extracted,
+      ...Object.fromEntries(
+        Object.entries(inferred).filter(([, value]) => String(value || '').trim())
+      ),
+    };
+    return { segment, sections: merged, labels };
+  }
+
+  for (const section of SECTION_DEFS) {
+    const canonicalTitle = section.label;
+    const header = headings.find((entry) => entry.title === section.key);
+    if (!header) {
+      continue; // Skip missing sections instead of failing
+    }
+    // Find the boundary for this section's content:
+    // 1. Next heading at the SAME level (e.g., another ## for a ## section)
+    //    This catches structural headings that divide the document at the
+    //    same depth, while allowing subsection headers at different levels
+    //    (e.g., ### Phase 1 inside #### Tasks) to remain as content.
+    // 2. OR next recognized section heading (even if it's a subsection level)
+    //    Example: ## Scope followed by ### Tasks should stop at ### Tasks
+    const nextSameLevel = allHeadings
+      .filter((entry) => entry.index > header.index && entry.level === header.level)
+      .sort((a, b) => a.index - b.index)[0];
+    const nextRecognizedSection = headings
+      .filter((entry) => entry.index > header.index && entry.title !== header.title)
+      .sort((a, b) => a.index - b.index)[0];
+    
+    // Use whichever boundary comes first
+    const boundaries = [nextSameLevel, nextRecognizedSection].filter(Boolean);
+    const nextHeader = boundaries.length > 0 
+      ? boundaries.sort((a, b) => a.index - b.index)[0]
+      : null;
+    
+    const contentStart = (() => {
+      const start = header.index + header.length;
+      if (segment[start] === '\n') {
+        return start + 1;
+      }
+      return start;
+    })();
+    const contentEnd = nextHeader ? nextHeader.index : segment.length;
+    const content = normalizeNewlines(segment.slice(contentStart, contentEnd)).trim();
+    extracted[section.key] = content;
+    labels[section.key] = header.matchedLabel?.trim() || canonicalTitle;
+    ranges[section.key] = { start: contentStart, end: contentEnd };
+  }
+
+  const sections = applyListFallbacks({ segment, sections: extracted, listBlocks, ranges });
+  return { segment, sections, labels };
+}
+
+/**
+ * Extracts Scope, Tasks/Task List, and Acceptance Criteria sections from issue text.
+ *
+ * The parser is intentionally tolerant:
+ * - Accepts headings written as markdown headers (# Title), bold (**Title**), or plain text
+ *   with or without a trailing colon (e.g., "Tasks:").
+ * - Searches within auto-status-summary markers when present, falling back to the full body.
+ *
+ * @param {string} source - The issue body text to parse.
+ * @returns {string} Formatted sections with #### headings, or an empty string if none were found.
+ */
+function resolveHeadingLabel(sectionKey, matchedLabel, canonicalTitle) {
+  if (sectionKey !== 'tasks') {
+    return canonicalTitle;
+  }
+
+  const raw = String(matchedLabel || '').trim();
+  if (!raw) {
+    return canonicalTitle;
+  }
+
+  const stripped = raw.replace(/:+$/, '').trim();
+  if (!stripped) {
+    return canonicalTitle;
+  }
+
+  const lowered = stripped.toLowerCase();
+  if (lowered === 'tasks') {
+    return 'Tasks';
+  }
+  if (lowered === 'task list') {
+    return 'Task List';
+  }
+
+  return canonicalTitle;
+}
+
+const extractScopeTasksAcceptanceSections = (source, options = {}) => {
+  const { sections, labels } = collectSections(source);
+  const includePlaceholders = Boolean(options.includePlaceholders);
+
+  const extracted = [];
+  let started = false;
+  for (const section of SECTION_DEFS) {
+    const canonicalTitle = section.label;
+    const headingLabel = resolveHeadingLabel(section.key, labels?.[section.key], canonicalTitle);
+    const content = (sections[section.key] || '').trim();
+    let body = content ? stripDetailsTags(content) : content;
+    if (!body && includePlaceholders) {
+      body = PLACEHOLDERS[section.key] || '';
+    }
+    if (body && CHECKBOX_SECTIONS.has(section.key)) {
+      body = normaliseChecklist(body);
+    }
+    if (!body) {
+      if (!started && section.key === 'scope') {
+        continue;
+      }
+      continue;
+    }
+    const headerLine = `#### ${headingLabel}`;
+    extracted.push(`${headerLine}\n${body}`);
+    started = true;
+  }
+
+  return extracted.join('\n\n').trim();
+};
+
+const parseScopeTasksAcceptanceSections = (source) => {
+  const { sections } = collectSections(source);
+  return sections;
+};
+
+const hasNonPlaceholderScopeTasksAcceptanceContent = (source) => {
+  const { sections } = collectSections(source);
+  if (!sections || typeof sections !== 'object') {
+    return false;
+  }
+  return Object.entries(sections).some(([key, value]) => {
+    const content = String(value || '').trim();
+    if (!content) {
+      return false;
+    }
+    return !isPlaceholderContent(key, content);
+  });
+};
+
+const analyzeSectionPresence = (source) => {
+  const { sections } = collectSections(source);
+  const entries = SECTION_DEFS.map((section) => {
+    const content = (sections[section.key] || '').trim();
+    return {
+      key: section.key,
+      label: section.label,
+      present: Boolean(content),
+      optional: Boolean(section.optional),
+    };
+  });
+  // Only report non-optional sections as missing
+  const missing = entries
+    .filter((entry) => !entry.present && !entry.optional)
+    .map((entry) => entry.label);
+  // Check if we have at least one actionable section (tasks or acceptance)
+  const hasActionableContent = entries.some(
+    (entry) => entry.present && (entry.key === 'tasks' || entry.key === 'acceptance')
+  );
+  return {
+    entries,
+    missing,
+    hasAllRequired: missing.length === 0,
+    hasActionableContent,
+  };
+};
+
+module.exports = {
+  extractScopeTasksAcceptanceSections,
+  parseScopeTasksAcceptanceSections,
+  hasNonPlaceholderScopeTasksAcceptanceContent,
+  analyzeSectionPresence,
+};

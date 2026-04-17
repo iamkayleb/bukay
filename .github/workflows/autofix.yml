@@ -1,0 +1,561 @@
+# Thin caller for autofix - delegates to Workflows repo reusable workflow
+# Auto-fixes lint and format issues on PRs
+#
+# Triggers:
+# - Gate/CI/Python CI workflow completes with failure (lint/format issues detected)
+# - Lint job fails early (workflow_job completed)
+# - PR labeled with 'autofix' or 'autofix:clean' (manual trigger)
+#
+# Note: push trigger removed — it caused "This isn't working right now" errors
+# because GitHub Actions can't resolve the reusable workflow reference on push events
+#
+# Copy this file to: .github/workflows/autofix.yml
+#
+# Required secrets:
+# - SERVICE_BOT_PAT: PAT for pushing autofix commits (optional, uses GITHUB_TOKEN if not set)
+name: Autofix
+
+on:
+  workflow_run:
+    workflows: ["Gate", "CI", "Python CI"]
+    types: [completed]
+  workflow_job:
+    types: [completed]
+  pull_request_target:
+    types:
+      - labeled
+
+permissions:
+  actions: read
+  checks: read
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: >-
+    autofix-${{
+      github.event.pull_request.number
+      || (
+        github.event.workflow_run.pull_requests &&
+        github.event.workflow_run.pull_requests[0] &&
+        github.event.workflow_run.pull_requests[0].number
+      )
+      || (
+        github.event.workflow_job.pull_requests &&
+        github.event.workflow_job.pull_requests[0] &&
+        github.event.workflow_job.pull_requests[0].number
+      )
+      || github.run_id
+    }}
+  cancel-in-progress: true
+
+jobs:
+  # Resolve PR context
+  resolve:
+    name: Resolve Context
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.context.outputs.should_run }}
+      pr_number: ${{ steps.context.outputs.pr_number }}
+      pr_head_ref: ${{ steps.context.outputs.head_ref }}
+      pr_title: ${{ steps.context.outputs.pr_title }}
+      pr_is_draft: ${{ steps.context.outputs.pr_is_draft }}
+      pr_labels_json: ${{ steps.context.outputs.pr_labels_json }}
+      same_repo: ${{ steps.context.outputs.same_repo }}
+      caller_actor: ${{ steps.context.outputs.caller_actor }}
+    steps:
+      - name: Checkout for API helpers
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          sparse-checkout: |
+            .github/actions/setup-api-client
+            .github/scripts/github-api-with-retry.js
+            .github/scripts/token_load_balancer.js
+          sparse-checkout-cone-mode: false
+
+      - name: Setup API client
+        uses: ./.github/actions/setup-api-client
+        with:
+          secrets: ${{ toJSON(secrets) }}
+          github_token: ${{ github.token }}
+
+      - name: Resolve PR context
+        id: context
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          github-token: >-
+            ${{ secrets.AGENTS_AUTOMATION_PAT || secrets.ACTIONS_BOT_PAT || github.token }}
+          script: |
+            const { createTokenAwareRetry } = require(
+              './.github/scripts/github-api-with-retry.js'
+            );
+            const { withRetry, paginateWithRetry } = await createTokenAwareRetry({
+              github,
+              core,
+              env: process.env,
+              task: 'autofix-resolve-context',
+            });
+
+            const hasRelevantFailureCheck = async ({ owner, repo, ref }) => {
+              const { data } = await withRetry((client) =>
+                client.rest.checks.listForRef({
+                  owner,
+                  repo,
+                  ref,
+                  filter: 'latest',
+                  per_page: 100,
+                })
+              );
+
+              const failedChecks = (data.check_runs || []).filter(
+                (cr) => (cr.conclusion || '').toLowerCase() === 'failure'
+              );
+
+              const relevantFailures = failedChecks.filter((cr) => {
+                const name = String(cr.name || '').toLowerCase();
+                return name.includes('lint-format') || name.includes('lint-ruff');
+              });
+
+              if (relevantFailures.length === 0) {
+                core.info(
+                  'No lint-format/lint-ruff check failures found; skipping autofix.'
+                );
+                return false;
+              }
+
+              core.info(
+                `Relevant failures: ${relevantFailures
+                  .map((cr) => cr.name)
+                  .join(', ')}`
+              );
+              return true;
+            };
+
+            const hasRelevantFailureJobForRun = async ({ owner, repo, runId }) => {
+              const jobs = await paginateWithRetry(
+                github.rest.actions.listJobsForWorkflowRun,
+                {
+                  owner,
+                  repo,
+                  run_id: runId,
+                  per_page: 100,
+                },
+                { maxRetries: 3 }
+              );
+              const failedJobs = jobs.filter(
+                (job) => (job.conclusion || '').toLowerCase() === 'failure'
+              );
+              const relevantFailures = failedJobs.filter((job) => {
+                const name = String(job.name || '').toLowerCase();
+                return name.includes('lint-format') || name.includes('lint-ruff');
+              });
+
+              if (relevantFailures.length === 0) {
+                core.info(
+                  'No lint-format/lint-ruff job failures found; skipping autofix.'
+                );
+                return false;
+              }
+
+              core.info(
+                `Relevant failures: ${relevantFailures.map((job) => job.name).join(', ')}`
+              );
+              return true;
+            };
+
+            const listFilesOrNullOnRateLimit = async ({ owner, repo, prNumber }) => {
+              try {
+                return await paginateWithRetry(
+                  github.rest.pulls.listFiles,
+                  {
+                    owner,
+                    repo,
+                    pull_number: prNumber,
+                    per_page: 100,
+                  },
+                  { maxRetries: 3 }
+                );
+              } catch (error) {
+                const message = String(error?.message || error || '');
+                const status = Number(error?.status || error?.response?.status || 0);
+                if (status === 403 && message.toLowerCase().includes('rate limit')) {
+                  core.warning(
+                    'Rate limited listing PR files; proceeding without file filter.'
+                  );
+                  return null;
+                }
+                throw error;
+              }
+            };
+
+            const setOutputs = ({ pr, sameRepo, callerActor }) => {
+              const labels = (pr.labels || []).map((l) => l.name);
+              core.setOutput('should_run', 'true');
+              core.setOutput('pr_number', pr.number);
+              core.setOutput('head_ref', pr.head.ref);
+              core.setOutput('pr_title', pr.title);
+              core.setOutput('pr_is_draft', pr.draft ? 'true' : 'false');
+              core.setOutput('pr_labels_json', JSON.stringify(labels));
+              core.setOutput('same_repo', sameRepo ? 'true' : 'false');
+              core.setOutput('caller_actor', callerActor);
+            };
+
+            // --- workflow_run trigger (after Gate/CI completes) ---
+            if (context.eventName === 'workflow_run') {
+              const run = context.payload.workflow_run;
+              const workflowName = run?.name || 'workflow';
+              const triggerHeadSha = String(run?.head_sha || run?.head_commit?.id || '');
+              const runId = Number(run?.id || 0);
+
+              // Only proceed when the upstream workflow failed
+              if (run.conclusion !== 'failure') {
+                core.info(
+                  `${workflowName} concluded '${run.conclusion}' — ` +
+                  'no autofix needed'
+                );
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              const prs = run.pull_requests || [];
+              if (prs.length === 0) {
+                core.info('No associated PR found');
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              const prNumber = prs[0].number;
+              const { data: pr } = await withRetry(
+                (client) => client.rest.pulls.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber,
+                })
+              );
+
+              if (pr.state !== 'open') {
+                core.info(`PR #${prNumber} is ${pr.state}`);
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              if (pr.draft) {
+                core.info('PR is draft.');
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              const sameRepo =
+                pr.head.repo !== null &&
+                pr.head.repo.full_name ===
+                  pr.base.repo?.full_name;
+              if (!sameRepo) {
+                core.info('Fork PR — not supported.');
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              const headSha = pr.head?.sha;
+              if (!headSha) {
+                core.info('PR head SHA missing; skipping autofix.');
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              let shouldAutofix = false;
+              if (runId) {
+                try {
+                  shouldAutofix = await hasRelevantFailureJobForRun({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    runId,
+                  });
+                } catch (error) {
+                  const message = String(error?.message || error || '');
+                  const status = Number(error?.status || error?.response?.status || 0);
+                  if (status === 403 && message.toLowerCase().includes('rate limit')) {
+                    core.warning(
+                      'Rate limited listing workflow jobs; falling back to check runs.'
+                    );
+                  } else {
+                    core.warning(
+                      `Failed to list workflow jobs; falling back to check runs: ${message}`
+                    );
+                  }
+                }
+              }
+
+              if (!shouldAutofix) {
+                const refForChecks = triggerHeadSha || headSha;
+                shouldAutofix = await hasRelevantFailureCheck({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: refForChecks,
+                });
+              }
+
+              if (!shouldAutofix && triggerHeadSha && triggerHeadSha !== headSha) {
+                core.info(
+                  `No relevant failures found for trigger SHA ${triggerHeadSha}; ` +
+                  `re-checking latest PR head ${headSha}`
+                );
+                shouldAutofix = await hasRelevantFailureCheck({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: headSha,
+                });
+              }
+
+              if (!shouldAutofix) {
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              // Only run autofix when Python files are present.
+              const files = await listFilesOrNullOnRateLimit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                prNumber,
+              });
+
+              const hasPython =
+                files === null
+                  ? true
+                  : files.some(
+                      (file) =>
+                        file.filename.endsWith('.py') || file.filename.endsWith('.pyi')
+                    );
+
+              if (!hasPython) {
+                core.info('No Python files changed.');
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              setOutputs({
+                pr,
+                sameRepo,
+                callerActor: run.actor?.login || context.actor,
+              });
+              return;
+            }
+
+            // --- workflow_job trigger (early lint failure) ---
+            if (context.eventName === 'workflow_job') {
+              const workflowJob = context.payload.workflow_job;
+              if (!workflowJob) {
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              const workflowName = String(workflowJob.workflow_name || '').trim();
+              const jobName = String(workflowJob.name || '').toLowerCase();
+              const conclusion = String(workflowJob.conclusion || '').toLowerCase();
+
+              // Only respond to failing lint jobs in the workflows we care about.
+              const relevantJob =
+                jobName.includes('lint-format') || jobName.includes('lint-ruff');
+              if (!relevantJob) {
+                core.info(
+                  `workflow_job '${workflowJob.name}' is not a lint-format/lint-ruff job.`
+                );
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              const allowedWorkflows = new Set(['Gate', 'CI', 'Python CI']);
+              if (workflowName && !allowedWorkflows.has(workflowName)) {
+                core.info(
+                  `workflow_job is from workflow '${workflowName}', not Gate/CI/Python CI; ` +
+                  'skipping.'
+                );
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              if (conclusion !== 'failure') {
+                core.info(
+                  `workflow_job '${workflowJob.name}' concluded '${workflowJob.conclusion}' ` +
+                  '— no autofix needed'
+                );
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              const prs = workflowJob.pull_requests || [];
+              if (!prs.length) {
+                core.info('workflow_job event has no associated PR; skipping.');
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              const prNumber = prs[0].number;
+              const triggerHeadSha = String(workflowJob.head_sha || '');
+              const { owner, repo } = context.repo;
+              const { data: pr } = await withRetry((client) =>
+                client.rest.pulls.get({ owner, repo, pull_number: prNumber })
+              );
+
+              if (pr.state !== 'open') {
+                core.info(`PR #${prNumber} is ${pr.state}`);
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              if (pr.draft) {
+                core.info('PR is draft.');
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              const sameRepo =
+                pr.head.repo !== null &&
+                pr.head.repo.full_name === pr.base.repo?.full_name;
+              if (!sameRepo) {
+                core.info('Fork PR — not supported.');
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              const headSha = pr.head?.sha;
+              if (!headSha) {
+                core.info('PR head SHA missing; skipping autofix.');
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              if (triggerHeadSha && triggerHeadSha !== headSha) {
+                core.info(
+                  `workflow_job head_sha ${triggerHeadSha} does not match PR head ${headSha}; ` +
+                  'skipping stale event.'
+                );
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              const files = await listFilesOrNullOnRateLimit({ owner, repo, prNumber });
+              const hasPython =
+                files === null
+                  ? true
+                  : files.some(
+                      (file) =>
+                        file.filename.endsWith('.py') || file.filename.endsWith('.pyi')
+                    );
+              if (!hasPython) {
+                core.info('No Python files changed.');
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              setOutputs({
+                pr,
+                sameRepo,
+                callerActor: context.payload.sender?.login || context.actor,
+              });
+              return;
+            }
+
+            // --- pull_request_target trigger (manual label) ---
+            const pr = context.payload.pull_request;
+            if (!pr) {
+              core.setOutput('should_run', 'false');
+              return;
+            }
+
+            const isLabeled =
+              context.eventName === 'pull_request_target' &&
+              context.payload.action === 'labeled';
+
+            if (!isLabeled) {
+              core.info(
+                'Unsupported event: ' +
+                `${context.eventName}/${context.payload.action}`,
+              );
+              core.setOutput('should_run', 'false');
+              return;
+            }
+
+            const label =
+              context.payload.label?.name?.toLowerCase();
+            if (
+              label !== 'autofix' &&
+              label !== 'autofix:clean'
+            ) {
+              core.info(
+                `Label '${label}' is not an autofix trigger.`,
+              );
+              core.setOutput('should_run', 'false');
+              return;
+            }
+
+            if (pr.state !== 'open') {
+              core.info('PR is not open.');
+              core.setOutput('should_run', 'false');
+              return;
+            }
+
+            if (pr.draft) {
+              core.info('PR is draft.');
+              core.setOutput('should_run', 'false');
+              return;
+            }
+
+            const sameRepo =
+              pr.head.repo !== null &&
+              pr.head.repo.full_name ===
+                pr.base.repo?.full_name;
+
+            if (!sameRepo) {
+              core.info('Fork PR — not supported.');
+              core.setOutput('should_run', 'false');
+              return;
+            }
+
+            const labels =
+              (pr.labels || []).map(l => l.name);
+
+            let files = [];
+            files = await listFilesOrNullOnRateLimit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              prNumber: pr.number,
+            });
+
+            const hasPython =
+              files === null
+                ? true
+                : files.some(
+                    (file) =>
+                      file.filename.endsWith('.py') || file.filename.endsWith('.pyi')
+                  );
+
+            if (!hasPython) {
+              core.info('No Python files changed.');
+              core.setOutput('should_run', 'false');
+              return;
+            }
+
+            setOutputs({
+              pr,
+              sameRepo,
+              callerActor: context.actor,
+            });
+
+  # Call reusable autofix workflow
+  autofix:
+    needs: resolve
+    if: needs.resolve.outputs.should_run == 'true'
+    uses: iamkayleb/Workflows/.github/workflows/reusable-18-autofix.yml@main
+    with:
+      pr_number: ${{ fromJson(needs.resolve.outputs.pr_number) }}
+      pr_head_ref: ${{ needs.resolve.outputs.pr_head_ref }}
+      pr_title: ${{ needs.resolve.outputs.pr_title }}
+      pr_is_draft: ${{ needs.resolve.outputs.pr_is_draft == 'true' }}
+      pr_labels_json: ${{ needs.resolve.outputs.pr_labels_json }}
+      same_repo: ${{ needs.resolve.outputs.same_repo == 'true' }}
+      caller_actor: ${{ needs.resolve.outputs.caller_actor }}
+    secrets:
+      service_bot_pat: ${{ secrets.SERVICE_BOT_PAT }}
+      WORKFLOWS_APP_ID: ${{ secrets.WORKFLOWS_APP_ID }}
+      WORKFLOWS_APP_PRIVATE_KEY: ${{ secrets.WORKFLOWS_APP_PRIVATE_KEY }}

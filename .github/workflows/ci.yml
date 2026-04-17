@@ -1,0 +1,34 @@
+# Thin caller for Python CI - delegates to Workflows repo reusable workflow
+# No local scripts required - all logic is centralized in iamkayleb/Workflows
+#
+# This workflow runs:
+# - Lint (Ruff)
+# - Format check (Black)
+# - Type checking (mypy)
+# - Tests (pytest) on Python 3.11 and 3.12
+#
+# NOTE: Do NOT add a top-level 'permissions:' block here. It causes
+# startup_failure when calling reusable workflows. The reusable workflow
+# defines its own permissions.
+#
+# Copy this file to: .github/workflows/ci.yml
+# Also copy: autofix-versions.env to .github/workflows/autofix-versions.env
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  python:
+    name: Python CI
+    uses: iamkayleb/Workflows/.github/workflows/reusable-10-ci-python.yml@main
+    with:
+      python-versions: '["3.11", "3.12"]'
+      typecheck: true
+      coverage: true
+      coverage-min: '80'
+    secrets: inherit
