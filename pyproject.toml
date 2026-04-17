@@ -1,0 +1,14 @@
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+exclude = [
+    "^\\.workflows-lib/",
+]
+
+[[tool.mypy.overrides]]
+module = ["tools.*", "scripts.*"]
+ignore_errors = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-ra"]
