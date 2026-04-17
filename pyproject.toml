@@ -1,0 +1,96 @@
+[build-system]
+requires = ["setuptools>=69.5.1", "wheel>=0.43.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "consumer-repo"
+version = "0.1.0"
+description = "Consumer repository using iamkayleb/Workflows CI system"
+requires-python = ">=3.11"
+
+[project.optional-dependencies]
+app = []
+dev = []
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.black]
+line-length = 100
+target-version = ["py311", "py312"]
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade - modern Python syntax
+    "SIM", # flake8-simplify - code simplification
+]
+ignore = [
+    "E501",  # Line too long (handled by black)
+]
+
+[tool.ruff.lint.isort]
+known-third-party = ["scripts", "tools"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = false
+warn_unused_configs = true
+disable_error_code = ["import-not-found", "import-untyped"]
+
+[[tool.mypy.overrides]]
+module = ["scripts.*", "tools.*"]
+follow_imports = "skip"
+ignore_errors = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+pythonpath = ["src"]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+markers = [
+    "integration: marks tests as integration tests",
+    "cosmetic: marks tests for cosmetic/formatting changes",
+    "slow: marks tests as slow",
+    "serial: marks tests that must run serially",
+    "quarantine: marks tests that are quarantined",
+    "xdist_group: marks tests that must share a single xdist worker",
+]
+filterwarnings = [
+    "error",
+]
+
+[tool.coverage.run]
+branch = true
+parallel = true
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/.venv/*",
+    "tools/*",
+    "scripts/*",
+    ".workflows-lib/*",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
