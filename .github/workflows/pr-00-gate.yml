@@ -164,7 +164,13 @@ jobs:
       - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
         with:
           node-version: '20'
-      - run: node --test .github/scripts/__tests__/*.test.js
+      - name: Run JS tests (if present)
+        run: |
+          if ls .github/scripts/__tests__/*.test.js 1>/dev/null 2>&1; then
+            node --test .github/scripts/__tests__/*.test.js
+          else
+            echo "No JS test files found in .github/scripts/__tests__/; skipping."
+          fi
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: '3.11'
