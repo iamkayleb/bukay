@@ -1,8 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../app/generated/prisma"
@@ -11,4 +9,183 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  ADMIN
+  STAFF
+  CLIENT
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+  FAILED
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model Tenant {
+  id            String         @id @default(cuid())
+  name          String
+  slug          String         @unique
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  users         User[]
+  services      Service[]
+  staff         Staff[]
+  businessHours BusinessHour[]
+  clients       Client[]
+  bookings      Booking[]
+  payments      Payment[]
+  auditLogs     AuditLog[]
+}
+
+model User {
+  id           String     @id @default(cuid())
+  tenantId     String
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email        String
+  name         String
+  role         UserRole   @default(STAFF)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  staffProfile Staff?
+  auditLogs    AuditLog[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+model Service {
+  id              String    @id @default(cuid())
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  durationMinutes Int
+  price           Decimal   @db.Decimal(10, 2)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  bookings        Booking[]
+
+  @@index([tenantId])
+}
+
+model Staff {
+  id            String         @id @default(cuid())
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId        String?        @unique
+  user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name          String
+  email         String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  businessHours BusinessHour[]
+  bookings      Booking[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+model BusinessHour {
+  id        String  @id @default(cuid())
+  tenantId  String
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  staffId   String?
+  staff     Staff?  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  dayOfWeek Int
+  openTime  String
+  closeTime String
+  isClosed  Boolean @default(false)
+
+  @@index([tenantId])
+  @@index([staffId])
+}
+
+model Client {
+  id        String    @id @default(cuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  email     String
+  phone     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  bookings  Booking[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+model Booking {
+  id        String        @id @default(cuid())
+  tenantId  String
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  serviceId String
+  service   Service       @relation(fields: [serviceId], references: [id])
+  staffId   String
+  staff     Staff         @relation(fields: [staffId], references: [id])
+  clientId  String
+  client    Client        @relation(fields: [clientId], references: [id])
+  startAt   DateTime
+  endAt     DateTime
+  status    BookingStatus @default(PENDING)
+  notes     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  payment   Payment?
+
+  @@index([tenantId])
+  @@index([serviceId])
+  @@index([staffId])
+  @@index([clientId])
+}
+
+model Payment {
+  id        String        @id @default(cuid())
+  tenantId  String
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bookingId String        @unique
+  booking   Booking       @relation(fields: [bookingId], references: [id])
+  amount    Decimal       @db.Decimal(10, 2)
+  currency  String        @default("USD")
+  status    PaymentStatus @default(PENDING)
+  paidAt    DateTime?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([tenantId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  resource   String
+  resourceId String
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([userId])
 }
