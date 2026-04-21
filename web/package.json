@@ -17,19 +17,26 @@
     "react": "^18",
     "react-dom": "^18"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "devDependencies": {
+    "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0",
     "@types/node": "^20",
+    "@types/pg": "^8.20.0",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "dotenv": "^17.4.2",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
     "eslint-config-prettier": "^10.1.8",
+    "pg": "^8.20.0",
     "postcss": "^8",
     "prettier": "^3.8.3",
     "prisma": "^7.7.0",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "^4.1.4"
   }
