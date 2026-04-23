@@ -14,8 +14,23 @@ The script:
 from __future__ import annotations
 
 import os
+import re
 import sys
 from pathlib import Path
+
+
+_MYPY_PYTHON_VERSION_PATTERN = re.compile(
+    r'\[tool\.mypy\].*?python_version\s*=\s*["\']?(\d+\.\d+)["\']?',
+    re.DOTALL,
+)
+
+
+def _extract_mypy_version_from_text(content: str) -> str | None:
+    """Extract python_version from TOML text without requiring a TOML parser."""
+    match = _MYPY_PYTHON_VERSION_PATTERN.search(content)
+    if match:
+        return match.group(1)
+    return None
 
 
 def get_mypy_python_version() -> str | None:
@@ -25,10 +40,14 @@ def get_mypy_python_version() -> str | None:
         return None
 
     try:
+        content = pyproject_path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+    try:
         # Try tomlkit first (more accurate TOML parsing)
         import tomlkit
 
-        content = pyproject_path.read_text()
         data = tomlkit.parse(content)
         tool_raw = data.get("tool")
         # Use dict() to normalize tomlkit types and satisfy mypy
@@ -42,22 +61,11 @@ def get_mypy_python_version() -> str | None:
             return str(version)
         return None
     except ImportError:
-        pass
+        return _extract_mypy_version_from_text(content)
+    except Exception:
+        return _extract_mypy_version_from_text(content)
 
-    # Fallback: simple regex-based extraction
-    import re
-
-    content = pyproject_path.read_text()
-    # Match python_version in [tool.mypy] section
-    match = re.search(
-        r'\[tool\.mypy\].*?python_version\s*=\s*["\']?(\d+\.\d+)["\']?',
-        content,
-        re.DOTALL,
-    )
-    if match:
-        return match.group(1)
-
-    return None
+    return _extract_mypy_version_from_text(content)
 
 
 def main() -> int:
