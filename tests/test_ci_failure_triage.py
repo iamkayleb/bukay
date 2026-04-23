@@ -258,7 +258,10 @@ class TriagePatternTests(unittest.TestCase):
     def test_run_llm_triage_uses_stringified_response_without_content_attribute(self) -> None:
         class Response:
             def __str__(self) -> str:
-                return '{"findings":[{"error_type":"ruff","root_cause":"lint","suggested_fix":"fix lint","relevant_files":["src/widget.py"]}]}'
+                return (
+                    '{"findings":[{"error_type":"ruff","root_cause":"lint",'
+                    '"suggested_fix":"fix lint","relevant_files":["src/widget.py"]}]}'
+                )
 
         client = SimpleNamespace(invoke=lambda prompt: Response())
 
