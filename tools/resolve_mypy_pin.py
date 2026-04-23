@@ -13,10 +13,12 @@ The script:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import os
 import re
 import sys
 from pathlib import Path
+from typing import cast
 
 
 _MYPY_PYTHON_VERSION_PATTERN = re.compile(
@@ -37,6 +39,13 @@ def _extract_mypy_version_from_text(content: str) -> str | None:
     return None
 
 
+def _as_str_object_mapping(value: object) -> Mapping[str, object]:
+    """Normalize TOML table-like values to a string-keyed mapping."""
+    if not isinstance(value, Mapping):
+        return {}
+    return cast(Mapping[str, object], value)
+
+
 def get_mypy_python_version() -> str | None:
     """Extract python_version from pyproject.toml's [tool.mypy] section."""
     pyproject_path = next((path for path in _PYPROJECT_CANDIDATES if path.exists()), None)
@@ -53,12 +62,8 @@ def get_mypy_python_version() -> str | None:
         import tomlkit
 
         data = tomlkit.parse(content)
-        tool_raw = data.get("tool")
-        # Use dict() to normalize tomlkit types and satisfy mypy
-        # tomlkit returns Table objects that act like dicts but mypy doesn't know this
-        tool: dict[str, object] = dict(tool_raw) if hasattr(tool_raw, "get") else {}  # type: ignore[arg-type,call-overload]
-        mypy_raw = tool.get("mypy")
-        mypy: dict[str, object] = dict(mypy_raw) if hasattr(mypy_raw, "get") else {}  # type: ignore[arg-type,call-overload]
+        tool = _as_str_object_mapping(data.get("tool"))
+        mypy = _as_str_object_mapping(tool.get("mypy"))
         version = mypy.get("python_version")
         # Validate type before conversion - TOML can parse various types
         if isinstance(version, (str, int, float)):
@@ -82,11 +87,7 @@ def main() -> int:
 
     # Determine which version to output
     # If mypy has a configured version, use it; otherwise use matrix version
-    if mypy_version:  # noqa: SIM108
-        output_version = mypy_version
-    else:
-        # Default to the primary Python version (first in typical matrices)
-        output_version = matrix_version or "3.11"
+    output_version = mypy_version or matrix_version or "3.11"
 
     # Write to GITHUB_OUTPUT
     github_output = os.environ.get("GITHUB_OUTPUT")
