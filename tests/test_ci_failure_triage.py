@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from unittest.mock import patch
 
 from tools.ci_failure_triage import (
@@ -9,8 +10,13 @@ from tools.ci_failure_triage import (
     DEFAULT_TRIAGE_PATTERNS,
     TriageFinding,
     TriageReport,
+    _bool_env,
+    _build_llm_prompt,
+    _extract_json_payload,
     _format_text_report,
     _parse_llm_findings,
+    _report_to_dict,
+    main,
     extract_pytest_failures,
     triage_ci_failure,
 )
@@ -173,6 +179,93 @@ class TriagePatternTests(unittest.TestCase):
         self.assertEqual(report.findings, [])
         self.assertEqual(report.failed_tests, ["tests/test_widget.py::test_render"])
         self.assertEqual(report.summary, "Detected failing tests without a known failure pattern.")
+
+    def test_bool_env_recognizes_truthy_values(self) -> None:
+        self.assertTrue(_bool_env(" true "))
+        self.assertTrue(_bool_env("ON"))
+        self.assertFalse(_bool_env("0"))
+        self.assertFalse(_bool_env(None))
+
+    def test_extract_json_payload_reads_embedded_json_object(self) -> None:
+        payload = _extract_json_payload("prefix\n{\"findings\": []}\nsuffix")
+
+        self.assertEqual(payload, "{\"findings\": []}")
+
+    def test_build_llm_prompt_truncates_large_logs(self) -> None:
+        prompt = _build_llm_prompt("x" * 9000)
+
+        self.assertIn("return JSON only", prompt)
+        self.assertTrue(prompt.endswith("x" * 8000))
+
+    def test_report_to_dict_includes_evidence(self) -> None:
+        report = TriageReport(
+            summary="Detected failure types: pytest.",
+            failed_tests=["tests/test_widget.py::test_render"],
+            findings=[
+                TriageFinding(
+                    error_type="pytest",
+                    root_cause="Pytest reported failing tests.",
+                    suggested_fix="Inspect failing tests.",
+                    relevant_files=["tests/test_widget.py"],
+                    playbook_url=CI_FAILING_PLAYBOOK_URL,
+                    evidence=["FAILED tests/test_widget.py::test_render - AssertionError: boom"],
+                )
+            ],
+        )
+
+        self.assertEqual(
+            _report_to_dict(report),
+            {
+                "summary": "Detected failure types: pytest.",
+                "failed_tests": ["tests/test_widget.py::test_render"],
+                "findings": [
+                    {
+                        "error_type": "pytest",
+                        "root_cause": "Pytest reported failing tests.",
+                        "suggested_fix": "Inspect failing tests.",
+                        "relevant_files": ["tests/test_widget.py"],
+                        "playbook_url": CI_FAILING_PLAYBOOK_URL,
+                        "evidence": [
+                            "FAILED tests/test_widget.py::test_render - AssertionError: boom"
+                        ],
+                    }
+                ],
+            },
+        )
+
+    def test_main_passes_cli_llm_toggle_to_triage(self) -> None:
+        with (
+            NamedTemporaryFile("w+", encoding="utf-8") as log_file,
+            patch("tools.ci_failure_triage.triage_ci_failure") as triage_mock,
+            patch("sys.stdout") as stdout_mock,
+        ):
+            log_file.write("FAILED tests/test_widget.py::test_render - AssertionError: boom\n")
+            log_file.flush()
+            triage_mock.return_value = TriageReport(findings=[], summary="No known failure patterns.")
+
+            exit_code = main(["--log-file", log_file.name, "--no-llm"])
+
+        self.assertEqual(exit_code, 0)
+        triage_mock.assert_called_once_with(
+            "FAILED tests/test_widget.py::test_render - AssertionError: boom\n",
+            use_llm=False,
+        )
+        stdout_mock.write.assert_any_call("No known failure patterns.")
+
+    def test_main_emits_json_output(self) -> None:
+        with (
+            NamedTemporaryFile("w+", encoding="utf-8") as log_file,
+            patch("sys.stdout") as stdout_mock,
+        ):
+            log_file.write("FAILED tests/test_widget.py::test_render - AssertionError: boom\n")
+            log_file.flush()
+
+            exit_code = main(["--log-file", log_file.name, "--json", "--use-llm"])
+
+        self.assertEqual(exit_code, 0)
+        output = "".join(call.args[0] for call in stdout_mock.write.call_args_list)
+        self.assertIn('"summary": "Detected failing tests without a known failure pattern."', output)
+        self.assertIn('"failed_tests": [', output)
 
 
 if __name__ == "__main__":

@@ -483,10 +483,24 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="CI failure triage helper.")
     parser.add_argument("--log-file", help="Path to a log file; defaults to stdin.")
     parser.add_argument("--json", action="store_true", help="Emit JSON output.")
+    llm_group = parser.add_mutually_exclusive_group()
+    llm_group.add_argument(
+        "--use-llm",
+        dest="use_llm",
+        action="store_true",
+        help="Enable optional LLM-based triage enrichment.",
+    )
+    llm_group.add_argument(
+        "--no-llm",
+        dest="use_llm",
+        action="store_false",
+        help="Disable LLM-based triage enrichment even if env opts in.",
+    )
+    parser.set_defaults(use_llm=None)
     args = parser.parse_args(argv)
 
     log_text = _read_log_text(args.log_file)
-    report = triage_ci_failure(log_text)
+    report = triage_ci_failure(log_text, use_llm=args.use_llm)
 
     if args.json:
         payload = _report_to_dict(report)
