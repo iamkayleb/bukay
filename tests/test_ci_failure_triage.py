@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 from tools.ci_failure_triage import DEFAULT_TRIAGE_PATTERNS, triage_ci_failure
 
