@@ -16,8 +16,8 @@ from tools.ci_failure_triage import (
     _format_text_report,
     _parse_llm_findings,
     _report_to_dict,
-    main,
     extract_pytest_failures,
+    main,
     triage_ci_failure,
 )
 
