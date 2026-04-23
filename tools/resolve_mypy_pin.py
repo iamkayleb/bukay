@@ -23,6 +23,10 @@ _MYPY_PYTHON_VERSION_PATTERN = re.compile(
     r'\[tool\.mypy\].*?python_version\s*=\s*["\']?(\d+\.\d+)["\']?',
     re.DOTALL,
 )
+_PYPROJECT_CANDIDATES = (
+    Path("pyproject.toml"),
+    Path(".workflows-lib/pyproject.toml"),
+)
 
 
 def _extract_mypy_version_from_text(content: str) -> str | None:
@@ -35,8 +39,8 @@ def _extract_mypy_version_from_text(content: str) -> str | None:
 
 def get_mypy_python_version() -> str | None:
     """Extract python_version from pyproject.toml's [tool.mypy] section."""
-    pyproject_path = Path("pyproject.toml")
-    if not pyproject_path.exists():
+    pyproject_path = next((path for path in _PYPROJECT_CANDIDATES if path.exists()), None)
+    if pyproject_path is None:
         return None
 
     try:
