@@ -146,7 +146,9 @@ def triage_ci_failure(
         evidence = _collect_evidence(lines, pattern.regexes)
         if not evidence:
             continue
-        relevant_files = _extract_relevant_files(evidence, pattern.file_regexes)
+        relevant_files = _extract_relevant_files(lines, evidence, pattern.file_regexes)
+        if pattern.error_type == "pytest" and _is_unmatched_pytest_failure(evidence):
+            continue
         suggested_fix = _format_suggested_fix(pattern.suggested_fix, relevant_files)
         findings.append(
             TriageFinding(
@@ -173,11 +175,19 @@ def _collect_evidence(lines: list[str], regexes: tuple[re.Pattern[str], ...]) ->
 
 
 def _extract_relevant_files(
-    evidence: list[str], file_regexes: tuple[re.Pattern[str], ...]
+    lines: list[str], evidence: list[str], file_regexes: tuple[re.Pattern[str], ...]
 ) -> list[str]:
     paths: list[str] = []
+    search_lines = list(evidence)
 
-    for line in evidence:
+    if file_regexes:
+        matched_indexes = {index for index, line in enumerate(lines) if line in evidence}
+        for index in matched_indexes:
+            start = max(0, index - 2)
+            end = min(len(lines), index + 3)
+            search_lines.extend(lines[start:end])
+
+    for line in search_lines:
         for regex in file_regexes:
             match = regex.search(line)
             if match:
@@ -198,6 +208,10 @@ def _extract_relevant_files(
         seen.add(path)
         unique_paths.append(path)
     return unique_paths
+
+
+def _is_unmatched_pytest_failure(evidence: list[str]) -> bool:
+    return bool(evidence) and all(line.startswith("FAILED ") for line in evidence)
 
 
 def _format_suggested_fix(template: str, relevant_files: list[str]) -> str:
