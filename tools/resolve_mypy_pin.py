@@ -79,9 +79,13 @@ def main() -> int:
     # Write to GITHUB_OUTPUT
     github_output = os.environ.get("GITHUB_OUTPUT")
     if github_output:
-        with open(github_output, "a") as f:
-            f.write(f"python-version={output_version}\n")
-        print(f"Resolved mypy Python version: {output_version}")
+        try:
+            with open(github_output, "a", encoding="utf-8") as f:
+                f.write(f"python-version={output_version}\n")
+        except OSError:
+            print(f"python-version={output_version}")
+        else:
+            print(f"Resolved mypy Python version: {output_version}")
     else:
         # For local testing
         print(f"python-version={output_version}")
