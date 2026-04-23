@@ -23,6 +23,8 @@ class TriagePattern:
     suggested_fix: str
     file_regexes: tuple[re.Pattern[str], ...] = ()
     playbook_url: str | None = None
+    context_before: int = 0
+    context_after: int = 0
 
 
 @dataclass(frozen=True)
@@ -81,7 +83,6 @@ DEFAULT_TRIAGE_PATTERNS: tuple[TriagePattern, ...] = (
             [
                 r"=+ FAILURES =+",
                 r"E\s+AssertionError",
-                r"FAILED\s+[A-Za-z0-9_./-]+::",
             ]
         ),
         root_cause="Pytest reported failing tests.",
@@ -115,6 +116,7 @@ DEFAULT_TRIAGE_PATTERNS: tuple[TriagePattern, ...] = (
         suggested_fix=SUGGESTED_FIX_TEMPLATES["import_error"],
         file_regexes=_compile([r"File \"(?P<path>[A-Za-z0-9_./-]+\.py)\""]),
         playbook_url=CI_FAILING_PLAYBOOK_URL,
+        context_before=2,
     ),
     TriagePattern(
         error_type="syntax_error",
@@ -129,6 +131,7 @@ DEFAULT_TRIAGE_PATTERNS: tuple[TriagePattern, ...] = (
         suggested_fix=SUGGESTED_FIX_TEMPLATES["syntax_error"],
         file_regexes=_compile([r"File \"(?P<path>[A-Za-z0-9_./-]+\.py)\""]),
         playbook_url=CI_FAILING_PLAYBOOK_URL,
+        context_after=2,
     ),
 )
 
@@ -143,7 +146,12 @@ def triage_ci_failure(
     failed_tests = extract_pytest_failures(log_text)
 
     for pattern in patterns:
-        evidence = _collect_evidence(lines, pattern.regexes)
+        evidence = _collect_evidence(
+            lines,
+            pattern.regexes,
+            context_before=pattern.context_before,
+            context_after=pattern.context_after,
+        )
         if not evidence:
             continue
         relevant_files = _extract_relevant_files(lines, evidence, pattern.file_regexes)
@@ -166,11 +174,25 @@ def triage_ci_failure(
     return _maybe_enhance_with_llm(report, log_text, use_llm)
 
 
-def _collect_evidence(lines: list[str], regexes: tuple[re.Pattern[str], ...]) -> list[str]:
+def _collect_evidence(
+    lines: list[str],
+    regexes: tuple[re.Pattern[str], ...],
+    *,
+    context_before: int = 0,
+    context_after: int = 0,
+) -> list[str]:
     evidence: list[str] = []
-    for line in lines:
-        if any(regex.search(line) for regex in regexes):
-            evidence.append(line)
+    seen: set[str] = set()
+    for index, line in enumerate(lines):
+        if not any(regex.search(line) for regex in regexes):
+            continue
+        start = max(0, index - context_before)
+        end = min(len(lines), index + context_after + 1)
+        for context_line in lines[start:end]:
+            if context_line in seen:
+                continue
+            seen.add(context_line)
+            evidence.append(context_line)
     return evidence
 
 

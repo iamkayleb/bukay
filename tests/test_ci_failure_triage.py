@@ -60,7 +60,10 @@ class TriagePatternTests(unittest.TestCase):
             [finding.error_type for finding in report.findings],
             ["mypy", "coverage", "import_error", "syntax_error"],
         )
-        self.assertEqual(report.summary, "Detected failure types: mypy, coverage, import_error, syntax_error.")
+        self.assertEqual(
+            report.summary,
+            "Detected failure types: mypy, coverage, import_error, syntax_error.",
+        )
         self.assertEqual(report.findings[0].relevant_files, ["src/widget.py"])
         self.assertEqual(report.findings[0].playbook_url, CI_FAILING_PLAYBOOK_URL)
         self.assertEqual(report.findings[2].relevant_files, ["src/worker.py"])
@@ -157,7 +160,10 @@ class TriagePatternTests(unittest.TestCase):
             [finding.error_type for finding in report.findings],
             ["pytest", "ruff"],
         )
-        self.assertEqual(report.summary, "Detected failure types: pytest, ruff. Pytest failures: 1.")
+        self.assertEqual(
+            report.summary,
+            "Detected failure types: pytest, ruff. Pytest failures: 1.",
+        )
 
     def test_triage_ci_failure_returns_unknown_summary_for_unmatched_failed_tests(self) -> None:
         log_text = "FAILED tests/test_widget.py::test_render - custom failure output"
