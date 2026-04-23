@@ -200,22 +200,31 @@ def _extract_relevant_files(
     lines: list[str], evidence: list[str], file_regexes: tuple[re.Pattern[str], ...]
 ) -> list[str]:
     paths: list[str] = []
-    search_lines = list(evidence)
+    fallback_lines = list(evidence)
+    file_matches_found = False
 
-    if file_regexes:
-        matched_indexes = {index for index, line in enumerate(lines) if line in evidence}
-        for index in matched_indexes:
-            start = max(0, index - 2)
-            end = min(len(lines), index + 3)
-            search_lines.extend(lines[start:end])
-
-    for line in search_lines:
+    for line in evidence:
         for regex in file_regexes:
             match = regex.search(line)
             if match:
                 path = match.groupdict().get("path")
                 if path:
                     paths.append(path)
+                    file_matches_found = True
+
+    if file_regexes and not file_matches_found:
+        matched_indexes = {index for index, line in enumerate(lines) if line in evidence}
+        for index in matched_indexes:
+            start = max(0, index - 2)
+            end = min(len(lines), index + 3)
+            for line in lines[start:end]:
+                for regex in file_regexes:
+                    match = regex.search(line)
+                    if match:
+                        path = match.groupdict().get("path")
+                        if path:
+                            paths.append(path)
+    for line in fallback_lines:
         match = _DEFAULT_FILE_REGEX.search(line)
         if match:
             path = match.groupdict().get("path")
