@@ -57,6 +57,8 @@ SUGGESTED_FIX_TEMPLATES: dict[str, str] = {
     "syntax_error": "Fix the syntax error in {files} and rerun the formatter or linter if needed.",
 }
 
+CI_FAILING_PLAYBOOK_URL = "docs/CI_SYSTEM_GUIDE.md#ci-is-failing"
+
 
 DEFAULT_TRIAGE_PATTERNS: tuple[TriagePattern, ...] = (
     TriagePattern(
@@ -71,7 +73,7 @@ DEFAULT_TRIAGE_PATTERNS: tuple[TriagePattern, ...] = (
         root_cause="Type checking failed during mypy.",
         suggested_fix=SUGGESTED_FIX_TEMPLATES["mypy"],
         file_regexes=_compile([r"(?P<path>[A-Za-z0-9_./-]+\.py):\d+:"]),
-        playbook_url="docs/INTEGRATION_GUIDE.md#scenario-2-mypy-errors",
+        playbook_url=CI_FAILING_PLAYBOOK_URL,
     ),
     TriagePattern(
         error_type="pytest",
@@ -85,7 +87,7 @@ DEFAULT_TRIAGE_PATTERNS: tuple[TriagePattern, ...] = (
         root_cause="Pytest reported failing tests.",
         suggested_fix=SUGGESTED_FIX_TEMPLATES["pytest"],
         file_regexes=_compile([r"(?P<path>[A-Za-z0-9_./-]+\.py):\d+:"]),
-        playbook_url="docs/INTEGRATION_GUIDE.md#scenario-1-tests-failing",
+        playbook_url=CI_FAILING_PLAYBOOK_URL,
     ),
     TriagePattern(
         error_type="coverage",
@@ -98,7 +100,7 @@ DEFAULT_TRIAGE_PATTERNS: tuple[TriagePattern, ...] = (
         ),
         root_cause="Coverage enforcement failed.",
         suggested_fix=SUGGESTED_FIX_TEMPLATES["coverage"],
-        playbook_url="docs/INTEGRATION_GUIDE.md#consumer-repo-setup-coverage-soft-gate",
+        playbook_url=CI_FAILING_PLAYBOOK_URL,
     ),
     TriagePattern(
         error_type="import_error",
@@ -112,7 +114,7 @@ DEFAULT_TRIAGE_PATTERNS: tuple[TriagePattern, ...] = (
         root_cause="Python import failed during test or runtime.",
         suggested_fix=SUGGESTED_FIX_TEMPLATES["import_error"],
         file_regexes=_compile([r"File \"(?P<path>[A-Za-z0-9_./-]+\.py)\""]),
-        playbook_url="docs/llm-task-analysis.md#import-errors",
+        playbook_url=CI_FAILING_PLAYBOOK_URL,
     ),
     TriagePattern(
         error_type="syntax_error",
@@ -126,7 +128,7 @@ DEFAULT_TRIAGE_PATTERNS: tuple[TriagePattern, ...] = (
         root_cause="Python parser raised a syntax error.",
         suggested_fix=SUGGESTED_FIX_TEMPLATES["syntax_error"],
         file_regexes=_compile([r"File \"(?P<path>[A-Za-z0-9_./-]+\.py)\""]),
-        playbook_url="docs/fast-validation-ecosystem.md#error-handling",
+        playbook_url=CI_FAILING_PLAYBOOK_URL,
     ),
 )
 
