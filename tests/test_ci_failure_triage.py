@@ -3,19 +3,25 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
 
 from tools.ci_failure_triage import (
     CI_FAILING_PLAYBOOK_URL,
     DEFAULT_TRIAGE_PATTERNS,
+    SUGGESTED_FIX_TEMPLATES,
     TriageFinding,
     TriageReport,
     _bool_env,
     _build_llm_prompt,
     _extract_json_payload,
+    _format_suggested_fix,
     _format_text_report,
+    _get_llm_client,
     _parse_llm_findings,
+    _read_log_text,
     _report_to_dict,
+    _run_llm_triage,
     extract_pytest_failures,
     main,
     triage_ci_failure,
@@ -196,6 +202,144 @@ class TriagePatternTests(unittest.TestCase):
 
         self.assertIn("return JSON only", prompt)
         self.assertTrue(prompt.endswith("x" * 8000))
+
+    def test_format_text_report_includes_findings_and_playbook(self) -> None:
+        report = TriageReport(
+            summary="Detected failure types: pytest.",
+            failed_tests=["tests/test_widget.py::test_render"],
+            findings=[
+                TriageFinding(
+                    error_type="pytest",
+                    root_cause="Pytest reported failing tests.",
+                    suggested_fix="Inspect failing tests in tests/test_widget.py.",
+                    relevant_files=["tests/test_widget.py"],
+                    playbook_url=CI_FAILING_PLAYBOOK_URL,
+                )
+            ],
+        )
+
+        self.assertEqual(
+            _format_text_report(report),
+            "Detected failure types: pytest.\n"
+            "Failing tests:\n"
+            "- tests/test_widget.py::test_render\n"
+            "- error_type: pytest\n"
+            "  root_cause: Pytest reported failing tests.\n"
+            "  suggested_fix: Inspect failing tests in tests/test_widget.py.\n"
+            "  relevant_files: tests/test_widget.py\n"
+            "  playbook_url: docs/CI_SYSTEM_GUIDE.md#ci-is-failing",
+        )
+
+    def test_format_suggested_fix_uses_fallback_when_no_files_exist(self) -> None:
+        self.assertEqual(
+            _format_suggested_fix(SUGGESTED_FIX_TEMPLATES["coverage"], []),
+            "Add or expand tests covering the reported files to meet the coverage threshold.",
+        )
+
+    def test_read_log_text_reads_from_stdin_without_path(self) -> None:
+        with patch("sys.stdin.read", return_value="stdin failure log") as stdin_read:
+            self.assertEqual(_read_log_text(None), "stdin failure log")
+
+        stdin_read.assert_called_once_with()
+
+    def test_read_log_text_reads_utf8_file_contents(self) -> None:
+        with NamedTemporaryFile("w+", encoding="utf-8") as log_file:
+            log_file.write("file failure log")
+            log_file.flush()
+
+            self.assertEqual(_read_log_text(log_file.name), "file failure log")
+
+    def test_run_llm_triage_returns_empty_list_when_client_invocation_fails(self) -> None:
+        client = SimpleNamespace(invoke=lambda prompt: (_ for _ in ()).throw(RuntimeError("boom")))
+
+        with patch("tools.ci_failure_triage._get_llm_client", return_value=(client, "openai")):
+            self.assertEqual(_run_llm_triage("pytest failure"), [])
+
+    def test_run_llm_triage_uses_stringified_response_without_content_attribute(self) -> None:
+        class Response:
+            def __str__(self) -> str:
+                return '{"findings":[{"error_type":"ruff","root_cause":"lint","suggested_fix":"fix lint","relevant_files":["src/widget.py"]}]}'
+
+        client = SimpleNamespace(invoke=lambda prompt: Response())
+
+        with patch("tools.ci_failure_triage._get_llm_client", return_value=(client, "openai")):
+            self.assertEqual(
+                _run_llm_triage("ruff failure"),
+                [
+                    TriageFinding(
+                        error_type="ruff",
+                        root_cause="lint",
+                        suggested_fix="fix lint",
+                        relevant_files=["src/widget.py"],
+                        playbook_url=None,
+                    )
+                ],
+            )
+
+    def test_get_llm_client_prefers_github_models_when_token_exists(self) -> None:
+        fake_langchain_openai = ModuleType("langchain_openai")
+        chat_openai = unittest.mock.MagicMock(name="ChatOpenAI")
+        fake_langchain_openai.ChatOpenAI = chat_openai
+
+        fake_llm_provider = ModuleType("tools.llm_provider")
+        fake_llm_provider.DEFAULT_MODEL = "gpt-test"
+        fake_llm_provider.GITHUB_MODELS_BASE_URL = "https://models.github.invalid"
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "langchain_openai": fake_langchain_openai,
+                "tools.llm_provider": fake_llm_provider,
+            },
+        ):
+            with patch.dict(
+                "os.environ",
+                {"GITHUB_TOKEN": "github-token", "OPENAI_API_KEY": "openai-token"},
+                clear=True,
+            ):
+                client_info = _get_llm_client()
+
+        self.assertEqual(client_info, (chat_openai.return_value, "github-models"))
+        chat_openai.assert_called_once_with(
+            model="gpt-test",
+            base_url="https://models.github.invalid",
+            api_key="github-token",
+            temperature=0.1,
+        )
+
+    def test_get_llm_client_uses_openai_when_only_openai_token_exists(self) -> None:
+        fake_langchain_openai = ModuleType("langchain_openai")
+        chat_openai = unittest.mock.MagicMock(name="ChatOpenAI")
+        fake_langchain_openai.ChatOpenAI = chat_openai
+
+        fake_llm_provider = ModuleType("tools.llm_provider")
+        fake_llm_provider.DEFAULT_MODEL = "gpt-test"
+        fake_llm_provider.GITHUB_MODELS_BASE_URL = "https://models.github.invalid"
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "langchain_openai": fake_langchain_openai,
+                "tools.llm_provider": fake_llm_provider,
+            },
+        ):
+            with patch.dict("os.environ", {"OPENAI_API_KEY": "openai-token"}, clear=True):
+                client_info = _get_llm_client()
+
+        self.assertEqual(client_info, (chat_openai.return_value, "openai"))
+        chat_openai.assert_called_once_with(
+            model="gpt-test",
+            api_key="openai-token",
+            temperature=0.1,
+        )
+
+    def test_get_llm_client_returns_none_without_tokens(self) -> None:
+        fake_langchain_openai = ModuleType("langchain_openai")
+        fake_langchain_openai.ChatOpenAI = unittest.mock.MagicMock(name="ChatOpenAI")
+
+        with patch.dict("sys.modules", {"langchain_openai": fake_langchain_openai}):
+            with patch.dict("os.environ", {}, clear=True):
+                self.assertIsNone(_get_llm_client())
 
     def test_report_to_dict_includes_evidence(self) -> None:
         report = TriageReport(
