@@ -8,7 +8,9 @@ from tools import resolve_mypy_pin
 
 
 class ResolveMypyPinTests(unittest.TestCase):
-    def test_get_mypy_python_version_reads_workflows_lib_pyproject_when_root_is_missing(self) -> None:
+    def test_get_mypy_python_version_reads_workflows_lib_pyproject_when_root_is_missing(
+        self,
+    ) -> None:
         pyproject = """
         [tool.mypy]
         python_version = "3.12"
@@ -18,7 +20,11 @@ class ResolveMypyPinTests(unittest.TestCase):
             return str(self) == ".workflows-lib/pyproject.toml"
 
         with (
-            patch("tools.resolve_mypy_pin.Path.exists", autospec=True, side_effect=exists_side_effect),
+            patch(
+                "tools.resolve_mypy_pin.Path.exists",
+                autospec=True,
+                side_effect=exists_side_effect,
+            ),
             patch("tools.resolve_mypy_pin.Path.read_text", return_value=pyproject),
             patch.dict("sys.modules", {"tomlkit": None}),
         ):
