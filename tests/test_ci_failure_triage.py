@@ -241,7 +241,10 @@ class TriagePatternTests(unittest.TestCase):
         ):
             log_file.write("FAILED tests/test_widget.py::test_render - AssertionError: boom\n")
             log_file.flush()
-            triage_mock.return_value = TriageReport(findings=[], summary="No known failure patterns.")
+            triage_mock.return_value = TriageReport(
+                findings=[],
+                summary="No known failure patterns.",
+            )
 
             exit_code = main(["--log-file", log_file.name, "--no-llm"])
 
@@ -264,7 +267,10 @@ class TriagePatternTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         output = "".join(call.args[0] for call in stdout_mock.write.call_args_list)
-        self.assertIn('"summary": "Detected failing tests without a known failure pattern."', output)
+        self.assertIn(
+            '"summary": "Detected failing tests without a known failure pattern."',
+            output,
+        )
         self.assertIn('"failed_tests": [', output)
 
 
