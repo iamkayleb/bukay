@@ -176,7 +176,7 @@ jobs:
             });
 
             const { data } = await withRetry((client) => client.rest.repos.get({
-              owner: 'stranske',
+              owner: context.repo.owner,
               repo: 'Workflows'
             }));
             if (!data?.default_branch) {
