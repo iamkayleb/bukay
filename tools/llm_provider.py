@@ -3,7 +3,7 @@ LLM Provider Abstraction with Fallback Chain
 
 Provides a unified interface for LLM calls with automatic fallback:
 1. OpenAI API (primary) - uses OPENAI_API_KEY
-2. Anthropic API (secondary) - uses CLAUDE_API_STRANSKE
+2. Anthropic API (secondary) - uses CLAUDE_API_KEY
 3. GitHub Models API (fallback) - uses GITHUB_TOKEN
 4. Regex patterns (last resort) - no API calls
 
@@ -37,7 +37,7 @@ GITHUB_MODELS_BASE_URL = "https://models.inference.ai.azure.com"
 # gpt-4.1 is available on both GitHub Models and OpenAI, making it a reliable
 # fallback when no provider-specific model is configured.
 DEFAULT_MODEL = "gpt-4.1"
-ANTHROPIC_API_KEY_ENV = "CLAUDE_API_STRANSKE"
+ANTHROPIC_API_KEY_ENV = "CLAUDE_API_KEY"
 SHORT_ANALYSIS_CONFIDENCE_CAP = 0.4
 
 
@@ -68,6 +68,16 @@ def _setup_langsmith_tracing() -> bool:
 LANGSMITH_ENABLED = _setup_langsmith_tracing()
 
 LANGSMITH_TRACE_URL_BASE = "https://smith.langchain.com/r/"
+
+
+def _ensure_langsmith_enabled() -> bool:
+    """Ensure LangSmith tracing is enabled when env vars are injected at runtime."""
+    global LANGSMITH_ENABLED
+    if LANGSMITH_ENABLED:
+        return True
+    if os.environ.get("LANGSMITH_API_KEY"):
+        LANGSMITH_ENABLED = _setup_langsmith_tracing()
+    return LANGSMITH_ENABLED
 
 
 def build_langsmith_metadata(
@@ -105,6 +115,8 @@ def build_langsmith_metadata(
                 env_pr if env_pr.isdigit() else env_issue if env_issue.isdigit() else "unknown"
             )
 
+    _ensure_langsmith_enabled()
+
     metadata: dict[str, object] = {
         "repo": repo,
         "run_id": run_id,
@@ -114,7 +126,7 @@ def build_langsmith_metadata(
         "issue_number": str(issue_number) if issue_number is not None else None,
     }
 
-    if LANGSMITH_ENABLED:
+    if _ensure_langsmith_enabled():
         metadata["langsmith_project"] = os.environ.get("LANGCHAIN_PROJECT", "workflows-agents")
 
     tags = [
@@ -150,7 +162,7 @@ def extract_trace_id(response) -> str | None:
     Returns:
         Trace ID string or None
     """
-    if not LANGSMITH_ENABLED:
+    if not _ensure_langsmith_enabled():
         return None
 
     # LangChain response objects have a response_metadata dict with run_id
@@ -940,7 +952,7 @@ def get_llm_provider(force_provider: str | None = None) -> LLMProvider:
             Options: "github-models", "openai", "anthropic", "regex-fallback"
 
     Returns a FallbackChainProvider that tries:
-    1. Anthropic claude-sonnet-4-5 (if CLAUDE_API_STRANSKE set) - Best reasoning
+    1. Anthropic claude-sonnet-4-5 (if CLAUDE_API_KEY set) - Best reasoning
     2. OpenAI gpt-5.1-codex (if OPENAI_API_KEY set) - Purpose-built for code analysis
     3. GitHub Models gpt-4.1 (if GITHUB_TOKEN set) - Always available, reliable
     4. Regex fallback (always available) - 30% confidence baseline

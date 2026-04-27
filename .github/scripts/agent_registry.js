@@ -172,7 +172,10 @@ function resolveAgentRoutingFromLabels(labels, { registryPath } = {}) {
     .filter(Boolean)
     .filter((value) => value.startsWith('agent:'));
 
-  const requestedAgents = agentLabels.map((value) => value.slice('agent:'.length));
+  const knownAgents = new Set(Object.keys(registry.agents));
+  const requestedAgents = agentLabels
+    .map((value) => value.slice('agent:'.length))
+    .filter((value) => value === 'auto' || knownAgents.has(value));
   const uniqueRequested = new Set(requestedAgents);
   const hasAuto = uniqueRequested.has('auto');
   const explicitRequested = Array.from(uniqueRequested).filter((value) => value !== 'auto');

@@ -201,7 +201,7 @@ jobs:
         if: steps.check-merged.outputs.merged == 'true'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CLAUDE_API_STRANSKE: ${{ secrets.CLAUDE_API_STRANSKE }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           GITHUB_TOKEN: ${{ steps.select-token.outputs.token }}
           ORIGINAL_ISSUE_NUMBER: ${{ steps.collect.outputs.original_issue_number }}
           ORIGINAL_ISSUE_TITLE: ${{ steps.collect.outputs.original_issue_title }}
