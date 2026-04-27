@@ -659,7 +659,7 @@ jobs:
           STEP_COUNT: ${{ steps.cycles.outputs.count }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CLAUDE_API_STRANSKE: ${{ secrets.CLAUDE_API_STRANSKE }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           PYTHONPATH: ${{ github.workspace }}
         run: |
 
@@ -910,7 +910,7 @@ jobs:
           STEP_COUNT: ${{ steps.cycles.outputs.count }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CLAUDE_API_STRANSKE: ${{ secrets.CLAUDE_API_STRANSKE }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           LANGCHAIN_PROVIDER: anthropic
           LANGCHAIN_MODEL: claude-sonnet-4-5-20250929
           PYTHONPATH: ${{ github.workspace }}
@@ -1264,7 +1264,7 @@ jobs:
           STEP_COUNT: ${{ steps.cycles.outputs.count }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CLAUDE_API_STRANSKE: ${{ secrets.CLAUDE_API_STRANSKE }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           LANGCHAIN_PROVIDER: anthropic
           LANGCHAIN_MODEL: claude-sonnet-4-5-20250929
           PYTHONPATH: ${{ github.workspace }}

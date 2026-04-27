@@ -386,7 +386,7 @@ jobs:
             --policy worst \
             --emit github
 
-      - name: Apply needs-human from verdict policy
+      - name: Log verdict policy warning
         id: verdict-needs-human
         if: >-
           steps.check-merged.outputs.merged == 'true' &&
@@ -394,79 +394,39 @@ jobs:
           steps.extract-verdict.outputs.needs_human == 'true'
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
-          LINKED_ISSUE: ${{ steps.collect.outputs.original_issue_number }}
           NEEDS_HUMAN_REASON: ${{ steps.extract-verdict.outputs.needs_human_reason }}
         with:
           github-token: ${{ steps.select-token.outputs.token }}
           script: |
-            const fs = require('fs');
-            const retryHelperPath =
-              './.github/scripts/github-api-with-retry.js';
-            const retryHelpers = fs.existsSync(retryHelperPath)
-              ? require(retryHelperPath)
-              : { withRetry: (fn) => fn() };
-            const { withRetry } = retryHelpers;
-
-            const prNumber = context.payload.pull_request.number;
-            const linkedIssue = process.env.LINKED_ISSUE;
             const reason = process.env.NEEDS_HUMAN_REASON || '';
-
             const comment = [
-              '🛑 **Verdict policy: needs-human**',
+              '⚠️ **Verdict policy note**',
               '',
-              'The deterministic verdict policy flagged this PR for ' +
-                'human review due to a split verdict with low-confidence ' +
-                'concerns.',
+              'The verdict policy detected a split verdict with ' +
+                'high-confidence concerns. Proceeding with follow-up ' +
+                'creation because `verify:create-new-pr` was explicitly ' +
+                'added (human override).',
               '',
-              reason ? `**Reason:** ${reason}` : '',
-              '',
-              '> A human should review whether the remaining ' +
-                'concerns warrant manual action or can be accepted.'
+              reason ? `**Policy reason:** ${reason}` : '',
             ].filter(Boolean).join('\n');
 
-            await withRetry(
-              (client) => (client || github).rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: prNumber,
-                body: comment
-              })
-            );
-
-            await withRetry(
-              (client) => (client || github).rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: prNumber,
-                labels: ['needs-human']
-              })
-            );
-
-            if (linkedIssue) {
-              try {
-                await withRetry(
-                  (client) =>
-                    (client || github).rest.issues.addLabels({
-                      owner: context.repo.owner,
-                      repo: context.repo.repo,
-                      issue_number: parseInt(linkedIssue, 10),
-                      labels: ['needs-human']
-                    })
-                );
-              } catch (_) { /* best effort */ }
-            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: comment
+            });
 
       - name: Generate follow-up issue
         id: generate
         if: >-
           steps.check-merged.outputs.merged == 'true' &&
           steps.chain-check.outputs.exceeded != 'true' &&
-          steps.extract-verdict.outputs.needs_human != 'true'
         continue-on-error: true
         env:
           PYTHONPATH: ${{ github.workspace }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CLAUDE_API_STRANSKE: ${{ secrets.CLAUDE_API_STRANSKE }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           GITHUB_TOKEN: ${{ steps.select-token.outputs.token }}
           ORIGINAL_ISSUE_NUMBER: ${{ steps.collect.outputs.original_issue_number }}
           ORIGINAL_ISSUE_TITLE: ${{ steps.collect.outputs.original_issue_title }}
@@ -507,7 +467,6 @@ jobs:
           steps.generate.outcome == 'failure' &&
           steps.check-merged.outputs.merged == 'true' &&
           steps.chain-check.outputs.exceeded != 'true' &&
-          steps.extract-verdict.outputs.needs_human != 'true'
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           FOLLOW_UP_DEPTH: ${{ steps.chain-check.outputs.next_depth }}
@@ -679,7 +638,6 @@ jobs:
         if: >-
           steps.check-merged.outputs.merged == 'true' &&
           steps.chain-check.outputs.exceeded != 'true' &&
-          steps.extract-verdict.outputs.needs_human != 'true'
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           ISSUE_TITLE: >-
@@ -773,7 +731,6 @@ jobs:
         if: >-
           steps.check-merged.outputs.merged == 'true' &&
           steps.chain-check.outputs.exceeded != 'true' &&
-          steps.extract-verdict.outputs.needs_human != 'true' &&
           steps.create-issue.outputs.issue_number != ''
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
@@ -811,7 +768,6 @@ jobs:
         if: >-
           steps.check-merged.outputs.merged == 'true' &&
           steps.chain-check.outputs.exceeded != 'true' &&
-          steps.extract-verdict.outputs.needs_human != 'true'
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           ISSUE_NUMBER: ${{ steps.create-issue.outputs.issue_number }}

@@ -140,7 +140,7 @@ All runners MUST support LLM-based task completion analysis:
 1. **Provider priority:**
    - Prefer GitHub Models (no external secrets)
    - Fallback to OpenAI if `OPENAI_API_KEY` available
-   - Fallback to Anthropic if `CLAUDE_API_STRANSKE` available
+   - Fallback to Anthropic if `CLAUDE_API_KEY` available
    - Last resort: regex-based fallback (confidence: 0.5)
 
 2. **Task extraction logic:**
