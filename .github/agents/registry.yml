@@ -27,6 +27,7 @@ agents:
       verifier_checkbox: true
 
   claude:
+    display_name: Claude
     runner_workflow: .github/workflows/reusable-claude-run.yml
     required_secrets:
       - CLAUDE_CODE_OAUTH_TOKEN  # preferred: long-lived token from `claude setup-token`
@@ -68,3 +69,4 @@ agents:
       pr_autofix: true
       belt: true
       verifier_checkbox: true
+
