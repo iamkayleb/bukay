@@ -29,7 +29,7 @@ export async function listBookingsForTenant(tenantId: string) {
 export async function findActiveClientByEmail(tenantId: string, email: string) {
   return prisma.client.findFirst({
     where: {
-      AND: [{ tenantId }, { email }, { isActive: true }],
+      AND: [{ tenantId }, { email }],
     },
   });
 }

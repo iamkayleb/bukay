@@ -46,7 +46,7 @@ describe("assertTenantScoped", () => {
   });
 
   it("covers all models listed in TENANT_SCOPED_MODELS", () => {
-    for (const model of TENANT_SCOPED_MODELS) {
+    for (const model of Array.from(TENANT_SCOPED_MODELS)) {
       expect(() => assertTenantScoped(model, "findMany", { where: {} })).toThrow(
         TenantGuardError
       );
@@ -124,16 +124,16 @@ describe("withTenantGuard", () => {
 
   it("throws TenantGuardError on cross-tenant read (missing tenantId)", async () => {
     const mock = makeMockPrisma();
-    const guarded = withTenantGuard(mock) as ReturnType<typeof makeMockPrisma.$extends>;
+    const guarded = withTenantGuard(mock) as unknown as { callOp: Function };
 
     await expect(
-      (guarded as { callOp: Function }).callOp("User", "findMany", { where: {} })
+      guarded.callOp("User", "findMany", { where: {} })
     ).rejects.toThrow(TenantGuardError);
   });
 
   it("returns expected row when tenantId is correct", async () => {
     const mock = makeMockPrisma();
-    const guarded = withTenantGuard(mock) as ReturnType<typeof makeMockPrisma.$extends>;
+    const guarded = withTenantGuard(mock) as unknown as { callOp: Function };
 
     const result = await (guarded as { callOp: Function }).callOp("User", "findMany", {
       where: { tenantId: "tenant-xyz" },
@@ -143,10 +143,10 @@ describe("withTenantGuard", () => {
 
   it("passes through Tenant model queries without tenantId requirement", async () => {
     const mock = makeMockPrisma();
-    const guarded = withTenantGuard(mock) as ReturnType<typeof makeMockPrisma.$extends>;
+    const guarded = withTenantGuard(mock) as unknown as { callOp: Function };
 
     await expect(
-      (guarded as { callOp: Function }).callOp("Tenant", "findMany", { where: {} })
+      guarded.callOp("Tenant", "findMany", { where: {} })
     ).resolves.toBeDefined();
   });
 });

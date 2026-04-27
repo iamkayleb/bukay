@@ -116,7 +116,8 @@ export function assertTenantScoped(
 }
 
 type PrismaClientLike = {
-  $extends: (extension: unknown) => unknown;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  $extends: (extension: any) => any;
 };
 
 /**
@@ -124,7 +125,7 @@ type PrismaClientLike = {
  * Every guarded operation on a tenant-scoped model will throw TenantGuardError
  * if tenantId is absent from the where clause or mismatches the active context.
  */
-export function withTenantGuard<T extends PrismaClientLike>(base: T) {
+export function withTenantGuard<T extends PrismaClientLike>(base: T): T {
   return base.$extends({
     query: {
       $allModels: {
@@ -144,5 +145,5 @@ export function withTenantGuard<T extends PrismaClientLike>(base: T) {
         },
       },
     },
-  });
+  }) as unknown as T;
 }
