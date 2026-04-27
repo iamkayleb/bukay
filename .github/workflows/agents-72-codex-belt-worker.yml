@@ -310,7 +310,7 @@ jobs:
             const { withRetry } = await createTokenAwareRetry({ github, core });
             const { data } = await withRetry((client) =>
               client.rest.repos.get({
-                owner: 'stranske',
+                owner: context.repo.owner,
                 repo: 'Workflows'
               })
             );
@@ -979,8 +979,8 @@ jobs:
           : "${ISSUE:=}"
           : "${BRANCH:=}"
           : "${TASK_ID:=}"
-          git config user.name "stranske-automation-bot"
-          git config user.email "stranske-automation-bot@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add ".agents/issue-${ISSUE}-ledger.yml"
           if git diff --cached --quiet; then
             exit 0
@@ -1013,8 +1013,8 @@ jobs:
           upstream_sha=$(git rev-parse "origin/$base")
           head_sha=$(git rev-parse HEAD)
           if [ "$upstream_sha" = "$head_sha" ]; then
-            git config user.name "stranske-automation-bot"
-            git config user.email "stranske-automation-bot@users.noreply.github.com"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git commit --allow-empty -m "chore(agents): initialize belt run for issue #${{ steps.ctx.outputs.issue }}"
             git push origin "$branch"
           else
@@ -1215,13 +1215,13 @@ jobs:
             const issue = Number('${{ steps.ctx.outputs.issue }}');
             const { owner, repo } = context.repo;
             const agentKey = String('${{ steps.ctx.outputs.agent_key }}' || 'codex').trim().toLowerCase() || 'codex';
-            let assignees = ['stranske-automation-bot'];
+            let assignees = [];
             try {
               const { getAgentConfig } = require('./.github/scripts/agent_registry.js');
               const cfg = getAgentConfig(agentKey);
               const logins = Array.isArray(cfg.automation_logins) ? cfg.automation_logins : [];
               if (logins.length) {
-                assignees = [...new Set([...logins, 'stranske-automation-bot'])];
+                assignees = [...new Set(logins)];
               }
             } catch (_) {
               if (agentKey === 'codex') {
@@ -1579,8 +1579,8 @@ jobs:
           : "${ISSUE:=}"
           : "${BRANCH:=}"
           : "${TASK_ID:=}"
-          git config user.name "stranske-automation-bot"
-          git config user.email "stranske-automation-bot@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add ".agents/issue-${ISSUE}-ledger.yml"
           if git diff --cached --quiet; then
             exit 0
