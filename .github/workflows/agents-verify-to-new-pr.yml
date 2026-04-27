@@ -421,7 +421,7 @@ jobs:
         id: generate
         if: >-
           steps.check-merged.outputs.merged == 'true' &&
-          steps.chain-check.outputs.exceeded != 'true' &&
+          steps.chain-check.outputs.exceeded != 'true'
         continue-on-error: true
         env:
           PYTHONPATH: ${{ github.workspace }}
@@ -466,7 +466,7 @@ jobs:
         if: >-
           steps.generate.outcome == 'failure' &&
           steps.check-merged.outputs.merged == 'true' &&
-          steps.chain-check.outputs.exceeded != 'true' &&
+          steps.chain-check.outputs.exceeded != 'true'
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           FOLLOW_UP_DEPTH: ${{ steps.chain-check.outputs.next_depth }}
@@ -637,7 +637,7 @@ jobs:
         id: create-issue
         if: >-
           steps.check-merged.outputs.merged == 'true' &&
-          steps.chain-check.outputs.exceeded != 'true' &&
+          steps.chain-check.outputs.exceeded != 'true'
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           ISSUE_TITLE: >-
@@ -767,7 +767,7 @@ jobs:
       - name: Comment on original PR
         if: >-
           steps.check-merged.outputs.merged == 'true' &&
-          steps.chain-check.outputs.exceeded != 'true' &&
+          steps.chain-check.outputs.exceeded != 'true'
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           ISSUE_NUMBER: ${{ steps.create-issue.outputs.issue_number }}
