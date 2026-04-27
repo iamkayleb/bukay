@@ -8,6 +8,7 @@ import {
 import { extractSubdomainSlug, resolveTenant } from "../resolveTenant";
 import { tenantContext, getTenantId, getTenantIdOrNull } from "../tenantContext";
 
+
 // ---------------------------------------------------------------------------
 // assertTenantScoped
 // ---------------------------------------------------------------------------
@@ -53,6 +54,28 @@ describe("assertTenantScoped", () => {
         assertTenantScoped(model, "findMany", { where: { tenantId: "t1" } })
       ).not.toThrow();
     }
+  });
+
+  it("blocks cross-tenant read: query with tenantId='tenant-b' fails when context has tenantId='tenant-a'", async () => {
+    await new Promise<void>((resolve) => {
+      tenantContext.run({ tenantId: "tenant-a", tenantSlug: "tenant-a" }, () => {
+        expect(() =>
+          assertTenantScoped("User", "findMany", { where: { tenantId: "tenant-b" } })
+        ).toThrow(TenantGuardError);
+        resolve();
+      });
+    });
+  });
+
+  it("allows query when tenantId matches the active context", async () => {
+    await new Promise<void>((resolve) => {
+      tenantContext.run({ tenantId: "tenant-a", tenantSlug: "tenant-a" }, () => {
+        expect(() =>
+          assertTenantScoped("User", "findMany", { where: { tenantId: "tenant-a" } })
+        ).not.toThrow();
+        resolve();
+      });
+    });
   });
 });
 
