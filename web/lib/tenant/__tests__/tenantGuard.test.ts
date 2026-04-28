@@ -122,9 +122,11 @@ describe("withTenantGuard", () => {
     return mockClient;
   }
 
+  type GuardedMock = { callOp: (model: string, op: string, args: Record<string, unknown>) => Promise<unknown> };
+
   it("throws TenantGuardError on cross-tenant read (missing tenantId)", async () => {
     const mock = makeMockPrisma();
-    const guarded = withTenantGuard(mock) as unknown as { callOp: Function };
+    const guarded = withTenantGuard(mock) as unknown as GuardedMock;
 
     await expect(
       guarded.callOp("User", "findMany", { where: {} })
@@ -133,9 +135,9 @@ describe("withTenantGuard", () => {
 
   it("returns expected row when tenantId is correct", async () => {
     const mock = makeMockPrisma();
-    const guarded = withTenantGuard(mock) as unknown as { callOp: Function };
+    const guarded = withTenantGuard(mock) as unknown as GuardedMock;
 
-    const result = await (guarded as { callOp: Function }).callOp("User", "findMany", {
+    const result = await guarded.callOp("User", "findMany", {
       where: { tenantId: "tenant-xyz" },
     });
     expect(result).toEqual([{ id: "1", tenantId: "User" }]);
@@ -143,7 +145,7 @@ describe("withTenantGuard", () => {
 
   it("passes through Tenant model queries without tenantId requirement", async () => {
     const mock = makeMockPrisma();
-    const guarded = withTenantGuard(mock) as unknown as { callOp: Function };
+    const guarded = withTenantGuard(mock) as unknown as GuardedMock;
 
     await expect(
       guarded.callOp("Tenant", "findMany", { where: {} })
