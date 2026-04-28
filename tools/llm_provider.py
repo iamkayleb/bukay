@@ -656,7 +656,7 @@ class AnthropicProvider(LLMProvider):
             return None
 
         return ChatAnthropic(
-            model="claude-sonnet-4-5-20250929",
+            model="claude-opus-4-7",
             anthropic_api_key=os.environ.get(ANTHROPIC_API_KEY_ENV),
             temperature=0.1,
         )
@@ -701,7 +701,7 @@ class AnthropicProvider(LLMProvider):
                 confidence=result.confidence,
                 reasoning=result.reasoning,
                 provider_used=self.name,
-                model_name="claude-sonnet-4-5-20250929",
+                model_name="claude-opus-4-7",
                 raw_confidence=result.raw_confidence,
                 confidence_adjusted=result.confidence_adjusted,
                 quality_warnings=result.quality_warnings,
@@ -952,7 +952,7 @@ def get_llm_provider(force_provider: str | None = None) -> LLMProvider:
             Options: "github-models", "openai", "anthropic", "regex-fallback"
 
     Returns a FallbackChainProvider that tries:
-    1. Anthropic claude-sonnet-4-5 (if CLAUDE_API_KEY set) - Best reasoning
+    1. Anthropic claude-opus-4-7 (if CLAUDE_API_KEY set) - Best reasoning
     2. OpenAI gpt-5.1-codex (if OPENAI_API_KEY set) - Purpose-built for code analysis
     3. GitHub Models gpt-4.1 (if GITHUB_TOKEN set) - Always available, reliable
     4. Regex fallback (always available) - 30% confidence baseline
@@ -980,7 +980,7 @@ def get_llm_provider(force_provider: str | None = None) -> LLMProvider:
         return provider
 
     providers = [
-        AnthropicProvider(),  # Primary: claude-sonnet-4-5 for best reasoning
+        AnthropicProvider(),  # Primary: claude-opus-4-7 for best reasoning
         OpenAIProvider(),  # Secondary: gpt-5.1-codex for code-optimized analysis
         GitHubModelsProvider(),  # Tertiary: gpt-4.1 via GITHUB_TOKEN (always available)
         RegexFallbackProvider(),  # Last resort: 30% confidence pattern matching

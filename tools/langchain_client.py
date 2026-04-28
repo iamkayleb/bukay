@@ -97,7 +97,7 @@ def _default_slots() -> list[SlotDefinition]:
     return [
         SlotDefinition(name="slot1", provider=PROVIDER_OPENAI, model="gpt-5.2"),
         SlotDefinition(
-            name="slot2", provider=PROVIDER_ANTHROPIC, model="claude-sonnet-4-5-20250929"
+            name="slot2", provider=PROVIDER_ANTHROPIC, model="claude-opus-4-7"
         ),
         SlotDefinition(name="slot3", provider=PROVIDER_GITHUB, model="gpt-4.1"),
     ]
