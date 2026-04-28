@@ -238,6 +238,11 @@ function getRunnerWorkflow(agentKey, { registryPath } = {}) {
   return workflow;
 }
 
+function getAgentModel(agentKey, { registryPath } = {}) {
+  const config = getAgentConfig(agentKey, { registryPath });
+  return String(config.model || '').trim();
+}
+
 /**
  * Return all automation logins across all agents in the registry.
  * Useful for detecting bot-authored comments/commits.
@@ -323,6 +328,7 @@ module.exports = {
   getAllAutomationLogins,
   getAgentConfig,
   getAgentEntries,
+  getAgentModel,
   getAgentPreflightConfigs,
   getKeepaliveMarkerPrefix,
   getReadinessCandidates,

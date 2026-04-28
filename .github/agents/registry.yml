@@ -28,6 +28,7 @@ agents:
 
   claude:
     display_name: Claude
+    model: claude-opus-4-7
     runner_workflow: .github/workflows/reusable-claude-run.yml
     required_secrets:
       - CLAUDE_CODE_OAUTH_TOKEN  # preferred: long-lived token from `claude setup-token`
