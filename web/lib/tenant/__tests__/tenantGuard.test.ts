@@ -8,6 +8,7 @@ import {
 import { extractSubdomainSlug, resolveTenant } from "../resolveTenant";
 import { tenantContext, getTenantId, getTenantIdOrNull } from "../tenantContext";
 
+
 // ---------------------------------------------------------------------------
 // assertTenantScoped
 // ---------------------------------------------------------------------------
@@ -45,7 +46,7 @@ describe("assertTenantScoped", () => {
   });
 
   it("covers all models listed in TENANT_SCOPED_MODELS", () => {
-    for (const model of TENANT_SCOPED_MODELS) {
+    for (const model of Array.from(TENANT_SCOPED_MODELS)) {
       expect(() => assertTenantScoped(model, "findMany", { where: {} })).toThrow(
         TenantGuardError
       );
@@ -53,6 +54,28 @@ describe("assertTenantScoped", () => {
         assertTenantScoped(model, "findMany", { where: { tenantId: "t1" } })
       ).not.toThrow();
     }
+  });
+
+  it("blocks cross-tenant read: query with tenantId='tenant-b' fails when context has tenantId='tenant-a'", async () => {
+    await new Promise<void>((resolve) => {
+      tenantContext.run({ tenantId: "tenant-a", tenantSlug: "tenant-a" }, () => {
+        expect(() =>
+          assertTenantScoped("User", "findMany", { where: { tenantId: "tenant-b" } })
+        ).toThrow(TenantGuardError);
+        resolve();
+      });
+    });
+  });
+
+  it("allows query when tenantId matches the active context", async () => {
+    await new Promise<void>((resolve) => {
+      tenantContext.run({ tenantId: "tenant-a", tenantSlug: "tenant-a" }, () => {
+        expect(() =>
+          assertTenantScoped("User", "findMany", { where: { tenantId: "tenant-a" } })
+        ).not.toThrow();
+        resolve();
+      });
+    });
   });
 });
 
@@ -99,20 +122,22 @@ describe("withTenantGuard", () => {
     return mockClient;
   }
 
+  type GuardedMock = { callOp: (model: string, op: string, args: Record<string, unknown>) => Promise<unknown> };
+
   it("throws TenantGuardError on cross-tenant read (missing tenantId)", async () => {
     const mock = makeMockPrisma();
-    const guarded = withTenantGuard(mock) as ReturnType<typeof makeMockPrisma.$extends>;
+    const guarded = withTenantGuard(mock) as unknown as GuardedMock;
 
     await expect(
-      (guarded as { callOp: Function }).callOp("User", "findMany", { where: {} })
+      guarded.callOp("User", "findMany", { where: {} })
     ).rejects.toThrow(TenantGuardError);
   });
 
   it("returns expected row when tenantId is correct", async () => {
     const mock = makeMockPrisma();
-    const guarded = withTenantGuard(mock) as ReturnType<typeof makeMockPrisma.$extends>;
+    const guarded = withTenantGuard(mock) as unknown as GuardedMock;
 
-    const result = await (guarded as { callOp: Function }).callOp("User", "findMany", {
+    const result = await guarded.callOp("User", "findMany", {
       where: { tenantId: "tenant-xyz" },
     });
     expect(result).toEqual([{ id: "1", tenantId: "User" }]);
@@ -120,10 +145,10 @@ describe("withTenantGuard", () => {
 
   it("passes through Tenant model queries without tenantId requirement", async () => {
     const mock = makeMockPrisma();
-    const guarded = withTenantGuard(mock) as ReturnType<typeof makeMockPrisma.$extends>;
+    const guarded = withTenantGuard(mock) as unknown as GuardedMock;
 
     await expect(
-      (guarded as { callOp: Function }).callOp("Tenant", "findMany", { where: {} })
+      guarded.callOp("Tenant", "findMany", { where: {} })
     ).resolves.toBeDefined();
   });
 });
