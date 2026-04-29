@@ -251,7 +251,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           LANGCHAIN_PROVIDER: anthropic
-          LANGCHAIN_MODEL: claude-sonnet-4-5-20250929
+          LANGCHAIN_MODEL: claude-opus-4-7
           PYTHONPATH: ${{ github.workspace }}/workflows-scripts
         run: |
           echo "Running analysis on issue #${ISSUE_NUMBER}"
@@ -396,7 +396,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           LANGCHAIN_PROVIDER: anthropic
-          LANGCHAIN_MODEL: claude-sonnet-4-5-20250929
+          LANGCHAIN_MODEL: claude-opus-4-7
           PYTHONPATH: ${{ github.workspace }}/workflows-scripts
         run: |
           echo "Extracting suggestions from comments on issue #${ISSUE_NUMBER}"
