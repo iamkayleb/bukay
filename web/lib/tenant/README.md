@@ -45,6 +45,9 @@ prisma.user.findMany({ where: { tenantId: { in: ["abc", "def"] } } });
 
 // AND nesting
 prisma.user.findMany({ where: { AND: [{ tenantId: "abc" }, { isActive: true }] } });
+
+// OR with tenantId in every branch
+prisma.user.findMany({ where: { OR: [{ tenantId: "abc" }, { tenantId: "def" }] } });
 ```
 
 When a tenant context is active (via `tenantContext.run()`), the guard additionally verifies that the tenantId in the `where` clause matches the context. A `TenantGuardError` is thrown if they differ.

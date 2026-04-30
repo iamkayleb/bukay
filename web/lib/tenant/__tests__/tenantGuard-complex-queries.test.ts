@@ -42,6 +42,14 @@ describe("extractTenantIdFromWhere", () => {
     ).toBe("deep");
   });
 
+  it("extracts tenantIds from OR clauses when all branches are scoped", () => {
+    expect(
+      extractTenantIdFromWhere({
+        OR: [{ tenantId: "a" }, { tenantId: { equals: "b" } }],
+      })
+    ).toEqual(["a", "b"]);
+  });
+
   it("returns null when tenantId is absent", () => {
     expect(extractTenantIdFromWhere({ id: "123" })).toBeNull();
   });
@@ -104,6 +112,22 @@ describe("assertTenantScoped — complex where shapes (no context)", () => {
     expect(() =>
       assertTenantScoped("User", "findMany", {
         where: { AND: [{ status: "active" }, { isVerified: true }] },
+      })
+    ).toThrow(TenantGuardError);
+  });
+
+  it("passes for OR when every branch includes tenantId", () => {
+    expect(() =>
+      assertTenantScoped("User", "findMany", {
+        where: { OR: [{ tenantId: "a" }, { tenantId: "b" }] },
+      })
+    ).not.toThrow();
+  });
+
+  it("throws for OR when any branch is missing tenantId", () => {
+    expect(() =>
+      assertTenantScoped("User", "findMany", {
+        where: { OR: [{ tenantId: "a" }, { status: "active" }] },
       })
     ).toThrow(TenantGuardError);
   });
