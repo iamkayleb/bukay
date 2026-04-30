@@ -155,12 +155,12 @@ function mergeTenantCandidates(
 export function assertTenantScoped(
   model: string,
   operation: string,
-  args: { where?: Record<string, unknown> | null }
+  args?: { where?: Record<string, unknown> | null } | null
 ): void {
   if (!TENANT_SCOPED_MODELS.has(model) || !GUARDED_OPS.has(operation)) return;
 
-  const where = args.where;
-  if (!where) {
+  const where = args?.where;
+  if (!where || typeof where !== "object") {
     throw new TenantGuardError(model, operation);
   }
 
