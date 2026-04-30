@@ -88,7 +88,12 @@ The `Tenant` model itself is **not** tenant-scoped and can be queried via `baseP
 import { TenantGuardError } from "@/lib/tenant/prismaWithTenantGuard";
 
 try {
-  await prisma.user.findMany({ where: {} }); // throws
+  await tenantContext.run(
+    { tenantId: "tenant-a", tenantSlug: "acme" },
+    async () => {
+      await prisma.user.findMany({ where: { tenantId: "tenant-b" } }); // throws
+    }
+  );
 } catch (err) {
   if (err instanceof TenantGuardError) {
     // Handle guard violation

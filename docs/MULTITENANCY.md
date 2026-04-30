@@ -68,9 +68,6 @@ The default `prisma` export from `web/lib/db.ts` is wrapped with `withTenantGuar
 ```ts
 import { prisma } from "@/lib/db";
 
-// Throws TenantGuardError — missing tenantId
-await prisma.user.findMany({ where: { email: "foo@example.com" } });
-
 // OK — tenantId present
 await prisma.user.findMany({ where: { tenantId, email: "foo@example.com" } });
 ```
