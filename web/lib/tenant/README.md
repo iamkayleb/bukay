@@ -7,7 +7,7 @@ Request-scoped multi-tenancy for the application, built on AsyncLocalStorage and
 | File | Purpose |
 |------|---------|
 | `tenantContext.ts` | AsyncLocalStorage store — holds the active `tenantId` / `tenantSlug` for the current request |
-| `resolveTenant.ts` | Extracts the tenant slug from the incoming request (subdomain → cookie fallback) |
+| `resolveTenant.ts` | Extracts the tenant slug from the incoming request (subdomain → session → cookie fallback) |
 | `prismaWithTenantGuard.ts` | Prisma client extension that blocks queries missing a valid `tenantId` in `where` |
 
 The guarded client is exported from `web/lib/db.ts` as `prisma` (default for application code) and `basePrisma` (unguarded, **restricted use only** — see below).

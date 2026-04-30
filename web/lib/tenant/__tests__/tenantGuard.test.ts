@@ -224,6 +224,17 @@ describe("resolveTenant", () => {
     expect(lookup).toHaveBeenCalledWith("beta");
   });
 
+  it("resolves via session tenantSlug when provided", async () => {
+    const tenant = { id: "t3", slug: "session-tenant", name: "Session Co" };
+    const lookup = vi.fn().mockResolvedValue(tenant);
+
+    const result = await resolveTenant(makeReq("example.com"), lookup, {
+      tenantSlug: "session-tenant",
+    });
+    expect(result).toEqual(tenant);
+    expect(lookup).toHaveBeenCalledWith("session-tenant");
+  });
+
   it("returns null when neither subdomain nor cookie resolves a tenant", async () => {
     const lookup = vi.fn().mockResolvedValue(null);
 
