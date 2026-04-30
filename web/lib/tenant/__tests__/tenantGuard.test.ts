@@ -195,6 +195,23 @@ describe("withTenantGuard", () => {
     }
   );
 
+  it(
+    "throws TenantGuardError on missing tenantId even when context is active",
+    async () => {
+      const mock = makeMockPrisma();
+      const guarded = withTenantGuard(mock) as unknown as GuardedMock;
+
+      await tenantContext.run(
+        { tenantId: "tenant-a", tenantSlug: "tenant-a" },
+        async () => {
+          await expect(
+            guarded.callOp("User", "findMany", { where: {} })
+          ).rejects.toThrow(TenantGuardError);
+        }
+      );
+    }
+  );
+
   it("returns expected row when tenantId is correct", async () => {
     const mock = makeMockPrisma();
     const guarded = withTenantGuard(mock) as unknown as GuardedMock;
