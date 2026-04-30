@@ -349,7 +349,11 @@ describe("withTenantContext", () => {
     const lookup = vi.fn().mockResolvedValue(null);
     const handler = vi.fn().mockReturnValue("should-not-run");
 
-    const result = await withTenantContext(makeReq("example.com"), lookup, handler);
+    const result = await withTenantContext(
+      makeReq("example.com"),
+      lookup,
+      handler
+    );
 
     expect(result).toBeNull();
     expect(handler).not.toHaveBeenCalled();
