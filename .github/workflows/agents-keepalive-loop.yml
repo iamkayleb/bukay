@@ -235,6 +235,7 @@ jobs:
                 github.event.inputs.force_retry ||
                 'false' }}
           HAS_CODEX_AUTH: ${{ secrets.CODEX_AUTH_JSON != '' }}
+          HAS_OPENAI_KEY: ${{ secrets.OPENAI_API_KEY != '' }}
           HAS_CLAUDE_AUTH: ${{ secrets.CLAUDE_AUTH_JSON != '' }}
           HAS_CLAUDE_OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
         with:
@@ -410,6 +411,7 @@ jobs:
         id: check
         env:
           HAS_CODEX_AUTH: ${{ secrets.CODEX_AUTH_JSON != '' }}
+          HAS_OPENAI_KEY: ${{ secrets.OPENAI_API_KEY != '' }}
           HAS_CLAUDE_AUTH: ${{ secrets.CLAUDE_AUTH_JSON != '' }}
           HAS_CLAUDE_OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
           HAS_GEMINI_AUTH: ${{ secrets.GEMINI_API_KEY != '' }}
@@ -423,6 +425,7 @@ jobs:
         run: |
           echo "Requested agent: $AGENT_TYPE"
           echo "CODEX_AUTH_JSON present: $HAS_CODEX_AUTH"
+          echo "OPENAI_API_KEY present: $HAS_OPENAI_KEY"
           echo "CLAUDE_AUTH_JSON present: $HAS_CLAUDE_AUTH"
           echo "CLAUDE_CODE_OAUTH_TOKEN present: $HAS_CLAUDE_OAUTH"
           echo "GEMINI_API_KEY present: $HAS_GEMINI_AUTH"
@@ -436,7 +439,7 @@ jobs:
               fi
               ;;
             codex)
-              if [ "$HAS_CODEX_AUTH" = "true" ]; then
+              if [ "$HAS_CODEX_AUTH" = "true" ] || [ "$HAS_OPENAI_KEY" = "true" ]; then
                 agent_auth_ok=true
               fi
               ;;
@@ -446,7 +449,7 @@ jobs:
               fi
               ;;
             *)
-              if [ "$HAS_CODEX_AUTH" = "true" ] || [ "$HAS_CLAUDE_AUTH" = "true" ] || [ "$HAS_CLAUDE_OAUTH" = "true" ] || [ "$HAS_GEMINI_AUTH" = "true" ]; then
+              if [ "$HAS_CODEX_AUTH" = "true" ] || [ "$HAS_OPENAI_KEY" = "true" ] || [ "$HAS_CLAUDE_AUTH" = "true" ] || [ "$HAS_CLAUDE_OAUTH" = "true" ] || [ "$HAS_GEMINI_AUTH" = "true" ]; then
                 agent_auth_ok=true
               fi
               ;;
