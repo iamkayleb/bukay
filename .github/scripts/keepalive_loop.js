@@ -2339,6 +2339,7 @@ async function evaluateKeepaliveLoop({ github: rawGithub, context, core, payload
         // Build secrets availability from env vars set by the workflow
         const secrets = {};
         if (process.env.HAS_CODEX_AUTH === 'true') secrets.CODEX_AUTH_JSON = true;
+        if (process.env.HAS_OPENAI_KEY === 'true') secrets.OPENAI_API_KEY = true;
         if (process.env.HAS_CLAUDE_AUTH === 'true') secrets.CLAUDE_AUTH_JSON = true;
         if (process.env.HAS_CLAUDE_OAUTH === 'true') secrets.CLAUDE_CODE_OAUTH_TOKEN = true;
         const decision = decideNextAgent({

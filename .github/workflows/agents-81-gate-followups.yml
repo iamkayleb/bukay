@@ -210,6 +210,7 @@ jobs:
         id: check
         env:
           HAS_CODEX_AUTH: ${{ secrets.CODEX_AUTH_JSON != '' }}
+          HAS_OPENAI_KEY: ${{ secrets.OPENAI_API_KEY != '' }}
           HAS_CLAUDE_AUTH: ${{ secrets.CLAUDE_AUTH_JSON != '' }}
           HAS_CLAUDE_OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
           HAS_GEMINI_AUTH: ${{ secrets.GEMINI_API_KEY != '' }}
@@ -222,6 +223,7 @@ jobs:
           AGENT_TYPE: ${{ needs.evaluate.outputs.agent_type }}
         run: |
           echo "CODEX_AUTH_JSON present: $HAS_CODEX_AUTH"
+          echo "OPENAI_API_KEY present: $HAS_OPENAI_KEY"
           echo "CLAUDE_AUTH_JSON present: $HAS_CLAUDE_AUTH"
           echo "CLAUDE_CODE_OAUTH_TOKEN present: $HAS_CLAUDE_OAUTH"
           echo "GEMINI_API_KEY present: $HAS_GEMINI_AUTH"
@@ -233,7 +235,7 @@ jobs:
           agent_auth_ok=false
           case "$AGENT_TYPE" in
             codex)
-              if [ "$HAS_CODEX_AUTH" = "true" ] || [ "$HAS_APP_ID" = "true" ]; then
+              if [ "$HAS_CODEX_AUTH" = "true" ] || [ "$HAS_OPENAI_KEY" = "true" ] || [ "$HAS_APP_ID" = "true" ]; then
                 agent_auth_ok=true
               fi
               ;;
@@ -249,7 +251,7 @@ jobs:
               ;;
             *)
               # Unknown agent - fall back to any auth available
-              if [ "$HAS_CODEX_AUTH" = "true" ] || [ "$HAS_CLAUDE_AUTH" = "true" ] || [ "$HAS_CLAUDE_OAUTH" = "true" ] || [ "$HAS_GEMINI_AUTH" = "true" ] || [ "$HAS_APP_ID" = "true" ]; then
+              if [ "$HAS_CODEX_AUTH" = "true" ] || [ "$HAS_OPENAI_KEY" = "true" ] || [ "$HAS_CLAUDE_AUTH" = "true" ] || [ "$HAS_CLAUDE_OAUTH" = "true" ] || [ "$HAS_GEMINI_AUTH" = "true" ] || [ "$HAS_APP_ID" = "true" ]; then
                 agent_auth_ok=true
               fi
               ;;
@@ -258,7 +260,7 @@ jobs:
           if [ "$agent_auth_ok" = "true" ]; then
             echo "secrets_ok=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::error::No auth found for agent '$AGENT_TYPE'. Set the appropriate secret (GEMINI_API_KEY for gemini, CLAUDE_CODE_OAUTH_TOKEN for claude, CODEX_AUTH_JSON for codex)."
+            echo "::error::No auth found for agent '$AGENT_TYPE'. Set CODEX_AUTH_JSON, OPENAI_API_KEY, CLAUDE_CODE_OAUTH_TOKEN, or GEMINI_API_KEY."
             echo "secrets_ok=false" >> "$GITHUB_OUTPUT"
             exit 1
           fi
@@ -329,6 +331,7 @@ jobs:
     uses: iamkayleb/Workflows/.github/workflows/reusable-codex-run.yml@main
     secrets:
       CODEX_AUTH_JSON: ${{ secrets.CODEX_AUTH_JSON }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       # Use dedicated KEEPALIVE_APP for isolated rate limit pool (5000/hr)
       # Falls back to WORKFLOWS_APP if KEEPALIVE_APP not configured
       WORKFLOWS_APP_ID: >-
@@ -1072,6 +1075,7 @@ jobs:
       appendix: ${{ needs.prepare.outputs.appendix }}
     secrets:
       CODEX_AUTH_JSON: ${{ secrets.CODEX_AUTH_JSON }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       WORKFLOWS_APP_ID: ${{ secrets.WORKFLOWS_APP_ID }}
       WORKFLOWS_APP_PRIVATE_KEY: ${{ secrets.WORKFLOWS_APP_PRIVATE_KEY }}
 

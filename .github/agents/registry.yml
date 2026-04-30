@@ -10,6 +10,8 @@ agents:
     runner_workflow: .github/workflows/reusable-codex-run.yml
     required_secrets:
       - CODEX_AUTH_JSON
+      - OPENAI_API_KEY
+    required_secrets_mode: any
     branch_prefix: codex/issue-
     ui_mentions_allowed: false
     automation_logins:
