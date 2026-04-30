@@ -143,7 +143,10 @@ function mergeTenantCandidates(
   left: string[] | null,
   right: string[] | null
 ): string[] | null {
-  if (left && right) return intersectCandidates(left, right);
+  if (left && right) {
+    const intersection = intersectCandidates(left, right);
+    return intersection.length > 0 ? intersection : null;
+  }
   return left ?? right;
 }
 
