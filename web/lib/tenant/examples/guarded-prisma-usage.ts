@@ -68,21 +68,12 @@ export async function listPaymentsInContext(
   tenantId: string,
   tenantSlug: string
 ) {
-  return new Promise<Awaited<ReturnType<typeof prisma.payment.findMany>>>(
-    (resolve, reject) => {
-      tenantContext.run({ tenantId, tenantSlug }, async () => {
-        try {
-          // The guard verifies where.tenantId === context.tenantId automatically.
-          const payments = await prisma.payment.findMany({
-            where: { tenantId },
-          });
-          resolve(payments);
-        } catch (err) {
-          reject(err);
-        }
-      });
-    }
-  );
+  return tenantContext.run({ tenantId, tenantSlug }, async () => {
+    // The guard verifies where.tenantId === context.tenantId automatically.
+    return prisma.payment.findMany({
+      where: { tenantId },
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------
