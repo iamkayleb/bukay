@@ -23,6 +23,7 @@ const GUARDED_OPS = new Set([
   "findUniqueOrThrow",
   "update",
   "updateMany",
+  "upsert",
   "delete",
   "deleteMany",
   "count",

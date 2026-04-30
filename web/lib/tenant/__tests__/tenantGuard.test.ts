@@ -35,6 +35,7 @@ describe("assertTenantScoped", () => {
       "findFirstOrThrow",
       "update",
       "updateMany",
+      "upsert",
       "delete",
       "deleteMany",
     ];
