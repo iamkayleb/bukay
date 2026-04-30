@@ -434,7 +434,9 @@ def review_progress_with_llm(
     resolved = build_chat_client(model=model) if build_chat_client else None
     if not resolved:
         score, aligned, unaligned = heuristic_alignment_check(
-            acceptance_criteria, recent_commits, files_changed
+            acceptance_criteria,
+            recent_commits,
+            files_changed,
         )
 
         if score >= 6:
@@ -474,7 +476,10 @@ def review_progress_with_llm(
 
         llm = resolved.client
         response, trace_id, trace_url = _invoke_llm_with_trace(
-            llm, prompt, operation="review_progress", pr_number=pr_num
+            llm,
+            prompt,
+            operation="review_progress",
+            pr_number=pr_num,
         )
         content = response.content if hasattr(response, "content") else str(response)
 
@@ -507,7 +512,9 @@ def review_progress_with_llm(
     except Exception as e:
         # Fall back to heuristic on any error
         score, aligned, unaligned = heuristic_alignment_check(
-            acceptance_criteria, recent_commits, files_changed
+            acceptance_criteria,
+            recent_commits,
+            files_changed,
         )
 
         return ProgressReviewResult(
@@ -615,7 +622,9 @@ def review_progress(
 
     # Quick heuristic check first
     heuristic_score, aligned, unaligned = heuristic_alignment_check(
-        acceptance_criteria, recent_commits, files_changed
+        acceptance_criteria,
+        recent_commits,
+        files_changed,
     )
 
     # If clearly aligned or clearly not, skip LLM
