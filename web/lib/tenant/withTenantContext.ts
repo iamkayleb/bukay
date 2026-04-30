@@ -1,6 +1,10 @@
 import type { NextRequest } from "next/server";
 
-import type { ResolvedTenant, TenantLookup, TenantSession } from "./resolveTenant";
+import type {
+  ResolvedTenant,
+  TenantLookup,
+  TenantSession,
+} from "./resolveTenant";
 import { resolveTenant } from "./resolveTenant";
 import { tenantContext } from "./tenantContext";
 
