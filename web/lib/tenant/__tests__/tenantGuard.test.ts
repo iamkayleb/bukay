@@ -10,6 +10,9 @@ import {
   tenantContext,
   getTenantId,
   getTenantIdOrNull,
+  getTenantSlug,
+  getTenantSlugOrNull,
+  getTenantContext,
 } from "../tenantContext";
 
 // ---------------------------------------------------------------------------
@@ -315,18 +318,39 @@ describe("resolveTenant", () => {
 // ---------------------------------------------------------------------------
 
 describe("tenantContext", () => {
+  it("getTenantContext throws outside of a run context", () => {
+    expect(() => getTenantContext()).toThrow(/No tenant context/);
+  });
+
   it("getTenantId throws outside of a run context", () => {
     expect(() => getTenantId()).toThrow(/No tenant context/);
+  });
+
+  it("getTenantSlug throws outside of a run context", () => {
+    expect(() => getTenantSlug()).toThrow(/No tenant context/);
   });
 
   it("getTenantIdOrNull returns null outside of a run context", () => {
     expect(getTenantIdOrNull()).toBeNull();
   });
 
+  it("getTenantSlugOrNull returns null outside of a run context", () => {
+    expect(getTenantSlugOrNull()).toBeNull();
+  });
+
   it("getTenantId returns the tenantId inside a run context", async () => {
     await new Promise<void>((resolve) => {
       tenantContext.run({ tenantId: "tenant-001", tenantSlug: "demo" }, () => {
         expect(getTenantId()).toBe("tenant-001");
+        resolve();
+      });
+    });
+  });
+
+  it("getTenantSlug returns the tenantSlug inside a run context", async () => {
+    await new Promise<void>((resolve) => {
+      tenantContext.run({ tenantId: "tenant-001", tenantSlug: "demo" }, () => {
+        expect(getTenantSlug()).toBe("demo");
         resolve();
       });
     });
@@ -340,6 +364,21 @@ describe("tenantContext", () => {
           { tenantId: "tenant-002", tenantSlug: "test" },
           () => {
             expect(getTenantIdOrNull()).toBe("tenant-002");
+            resolve();
+          }
+        );
+      });
+    }
+  );
+
+  it(
+    "getTenantSlugOrNull returns the tenantSlug inside a run context",
+    async () => {
+      await new Promise<void>((resolve) => {
+        tenantContext.run(
+          { tenantId: "tenant-002", tenantSlug: "test" },
+          () => {
+            expect(getTenantSlugOrNull()).toBe("test");
             resolve();
           }
         );
