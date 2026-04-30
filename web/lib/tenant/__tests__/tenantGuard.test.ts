@@ -32,15 +32,11 @@ function makeReq(host: string, cookieSlug?: string) {
 
 describe("assertTenantScoped", () => {
   it("throws TenantGuardError when tenantId is absent from where", () => {
-    expect(() => assertTenantScoped("User", "findMany", { where: {} })).toThrow(
-      TenantGuardError
-    );
+    expect(() => assertTenantScoped("User", "findMany", { where: {} })).toThrow(TenantGuardError);
   });
 
   it("throws when where is undefined", () => {
-    expect(() => assertTenantScoped("Booking", "findMany", {})).toThrow(
-      TenantGuardError
-    );
+    expect(() => assertTenantScoped("Booking", "findMany", {})).toThrow(TenantGuardError);
   });
 
   it("throws for all guarded operations on tenant-scoped models", () => {
@@ -54,9 +50,7 @@ describe("assertTenantScoped", () => {
       "deleteMany",
     ];
     for (const op of ops) {
-      expect(() => assertTenantScoped("Client", op, { where: {} })).toThrow(
-        TenantGuardError
-      );
+      expect(() => assertTenantScoped("Client", op, { where: {} })).toThrow(TenantGuardError);
     }
   });
 
@@ -69,25 +63,19 @@ describe("assertTenantScoped", () => {
   });
 
   it("does NOT throw for Tenant model (not tenant-scoped)", () => {
-    expect(() =>
-      assertTenantScoped("Tenant", "findMany", { where: {} })
-    ).not.toThrow();
+    expect(() => assertTenantScoped("Tenant", "findMany", { where: {} })).not.toThrow();
   });
 
   it(
     "does NOT throw for create operation (tenantId lives in data, not where)",
     () => {
-      expect(() =>
-        assertTenantScoped("User", "create", { where: {} })
-      ).not.toThrow();
+      expect(() => assertTenantScoped("User", "create", { where: {} })).not.toThrow();
     }
   );
 
   it("covers all models listed in TENANT_SCOPED_MODELS", () => {
     for (const model of Array.from(TENANT_SCOPED_MODELS)) {
-      expect(() =>
-        assertTenantScoped(model, "findMany", { where: {} })
-      ).toThrow(TenantGuardError);
+      expect(() => assertTenantScoped(model, "findMany", { where: {} })).toThrow(TenantGuardError);
       expect(() =>
         assertTenantScoped(model, "findMany", { where: { tenantId: "t1" } })
       ).not.toThrow();
@@ -189,9 +177,9 @@ describe("withTenantGuard", () => {
       const mock = makeMockPrisma();
       const guarded = withTenantGuard(mock) as unknown as GuardedMock;
 
-      await expect(
-        guarded.callOp("User", "findMany", { where: {} })
-      ).rejects.toThrow(TenantGuardError);
+      await expect(guarded.callOp("User", "findMany", { where: {} })).rejects.toThrow(
+        TenantGuardError
+      );
     }
   );
 
@@ -262,9 +250,7 @@ describe("withTenantGuard", () => {
       const mock = makeMockPrisma();
       const guarded = withTenantGuard(mock) as unknown as GuardedMock;
 
-      await expect(
-        guarded.callOp("Tenant", "findMany", { where: {} })
-      ).resolves.toBeDefined();
+      await expect(guarded.callOp("Tenant", "findMany", { where: {} })).resolves.toBeDefined();
     }
   );
 
