@@ -117,108 +117,114 @@ describe("assertTenantScoped — context validation with complex shapes", () => 
   it(
     "passes for { tenantId: { equals: contextId } } when context matches",
     async () => {
-    await new Promise<void>((resolve) => {
-      tenantContext.run(
-        { tenantId: "tenant-x", tenantSlug: "tenant-x" },
-        () => {
-          expect(() =>
-            assertTenantScoped("Booking", "findMany", {
-              where: { tenantId: { equals: "tenant-x" } },
-            })
-          ).not.toThrow();
-          resolve();
-        }
-      );
-    });
-  });
+      await new Promise<void>((resolve) => {
+        tenantContext.run(
+          { tenantId: "tenant-x", tenantSlug: "tenant-x" },
+          () => {
+            expect(() =>
+              assertTenantScoped("Booking", "findMany", {
+                where: { tenantId: { equals: "tenant-x" } },
+              })
+            ).not.toThrow();
+            resolve();
+          }
+        );
+      });
+    }
+  );
 
   it(
     "throws for { tenantId: { equals: otherId } } when context differs",
     async () => {
-    await new Promise<void>((resolve) => {
-      tenantContext.run(
-        { tenantId: "tenant-x", tenantSlug: "tenant-x" },
-        () => {
-          expect(() =>
-            assertTenantScoped("Booking", "findMany", {
-              where: { tenantId: { equals: "tenant-y" } },
-            })
-          ).toThrow(TenantGuardError);
-          resolve();
-        }
-      );
-    });
-  });
+      await new Promise<void>((resolve) => {
+        tenantContext.run(
+          { tenantId: "tenant-x", tenantSlug: "tenant-x" },
+          () => {
+            expect(() =>
+              assertTenantScoped("Booking", "findMany", {
+                where: { tenantId: { equals: "tenant-y" } },
+              })
+            ).toThrow(TenantGuardError);
+            resolve();
+          }
+        );
+      });
+    }
+  );
 
   it(
     "passes for { tenantId: { in: [contextId, ...] } } when context is in list",
     async () => {
-    await new Promise<void>((resolve) => {
-      tenantContext.run(
-        { tenantId: "tenant-a", tenantSlug: "tenant-a" },
-        () => {
-          expect(() =>
-            assertTenantScoped("User", "findMany", {
-              where: { tenantId: { in: ["tenant-a", "tenant-b"] } },
-            })
-          ).not.toThrow();
-          resolve();
-        }
-      );
-    });
-  });
+      await new Promise<void>((resolve) => {
+        tenantContext.run(
+          { tenantId: "tenant-a", tenantSlug: "tenant-a" },
+          () => {
+            expect(() =>
+              assertTenantScoped("User", "findMany", {
+                where: { tenantId: { in: ["tenant-a", "tenant-b"] } },
+              })
+            ).not.toThrow();
+            resolve();
+          }
+        );
+      });
+    }
+  );
 
   it(
     "throws for { tenantId: { in: [...] } } when context is NOT in list",
     async () => {
-    await new Promise<void>((resolve) => {
-      tenantContext.run(
-        { tenantId: "tenant-c", tenantSlug: "tenant-c" },
-        () => {
-          expect(() =>
-            assertTenantScoped("User", "findMany", {
-              where: { tenantId: { in: ["tenant-a", "tenant-b"] } },
-            })
-          ).toThrow(TenantGuardError);
-          resolve();
-        }
-      );
-    });
-  });
+      await new Promise<void>((resolve) => {
+        tenantContext.run(
+          { tenantId: "tenant-c", tenantSlug: "tenant-c" },
+          () => {
+            expect(() =>
+              assertTenantScoped("User", "findMany", {
+                where: { tenantId: { in: ["tenant-a", "tenant-b"] } },
+              })
+            ).toThrow(TenantGuardError);
+            resolve();
+          }
+        );
+      });
+    }
+  );
 
   it(
     "passes for { AND: [{ tenantId: contextId }] } when context matches",
     async () => {
-    await new Promise<void>((resolve) => {
-      tenantContext.run(
-        { tenantId: "tenant-x", tenantSlug: "tenant-x" },
-        () => {
-          expect(() =>
-            assertTenantScoped("Client", "findMany", {
-              where: { AND: [{ tenantId: "tenant-x" }, { status: "active" }] },
-            })
-          ).not.toThrow();
-          resolve();
-        }
-      );
-    });
-  });
+      await new Promise<void>((resolve) => {
+        tenantContext.run(
+          { tenantId: "tenant-x", tenantSlug: "tenant-x" },
+          () => {
+            expect(() =>
+              assertTenantScoped("Client", "findMany", {
+                where: { AND: [{ tenantId: "tenant-x" }, { status: "active" }] },
+              })
+            ).not.toThrow();
+            resolve();
+          }
+        );
+      });
+    }
+  );
 
   it(
     "throws for { AND: [{ tenantId: otherId }] } when context differs",
     async () => {
-    await new Promise<void>((resolve) => {
-      tenantContext.run(
-        { tenantId: "tenant-x", tenantSlug: "tenant-x" },
-        () => {
-          expect(() =>
-            assertTenantScoped("Client", "findMany", {
-              where: { AND: [{ tenantId: "tenant-y" }, { status: "active" }] },
-            })
-          ).toThrow(TenantGuardError);
-          resolve();
-        }
-      );
-    });
-  });
+      await new Promise<void>((resolve) => {
+        tenantContext.run(
+          { tenantId: "tenant-x", tenantSlug: "tenant-x" },
+          () => {
+            expect(() =>
+              assertTenantScoped("Client", "findMany", {
+                where: { AND: [{ tenantId: "tenant-y" }, { status: "active" }] },
+              })
+            ).toThrow(TenantGuardError);
+            resolve();
+          }
+        );
+      });
+    }
+  );
 });
