@@ -205,6 +205,21 @@ describe("withTenantGuard", () => {
     expect(result).toEqual([{ id: "1", tenantId: "User" }]);
   });
 
+  it("returns expected row when tenantId matches active context", async () => {
+    const mock = makeMockPrisma();
+    const guarded = withTenantGuard(mock) as unknown as GuardedMock;
+
+    await tenantContext.run(
+      { tenantId: "tenant-xyz", tenantSlug: "tenant-xyz" },
+      async () => {
+        const result = await guarded.callOp("User", "findMany", {
+          where: { tenantId: "tenant-xyz" },
+        });
+        expect(result).toEqual([{ id: "1", tenantId: "User" }]);
+      }
+    );
+  });
+
   it(
     "throws TenantGuardError on cross-tenant read (mismatched tenantId)",
     async () => {
