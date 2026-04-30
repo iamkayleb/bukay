@@ -14,6 +14,17 @@ import {
   getTenantSlugOrNull,
   getTenantContext,
 } from "../tenantContext";
+import { withTenantContext } from "../withTenantContext";
+
+function makeReq(host: string, cookieSlug?: string) {
+  return {
+    headers: { get: (key: string) => (key === "host" ? host : null) },
+    cookies: {
+      get: (key: string) =>
+        key === "tenantSlug" && cookieSlug ? { value: cookieSlug } : undefined,
+    },
+  } as unknown as import("next/server").NextRequest;
+}
 
 // ---------------------------------------------------------------------------
 // assertTenantScoped
@@ -261,18 +272,6 @@ describe("extractSubdomainSlug", () => {
 // ---------------------------------------------------------------------------
 
 describe("resolveTenant", () => {
-  function makeReq(host: string, cookieSlug?: string) {
-    return {
-      headers: { get: (key: string) => (key === "host" ? host : null) },
-      cookies: {
-        get: (key: string) =>
-          key === "tenantSlug" && cookieSlug
-            ? { value: cookieSlug }
-            : undefined,
-      },
-    } as unknown as import("next/server").NextRequest;
-  }
-
   it("resolves via subdomain", async () => {
     const tenant = { id: "t1", slug: "acme", name: "Acme Corp" };
     const lookup = vi.fn().mockResolvedValue(tenant);
@@ -311,6 +310,35 @@ describe("resolveTenant", () => {
       expect(result).toBeNull();
     }
   );
+});
+
+// ---------------------------------------------------------------------------
+// withTenantContext
+// ---------------------------------------------------------------------------
+
+describe("withTenantContext", () => {
+  it("runs the handler inside the tenant context when resolved", async () => {
+    const tenant = { id: "t9", slug: "acme", name: "Acme" };
+    const lookup = vi.fn().mockResolvedValue(tenant);
+
+    const result = await withTenantContext(
+      makeReq("acme.example.com"),
+      lookup,
+      () => getTenantId()
+    );
+
+    expect(result).toBe("t9");
+  });
+
+  it("returns null when the tenant cannot be resolved", async () => {
+    const lookup = vi.fn().mockResolvedValue(null);
+    const handler = vi.fn().mockReturnValue("should-not-run");
+
+    const result = await withTenantContext(makeReq("example.com"), lookup, handler);
+
+    expect(result).toBeNull();
+    expect(handler).not.toHaveBeenCalled();
+  });
 });
 
 // ---------------------------------------------------------------------------
