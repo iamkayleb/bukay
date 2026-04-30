@@ -267,6 +267,26 @@ describe("withTenantGuard", () => {
       ).resolves.toBeDefined();
     }
   );
+
+  it("blocks findUnique when tenantId is missing from where", async () => {
+    const mock = makeMockPrisma();
+    const guarded = withTenantGuard(mock) as unknown as GuardedMock;
+
+    await expect(
+      guarded.callOp("Booking", "findUnique", { where: { id: "booking-1" } })
+    ).rejects.toThrow(TenantGuardError);
+  });
+
+  it("allows findUnique when tenantId is present", async () => {
+    const mock = makeMockPrisma();
+    const guarded = withTenantGuard(mock) as unknown as GuardedMock;
+
+    const result = await guarded.callOp("Booking", "findUnique", {
+      where: { id: "booking-1", tenantId: "tenant-123" },
+    });
+
+    expect(result).toEqual([{ id: "1", tenantId: "Booking" }]);
+  });
 });
 
 // ---------------------------------------------------------------------------
