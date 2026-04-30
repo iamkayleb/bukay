@@ -16,16 +16,23 @@ describe("extractTenantIdFromWhere", () => {
   });
 
   it("extracts tenantId from { tenantId: { equals: '...' } }", () => {
-    expect(extractTenantIdFromWhere({ tenantId: { equals: "abc" } })).toBe("abc");
+    expect(extractTenantIdFromWhere({ tenantId: { equals: "abc" } })).toBe(
+      "abc"
+    );
   });
 
   it("extracts tenantId array from { tenantId: { in: [...] } }", () => {
-    expect(extractTenantIdFromWhere({ tenantId: { in: ["a", "b"] } })).toEqual(["a", "b"]);
+    expect(extractTenantIdFromWhere({ tenantId: { in: ["a", "b"] } })).toEqual([
+      "a",
+      "b",
+    ]);
   });
 
   it("extracts tenantId from top-level AND clause", () => {
     expect(
-      extractTenantIdFromWhere({ AND: [{ tenantId: "abc" }, { status: "active" }] })
+      extractTenantIdFromWhere({
+        AND: [{ tenantId: "abc" }, { status: "active" }],
+      })
     ).toBe("abc");
   });
 
@@ -59,13 +66,17 @@ describe("extractTenantIdFromWhere", () => {
 describe("assertTenantScoped — complex where shapes (no context)", () => {
   it("passes for { tenantId: { equals: 'abc' } }", () => {
     expect(() =>
-      assertTenantScoped("User", "findMany", { where: { tenantId: { equals: "abc" } } })
+      assertTenantScoped("User", "findMany", {
+        where: { tenantId: { equals: "abc" } },
+      })
     ).not.toThrow();
   });
 
   it("passes for { tenantId: { in: ['a', 'b'] } }", () => {
     expect(() =>
-      assertTenantScoped("User", "findMany", { where: { tenantId: { in: ["a", "b"] } } })
+      assertTenantScoped("User", "findMany", {
+        where: { tenantId: { in: ["a", "b"] } },
+      })
     ).not.toThrow();
   });
 
@@ -77,12 +88,17 @@ describe("assertTenantScoped — complex where shapes (no context)", () => {
     ).not.toThrow();
   });
 
-  it("throws for { tenantId: { in: [] } } — empty in list provides no tenant", () => {
-    // An empty in list means no tenant is being targeted — guard should block it
-    expect(() =>
-      assertTenantScoped("User", "findMany", { where: { tenantId: { in: [] } } })
-    ).toThrow(TenantGuardError);
-  });
+  it(
+    "throws for { tenantId: { in: [] } } — empty in list provides no tenant",
+    () => {
+      // An empty in list means no tenant is being targeted — guard should block it
+      expect(() =>
+        assertTenantScoped("User", "findMany", {
+          where: { tenantId: { in: [] } },
+        })
+      ).toThrow(TenantGuardError);
+    }
+  );
 
   it("throws when AND clause has no tenantId", () => {
     expect(() =>
@@ -98,81 +114,111 @@ describe("assertTenantScoped — complex where shapes (no context)", () => {
 // ---------------------------------------------------------------------------
 
 describe("assertTenantScoped — context validation with complex shapes", () => {
-  it("passes for { tenantId: { equals: contextId } } when context matches", async () => {
+  it(
+    "passes for { tenantId: { equals: contextId } } when context matches",
+    async () => {
     await new Promise<void>((resolve) => {
-      tenantContext.run({ tenantId: "tenant-x", tenantSlug: "tenant-x" }, () => {
-        expect(() =>
-          assertTenantScoped("Booking", "findMany", {
-            where: { tenantId: { equals: "tenant-x" } },
-          })
-        ).not.toThrow();
-        resolve();
-      });
+      tenantContext.run(
+        { tenantId: "tenant-x", tenantSlug: "tenant-x" },
+        () => {
+          expect(() =>
+            assertTenantScoped("Booking", "findMany", {
+              where: { tenantId: { equals: "tenant-x" } },
+            })
+          ).not.toThrow();
+          resolve();
+        }
+      );
     });
   });
 
-  it("throws for { tenantId: { equals: otherId } } when context differs", async () => {
+  it(
+    "throws for { tenantId: { equals: otherId } } when context differs",
+    async () => {
     await new Promise<void>((resolve) => {
-      tenantContext.run({ tenantId: "tenant-x", tenantSlug: "tenant-x" }, () => {
-        expect(() =>
-          assertTenantScoped("Booking", "findMany", {
-            where: { tenantId: { equals: "tenant-y" } },
-          })
-        ).toThrow(TenantGuardError);
-        resolve();
-      });
+      tenantContext.run(
+        { tenantId: "tenant-x", tenantSlug: "tenant-x" },
+        () => {
+          expect(() =>
+            assertTenantScoped("Booking", "findMany", {
+              where: { tenantId: { equals: "tenant-y" } },
+            })
+          ).toThrow(TenantGuardError);
+          resolve();
+        }
+      );
     });
   });
 
-  it("passes for { tenantId: { in: [contextId, ...] } } when context is in list", async () => {
+  it(
+    "passes for { tenantId: { in: [contextId, ...] } } when context is in list",
+    async () => {
     await new Promise<void>((resolve) => {
-      tenantContext.run({ tenantId: "tenant-a", tenantSlug: "tenant-a" }, () => {
-        expect(() =>
-          assertTenantScoped("User", "findMany", {
-            where: { tenantId: { in: ["tenant-a", "tenant-b"] } },
-          })
-        ).not.toThrow();
-        resolve();
-      });
+      tenantContext.run(
+        { tenantId: "tenant-a", tenantSlug: "tenant-a" },
+        () => {
+          expect(() =>
+            assertTenantScoped("User", "findMany", {
+              where: { tenantId: { in: ["tenant-a", "tenant-b"] } },
+            })
+          ).not.toThrow();
+          resolve();
+        }
+      );
     });
   });
 
-  it("throws for { tenantId: { in: [...] } } when context is NOT in list", async () => {
+  it(
+    "throws for { tenantId: { in: [...] } } when context is NOT in list",
+    async () => {
     await new Promise<void>((resolve) => {
-      tenantContext.run({ tenantId: "tenant-c", tenantSlug: "tenant-c" }, () => {
-        expect(() =>
-          assertTenantScoped("User", "findMany", {
-            where: { tenantId: { in: ["tenant-a", "tenant-b"] } },
-          })
-        ).toThrow(TenantGuardError);
-        resolve();
-      });
+      tenantContext.run(
+        { tenantId: "tenant-c", tenantSlug: "tenant-c" },
+        () => {
+          expect(() =>
+            assertTenantScoped("User", "findMany", {
+              where: { tenantId: { in: ["tenant-a", "tenant-b"] } },
+            })
+          ).toThrow(TenantGuardError);
+          resolve();
+        }
+      );
     });
   });
 
-  it("passes for { AND: [{ tenantId: contextId }] } when context matches", async () => {
+  it(
+    "passes for { AND: [{ tenantId: contextId }] } when context matches",
+    async () => {
     await new Promise<void>((resolve) => {
-      tenantContext.run({ tenantId: "tenant-x", tenantSlug: "tenant-x" }, () => {
-        expect(() =>
-          assertTenantScoped("Client", "findMany", {
-            where: { AND: [{ tenantId: "tenant-x" }, { status: "active" }] },
-          })
-        ).not.toThrow();
-        resolve();
-      });
+      tenantContext.run(
+        { tenantId: "tenant-x", tenantSlug: "tenant-x" },
+        () => {
+          expect(() =>
+            assertTenantScoped("Client", "findMany", {
+              where: { AND: [{ tenantId: "tenant-x" }, { status: "active" }] },
+            })
+          ).not.toThrow();
+          resolve();
+        }
+      );
     });
   });
 
-  it("throws for { AND: [{ tenantId: otherId }] } when context differs", async () => {
+  it(
+    "throws for { AND: [{ tenantId: otherId }] } when context differs",
+    async () => {
     await new Promise<void>((resolve) => {
-      tenantContext.run({ tenantId: "tenant-x", tenantSlug: "tenant-x" }, () => {
-        expect(() =>
-          assertTenantScoped("Client", "findMany", {
-            where: { AND: [{ tenantId: "tenant-y" }, { status: "active" }] },
-          })
-        ).toThrow(TenantGuardError);
-        resolve();
-      });
+      tenantContext.run(
+        { tenantId: "tenant-x", tenantSlug: "tenant-x" },
+        () => {
+          expect(() =>
+            assertTenantScoped("Client", "findMany", {
+              where: { AND: [{ tenantId: "tenant-y" }, { status: "active" }] },
+            })
+          ).toThrow(TenantGuardError);
+          resolve();
+        }
+      );
     });
   });
 });

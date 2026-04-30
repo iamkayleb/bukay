@@ -33,7 +33,9 @@ const GUARDED_OPS = new Set([
 export class TenantGuardError extends Error {
   constructor(model: string, operation: string, detail?: string) {
     super(
-      `[TenantGuard] ${model}.${operation} blocked — ${detail ?? "tenantId missing from where clause"}`
+      `[TenantGuard] ${model}.${operation} blocked — ${
+        detail ?? "tenantId missing from where clause"
+      }`
     );
     this.name = "TenantGuardError";
   }
@@ -56,10 +58,18 @@ export function extractTenantIdFromWhere(
   if (typeof where.tenantId === "string") return where.tenantId;
 
   // Prisma operator objects: { tenantId: { equals: "abc" } } or { tenantId: { in: [...] } }
-  if (where.tenantId !== null && where.tenantId !== undefined && typeof where.tenantId === "object") {
+  if (
+    where.tenantId !== null &&
+    where.tenantId !== undefined &&
+    typeof where.tenantId === "object"
+  ) {
     const op = where.tenantId as Record<string, unknown>;
     if (typeof op.equals === "string") return op.equals;
-    if (Array.isArray(op.in) && op.in.length > 0 && op.in.every((v) => typeof v === "string")) {
+    if (
+      Array.isArray(op.in) &&
+      op.in.length > 0 &&
+      op.in.every((v) => typeof v === "string")
+    ) {
       return op.in as string[];
     }
   }
@@ -68,7 +78,9 @@ export function extractTenantIdFromWhere(
   if (Array.isArray(where.AND)) {
     for (const clause of where.AND as Record<string, unknown>[]) {
       if (clause && typeof clause === "object") {
-        const found = extractTenantIdFromWhere(clause as Record<string, unknown>);
+        const found = extractTenantIdFromWhere(
+          clause as Record<string, unknown>
+        );
         if (found !== null) return found;
       }
     }
