@@ -573,10 +573,8 @@ def review_progress(
                 "were touched, so the agent produced no source changes."
             )
             blocking_issues = [
-                (
-                    "Only bookkeeping/orchestrator artifacts changed despite "
-                    f"{rounds_without_completion} consecutive rounds without completion"
-                ),
+                "Only bookkeeping/orchestrator artifacts changed despite "
+                f"{rounds_without_completion} consecutive rounds without completion",
                 (
                     "Agent output is not reaching source files; likely stuck rerunning "
                     "bookkeeping steps"
