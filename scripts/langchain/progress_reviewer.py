@@ -689,7 +689,9 @@ def review_progress(
 
 def main() -> int:
     """CLI entry point."""
-    parser = argparse.ArgumentParser(description="Review agent progress against acceptance criteria")
+    parser = argparse.ArgumentParser(
+        description="Review agent progress against acceptance criteria"
+    )
     parser.add_argument(
         "--acceptance-criteria",
         nargs="+",
