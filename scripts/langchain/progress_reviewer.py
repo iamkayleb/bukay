@@ -130,9 +130,9 @@ def build_review_payload(result: ProgressReviewResult) -> dict:
         suggestions = []
         analysis = result.analysis
         if analysis and analysis.blocking_issues:
-            suggestions.extend([item for item in analysis.blocking_issues if item])
+            suggestions.extend(item for item in analysis.blocking_issues if item)
         if analysis and analysis.scope_drift_identified:
-            suggestions.extend([item for item in analysis.scope_drift_identified if item])
+            suggestions.extend(item for item in analysis.scope_drift_identified if item)
         payload["review"] = {
             "score": result.alignment_score,
             "feedback": result.feedback_for_agent,
@@ -434,7 +434,9 @@ def review_progress_with_llm(
     resolved = build_chat_client(model=model) if build_chat_client else None
     if not resolved:
         score, aligned, unaligned = heuristic_alignment_check(
-            acceptance_criteria, recent_commits, files_changed
+            acceptance_criteria,
+            recent_commits,
+            files_changed,
         )
 
         if score >= 6:
@@ -474,7 +476,10 @@ def review_progress_with_llm(
 
         llm = resolved.client
         response, trace_id, trace_url = _invoke_llm_with_trace(
-            llm, prompt, operation="review_progress", pr_number=pr_num
+            llm,
+            prompt,
+            operation="review_progress",
+            pr_number=pr_num,
         )
         content = response.content if hasattr(response, "content") else str(response)
 
@@ -507,7 +512,9 @@ def review_progress_with_llm(
     except Exception as e:
         # Fall back to heuristic on any error
         score, aligned, unaligned = heuristic_alignment_check(
-            acceptance_criteria, recent_commits, files_changed
+            acceptance_criteria,
+            recent_commits,
+            files_changed,
         )
 
         return ProgressReviewResult(
@@ -570,7 +577,10 @@ def review_progress(
                     "Only bookkeeping/orchestrator artifacts changed despite "
                     f"{rounds_without_completion} consecutive rounds without completion"
                 ),
-                "Agent output is not reaching source files; likely stuck rerunning bookkeeping steps",
+                (
+                    "Agent output is not reaching source files; likely stuck rerunning "
+                    "bookkeeping steps"
+                ),
             ]
             feedback = (
                 f"The last {rounds_without_completion} rounds only generated bookkeeping "
@@ -604,15 +614,17 @@ def review_progress(
             analysis=ProgressAnalysis(blocking_issues=blocking_issues),
             feedback_for_agent=feedback,
             summary=(
-                f"{summary_detail} After {rounds_without_completion} rounds without task completion, "
-                "human intervention is required."
+                f"{summary_detail} After {rounds_without_completion} rounds without task "
+                "completion, human intervention is required."
             ),
             used_llm=False,
         )
 
     # Quick heuristic check first
     heuristic_score, aligned, unaligned = heuristic_alignment_check(
-        acceptance_criteria, recent_commits, files_changed
+        acceptance_criteria,
+        recent_commits,
+        files_changed,
     )
 
     # If clearly aligned or clearly not, skip LLM

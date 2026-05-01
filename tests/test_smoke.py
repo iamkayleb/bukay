@@ -1,4 +1,4 @@
-from src.version import VERSION
+from version import VERSION
 
 
 def test_version_is_string() -> None:

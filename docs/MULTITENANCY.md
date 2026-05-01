@@ -24,7 +24,8 @@ All business data belongs to a `Tenant`. Every tenant-scoped model (User, Servic
 `resolveTenant(req, lookup)` resolves in this order:
 
 1. **Subdomain** — `acme.example.com` → slug `"acme"`.
-2. **Cookie** — `tenantSlug` cookie set after login for non-subdomain flows.
+2. **Session** — `tenantSlug` stored in the authenticated session for non-subdomain flows.
+3. **Cookie (fallback)** — `tenantSlug` cookie set after login when session data is unavailable.
 
 The `lookup` argument is a `(slug: string) => Promise<ResolvedTenant | null>` callback so the function is testable without a real database. In production, pass a wrapper around `basePrisma.tenant.findUnique`.
 
@@ -32,8 +33,10 @@ The `lookup` argument is a `(slug: string) => Promise<ResolvedTenant | null>` ca
 import { basePrisma } from "@/lib/db";
 import { resolveTenant } from "@/lib/tenant/resolveTenant";
 
-const tenant = await resolveTenant(req, (slug) =>
-  basePrisma.tenant.findUnique({ where: { slug } })
+const tenant = await resolveTenant(
+  req,
+  (slug) => basePrisma.tenant.findUnique({ where: { slug } }),
+  { tenantSlug: session?.tenantSlug }
 );
 ```
 
@@ -64,9 +67,6 @@ The default `prisma` export from `web/lib/db.ts` is wrapped with `withTenantGuar
 
 ```ts
 import { prisma } from "@/lib/db";
-
-// Throws TenantGuardError — missing tenantId
-await prisma.user.findMany({ where: { email: "foo@example.com" } });
 
 // OK — tenantId present
 await prisma.user.findMany({ where: { tenantId, email: "foo@example.com" } });

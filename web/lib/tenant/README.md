@@ -7,7 +7,7 @@ Request-scoped multi-tenancy for the application, built on AsyncLocalStorage and
 | File | Purpose |
 |------|---------|
 | `tenantContext.ts` | AsyncLocalStorage store — holds the active `tenantId` / `tenantSlug` for the current request |
-| `resolveTenant.ts` | Extracts the tenant slug from the incoming request (subdomain → cookie fallback) |
+| `resolveTenant.ts` | Extracts the tenant slug from the incoming request (subdomain → session → cookie fallback) |
 | `prismaWithTenantGuard.ts` | Prisma client extension that blocks queries missing a valid `tenantId` in `where` |
 
 The guarded client is exported from `web/lib/db.ts` as `prisma` (default for application code) and `basePrisma` (unguarded, **restricted use only** — see below).
@@ -45,6 +45,9 @@ prisma.user.findMany({ where: { tenantId: { in: ["abc", "def"] } } });
 
 // AND nesting
 prisma.user.findMany({ where: { AND: [{ tenantId: "abc" }, { isActive: true }] } });
+
+// OR with tenantId in every branch
+prisma.user.findMany({ where: { OR: [{ tenantId: "abc" }, { tenantId: "def" }] } });
 ```
 
 When a tenant context is active (via `tenantContext.run()`), the guard additionally verifies that the tenantId in the `where` clause matches the context. A `TenantGuardError` is thrown if they differ.
@@ -85,7 +88,12 @@ The `Tenant` model itself is **not** tenant-scoped and can be queried via `baseP
 import { TenantGuardError } from "@/lib/tenant/prismaWithTenantGuard";
 
 try {
-  await prisma.user.findMany({ where: {} }); // throws
+  await tenantContext.run(
+    { tenantId: "tenant-a", tenantSlug: "acme" },
+    async () => {
+      await prisma.user.findMany({ where: { tenantId: "tenant-b" } }); // throws
+    }
+  );
 } catch (err) {
   if (err instanceof TenantGuardError) {
     // Handle guard violation

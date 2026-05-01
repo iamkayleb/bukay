@@ -37,7 +37,11 @@ export async function findActiveClientByEmail(tenantId: string, email: string) {
 // ---------------------------------------------------------------------------
 // Pattern 3 — update scoped to tenant
 // ---------------------------------------------------------------------------
-export async function updateStaffName(tenantId: string, staffId: string, name: string) {
+export async function updateStaffName(
+  tenantId: string,
+  staffId: string,
+  name: string
+) {
   return prisma.staff.update({
     where: { tenantId, id: staffId },
     data: { name },
@@ -60,18 +64,14 @@ export async function runInTenantContext(
 }
 
 // Example: fetching payments inside a context run
-export async function listPaymentsInContext(tenantId: string, tenantSlug: string) {
-  return new Promise<Awaited<ReturnType<typeof prisma.payment.findMany>>>((resolve, reject) => {
-    tenantContext.run({ tenantId, tenantSlug }, async () => {
-      try {
-        // The guard verifies where.tenantId === context.tenantId automatically.
-        const payments = await prisma.payment.findMany({
-          where: { tenantId },
-        });
-        resolve(payments);
-      } catch (err) {
-        reject(err);
-      }
+export async function listPaymentsInContext(
+  tenantId: string,
+  tenantSlug: string
+) {
+  return tenantContext.run({ tenantId, tenantSlug }, async () => {
+    // The guard verifies where.tenantId === context.tenantId automatically.
+    return prisma.payment.findMany({
+      where: { tenantId },
     });
   });
 }

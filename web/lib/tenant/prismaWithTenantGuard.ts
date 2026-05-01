@@ -23,6 +23,7 @@ const GUARDED_OPS = new Set([
   "findUniqueOrThrow",
   "update",
   "updateMany",
+  "upsert",
   "delete",
   "deleteMany",
   "count",
@@ -33,7 +34,9 @@ const GUARDED_OPS = new Set([
 export class TenantGuardError extends Error {
   constructor(model: string, operation: string, detail?: string) {
     super(
-      `[TenantGuard] ${model}.${operation} blocked — ${detail ?? "tenantId missing from where clause"}`
+      `[TenantGuard] ${model}.${operation} blocked — ${
+        detail ?? "tenantId missing from where clause"
+      }`
     );
     this.name = "TenantGuardError";
   }
@@ -52,29 +55,99 @@ export class TenantGuardError extends Error {
 export function extractTenantIdFromWhere(
   where: Record<string, unknown>
 ): string | string[] | null {
-  // Direct string: { tenantId: "abc" }
-  if (typeof where.tenantId === "string") return where.tenantId;
+  const direct = extractDirectTenantId(where);
+  const andConstraint = extractFromAnd(where.AND);
+  const merged = mergeTenantCandidates(direct, andConstraint);
+  if (merged) {
+    return merged.length === 1 ? merged[0] : merged;
+  }
 
-  // Prisma operator objects: { tenantId: { equals: "abc" } } or { tenantId: { in: [...] } }
-  if (where.tenantId !== null && where.tenantId !== undefined && typeof where.tenantId === "object") {
+  const orConstraint = extractFromOr(where.OR);
+  if (orConstraint) {
+    return orConstraint.length === 1 ? orConstraint[0] : orConstraint;
+  }
+
+  return null;
+}
+
+function extractDirectTenantId(where: Record<string, unknown>): string[] | null {
+  if (typeof where.tenantId === "string") return [where.tenantId];
+
+  if (
+    where.tenantId !== null &&
+    where.tenantId !== undefined &&
+    typeof where.tenantId === "object"
+  ) {
     const op = where.tenantId as Record<string, unknown>;
-    if (typeof op.equals === "string") return op.equals;
-    if (Array.isArray(op.in) && op.in.length > 0 && op.in.every((v) => typeof v === "string")) {
+    if (typeof op.equals === "string") return [op.equals];
+    if (
+      Array.isArray(op.in) &&
+      op.in.length > 0 &&
+      op.in.every((v) => typeof v === "string")
+    ) {
       return op.in as string[];
     }
   }
 
-  // AND clause: { AND: [{ tenantId: "abc" }, ...] }
-  if (Array.isArray(where.AND)) {
-    for (const clause of where.AND as Record<string, unknown>[]) {
-      if (clause && typeof clause === "object") {
-        const found = extractTenantIdFromWhere(clause as Record<string, unknown>);
-        if (found !== null) return found;
-      }
+  return null;
+}
+
+function extractFromAnd(andClause: unknown): string[] | null {
+  if (!Array.isArray(andClause) || andClause.length === 0) return null;
+
+  let acc: string[] | null = null;
+  for (const clause of andClause as Record<string, unknown>[]) {
+    if (!clause || typeof clause !== "object") continue;
+    const extracted = extractTenantIdFromWhere(
+      clause as Record<string, unknown>
+    );
+    const normalized = normalizeTenantCandidates(extracted);
+    if (!normalized) continue;
+    acc = acc ? intersectCandidates(acc, normalized) : normalized;
+  }
+
+  return acc && acc.length > 0 ? acc : null;
+}
+
+function extractFromOr(orClause: unknown): string[] | null {
+  if (!Array.isArray(orClause) || orClause.length === 0) return null;
+
+  const union: string[] = [];
+  for (const clause of orClause as Record<string, unknown>[]) {
+    if (!clause || typeof clause !== "object") return null;
+    const extracted = extractTenantIdFromWhere(
+      clause as Record<string, unknown>
+    );
+    const normalized = normalizeTenantCandidates(extracted);
+    if (!normalized) return null;
+    for (const value of normalized) {
+      if (!union.includes(value)) union.push(value);
     }
   }
 
-  return null;
+  return union.length > 0 ? union : null;
+}
+
+function normalizeTenantCandidates(
+  value: string | string[] | null
+): string[] | null {
+  if (!value) return null;
+  return Array.isArray(value) ? value : [value];
+}
+
+function intersectCandidates(left: string[], right: string[]): string[] {
+  return left.filter((value) => right.includes(value));
+}
+
+function mergeTenantCandidates(
+  left: string[] | null,
+  right: string[] | null
+): string[] | null {
+  if (left && right) {
+    const intersection = intersectCandidates(left, right);
+    return intersection.length > 0 ? intersection : null;
+  }
+  return left ?? right;
 }
 
 /**
@@ -85,12 +158,12 @@ export function extractTenantIdFromWhere(
 export function assertTenantScoped(
   model: string,
   operation: string,
-  args: { where?: Record<string, unknown> | null }
+  args?: { where?: Record<string, unknown> | null } | null
 ): void {
   if (!TENANT_SCOPED_MODELS.has(model) || !GUARDED_OPS.has(operation)) return;
 
-  const where = args.where;
-  if (!where) {
+  const where = args?.where;
+  if (!where || typeof where !== "object") {
     throw new TenantGuardError(model, operation);
   }
 

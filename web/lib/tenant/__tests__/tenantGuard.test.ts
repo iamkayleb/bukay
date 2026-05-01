@@ -6,8 +6,25 @@ import {
   withTenantGuard,
 } from "../prismaWithTenantGuard";
 import { extractSubdomainSlug, resolveTenant } from "../resolveTenant";
-import { tenantContext, getTenantId, getTenantIdOrNull } from "../tenantContext";
+import {
+  tenantContext,
+  getTenantId,
+  getTenantIdOrNull,
+  getTenantSlug,
+  getTenantSlugOrNull,
+  getTenantContext,
+} from "../tenantContext";
+import { withTenantContext } from "../withTenantContext";
 
+function makeReq(host: string, cookieSlug?: string) {
+  return {
+    headers: { get: (key: string) => (key === "host" ? host : null) },
+    cookies: {
+      get: (key: string) =>
+        key === "tenantSlug" && cookieSlug ? { value: cookieSlug } : undefined,
+    },
+  } as unknown as import("next/server").NextRequest;
+}
 
 // ---------------------------------------------------------------------------
 // assertTenantScoped
@@ -15,9 +32,7 @@ import { tenantContext, getTenantId, getTenantIdOrNull } from "../tenantContext"
 
 describe("assertTenantScoped", () => {
   it("throws TenantGuardError when tenantId is absent from where", () => {
-    expect(() => assertTenantScoped("User", "findMany", { where: {} })).toThrow(
-      TenantGuardError
-    );
+    expect(() => assertTenantScoped("User", "findMany", { where: {} })).toThrow(TenantGuardError);
   });
 
   it("throws when where is undefined", () => {
@@ -25,7 +40,15 @@ describe("assertTenantScoped", () => {
   });
 
   it("throws for all guarded operations on tenant-scoped models", () => {
-    const ops = ["findFirst", "findFirstOrThrow", "update", "updateMany", "delete", "deleteMany"];
+    const ops = [
+      "findFirst",
+      "findFirstOrThrow",
+      "update",
+      "updateMany",
+      "upsert",
+      "delete",
+      "deleteMany",
+    ];
     for (const op of ops) {
       expect(() => assertTenantScoped("Client", op, { where: {} })).toThrow(TenantGuardError);
     }
@@ -33,7 +56,9 @@ describe("assertTenantScoped", () => {
 
   it("does NOT throw when tenantId is present in where", () => {
     expect(() =>
-      assertTenantScoped("User", "findMany", { where: { tenantId: "tenant-abc" } })
+      assertTenantScoped("User", "findMany", {
+        where: { tenantId: "tenant-abc" },
+      })
     ).not.toThrow();
   });
 
@@ -41,40 +66,54 @@ describe("assertTenantScoped", () => {
     expect(() => assertTenantScoped("Tenant", "findMany", { where: {} })).not.toThrow();
   });
 
-  it("does NOT throw for create operation (tenantId lives in data, not where)", () => {
-    expect(() => assertTenantScoped("User", "create", { where: {} })).not.toThrow();
-  });
+  it(
+    "does NOT throw for create operation (tenantId lives in data, not where)",
+    () => {
+      expect(() => assertTenantScoped("User", "create", { where: {} })).not.toThrow();
+    }
+  );
 
   it("covers all models listed in TENANT_SCOPED_MODELS", () => {
     for (const model of Array.from(TENANT_SCOPED_MODELS)) {
-      expect(() => assertTenantScoped(model, "findMany", { where: {} })).toThrow(
-        TenantGuardError
-      );
+      expect(() => assertTenantScoped(model, "findMany", { where: {} })).toThrow(TenantGuardError);
       expect(() =>
         assertTenantScoped(model, "findMany", { where: { tenantId: "t1" } })
       ).not.toThrow();
     }
   });
 
-  it("blocks cross-tenant read: query with tenantId='tenant-b' fails when context has tenantId='tenant-a'", async () => {
-    await new Promise<void>((resolve) => {
-      tenantContext.run({ tenantId: "tenant-a", tenantSlug: "tenant-a" }, () => {
-        expect(() =>
-          assertTenantScoped("User", "findMany", { where: { tenantId: "tenant-b" } })
-        ).toThrow(TenantGuardError);
-        resolve();
+  it(
+    "blocks cross-tenant read: query with tenantId='tenant-b' fails when context has tenantId='tenant-a'",
+    async () => {
+      await new Promise<void>((resolve) => {
+        tenantContext.run(
+          { tenantId: "tenant-a", tenantSlug: "tenant-a" },
+          () => {
+            expect(() =>
+              assertTenantScoped("User", "findMany", {
+                where: { tenantId: "tenant-b" },
+              })
+            ).toThrow(TenantGuardError);
+            resolve();
+          }
+        );
       });
-    });
-  });
+    }
+  );
 
   it("allows query when tenantId matches the active context", async () => {
     await new Promise<void>((resolve) => {
-      tenantContext.run({ tenantId: "tenant-a", tenantSlug: "tenant-a" }, () => {
-        expect(() =>
-          assertTenantScoped("User", "findMany", { where: { tenantId: "tenant-a" } })
-        ).not.toThrow();
-        resolve();
-      });
+      tenantContext.run(
+        { tenantId: "tenant-a", tenantSlug: "tenant-a" },
+        () => {
+          expect(() =>
+            assertTenantScoped("User", "findMany", {
+              where: { tenantId: "tenant-a" },
+            })
+          ).not.toThrow();
+          resolve();
+        }
+      );
     });
   });
 });
@@ -112,7 +151,9 @@ describe("withTenantGuard", () => {
               }
             ).query.$allModels.$allOperations;
 
-            const query = vi.fn().mockResolvedValue([{ id: "1", tenantId: model }]);
+            const query = vi.fn().mockResolvedValue([
+              { id: "1", tenantId: model },
+            ]);
             return handler({ model, operation, args, query });
           },
         };
@@ -122,16 +163,42 @@ describe("withTenantGuard", () => {
     return mockClient;
   }
 
-  type GuardedMock = { callOp: (model: string, op: string, args: Record<string, unknown>) => Promise<unknown> };
+  type GuardedMock = {
+    callOp: (
+      model: string,
+      op: string,
+      args: Record<string, unknown>
+    ) => Promise<unknown>;
+  };
 
-  it("throws TenantGuardError on cross-tenant read (missing tenantId)", async () => {
-    const mock = makeMockPrisma();
-    const guarded = withTenantGuard(mock) as unknown as GuardedMock;
+  it(
+    "throws TenantGuardError on cross-tenant read (missing tenantId)",
+    async () => {
+      const mock = makeMockPrisma();
+      const guarded = withTenantGuard(mock) as unknown as GuardedMock;
 
-    await expect(
-      guarded.callOp("User", "findMany", { where: {} })
-    ).rejects.toThrow(TenantGuardError);
-  });
+      await expect(guarded.callOp("User", "findMany", { where: {} })).rejects.toThrow(
+        TenantGuardError
+      );
+    }
+  );
+
+  it(
+    "throws TenantGuardError on missing tenantId even when context is active",
+    async () => {
+      const mock = makeMockPrisma();
+      const guarded = withTenantGuard(mock) as unknown as GuardedMock;
+
+      await tenantContext.run(
+        { tenantId: "tenant-a", tenantSlug: "tenant-a" },
+        async () => {
+          await expect(
+            guarded.callOp("User", "findMany", { where: {} })
+          ).rejects.toThrow(TenantGuardError);
+        }
+      );
+    }
+  );
 
   it("returns expected row when tenantId is correct", async () => {
     const mock = makeMockPrisma();
@@ -143,13 +210,68 @@ describe("withTenantGuard", () => {
     expect(result).toEqual([{ id: "1", tenantId: "User" }]);
   });
 
-  it("passes through Tenant model queries without tenantId requirement", async () => {
+  it("returns expected row when tenantId matches active context", async () => {
+    const mock = makeMockPrisma();
+    const guarded = withTenantGuard(mock) as unknown as GuardedMock;
+
+    await tenantContext.run(
+      { tenantId: "tenant-xyz", tenantSlug: "tenant-xyz" },
+      async () => {
+        const result = await guarded.callOp("User", "findMany", {
+          where: { tenantId: "tenant-xyz" },
+        });
+        expect(result).toEqual([{ id: "1", tenantId: "User" }]);
+      }
+    );
+  });
+
+  it(
+    "throws TenantGuardError on cross-tenant read (mismatched tenantId)",
+    async () => {
+      const mock = makeMockPrisma();
+      const guarded = withTenantGuard(mock) as unknown as GuardedMock;
+
+      await tenantContext.run(
+        { tenantId: "tenant-a", tenantSlug: "tenant-a" },
+        async () => {
+          await expect(
+            guarded.callOp("User", "findMany", {
+              where: { tenantId: "tenant-b" },
+            })
+          ).rejects.toThrow(TenantGuardError);
+        }
+      );
+    }
+  );
+
+  it(
+    "passes through Tenant model queries without tenantId requirement",
+    async () => {
+      const mock = makeMockPrisma();
+      const guarded = withTenantGuard(mock) as unknown as GuardedMock;
+
+      await expect(guarded.callOp("Tenant", "findMany", { where: {} })).resolves.toBeDefined();
+    }
+  );
+
+  it("blocks findUnique when tenantId is missing from where", async () => {
     const mock = makeMockPrisma();
     const guarded = withTenantGuard(mock) as unknown as GuardedMock;
 
     await expect(
-      guarded.callOp("Tenant", "findMany", { where: {} })
-    ).resolves.toBeDefined();
+      guarded.callOp("Booking", "findUnique", { where: { id: "booking-1" } })
+    ).rejects.toThrow(TenantGuardError);
+  });
+
+  it("allows findUnique when tenantId is present", async () => {
+    const mock = makeMockPrisma();
+    const guarded = withTenantGuard(mock) as unknown as GuardedMock;
+
+    const result = await guarded.callOp("Booking", "findUnique", {
+      where: { id: "booking-1", tenantId: "tenant-123" },
+    });
+
+    expect(result).toEqual([{ id: "1", tenantId: "Booking" }]);
   });
 });
 
@@ -188,13 +310,6 @@ describe("extractSubdomainSlug", () => {
 // ---------------------------------------------------------------------------
 
 describe("resolveTenant", () => {
-  function makeReq(host: string, cookieSlug?: string) {
-    return {
-      headers: { get: (key: string) => (key === "host" ? host : null) },
-      cookies: { get: (key: string) => (key === "tenantSlug" && cookieSlug ? { value: cookieSlug } : undefined) },
-    } as unknown as import("next/server").NextRequest;
-  }
-
   it("resolves via subdomain", async () => {
     const tenant = { id: "t1", slug: "acme", name: "Acme Corp" };
     const lookup = vi.fn().mockResolvedValue(tenant);
@@ -213,11 +328,58 @@ describe("resolveTenant", () => {
     expect(lookup).toHaveBeenCalledWith("beta");
   });
 
-  it("returns null when neither subdomain nor cookie resolves a tenant", async () => {
-    const lookup = vi.fn().mockResolvedValue(null);
+  it("resolves via session tenantSlug when provided", async () => {
+    const tenant = { id: "t3", slug: "session-tenant", name: "Session Co" };
+    const lookup = vi.fn().mockResolvedValue(tenant);
 
-    const result = await resolveTenant(makeReq("example.com"), lookup);
+    const result = await resolveTenant(makeReq("example.com"), lookup, {
+      tenantSlug: "session-tenant",
+    });
+    expect(result).toEqual(tenant);
+    expect(lookup).toHaveBeenCalledWith("session-tenant");
+  });
+
+  it(
+    "returns null when neither subdomain nor cookie resolves a tenant",
+    async () => {
+      const lookup = vi.fn().mockResolvedValue(null);
+
+      const result = await resolveTenant(makeReq("example.com"), lookup);
+      expect(result).toBeNull();
+    }
+  );
+});
+
+// ---------------------------------------------------------------------------
+// withTenantContext
+// ---------------------------------------------------------------------------
+
+describe("withTenantContext", () => {
+  it("runs the handler inside the tenant context when resolved", async () => {
+    const tenant = { id: "t9", slug: "acme", name: "Acme" };
+    const lookup = vi.fn().mockResolvedValue(tenant);
+
+    const result = await withTenantContext(
+      makeReq("acme.example.com"),
+      lookup,
+      () => getTenantId()
+    );
+
+    expect(result).toBe("t9");
+  });
+
+  it("returns null when the tenant cannot be resolved", async () => {
+    const lookup = vi.fn().mockResolvedValue(null);
+    const handler = vi.fn().mockReturnValue("should-not-run");
+
+    const result = await withTenantContext(
+      makeReq("example.com"),
+      lookup,
+      handler
+    );
+
     expect(result).toBeNull();
+    expect(handler).not.toHaveBeenCalled();
   });
 });
 
@@ -226,12 +388,24 @@ describe("resolveTenant", () => {
 // ---------------------------------------------------------------------------
 
 describe("tenantContext", () => {
+  it("getTenantContext throws outside of a run context", () => {
+    expect(() => getTenantContext()).toThrow(/No tenant context/);
+  });
+
   it("getTenantId throws outside of a run context", () => {
     expect(() => getTenantId()).toThrow(/No tenant context/);
   });
 
+  it("getTenantSlug throws outside of a run context", () => {
+    expect(() => getTenantSlug()).toThrow(/No tenant context/);
+  });
+
   it("getTenantIdOrNull returns null outside of a run context", () => {
     expect(getTenantIdOrNull()).toBeNull();
+  });
+
+  it("getTenantSlugOrNull returns null outside of a run context", () => {
+    expect(getTenantSlugOrNull()).toBeNull();
   });
 
   it("getTenantId returns the tenantId inside a run context", async () => {
@@ -243,12 +417,42 @@ describe("tenantContext", () => {
     });
   });
 
-  it("getTenantIdOrNull returns the tenantId inside a run context", async () => {
+  it("getTenantSlug returns the tenantSlug inside a run context", async () => {
     await new Promise<void>((resolve) => {
-      tenantContext.run({ tenantId: "tenant-002", tenantSlug: "test" }, () => {
-        expect(getTenantIdOrNull()).toBe("tenant-002");
+      tenantContext.run({ tenantId: "tenant-001", tenantSlug: "demo" }, () => {
+        expect(getTenantSlug()).toBe("demo");
         resolve();
       });
     });
   });
+
+  it(
+    "getTenantIdOrNull returns the tenantId inside a run context",
+    async () => {
+      await new Promise<void>((resolve) => {
+        tenantContext.run(
+          { tenantId: "tenant-002", tenantSlug: "test" },
+          () => {
+            expect(getTenantIdOrNull()).toBe("tenant-002");
+            resolve();
+          }
+        );
+      });
+    }
+  );
+
+  it(
+    "getTenantSlugOrNull returns the tenantSlug inside a run context",
+    async () => {
+      await new Promise<void>((resolve) => {
+        tenantContext.run(
+          { tenantId: "tenant-002", tenantSlug: "test" },
+          () => {
+            expect(getTenantSlugOrNull()).toBe("test");
+            resolve();
+          }
+        );
+      });
+    }
+  );
 });
