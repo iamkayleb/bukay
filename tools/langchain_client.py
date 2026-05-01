@@ -176,16 +176,24 @@ def _build_openai_client(
     return chat_openai(**kwargs)
 
 
+def _anthropic_rejects_temperature(model: str) -> bool:
+    """Return True if the Anthropic model rejects the temperature parameter."""
+    name = model.lower().strip()
+    return "opus" in name
+
+
 def _build_anthropic_client(
     chat_anthropic: type, *, model: str, token: str, timeout: int, max_retries: int
 ) -> object:
-    return chat_anthropic(
-        model=model,
-        anthropic_api_key=token,
-        temperature=0.1,
-        timeout=timeout,
-        max_retries=max_retries,
-    )
+    kwargs: dict = {
+        "model": model,
+        "anthropic_api_key": token,
+        "timeout": timeout,
+        "max_retries": max_retries,
+    }
+    if not _anthropic_rejects_temperature(model):
+        kwargs["temperature"] = 0.1
+    return chat_anthropic(**kwargs)
 
 
 def _build_github_client(
