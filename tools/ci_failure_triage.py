@@ -23,6 +23,8 @@ class TriagePattern:
     suggested_fix: str
     file_regexes: tuple[re.Pattern[str], ...] = ()
     playbook_url: str | None = None
+    context_before: int = 0
+    context_after: int = 0
 
 
 @dataclass(frozen=True)
@@ -57,6 +59,8 @@ SUGGESTED_FIX_TEMPLATES: dict[str, str] = {
     "syntax_error": "Fix the syntax error in {files} and rerun the formatter or linter if needed.",
 }
 
+CI_FAILING_PLAYBOOK_URL = "docs/CI_SYSTEM_GUIDE.md#ci-is-failing"
+
 
 DEFAULT_TRIAGE_PATTERNS: tuple[TriagePattern, ...] = (
     TriagePattern(
@@ -71,7 +75,7 @@ DEFAULT_TRIAGE_PATTERNS: tuple[TriagePattern, ...] = (
         root_cause="Type checking failed during mypy.",
         suggested_fix=SUGGESTED_FIX_TEMPLATES["mypy"],
         file_regexes=_compile([r"(?P<path>[A-Za-z0-9_./-]+\.py):\d+:"]),
-        playbook_url="docs/INTEGRATION_GUIDE.md#scenario-2-mypy-errors",
+        playbook_url=CI_FAILING_PLAYBOOK_URL,
     ),
     TriagePattern(
         error_type="pytest",
@@ -79,13 +83,12 @@ DEFAULT_TRIAGE_PATTERNS: tuple[TriagePattern, ...] = (
             [
                 r"=+ FAILURES =+",
                 r"E\s+AssertionError",
-                r"FAILED\s+[A-Za-z0-9_./-]+::",
             ]
         ),
         root_cause="Pytest reported failing tests.",
         suggested_fix=SUGGESTED_FIX_TEMPLATES["pytest"],
         file_regexes=_compile([r"(?P<path>[A-Za-z0-9_./-]+\.py):\d+:"]),
-        playbook_url="docs/INTEGRATION_GUIDE.md#scenario-1-tests-failing",
+        playbook_url=CI_FAILING_PLAYBOOK_URL,
     ),
     TriagePattern(
         error_type="coverage",
@@ -98,7 +101,7 @@ DEFAULT_TRIAGE_PATTERNS: tuple[TriagePattern, ...] = (
         ),
         root_cause="Coverage enforcement failed.",
         suggested_fix=SUGGESTED_FIX_TEMPLATES["coverage"],
-        playbook_url="docs/INTEGRATION_GUIDE.md#consumer-repo-setup-coverage-soft-gate",
+        playbook_url=CI_FAILING_PLAYBOOK_URL,
     ),
     TriagePattern(
         error_type="import_error",
@@ -112,7 +115,8 @@ DEFAULT_TRIAGE_PATTERNS: tuple[TriagePattern, ...] = (
         root_cause="Python import failed during test or runtime.",
         suggested_fix=SUGGESTED_FIX_TEMPLATES["import_error"],
         file_regexes=_compile([r"File \"(?P<path>[A-Za-z0-9_./-]+\.py)\""]),
-        playbook_url="docs/llm-task-analysis.md#import-errors",
+        playbook_url=CI_FAILING_PLAYBOOK_URL,
+        context_before=2,
     ),
     TriagePattern(
         error_type="syntax_error",
@@ -126,7 +130,8 @@ DEFAULT_TRIAGE_PATTERNS: tuple[TriagePattern, ...] = (
         root_cause="Python parser raised a syntax error.",
         suggested_fix=SUGGESTED_FIX_TEMPLATES["syntax_error"],
         file_regexes=_compile([r"File \"(?P<path>[A-Za-z0-9_./-]+\.py)\""]),
-        playbook_url="docs/fast-validation-ecosystem.md#error-handling",
+        playbook_url=CI_FAILING_PLAYBOOK_URL,
+        context_after=2,
     ),
 )
 
@@ -141,10 +146,17 @@ def triage_ci_failure(
     failed_tests = extract_pytest_failures(log_text)
 
     for pattern in patterns:
-        evidence = _collect_evidence(lines, pattern.regexes)
+        evidence = _collect_evidence(
+            lines,
+            pattern.regexes,
+            context_before=pattern.context_before,
+            context_after=pattern.context_after,
+        )
         if not evidence:
             continue
-        relevant_files = _extract_relevant_files(evidence, pattern.file_regexes)
+        relevant_files = _extract_relevant_files(lines, evidence, pattern.file_regexes)
+        if pattern.error_type == "pytest" and _is_unmatched_pytest_failure(evidence):
+            continue
         suggested_fix = _format_suggested_fix(pattern.suggested_fix, relevant_files)
         findings.append(
             TriageFinding(
@@ -162,18 +174,34 @@ def triage_ci_failure(
     return _maybe_enhance_with_llm(report, log_text, use_llm)
 
 
-def _collect_evidence(lines: list[str], regexes: tuple[re.Pattern[str], ...]) -> list[str]:
+def _collect_evidence(
+    lines: list[str],
+    regexes: tuple[re.Pattern[str], ...],
+    *,
+    context_before: int = 0,
+    context_after: int = 0,
+) -> list[str]:
     evidence: list[str] = []
-    for line in lines:
-        if any(regex.search(line) for regex in regexes):
-            evidence.append(line)
+    seen: set[str] = set()
+    for index, line in enumerate(lines):
+        if not any(regex.search(line) for regex in regexes):
+            continue
+        start = max(0, index - context_before)
+        end = min(len(lines), index + context_after + 1)
+        for context_line in lines[start:end]:
+            if context_line in seen:
+                continue
+            seen.add(context_line)
+            evidence.append(context_line)
     return evidence
 
 
 def _extract_relevant_files(
-    evidence: list[str], file_regexes: tuple[re.Pattern[str], ...]
+    lines: list[str], evidence: list[str], file_regexes: tuple[re.Pattern[str], ...]
 ) -> list[str]:
     paths: list[str] = []
+    fallback_lines = list(evidence)
+    file_matches_found = False
 
     for line in evidence:
         for regex in file_regexes:
@@ -182,6 +210,21 @@ def _extract_relevant_files(
                 path = match.groupdict().get("path")
                 if path:
                     paths.append(path)
+                    file_matches_found = True
+
+    if file_regexes and not file_matches_found:
+        matched_indexes = {index for index, line in enumerate(lines) if line in evidence}
+        for index in matched_indexes:
+            start = max(0, index - 2)
+            end = min(len(lines), index + 3)
+            for line in lines[start:end]:
+                for regex in file_regexes:
+                    match = regex.search(line)
+                    if match:
+                        path = match.groupdict().get("path")
+                        if path:
+                            paths.append(path)
+    for line in fallback_lines:
         match = _DEFAULT_FILE_REGEX.search(line)
         if match:
             path = match.groupdict().get("path")
@@ -196,6 +239,10 @@ def _extract_relevant_files(
         seen.add(path)
         unique_paths.append(path)
     return unique_paths
+
+
+def _is_unmatched_pytest_failure(evidence: list[str]) -> bool:
+    return bool(evidence) and all(line.startswith("FAILED ") for line in evidence)
 
 
 def _format_suggested_fix(template: str, relevant_files: list[str]) -> str:
@@ -436,10 +483,24 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="CI failure triage helper.")
     parser.add_argument("--log-file", help="Path to a log file; defaults to stdin.")
     parser.add_argument("--json", action="store_true", help="Emit JSON output.")
+    llm_group = parser.add_mutually_exclusive_group()
+    llm_group.add_argument(
+        "--use-llm",
+        dest="use_llm",
+        action="store_true",
+        help="Enable optional LLM-based triage enrichment.",
+    )
+    llm_group.add_argument(
+        "--no-llm",
+        dest="use_llm",
+        action="store_false",
+        help="Disable LLM-based triage enrichment even if env opts in.",
+    )
+    parser.set_defaults(use_llm=None)
     args = parser.parse_args(argv)
 
     log_text = _read_log_text(args.log_file)
-    report = triage_ci_failure(log_text)
+    report = triage_ci_failure(log_text, use_llm=args.use_llm)
 
     if args.json:
         payload = _report_to_dict(report)

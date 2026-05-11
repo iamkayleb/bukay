@@ -14,50 +14,67 @@ The script:
 from __future__ import annotations
 
 import os
+import re
 import sys
+from collections.abc import Mapping
 from pathlib import Path
+from typing import cast
+
+
+_MYPY_PYTHON_VERSION_PATTERN = re.compile(
+    r'\[tool\.mypy\].*?python_version\s*=\s*["\']?(\d+\.\d+)["\']?',
+    re.DOTALL,
+)
+_PYPROJECT_CANDIDATES = (
+    Path("pyproject.toml"),
+    Path(".workflows-lib/pyproject.toml"),
+)
+
+
+def _extract_mypy_version_from_text(content: str) -> str | None:
+    """Extract python_version from TOML text without requiring a TOML parser."""
+    match = _MYPY_PYTHON_VERSION_PATTERN.search(content)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _as_str_object_mapping(value: object) -> Mapping[str, object]:
+    """Normalize TOML table-like values to a string-keyed mapping."""
+    if not isinstance(value, Mapping):
+        return {}
+    return cast(Mapping[str, object], value)
 
 
 def get_mypy_python_version() -> str | None:
     """Extract python_version from pyproject.toml's [tool.mypy] section."""
-    pyproject_path = Path("pyproject.toml")
-    if not pyproject_path.exists():
+    pyproject_path = next((path for path in _PYPROJECT_CANDIDATES if path.exists()), None)
+    if pyproject_path is None:
+        return None
+
+    try:
+        content = pyproject_path.read_text(encoding="utf-8")
+    except OSError:
         return None
 
     try:
         # Try tomlkit first (more accurate TOML parsing)
         import tomlkit
 
-        content = pyproject_path.read_text()
         data = tomlkit.parse(content)
-        tool_raw = data.get("tool")
-        # Use dict() to normalize tomlkit types and satisfy mypy
-        # tomlkit returns Table objects that act like dicts but mypy doesn't know this
-        tool: dict[str, object] = dict(tool_raw) if hasattr(tool_raw, "get") else {}  # type: ignore[arg-type,call-overload]
-        mypy_raw = tool.get("mypy")
-        mypy: dict[str, object] = dict(mypy_raw) if hasattr(mypy_raw, "get") else {}  # type: ignore[arg-type,call-overload]
+        tool = _as_str_object_mapping(data.get("tool"))
+        mypy = _as_str_object_mapping(tool.get("mypy"))
         version = mypy.get("python_version")
         # Validate type before conversion - TOML can parse various types
         if isinstance(version, (str, int, float)):
             return str(version)
         return None
     except ImportError:
-        pass
+        return _extract_mypy_version_from_text(content)
+    except Exception:
+        return _extract_mypy_version_from_text(content)
 
-    # Fallback: simple regex-based extraction
-    import re
-
-    content = pyproject_path.read_text()
-    # Match python_version in [tool.mypy] section
-    match = re.search(
-        r'\[tool\.mypy\].*?python_version\s*=\s*["\']?(\d+\.\d+)["\']?',
-        content,
-        re.DOTALL,
-    )
-    if match:
-        return match.group(1)
-
-    return None
+    return _extract_mypy_version_from_text(content)
 
 
 def main() -> int:
@@ -70,18 +87,18 @@ def main() -> int:
 
     # Determine which version to output
     # If mypy has a configured version, use it; otherwise use matrix version
-    if mypy_version:  # noqa: SIM108
-        output_version = mypy_version
-    else:
-        # Default to the primary Python version (first in typical matrices)
-        output_version = matrix_version or "3.11"
+    output_version = mypy_version or matrix_version or "3.11"
 
     # Write to GITHUB_OUTPUT
     github_output = os.environ.get("GITHUB_OUTPUT")
     if github_output:
-        with open(github_output, "a") as f:
-            f.write(f"python-version={output_version}\n")
-        print(f"Resolved mypy Python version: {output_version}")
+        try:
+            with open(github_output, "a", encoding="utf-8") as f:
+                f.write(f"python-version={output_version}\n")
+        except OSError:
+            print(f"python-version={output_version}")
+        else:
+            print(f"Resolved mypy Python version: {output_version}")
     else:
         # For local testing
         print(f"python-version={output_version}")
