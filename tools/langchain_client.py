@@ -24,7 +24,7 @@ ENV_TIMEOUT = "LANGCHAIN_TIMEOUT"
 ENV_MAX_RETRIES = "LANGCHAIN_MAX_RETRIES"
 ENV_SLOT_CONFIG = "LANGCHAIN_SLOT_CONFIG"
 ENV_SLOT_PREFIX = "LANGCHAIN_SLOT"
-ENV_ANTHROPIC_KEY = "CLAUDE_API_STRANSKE"
+ENV_ANTHROPIC_KEY = "CLAUDE_API_KEY"
 
 PROVIDER_OPENAI = "openai"
 PROVIDER_ANTHROPIC = "anthropic"
@@ -97,7 +97,7 @@ def _default_slots() -> list[SlotDefinition]:
     return [
         SlotDefinition(name="slot1", provider=PROVIDER_OPENAI, model="gpt-5.2"),
         SlotDefinition(
-            name="slot2", provider=PROVIDER_ANTHROPIC, model="claude-sonnet-4-5-20250929"
+            name="slot2", provider=PROVIDER_ANTHROPIC, model="claude-opus-4-7"
         ),
         SlotDefinition(name="slot3", provider=PROVIDER_GITHUB, model="gpt-4.1"),
     ]
@@ -148,41 +148,67 @@ def _resolve_slots() -> list[SlotDefinition]:
     return _apply_slot_env_overrides(_load_slot_config())
 
 
+def _is_reasoning_model(model: str) -> bool:
+    """Return True if the model is an OpenAI reasoning model that rejects temperature.
+
+    Supported naming pattern: `o` + digits, with optional suffixes. Examples: `o1`,
+    `o1-preview`, `o1-preview-2024-09-12`, `o3`, `o3-mini`, `o3-pro`, `o4-mini`,
+    `o4-mini-deep-research`. Non-matching examples: `o`, `o-1`, `openai-o1`, `oasis-1`.
+    """
+    name = model.lower().strip()
+    # o-series reasoning models use an `o` prefix followed by digits with optional
+    # hyphen-separated suffixes: o1, o1-preview, o1-preview-2024-09-12, o3, o3-mini,
+    # o3-pro, o4-mini, o4-mini-deep-research.
+    return bool(__import__("re").fullmatch(r"o[0-9]+(?:-[a-z0-9]+)*", name))
+
+
 def _build_openai_client(
     chat_openai: type, *, model: str, token: str, timeout: int, max_retries: int
 ) -> object:
-    return chat_openai(
-        model=model,
-        api_key=token,
-        temperature=0.1,
-        timeout=timeout,
-        max_retries=max_retries,
-    )
+    kwargs: dict = {
+        "model": model,
+        "api_key": token,
+        "timeout": timeout,
+        "max_retries": max_retries,
+    }
+    if not _is_reasoning_model(model):
+        kwargs["temperature"] = 0.1
+    return chat_openai(**kwargs)
+
+
+def _anthropic_rejects_temperature(model: str) -> bool:
+    """Return True if the Anthropic model rejects the temperature parameter."""
+    name = model.lower().strip()
+    return "opus" in name
 
 
 def _build_anthropic_client(
     chat_anthropic: type, *, model: str, token: str, timeout: int, max_retries: int
 ) -> object:
-    return chat_anthropic(
-        model=model,
-        anthropic_api_key=token,
-        temperature=0.1,
-        timeout=timeout,
-        max_retries=max_retries,
-    )
+    kwargs: dict = {
+        "model": model,
+        "anthropic_api_key": token,
+        "timeout": timeout,
+        "max_retries": max_retries,
+    }
+    if not _anthropic_rejects_temperature(model):
+        kwargs["temperature"] = 0.1
+    return chat_anthropic(**kwargs)
 
 
 def _build_github_client(
     chat_openai: type, *, model: str, token: str, timeout: int, max_retries: int
 ) -> object:
-    return chat_openai(
-        model=model,
-        base_url=GITHUB_MODELS_BASE_URL,
-        api_key=token,
-        temperature=0.1,
-        timeout=timeout,
-        max_retries=max_retries,
-    )
+    kwargs: dict = {
+        "model": model,
+        "base_url": GITHUB_MODELS_BASE_URL,
+        "api_key": token,
+        "timeout": timeout,
+        "max_retries": max_retries,
+    }
+    if not _is_reasoning_model(model):
+        kwargs["temperature"] = 0.1
+    return chat_openai(**kwargs)
 
 
 def build_chat_client(
