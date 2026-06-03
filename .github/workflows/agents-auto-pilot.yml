@@ -176,7 +176,7 @@ jobs:
             });
 
             const { data } = await withRetry((client) => client.rest.repos.get({
-              owner: 'stranske',
+              owner: context.repo.owner,
               repo: 'Workflows'
             }));
             if (!data?.default_branch) {
@@ -659,7 +659,7 @@ jobs:
           STEP_COUNT: ${{ steps.cycles.outputs.count }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CLAUDE_API_STRANSKE: ${{ secrets.CLAUDE_API_STRANSKE }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           PYTHONPATH: ${{ github.workspace }}
         run: |
 
@@ -910,9 +910,9 @@ jobs:
           STEP_COUNT: ${{ steps.cycles.outputs.count }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CLAUDE_API_STRANSKE: ${{ secrets.CLAUDE_API_STRANSKE }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           LANGCHAIN_PROVIDER: anthropic
-          LANGCHAIN_MODEL: claude-sonnet-4-5-20250929
+          LANGCHAIN_MODEL: claude-opus-4-7
           PYTHONPATH: ${{ github.workspace }}
         run: |
 
@@ -1264,9 +1264,9 @@ jobs:
           STEP_COUNT: ${{ steps.cycles.outputs.count }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CLAUDE_API_STRANSKE: ${{ secrets.CLAUDE_API_STRANSKE }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           LANGCHAIN_PROVIDER: anthropic
-          LANGCHAIN_MODEL: claude-sonnet-4-5-20250929
+          LANGCHAIN_MODEL: claude-opus-4-7
           PYTHONPATH: ${{ github.workspace }}
         run: |
 
@@ -2029,9 +2029,7 @@ jobs:
               env: process.env,
               task: 'auto-pilot-verify',
               capabilities: ['issues:write', 'pulls:read']
-              }));
-              const prefix = `Dispatched belt dispatcher (agent: ${agentKey}) for issue`;
-              core.info(`${prefix} #${issueNumber}`);
+            });
 
             // Find the merged PR for this issue
             // Look for PRs with the meta marker or explicit closing reference
