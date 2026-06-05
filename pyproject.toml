@@ -75,7 +75,7 @@ markers = [
 [tool.coverage.run]
 branch = true
 parallel = true
-omit = ["*/tests/*", "*/test_*.py", "*/.venv/*"]
+omit = ["*/tests/*", "*/test_*.py", "*/.venv/*", "*/tools/*", "*/scripts/*"]
 
 [tool.coverage.report]
 precision = 2
