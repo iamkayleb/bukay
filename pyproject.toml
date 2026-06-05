@@ -10,7 +10,13 @@ requires-python = ">=3.11"
 
 [project.optional-dependencies]
 app = []
-dev = []
+dev = [
+    "black",
+    "mypy",
+    "pytest",
+    "pytest-cov",
+    "ruff",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
