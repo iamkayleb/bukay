@@ -10,6 +10,8 @@ agents:
     runner_workflow: .github/workflows/reusable-codex-run.yml
     required_secrets:
       - CODEX_AUTH_JSON
+      - OPENAI_API_KEY
+    required_secrets_mode: any
     branch_prefix: codex/issue-
     ui_mentions_allowed: false
     automation_logins:
@@ -27,6 +29,8 @@ agents:
       verifier_checkbox: true
 
   claude:
+    display_name: Claude
+    model: claude-opus-4-7
     runner_workflow: .github/workflows/reusable-claude-run.yml
     required_secrets:
       - CLAUDE_CODE_OAUTH_TOKEN  # preferred: long-lived token from `claude setup-token`
@@ -68,3 +72,4 @@ agents:
       pr_autofix: true
       belt: true
       verifier_checkbox: true
+

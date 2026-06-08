@@ -26,7 +26,7 @@ def get_mypy_python_version() -> str | None:
 
     try:
         # Try tomlkit first (more accurate TOML parsing)
-        import tomlkit
+        import tomlkit  # type: ignore[import-not-found]
 
         content = pyproject_path.read_text()
         data = tomlkit.parse(content)
@@ -89,5 +89,5 @@ def main() -> int:
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - CLI entry point
     sys.exit(main())

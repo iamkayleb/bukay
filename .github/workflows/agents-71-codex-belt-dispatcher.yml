@@ -187,7 +187,7 @@ jobs:
             const { withRetry } = await createTokenAwareRetry({ github, core });
             const { data } = await withRetry((client) =>
               client.rest.repos.get({
-                owner: 'stranske',
+                owner: context.repo.owner,
                 repo: 'Workflows'
               })
             );
@@ -320,8 +320,8 @@ jobs:
           branch="${{ steps.pick.outputs.branch }}"
           default_ref="${{ steps.pick.outputs.base }}"
 
-          git config user.name "stranske-automation-bot"
-          git config user.email "stranske-automation-bot@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           existing_ref=$(git ls-remote --heads origin "$branch" || true)
           if [ -n "$existing_ref" ]; then
