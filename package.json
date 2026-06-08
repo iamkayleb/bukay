@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "next lint",
-    "smoke:dev": "node scripts/next-dev-smoke.mjs"
+    "smoke:dev": "node scripts/next-dev-smoke.mjs",
+    "smoke:build": "node scripts/next-build-smoke.mjs"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
