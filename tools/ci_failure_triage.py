@@ -13,6 +13,7 @@ import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -276,7 +277,7 @@ def _run_llm_triage(log_text: str) -> list[TriageFinding]:
     return _parse_llm_findings(content)
 
 
-def _get_llm_client() -> tuple[object, str] | None:
+def _get_llm_client() -> tuple[Any, str] | None:
     try:
         from langchain_openai import ChatOpenAI
     except ImportError:
@@ -294,7 +295,7 @@ def _get_llm_client() -> tuple[object, str] | None:
             ChatOpenAI(
                 model=DEFAULT_MODEL,
                 base_url=GITHUB_MODELS_BASE_URL,
-                api_key=github_token,
+                api_key=github_token,  # type: ignore[arg-type]
                 temperature=0.1,
             ),
             "github-models",
@@ -302,7 +303,7 @@ def _get_llm_client() -> tuple[object, str] | None:
     return (
         ChatOpenAI(
             model=DEFAULT_MODEL,
-            api_key=openai_token,
+            api_key=openai_token,  # type: ignore[arg-type]
             temperature=0.1,
         ),
         "openai",
