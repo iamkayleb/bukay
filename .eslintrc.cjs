@@ -1,3 +1,5 @@
 module.exports = {
-  extends: ["next/core-web-vitals", "prettier"]
+  root: true,
+  extends: ["next/core-web-vitals", "prettier"],
+  ignorePatterns: ["node_modules/", ".next/", "out/"]
 };
