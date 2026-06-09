@@ -186,6 +186,14 @@ poetry.lock
 
 # END WORKFLOWS STATUS FILES
 # =============================================================================
+# Node / Prisma
+# =============================================================================
+node_modules/
+dist/
+prisma/generated/
+.prisma/
+
+# =============================================================================
 # Langchain Scripts Exclusion
 # =============================================================================
 # These scripts should ONLY exist in stranske/Workflows repo.
