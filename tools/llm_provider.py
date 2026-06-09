@@ -40,6 +40,28 @@ DEFAULT_MODEL = "gpt-4.1"
 ANTHROPIC_API_KEY_ENV = "CLAUDE_API_KEY"
 SHORT_ANALYSIS_CONFIDENCE_CAP = 0.4
 
+# Cost isolation: the metered API keys (OPENAI_API_KEY / CLAUDE_API_KEY) are
+# reserved EXCLUSIVELY for verify:compare. Every other LLM use (session
+# analysis, progress review, issue optimization, dedup, auto-label, etc.) must
+# run on the free GitHub Models tier so it cannot spend the verify budget.
+#
+# Metered providers therefore report themselves unavailable unless the caller
+# explicitly opts in by setting LLM_ALLOW_METERED. Only the verify:compare
+# workflow steps set that flag, so a grep for LLM_ALLOW_METERED shows exactly
+# where metered spend is permitted. This is defense-in-depth: even if a metered
+# key leaks into another workflow's env, the provider stays disabled.
+METERED_OPT_IN_ENV = "LLM_ALLOW_METERED"
+
+
+def metered_providers_allowed() -> bool:
+    """Return True only when metered providers are explicitly opted in.
+
+    Reserved for verify:compare. Returns False (free GitHub Models only) for
+    every other LLM use so the verify budget cannot be spent on code analysis.
+    """
+    value = os.environ.get(METERED_OPT_IN_ENV, "").strip().lower()
+    return value in {"1", "true", "yes", "on", "enabled"}
+
 
 def _setup_langsmith_tracing() -> bool:
     """
@@ -576,7 +598,7 @@ class OpenAIProvider(LLMProvider):
         return "openai"
 
     def is_available(self) -> bool:
-        return bool(os.environ.get("OPENAI_API_KEY"))
+        return metered_providers_allowed() and bool(os.environ.get("OPENAI_API_KEY"))
 
     def supports_quality_context(self) -> bool:
         return True
@@ -643,7 +665,7 @@ class AnthropicProvider(LLMProvider):
         return "anthropic"
 
     def is_available(self) -> bool:
-        return bool(os.environ.get(ANTHROPIC_API_KEY_ENV))
+        return metered_providers_allowed() and bool(os.environ.get(ANTHROPIC_API_KEY_ENV))
 
     def supports_quality_context(self) -> bool:
         return True
