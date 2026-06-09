@@ -66,7 +66,12 @@ The PR is complete when ALL of these are satisfied:
 - [ ] All tenant-scoped tables have @@index([tenantId])
 - [ ] Schema doc checked in
 
-### Suggested Next Task
+### Recently Attempted Tasks
+Avoid repeating these unless a task needs explicit follow-up:
+
 - Write Prisma models with relations and indexes
+
+### Suggested Next Task
+- Add tenantId to all tenant-scoped tables
 
 ---

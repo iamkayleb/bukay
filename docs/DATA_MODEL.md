@@ -186,6 +186,17 @@ npm run prisma:migrate:dev
 npm run db:seed
 ```
 
-After seeding, the demo tenant has slug `demo`, one `OWNER` user
-(`owner@demo.bukay.dev`), three services (`Classic Haircut`, `Beard Trim`,
-`Full Grooming Package`), and Mon–Sat 09:00–18:00 business hours.
+After seeding, the demo tenant (`slug='demo'`) contains:
+
+- one `OWNER` user (`owner@demo.bukay.dev`),
+- three services (`Classic Haircut`, `Beard Trim`, `Full Grooming Package`),
+- one staff member linked to the owner user and assigned every service,
+- Mon–Sat 09:00–18:00 business hours,
+- one demo client,
+- one `CONFIRMED` booking for the Classic Haircut on 2026-06-15 10:00 UTC,
+- one `PAID` mobile-money payment matching that booking,
+- one `seed.bootstrap` audit log entry.
+
+The seed is idempotent: re-running it tears down the dependent rows in FK
+order (payments → bookings → audit logs → services → staff → business hours)
+before recreating them, so the row counts above stay stable.

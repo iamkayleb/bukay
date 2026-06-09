@@ -60,13 +60,13 @@ enum DayOfWeek {
 // -----------------------------------------------------------------------------
 
 model Tenant {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  name        String
-  timezone    String   @default("Africa/Lagos")
-  currency    String   @default("NGN")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  timezone  String   @default("Africa/Lagos")
+  currency  String   @default("NGN")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   users         User[]
   services      Service[]
@@ -153,14 +153,14 @@ model Staff {
 // -----------------------------------------------------------------------------
 
 model BusinessHour {
-  id         String    @id @default(cuid())
-  tenantId   String
-  staffId    String?
-  dayOfWeek  DayOfWeek
-  openMinute Int
+  id          String    @id @default(cuid())
+  tenantId    String
+  staffId     String?
+  dayOfWeek   DayOfWeek
+  openMinute  Int
   closeMinute Int
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   staff  Staff? @relation(fields: [staffId], references: [id], onDelete: Cascade)
@@ -196,17 +196,17 @@ model Client {
 // -----------------------------------------------------------------------------
 
 model Booking {
-  id         String        @id @default(cuid())
-  tenantId   String
-  clientId   String
-  serviceId  String
-  staffId    String?
-  startsAt   DateTime
-  endsAt     DateTime
-  status     BookingStatus @default(PENDING)
-  notes      String?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  id        String        @id @default(cuid())
+  tenantId  String
+  clientId  String
+  serviceId String
+  staffId   String?
+  startsAt  DateTime
+  endsAt    DateTime
+  status    BookingStatus @default(PENDING)
+  notes     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -224,16 +224,16 @@ model Booking {
 // -----------------------------------------------------------------------------
 
 model Payment {
-  id         String        @id @default(cuid())
-  tenantId   String
-  bookingId  String
+  id          String        @id @default(cuid())
+  tenantId    String
+  bookingId   String
   amountCents Int
-  currency   String
-  method     PaymentMethod
-  status     PaymentStatus @default(PENDING)
+  currency    String
+  method      PaymentMethod
+  status      PaymentStatus @default(PENDING)
   externalRef String?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)

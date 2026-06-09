@@ -1,10 +1,20 @@
-// Seed script: inserts one demo tenant and three sample services.
+// Seed script: inserts one demo tenant with sample services, staff, a client,
+// and a confirmed booking + payment so the multi-tenant data model is fully
+// exercised end-to-end.
+//
 // Usage: `prisma db seed` (configured in package.json).
 //
-// Idempotent: re-running the seed updates the demo tenant in place rather
-// than creating duplicates, so it is safe to run after `prisma migrate dev`.
+// Idempotent: re-running upserts the demo tenant and reinserts its child
+// rows so the seeded counts stay stable.
 
-import { PrismaClient, UserRole, DayOfWeek } from "@prisma/client";
+import {
+  PrismaClient,
+  UserRole,
+  DayOfWeek,
+  BookingStatus,
+  PaymentMethod,
+  PaymentStatus,
+} from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -30,6 +40,9 @@ const DEMO_SERVICES = [
     priceCents: 12000,
   },
 ];
+
+// Pin the demo booking to a fixed wall-clock so re-seeding stays deterministic.
+const DEMO_BOOKING_START_ISO = "2026-06-15T10:00:00.000Z";
 
 async function main() {
   console.log("Seeding demo tenant...");
@@ -66,13 +79,23 @@ async function main() {
 
   console.log(`Owner user ready: ${owner.email}`);
 
+  // Re-seeds are idempotent: tear down dependent rows in FK order before
+  // recreating them. Service has `onDelete: Restrict` from Booking, so
+  // bookings (and payments referencing them) must be cleared first.
+  await prisma.payment.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.booking.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.auditLog.deleteMany({ where: { tenantId: tenant.id } });
+
   // Wipe and reinsert demo services so the count stays at three on re-seed.
   await prisma.service.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.service.createMany({
     data: DEMO_SERVICES.map((s) => ({ ...s, tenantId: tenant.id })),
   });
-
-  console.log(`Inserted ${DEMO_SERVICES.length} services for ${tenant.slug}`);
+  const services = await prisma.service.findMany({
+    where: { tenantId: tenant.id },
+    orderBy: { name: "asc" },
+  });
+  console.log(`Inserted ${services.length} services for ${tenant.slug}`);
 
   // Default business hours: Mon–Sat, 09:00–18:00.
   const weekdays: DayOfWeek[] = [
@@ -92,8 +115,81 @@ async function main() {
       closeMinute: 18 * 60,
     })),
   });
-
   console.log("Business hours set: Mon–Sat 09:00–18:00");
+
+  // Re-create the demo staff member (linked to the owner user) and assign
+  // every service to them.
+  await prisma.staff.deleteMany({ where: { tenantId: tenant.id } });
+  const staff = await prisma.staff.create({
+    data: {
+      tenantId: tenant.id,
+      userId: owner.id,
+      name: "Demo Owner",
+      email: owner.email,
+      phone: "+2348000000001",
+      services: { connect: services.map((s) => ({ id: s.id })) },
+    },
+  });
+  console.log(`Staff ready: ${staff.name} (${staff.id})`);
+
+  // Demo client.
+  const client = await prisma.client.upsert({
+    where: { tenantId_phone: { tenantId: tenant.id, phone: "+2348000000099" } },
+    update: { name: "Demo Client", email: "client@demo.bukay.dev" },
+    create: {
+      tenantId: tenant.id,
+      name: "Demo Client",
+      email: "client@demo.bukay.dev",
+      phone: "+2348000000099",
+    },
+  });
+  console.log(`Client ready: ${client.name} (${client.id})`);
+
+  // Demo booking: the classic haircut, confirmed, with a matching paid payment.
+  const haircut = services.find((s) => s.name === "Classic Haircut");
+  if (!haircut) throw new Error("seed: Classic Haircut service missing");
+
+  const startsAt = new Date(DEMO_BOOKING_START_ISO);
+  const endsAt = new Date(startsAt.getTime() + haircut.durationMinutes * 60_000);
+
+  const booking = await prisma.booking.create({
+    data: {
+      tenantId: tenant.id,
+      clientId: client.id,
+      serviceId: haircut.id,
+      staffId: staff.id,
+      startsAt,
+      endsAt,
+      status: BookingStatus.CONFIRMED,
+      notes: "Seeded demo appointment.",
+    },
+  });
+  console.log(`Booking ready: ${booking.id} (${booking.startsAt.toISOString()})`);
+
+  const payment = await prisma.payment.create({
+    data: {
+      tenantId: tenant.id,
+      bookingId: booking.id,
+      amountCents: haircut.priceCents,
+      currency: tenant.currency,
+      method: PaymentMethod.MOBILE_MONEY,
+      status: PaymentStatus.PAID,
+      externalRef: "demo-mm-0001",
+    },
+  });
+  console.log(`Payment ready: ${payment.id} (${payment.amountCents} ${payment.currency})`);
+
+  await prisma.auditLog.create({
+    data: {
+      tenantId: tenant.id,
+      actorId: owner.id,
+      action: "seed.bootstrap",
+      entityType: "Tenant",
+      entityId: tenant.id,
+      metadata: { services: services.length, bookings: 1, payments: 1 },
+    },
+  });
+  console.log("Audit log entry recorded for seed.bootstrap");
 }
 
 main()
