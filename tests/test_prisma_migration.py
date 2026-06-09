@@ -1,0 +1,97 @@
+"""Static checks on the initial prisma migration and DATA_MODEL.md doc.
+
+The data-model PR's acceptance criteria require:
+- an initial migration that creates every model in the schema, and
+- a checked-in schema doc that documents the same models.
+
+These tests assert both invariants without needing a live database.
+"""
+
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+SCHEMA_PATH = ROOT / "prisma" / "schema.prisma"
+MIGRATIONS_DIR = ROOT / "prisma" / "migrations"
+DATA_MODEL_DOC = ROOT / "docs" / "DATA_MODEL.md"
+
+# Models the scope requires to exist; mirrors test_prisma_schema.py.
+REQUIRED_MODELS = {
+    "Tenant",
+    "User",
+    "Service",
+    "Staff",
+    "BusinessHour",
+    "Client",
+    "Booking",
+    "Payment",
+    "AuditLog",
+}
+
+
+def _model_blocks(schema_text: str) -> dict[str, str]:
+    pattern = re.compile(r"^model\s+(\w+)\s*\{([^}]*)\}", re.MULTILINE | re.DOTALL)
+    return {m.group(1): m.group(2) for m in pattern.finditer(schema_text)}
+
+
+def _initial_migration_dir() -> Path:
+    candidates = [p for p in MIGRATIONS_DIR.iterdir() if p.is_dir()]
+    assert candidates, f"no migration directories found under {MIGRATIONS_DIR}"
+    # The init migration sorts first by timestamp prefix.
+    return sorted(candidates)[0]
+
+
+def test_migration_lock_present() -> None:
+    lock = MIGRATIONS_DIR / "migration_lock.toml"
+    assert lock.exists(), "prisma/migrations/migration_lock.toml must be checked in"
+
+
+def test_initial_migration_exists() -> None:
+    init_dir = _initial_migration_dir()
+    sql_file = init_dir / "migration.sql"
+    assert sql_file.exists(), f"missing migration.sql in {init_dir}"
+
+
+def test_migration_creates_every_required_model() -> None:
+    """Every model in the schema must have a CREATE TABLE in the initial migration."""
+    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    for model in REQUIRED_MODELS:
+        assert (
+            f'CREATE TABLE "{model}"' in sql
+        ), f"initial migration is missing CREATE TABLE for {model}"
+
+
+def test_migration_indexes_tenant_id_on_scoped_tables() -> None:
+    """Every tenant-scoped table needs an index on tenantId in the SQL."""
+    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    for model in REQUIRED_MODELS - {"Tenant"}:
+        # Prisma emits `CREATE INDEX "<Model>_tenantId_idx" ON "<Model>"("tenantId")`
+        # (or a composite index whose first column is tenantId).
+        pattern = re.compile(
+            rf'CREATE INDEX\s+"{model}_tenantId[^"]*_idx"\s+ON\s+"{model}"\s*\(\s*"tenantId"',
+            re.IGNORECASE,
+        )
+        assert pattern.search(sql), f"initial migration missing tenantId index for {model}"
+
+
+def test_data_model_doc_exists_and_covers_every_model() -> None:
+    assert DATA_MODEL_DOC.exists(), "docs/DATA_MODEL.md must be checked in"
+    doc = DATA_MODEL_DOC.read_text()
+    for model in REQUIRED_MODELS:
+        # Each model has its own `### <Model>` section header in the doc.
+        assert re.search(
+            rf"^###\s+{model}\b", doc, re.MULTILINE
+        ), f"docs/DATA_MODEL.md missing section for model {model}"
+
+
+def test_schema_and_doc_agree_on_models() -> None:
+    """Doc must not silently drift behind the schema."""
+    schema_models = set(_model_blocks(SCHEMA_PATH.read_text()).keys())
+    doc = DATA_MODEL_DOC.read_text()
+    doc_models = set(re.findall(r"^###\s+(\w+)\s*$", doc, re.MULTILINE))
+    missing_in_doc = schema_models - doc_models
+    assert (
+        not missing_in_doc
+    ), f"docs/DATA_MODEL.md is missing sections for: {sorted(missing_in_doc)}"
