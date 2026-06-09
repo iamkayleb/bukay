@@ -3,13 +3,22 @@
   "last_updated": "2026-02-07",
   "models": [
     {
+      "model_id": "gpt-5.5",
+      "provider": "openai",
+      "api": "chat",
+      "quality": { "T1": 0.96, "T2": 0.96, "T3": 0.96, "T4": 0.96, "T5": 0.96 },
+      "cost_score": 0.28,
+      "speed_score": 0.68,
+      "notes": "Latest flagship. Used as the verify:compare slot1 model."
+    },
+    {
       "model_id": "gpt-5.2",
       "provider": "openai",
       "api": "chat",
       "quality": { "T1": 0.95, "T2": 0.95, "T3": 0.95, "T4": 0.95, "T5": 0.95 },
       "cost_score": 0.30,
       "speed_score": 0.68,
-      "notes": "Latest flagship (Dec 2025). Top quality, higher cost."
+      "notes": "Dec 2025 flagship. Superseded by gpt-5.5."
     },
     {
       "model_id": "gpt-5.1",
