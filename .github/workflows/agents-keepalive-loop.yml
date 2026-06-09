@@ -765,7 +765,7 @@ jobs:
         id: review
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CLAUDE_API_STRANSKE: ${{ secrets.CLAUDE_API_STRANSKE }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           CRITERIA: ${{ steps.criteria.outputs.criteria }}
           COMMITS: ${{ steps.commits.outputs.messages }}
           FILES: ${{ steps.commits.outputs.files }}
@@ -811,12 +811,6 @@ jobs:
               "feedback=Unable to analyze progress. Please review acceptance criteria." \
               >> "$GITHUB_OUTPUT"
           fi
-
-
-      - name: Evaluate whether to post review
-        id: review_guard
-        run: |
-          node .github/scripts/should-post-review.js review_result.json
 
 
       - name: Evaluate whether to post review
@@ -1171,7 +1165,7 @@ jobs:
               tasks_unchecked: Number('${{ needs.evaluate.outputs.tasks_unchecked }}') || 0,
               keepalive_enabled: '${{ needs.evaluate.outputs.keepalive_enabled }}',
               autofix_enabled: '${{ needs.evaluate.outputs.autofix_enabled }}',
-              agent_type: agentType,
+              agent_type: '${{ needs.evaluate.outputs.agent_type }}',
               trace: '${{ needs.evaluate.outputs.trace }}',
               // Agent run result - check which agent ran
               run_result: runResult,

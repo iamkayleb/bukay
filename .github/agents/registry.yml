@@ -8,6 +8,9 @@ keepalive_marker_prefix: agent-keepalive
 agents:
   codex:
     runner_workflow: .github/workflows/reusable-codex-run.yml
+    # Code production uses the ChatGPT subscription token (CODEX_AUTH_JSON) ONLY.
+    # OPENAI_API_KEY is intentionally NOT a code-production credential — it is
+    # reserved for verify:compare. Using the API to generate code is not economical.
     required_secrets:
       - CODEX_AUTH_JSON
     branch_prefix: codex/issue-
@@ -27,6 +30,8 @@ agents:
       verifier_checkbox: true
 
   claude:
+    display_name: Claude
+    model: claude-opus-4-7
     runner_workflow: .github/workflows/reusable-claude-run.yml
     required_secrets:
       - CLAUDE_CODE_OAUTH_TOKEN  # preferred: long-lived token from `claude setup-token`
@@ -68,3 +73,4 @@ agents:
       pr_autofix: true
       belt: true
       verifier_checkbox: true
+

@@ -3,7 +3,7 @@ LLM Provider Abstraction with Fallback Chain
 
 Provides a unified interface for LLM calls with automatic fallback:
 1. OpenAI API (primary) - uses OPENAI_API_KEY
-2. Anthropic API (secondary) - uses CLAUDE_API_STRANSKE
+2. Anthropic API (secondary) - uses CLAUDE_API_KEY
 3. GitHub Models API (fallback) - uses GITHUB_TOKEN
 4. Regex patterns (last resort) - no API calls
 
@@ -37,8 +37,30 @@ GITHUB_MODELS_BASE_URL = "https://models.inference.ai.azure.com"
 # gpt-4.1 is available on both GitHub Models and OpenAI, making it a reliable
 # fallback when no provider-specific model is configured.
 DEFAULT_MODEL = "gpt-4.1"
-ANTHROPIC_API_KEY_ENV = "CLAUDE_API_STRANSKE"
+ANTHROPIC_API_KEY_ENV = "CLAUDE_API_KEY"
 SHORT_ANALYSIS_CONFIDENCE_CAP = 0.4
+
+# Cost isolation: the metered API keys (OPENAI_API_KEY / CLAUDE_API_KEY) are
+# reserved EXCLUSIVELY for verify:compare. Every other LLM use (session
+# analysis, progress review, issue optimization, dedup, auto-label, etc.) must
+# run on the free GitHub Models tier so it cannot spend the verify budget.
+#
+# Metered providers therefore report themselves unavailable unless the caller
+# explicitly opts in by setting LLM_ALLOW_METERED. Only the verify:compare
+# workflow steps set that flag, so a grep for LLM_ALLOW_METERED shows exactly
+# where metered spend is permitted. This is defense-in-depth: even if a metered
+# key leaks into another workflow's env, the provider stays disabled.
+METERED_OPT_IN_ENV = "LLM_ALLOW_METERED"
+
+
+def metered_providers_allowed() -> bool:
+    """Return True only when metered providers are explicitly opted in.
+
+    Reserved for verify:compare. Returns False (free GitHub Models only) for
+    every other LLM use so the verify budget cannot be spent on code analysis.
+    """
+    value = os.environ.get(METERED_OPT_IN_ENV, "").strip().lower()
+    return value in {"1", "true", "yes", "on", "enabled"}
 
 
 def _setup_langsmith_tracing() -> bool:
@@ -68,6 +90,16 @@ def _setup_langsmith_tracing() -> bool:
 LANGSMITH_ENABLED = _setup_langsmith_tracing()
 
 LANGSMITH_TRACE_URL_BASE = "https://smith.langchain.com/r/"
+
+
+def _ensure_langsmith_enabled() -> bool:
+    """Ensure LangSmith tracing is enabled when env vars are injected at runtime."""
+    global LANGSMITH_ENABLED
+    if LANGSMITH_ENABLED:
+        return True
+    if os.environ.get("LANGSMITH_API_KEY"):
+        LANGSMITH_ENABLED = _setup_langsmith_tracing()
+    return LANGSMITH_ENABLED
 
 
 def build_langsmith_metadata(
@@ -105,6 +137,8 @@ def build_langsmith_metadata(
                 env_pr if env_pr.isdigit() else env_issue if env_issue.isdigit() else "unknown"
             )
 
+    _ensure_langsmith_enabled()
+
     metadata: dict[str, object] = {
         "repo": repo,
         "run_id": run_id,
@@ -114,7 +148,7 @@ def build_langsmith_metadata(
         "issue_number": str(issue_number) if issue_number is not None else None,
     }
 
-    if LANGSMITH_ENABLED:
+    if _ensure_langsmith_enabled():
         metadata["langsmith_project"] = os.environ.get("LANGCHAIN_PROJECT", "workflows-agents")
 
     tags = [
@@ -150,7 +184,7 @@ def extract_trace_id(response) -> str | None:
     Returns:
         Trace ID string or None
     """
-    if not LANGSMITH_ENABLED:
+    if not _ensure_langsmith_enabled():
         return None
 
     # LangChain response objects have a response_metadata dict with run_id
@@ -564,7 +598,7 @@ class OpenAIProvider(LLMProvider):
         return "openai"
 
     def is_available(self) -> bool:
-        return bool(os.environ.get("OPENAI_API_KEY"))
+        return metered_providers_allowed() and bool(os.environ.get("OPENAI_API_KEY"))
 
     def supports_quality_context(self) -> bool:
         return True
@@ -631,7 +665,7 @@ class AnthropicProvider(LLMProvider):
         return "anthropic"
 
     def is_available(self) -> bool:
-        return bool(os.environ.get(ANTHROPIC_API_KEY_ENV))
+        return metered_providers_allowed() and bool(os.environ.get(ANTHROPIC_API_KEY_ENV))
 
     def supports_quality_context(self) -> bool:
         return True
@@ -644,7 +678,7 @@ class AnthropicProvider(LLMProvider):
             return None
 
         return ChatAnthropic(
-            model="claude-sonnet-4-5-20250929",
+            model="claude-opus-4-7",
             anthropic_api_key=os.environ.get(ANTHROPIC_API_KEY_ENV),
             temperature=0.1,
         )
@@ -689,7 +723,7 @@ class AnthropicProvider(LLMProvider):
                 confidence=result.confidence,
                 reasoning=result.reasoning,
                 provider_used=self.name,
-                model_name="claude-sonnet-4-5-20250929",
+                model_name="claude-opus-4-7",
                 raw_confidence=result.raw_confidence,
                 confidence_adjusted=result.confidence_adjusted,
                 quality_warnings=result.quality_warnings,
@@ -940,7 +974,7 @@ def get_llm_provider(force_provider: str | None = None) -> LLMProvider:
             Options: "github-models", "openai", "anthropic", "regex-fallback"
 
     Returns a FallbackChainProvider that tries:
-    1. Anthropic claude-sonnet-4-5 (if CLAUDE_API_STRANSKE set) - Best reasoning
+    1. Anthropic claude-opus-4-7 (if CLAUDE_API_KEY set) - Best reasoning
     2. OpenAI gpt-5.1-codex (if OPENAI_API_KEY set) - Purpose-built for code analysis
     3. GitHub Models gpt-4.1 (if GITHUB_TOKEN set) - Always available, reliable
     4. Regex fallback (always available) - 30% confidence baseline
@@ -968,7 +1002,7 @@ def get_llm_provider(force_provider: str | None = None) -> LLMProvider:
         return provider
 
     providers = [
-        AnthropicProvider(),  # Primary: claude-sonnet-4-5 for best reasoning
+        AnthropicProvider(),  # Primary: claude-opus-4-7 for best reasoning
         OpenAIProvider(),  # Secondary: gpt-5.1-codex for code-optimized analysis
         GitHubModelsProvider(),  # Tertiary: gpt-4.1 via GITHUB_TOKEN (always available)
         RegexFallbackProvider(),  # Last resort: 30% confidence pattern matching
