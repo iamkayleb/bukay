@@ -70,8 +70,9 @@ The PR is complete when ALL of these are satisfied:
 Avoid repeating these unless a task needs explicit follow-up:
 
 - Write Prisma models with relations and indexes
+- Add tenantId to all tenant-scoped tables
 
 ### Suggested Next Task
-- Add tenantId to all tenant-scoped tables
+- Create initial migration
 
 ---
