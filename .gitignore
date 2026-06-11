@@ -196,3 +196,12 @@ scripts/langchain/
 # Prisma local SQLite database
 prisma/dev.db
 prisma/dev.db-journal
+# Next.js
+.next/
+out/
+node_modules/
+.env*.local
+# Prisma generated
+prisma/generated/
+# pnpm
+pnpm-debug.log*

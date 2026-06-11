@@ -137,7 +137,7 @@ runs:
           alias_tmp=$(mktemp)
 
           local helper_root="${GITHUB_ACTION_PATH:-${GITHUB_WORKSPACE}/.github/actions/setup-api-client}"
-          local alias_helper="${helper_root}/create_vendor_aliases.js"
+          local alias_helper="${helper_root}/create_vendor_aliases.cjs"
           if [ ! -f "$alias_helper" ]; then
             echo "::error::Missing vendored alias helper: $alias_helper"
             rm -f "$alias_tmp"
