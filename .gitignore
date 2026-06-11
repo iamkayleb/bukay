@@ -192,3 +192,7 @@ poetry.lock
 # Consumer repos use them via sparse checkout to workflows-scripts/.
 # Having them in consumer repos causes import conflicts in CI.
 scripts/langchain/
+
+# Prisma local SQLite database
+prisma/dev.db
+prisma/dev.db-journal
