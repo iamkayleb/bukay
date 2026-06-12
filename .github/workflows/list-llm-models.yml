@@ -89,7 +89,7 @@ jobs:
             echo "| gpt-4o | GPT-4o - flagship multimodal |"
             echo "| gpt-4o-mini | GPT-4o Mini - affordable |"
             echo "| gpt-4-turbo | GPT-4 Turbo - 128k context |"
-            echo "| gpt-5.2 | GPT-5.2 - latest generation |"
+            echo "| gpt-5.5 | GPT-5.5 - latest generation |"
             echo "| o1 | O1 - reasoning model |"
             echo "| o1-mini | O1 Mini - fast reasoning |"
             echo "| o3-mini | O3 Mini - efficient reasoning |"
