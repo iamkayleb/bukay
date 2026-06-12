@@ -6,7 +6,7 @@ const path = require('path');
 const installDirArg = process.argv[2];
 
 if (!installDirArg) {
-  console.error('Usage: create_vendor_aliases.js <install_dir>');
+  console.error('Usage: create_vendor_aliases.cjs <install_dir>');
   process.exit(1);
 }
 

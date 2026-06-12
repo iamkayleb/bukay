@@ -40,6 +40,7 @@ target-version = "py311"
 [tool.mypy]
 files = ["src", "tests"]
 exclude = '^(scripts|tools)/'
+python_version = "3.11"
 
 [tool.ruff.lint]
 select = [
@@ -80,3 +81,7 @@ omit = ["*/tests/*", "*/test_*.py", "*/.venv/*", "*/tools/*", "*/scripts/*"]
 [tool.coverage.report]
 precision = 2
 show_missing = true
+
+[[tool.mypy.overrides]]
+module = ["tomlkit", "langchain_openai", "langchain_anthropic"]
+ignore_missing_imports = true

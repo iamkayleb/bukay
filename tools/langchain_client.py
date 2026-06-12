@@ -14,7 +14,11 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from tools.llm_provider import DEFAULT_MODEL, GITHUB_MODELS_BASE_URL
+from tools.llm_provider import (
+    DEFAULT_MODEL,
+    GITHUB_MODELS_BASE_URL,
+    metered_providers_allowed,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +99,7 @@ def _resolve_model(model: str | None) -> str:
 
 def _default_slots() -> list[SlotDefinition]:
     return [
-        SlotDefinition(name="slot1", provider=PROVIDER_OPENAI, model="gpt-5.2"),
+        SlotDefinition(name="slot1", provider=PROVIDER_OPENAI, model="gpt-5.5"),
         SlotDefinition(name="slot2", provider=PROVIDER_ANTHROPIC, model="claude-opus-4-7"),
         SlotDefinition(name="slot3", provider=PROVIDER_GITHUB, model="gpt-4.1"),
     ]
@@ -230,6 +234,13 @@ def build_chat_client(
     github_token = os.environ.get("GITHUB_TOKEN")
     openai_token = os.environ.get("OPENAI_API_KEY")
     anthropic_token = os.environ.get(ENV_ANTHROPIC_KEY)
+    # Cost isolation: the metered keys (OPENAI_API_KEY / CLAUDE_API_KEY) are
+    # reserved for verify:compare. Unless the caller explicitly opts in via
+    # LLM_ALLOW_METERED, treat them as absent so this client falls back to the
+    # free GitHub Models tier and cannot spend the verify budget.
+    if not metered_providers_allowed():
+        openai_token = None
+        anthropic_token = None
     if not github_token and not openai_token and not anthropic_token:
         return None
 
@@ -350,6 +361,10 @@ def build_chat_clients(
     github_token = os.environ.get("GITHUB_TOKEN")
     openai_token = os.environ.get("OPENAI_API_KEY")
     anthropic_token = os.environ.get(ENV_ANTHROPIC_KEY)
+    # Cost isolation: metered keys only when explicitly opted in (verify:compare).
+    if not metered_providers_allowed():
+        openai_token = None
+        anthropic_token = None
     if not github_token and not openai_token and not anthropic_token:
         return []
 
