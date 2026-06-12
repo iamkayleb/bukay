@@ -10,7 +10,13 @@ requires-python = ">=3.11"
 
 [project.optional-dependencies]
 app = []
-dev = []
+dev = [
+    "black",
+    "mypy",
+    "pytest",
+    "pytest-cov",
+    "ruff",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -30,6 +36,10 @@ line_length = 100
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.mypy]
+files = ["src", "tests"]
+exclude = '^(scripts|tools)/'
 
 [tool.ruff.lint]
 select = [
@@ -65,7 +75,7 @@ markers = [
 [tool.coverage.run]
 branch = true
 parallel = true
-omit = ["*/tests/*", "*/test_*.py", "*/.venv/*"]
+omit = ["*/tests/*", "*/test_*.py", "*/.venv/*", "*/tools/*", "*/scripts/*"]
 
 [tool.coverage.report]
 precision = 2
