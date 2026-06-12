@@ -1,8 +1,15 @@
 import { PrismaClient } from "@prisma/client";
+import { tenantGuardExtension } from "@/app/lib/tenant-guard";
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+function buildClient() {
+  return new PrismaClient().$extends(tenantGuardExtension());
+}
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+type GuardedClient = ReturnType<typeof buildClient>;
+
+const globalForPrisma = globalThis as unknown as { prisma?: GuardedClient };
+
+export const prisma: GuardedClient = globalForPrisma.prisma ?? buildClient();
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
