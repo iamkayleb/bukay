@@ -200,3 +200,16 @@ prisma/generated/
 # Consumer repos use them via sparse checkout to workflows-scripts/.
 # Having them in consumer repos causes import conflicts in CI.
 scripts/langchain/
+
+# Next.js
+.next/
+out/
+node_modules/
+.env
+.env*.local
+
+# Prisma generated
+prisma/generated/
+
+# pnpm
+pnpm-debug.log*
