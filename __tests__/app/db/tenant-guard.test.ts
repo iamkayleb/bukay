@@ -1,5 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { assertTenantWhere } from "@/app/db/tenant-guard";
+import { runWithTenantContext } from "@/app/tenancy/tenant-context";
+
+vi.mock("@prisma/client", () => ({
+  Prisma: {
+    defineExtension: vi.fn((extension) => extension),
+  },
+}));
 
 describe("assertTenantWhere", () => {
   it("rejects a tenant-scoped query without a tenantId", () => {
@@ -12,6 +19,24 @@ describe("assertTenantWhere", () => {
     expect(() =>
       assertTenantWhere("Booking", "findMany", { where: { tenantId: "tenant-123" } })
     ).not.toThrow();
+  });
+
+  it("rejects a query for a different tenant than the active context", () => {
+    runWithTenantContext({ tenantId: "tenant-123" }, () => {
+      expect(() =>
+        assertTenantWhere("Booking", "findMany", { where: { tenantId: "tenant-456" } })
+      ).toThrowError("Booking.findMany tenantId does not match the active tenant context");
+    });
+  });
+
+  it("accepts a query for the active tenant context", () => {
+    runWithTenantContext({ tenantId: "tenant-123" }, () => {
+      expect(() =>
+        assertTenantWhere("Booking", "findMany", {
+          where: { tenantId: { equals: "tenant-123" } },
+        })
+      ).not.toThrow();
+    });
   });
 
   it("rejects a tenantId nested inside an OR clause", () => {

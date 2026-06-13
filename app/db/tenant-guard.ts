@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { tenantContext } from "@/app/tenancy/tenant-context";
 
 const TENANT_SCOPED_MODELS = new Set([
   "AuditLog",
@@ -27,22 +28,22 @@ const OPERATIONS_WITH_WHERE = new Set([
   "upsert",
 ]);
 
-function hasTenantId(where: unknown): boolean {
+function tenantIdFromWhere(where: unknown): string | null {
   if (!where || typeof where !== "object" || Array.isArray(where)) {
-    return false;
+    return null;
   }
 
   const tenantId = (where as Record<string, unknown>).tenantId;
   if (typeof tenantId === "string") {
-    return tenantId.trim().length > 0;
+    return tenantId.trim() || null;
   }
 
   if (tenantId && typeof tenantId === "object" && !Array.isArray(tenantId)) {
     const equals = (tenantId as Record<string, unknown>).equals;
-    return typeof equals === "string" && equals.trim().length > 0;
+    return typeof equals === "string" ? equals.trim() || null : null;
   }
 
-  return false;
+  return null;
 }
 
 function whereFromArgs(args: unknown): unknown {
@@ -54,12 +55,18 @@ function whereFromArgs(args: unknown): unknown {
 }
 
 export function assertTenantWhere(model: string, operation: string, args: unknown): void {
-  if (
-    TENANT_SCOPED_MODELS.has(model) &&
-    OPERATIONS_WITH_WHERE.has(operation) &&
-    !hasTenantId(whereFromArgs(args))
-  ) {
+  if (!TENANT_SCOPED_MODELS.has(model) || !OPERATIONS_WITH_WHERE.has(operation)) {
+    return;
+  }
+
+  const tenantId = tenantIdFromWhere(whereFromArgs(args));
+  if (!tenantId) {
     throw new Error(`${model}.${operation} requires a top-level tenantId in where`);
+  }
+
+  const requestTenantId = tenantContext.getStore()?.tenantId;
+  if (requestTenantId && tenantId !== requestTenantId) {
+    throw new Error(`${model}.${operation} tenantId does not match the active tenant context`);
   }
 }
 
