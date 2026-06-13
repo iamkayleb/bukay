@@ -38,6 +38,15 @@ def test_seed_upserts_tenant() -> None:
     assert "prisma.tenant.upsert" in text, "seed.ts must upsert the demo tenant"
 
 
+def test_tenant_scoped_upserts_have_top_level_tenant_id() -> None:
+    text = _seed_text()
+    for model in ("user", "client"):
+        assert re.search(
+            rf"prisma\.{model}\.upsert\(\{{\s*where:\s*\{{\s*tenantId:\s*tenant\.id,",
+            text,
+        ), f"prisma.{model}.upsert must include a top-level tenantId in where"
+
+
 def test_seed_defines_exactly_three_services() -> None:
     """Acceptance criterion: demo tenant ships with three sample services."""
     text = _seed_text()
