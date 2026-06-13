@@ -16,6 +16,8 @@ eggs/
 .eggs/
 lib/
 lib64/
+!app/lib/
+!__tests__/**/lib/
 parts/
 sdist/
 var/
@@ -201,15 +203,15 @@ prisma/generated/
 # Having them in consumer repos causes import conflicts in CI.
 scripts/langchain/
 
+# Prisma local SQLite database
+prisma/dev.db
+prisma/dev.db-journal
 # Next.js
 .next/
 out/
 node_modules/
-.env
 .env*.local
-
 # Prisma generated
 prisma/generated/
-
 # pnpm
 pnpm-debug.log*
