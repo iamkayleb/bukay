@@ -30,12 +30,17 @@ describe("resolveTenant", () => {
     });
   });
 
-  it.each(["example.com", "localhost:3000", "www.example.com"])(
-    "does not resolve an apex or reserved host: %s",
-    (host) => {
-      expect(resolveTenant(request(host))).toBeNull();
-    }
-  );
+  it.each([
+    "example.com",
+    "localhost:3000",
+    "www.example.com",
+    "127.0.0.1:3000",
+    "[::1]:3000",
+    "-invalid.example.com",
+    "invalid_.example.com",
+  ])("does not resolve an apex, reserved, IP, or invalid host: %s", (host) => {
+    expect(resolveTenant(request(host))).toBeNull();
+  });
 
   it("falls back to the request URL when there is no Next.js hostname", () => {
     expect(

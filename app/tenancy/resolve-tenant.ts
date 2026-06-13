@@ -22,6 +22,7 @@ export type TenantResolution =
     };
 
 const RESERVED_SUBDOMAINS = new Set(["www"]);
+const DNS_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
 function normalizedSessionTenantId(session: TenantSession | null | undefined): string | null {
   const tenantId = session?.tenantId?.trim();
@@ -56,13 +57,17 @@ function subdomainFromHostname(hostname: string | null): string | null {
 
   const labels = hostname.toLowerCase().replace(/\.$/, "").split(".");
   const isLocalhostSubdomain = labels.length === 2 && labels[1] === "localhost";
+  const isIpAddress =
+    hostname.includes(":") ||
+    (labels.length === 4 &&
+      labels.every((label) => /^\d{1,3}$/.test(label) && Number(label) <= 255));
 
-  if (labels.length < 3 && !isLocalhostSubdomain) {
+  if (isIpAddress || (labels.length < 3 && !isLocalhostSubdomain)) {
     return null;
   }
 
   const subdomain = labels[0].trim();
-  if (!subdomain || RESERVED_SUBDOMAINS.has(subdomain)) {
+  if (!DNS_LABEL.test(subdomain) || RESERVED_SUBDOMAINS.has(subdomain)) {
     return null;
   }
 
