@@ -1,21 +1,46 @@
-# PR #82 progress — phone OTP auth
+# Issue #82 — Phone + OTP authentication
 
-## Completed this round
+## Tasks completed this round
 
-- [x] **Add SmsProvider interface + Termii adapter**
-  - `app/lib/sms/provider.ts` — `SmsProvider` port + `SmsMessage` / `SmsSendResult` types + `SmsProviderError`
-  - `app/lib/sms/termii.ts` — `TermiiProvider` adapter (POSTs to `/api/sms/send`, configurable base URL/channel, injectable `fetch` for tests, `termiiFromEnv()` helper)
-  - `app/lib/sms/memory.ts` — `MemorySmsProvider` for tests/dev with an inspectable outbox
-  - `app/lib/sms/index.ts` — barrel re-export
-  - `__tests__/app/lib/sms/termii.test.ts` (7 tests) — credential handling, payload shape, error mapping, network failure, missing message_id, input validation, trailing-slash normalization
-  - `__tests__/app/lib/sms/memory.test.ts` (3 tests) — recording, lookup, reset
+- [x] Add SmsProvider interface + Termii adapter (prior)
+- [x] Build /login and /verify routes
+- [x] Implement OTP generation, storage, expiry (5 min), rate limit
+- [x] Normalize +234 phone numbers
+- [x] Session cookie with rolling expiry
+- [x] E2E tests: signup, login, logout
 
-Verification: `npx vitest run __tests__/app/lib/sms` → 10/10 pass; full suite 60/60.
+## Acceptance criteria status
 
-## Remaining tasks
+- [x] User can sign up and log in by phone + OTP (auth-flow.test.ts → "signs up + logs in")
+- [x] Expired/used OTP rejected (otp.test.ts "rejects an expired code"; auth-flow.test.ts "rejects a used OTP")
+- [x] Rate limit blocks brute force (otp.test.ts "rate-limits issue calls"; auth-flow.test.ts "rate-limits brute-force OTP requests")
+- [x] Session persists across reloads (auth-flow.test.ts double `/me` call with same cookie)
 
-- [ ] Build /login and /verify routes
-- [ ] Implement OTP generation, storage, expiry (5 min), rate limit
-- [ ] Normalize +234 phone numbers
-- [ ] Session cookie with rolling expiry
-- [ ] E2E tests: signup, login, logout
+## Files
+
+- `app/lib/auth/phone.ts` — E.164 normalizer for Nigerian (+234) numbers
+- `app/lib/auth/otp.ts` — 6-digit OTP store with sha256 hashing, 5-min TTL,
+  per-phone resend cooldown, verify-attempt cap, and per-window rate limit
+- `app/lib/auth/session.ts` — HMAC-signed session token, HttpOnly+SameSite=Lax
+  cookie builder, rolling refresh via `signSession`
+- `app/lib/auth/sms.ts` — singleton resolver: Termii in prod (`SMS_PROVIDER=termii`),
+  in-memory otherwise; test override hooks
+- `app/api/auth/login/route.ts` — `POST { phone }` → normalize, issue OTP, send SMS
+- `app/api/auth/verify/route.ts` — `POST { phone, code }` → verify, set session cookie
+- `app/api/auth/logout/route.ts` — clears the session cookie
+- `app/api/auth/me/route.ts` — returns session info and refreshes the cookie (rolling expiry)
+- Tests: `__tests__/app/lib/auth/{phone,otp,session}.test.ts`,
+  `__tests__/app/api/auth/auth-flow.test.ts`
+
+## Verification
+
+`npx vitest run` — **95 tests pass** across 14 files. 35 of those are new.
+
+## Notes / follow-ups
+
+- The current "user" is a synthetic `user:+234...` id; persistence to the Prisma
+  `User`/`Client` model can be layered on once the multi-tenant signup story is
+  finalized (the `User` model in `prisma/schema.prisma` is currently
+  duplicated — that pre-existing schema bug is out of scope here).
+- Rate-limit and OTP storage are in-process. For multi-instance deployment,
+  swap `OtpStore` for a Redis-backed implementation behind the same interface.
