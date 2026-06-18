@@ -65,7 +65,10 @@ async function main() {
   console.log(`Tenant ready: ${tenant.slug} (${tenant.id})`);
 
   const owner = await prisma.user.upsert({
-    where: { tenantId_email: { tenantId: tenant.id, email: "owner@demo.bukay.dev" } },
+    where: {
+      tenantId: tenant.id,
+      tenantId_email: { tenantId: tenant.id, email: "owner@demo.bukay.dev" },
+    },
     update: { name: "Demo Owner", role: UserRole.OWNER },
     create: {
       tenantId: tenant.id,
@@ -134,7 +137,10 @@ async function main() {
 
   // Demo client.
   const client = await prisma.client.upsert({
-    where: { tenantId_phone: { tenantId: tenant.id, phone: "+2348000000099" } },
+    where: {
+      tenantId: tenant.id,
+      tenantId_phone: { tenantId: tenant.id, phone: "+2348000000099" },
+    },
     update: { name: "Demo Client", email: "client@demo.bukay.dev" },
     create: {
       tenantId: tenant.id,

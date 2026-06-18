@@ -1,152 +1,71 @@
-# Multi-tenancy
+# Multitenancy
 
-Bukay is a multi-tenant booking platform. Every tenant-owned row in the database
-carries a `tenantId`. To prevent cross-tenant data leaks, the application
-resolves the active tenant per request and a Prisma client extension refuses
-any query against a tenant-scoped model that does not include `tenantId` in its
-`where` clause (or `data` payload).
+Bukay isolates tenant-owned data with a `tenantId` column on every domain model
+except the root `Tenant` model. Request handling and Prisma queries must preserve
+that isolation explicitly.
 
-## Components
+## Request Pattern
 
-| Layer                  | File                        | Responsibility                                                                                                |
-| ---------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Tenant resolution      | `app/lib/resolve-tenant.ts` | Resolve the active tenant from session → `x-tenant-id` header → subdomain.                                    |
-| Request-scoped context | `app/lib/tenant-context.ts` | Stash the resolved tenant in `AsyncLocalStorage` so downstream code can read it without prop-drilling.        |
-| Database guard         | `app/lib/tenant-guard.ts`   | Prisma extension + Proxy wrapper that asserts `tenantId` is present on every query for a tenant-scoped model. |
-| Client wiring          | `app/db/prisma.ts`          | Builds the singleton `PrismaClient` with the guard extension applied.                                         |
+Resolve the tenant selector at the request boundary with `resolveTenant(req)`.
+An authenticated session tenant takes precedence over a hostname subdomain.
+Subdomains resolve to tenant slugs and must be looked up before being used as a
+tenant ID.
 
-## Request lifecycle
-
-```
-HTTP request
-  │
-  ▼
-resolveTenant(req)        ── reads session / header / subdomain
-  │
-  ▼
-runWithTenant(ctx, ...)   ── stores { tenantId, tenantSlug } in AsyncLocalStorage
-  │
-  ▼
-handler / service code    ── calls prisma.<model>.<op>(...)
-  │
-  ▼
-tenantGuardExtension      ── asserts where.tenantId / data.tenantId is present
-  │                          and equals the current context's tenantId
-  ▼
-PrismaClient              ── executes the query
-```
-
-## Using the helpers
-
-### 1. Resolve the tenant at the edge of the request
+After resolving the tenant ID, run request work inside its async context:
 
 ```ts
-import { resolveTenant } from "@/app/lib/resolve-tenant";
-import { runWithTenant } from "@/app/lib/tenant-context";
+import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 
-export async function handle(req: Request, session: { tenantId?: string } | null) {
-  const resolved = resolveTenant({ headers: req.headers, session });
-
-  if (!resolved.tenantId) {
-    return new Response("Tenant could not be resolved", { status: 400 });
-  }
-
-  return runWithTenant({ tenantId: resolved.tenantId, tenantSlug: resolved.tenantSlug }, () =>
-    routeHandler(req)
-  );
-}
-```
-
-Resolution order:
-
-1. `session.tenantId` (already-authenticated request)
-2. `x-tenant-id` request header (server-to-server / internal calls)
-3. Subdomain extracted from the `Host` header (`acme.example.com` → `acme`)
-
-Reserved subdomains (`www`, `app`, `api`, `admin`, `static`, `assets`, `cdn`)
-never resolve to a tenant. Set `ROOT_HOST=example.com` in the environment to
-allow multi-label tenant subdomains like `north.acme.example.com`.
-
-### 2. Read the tenant inside handlers
-
-```ts
-import { requireTenantId } from "@/app/lib/tenant-context";
-
-const tenantId = requireTenantId();
-const bookings = await prisma.booking.findMany({ where: { tenantId } });
-```
-
-`getTenantId()` returns `undefined` when no tenant scope is active.
-`requireTenantId()` throws — use it when missing context is a programmer error.
-
-### 3. Write tenant-safe queries
-
-Every query against a tenant-scoped model **must** include `tenantId` in its
-`where` (reads / updates / deletes) or `data` (creates):
-
-```ts
-// Good
-prisma.booking.findMany({ where: { tenantId, status: "PENDING" } });
-prisma.booking.create({ data: { tenantId /* ... */ } });
-
-// Throws TenantScopeError
-prisma.booking.findMany({ where: { status: "PENDING" } });
-prisma.booking.findUnique({ where: { id } });
-prisma.booking.create({
-  data: {
-    /* tenantId missing */
-  },
+return runWithTenantContext({ tenantId }, async () => {
+  return handleTenantRequest();
 });
 ```
 
-If the current `AsyncLocalStorage` context carries a `tenantId`, the guard also
-rejects queries whose `where.tenantId` does not match the context — preventing
-a handler that resolved tenant A from accidentally reading tenant B's rows.
+Code deeper in the request can use `requireTenantContext()` when it needs the
+active tenant ID:
 
-## Tenant-scoped models
+```ts
+const { tenantId } = requireTenantContext();
 
-The guard treats these models as tenant-scoped (see
-`TENANT_SCOPED_MODELS` in `app/lib/tenant-guard.ts`):
+const bookings = await prisma.booking.findMany({
+  where: { tenantId, status: "CONFIRMED" },
+});
+```
 
-- `User`
-- `Service`
-- `Staff`
-- `BusinessHour`
-- `Client`
-- `Booking`
-- `Payment`
-- `AuditLog`
+## Prisma Query Rules
 
-`Tenant` itself is intentionally **not** scoped (the row is identified by `id`,
-not by membership in another tenant).
+The application Prisma client in `app/db/prisma.ts` includes the tenant guard.
+For tenant-scoped models, operations with a `where` argument must include a
+non-empty, top-level `tenantId`. When a tenant context is active, that value must
+also match the active context.
 
-When adding a new model that belongs to a tenant:
+```ts
+// Correct
+await prisma.service.findMany({ where: { tenantId } });
 
-1. Add `tenantId` and the `Tenant` relation to its Prisma model.
-2. Add the model name to `TENANT_SCOPED_MODELS`.
-3. Update existing call sites to pass `tenantId` in queries.
+// Rejected: tenantId is missing
+await prisma.service.findMany({ where: { active: true } });
 
-## Testing
+// Rejected: a nested condition can include rows from another tenant
+await prisma.service.findMany({
+  where: { OR: [{ tenantId }, { active: true }] },
+});
+```
 
-The guard is unit-tested in `__tests__/app/lib/tenant-guard.test.ts`:
+Create operations do not have a `where` argument, so callers must set
+`tenantId` in `data`. The guard does not replace this write responsibility.
 
-- A cross-tenant read throws `TenantScopeError`.
-- A read with the correct `tenantId` returns the expected row.
-- A `create` without `tenantId` throws.
-- The Proxy wrapper reads the current tenant from `AsyncLocalStorage` when no
-  override is provided.
+The root `Tenant` model is not tenant-scoped. Queries used to resolve a
+subdomain slug may query `Tenant` without a `tenantId`.
 
-Use `withTenantGuard(stubClient, { getTenantId: () => "..." })` in tests that
-need to exercise the guard against an in-memory client without spinning up a
-real database.
+## Reviews
 
-## Operational notes
+For every tenant-owned query:
 
-- Always wrap request handlers in `runWithTenant`. A query issued outside a
-  scope only passes the guard if it explicitly includes `tenantId` in `where`
-  / `data`; do not rely on that fallback in production code paths.
-- Background jobs and scheduled tasks must call `runWithTenant` themselves
-  before issuing tenant-scoped queries.
-- Raw SQL (`prisma.$queryRaw`, `prisma.$executeRaw`) bypasses the guard. Avoid
-  it for tenant-scoped tables, or include an explicit `WHERE tenant_id = ?`
-  predicate and reviewer sign-off.
+- Import the guarded client from `app/db/prisma.ts`; do not construct a new
+  application `PrismaClient`.
+- Include the active `tenantId` at the top level of every `where`.
+- Include `tenantId` in every create payload.
+- Treat a tenant ID supplied by a client as untrusted; use the resolved request
+  tenant instead.
+- Do not add an unscoped `prisma.*.findMany()` call.
