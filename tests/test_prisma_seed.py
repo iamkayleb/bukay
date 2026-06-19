@@ -65,7 +65,7 @@ def test_seed_services_have_required_fields() -> None:
     match = re.search(r"DEMO_SERVICES\s*=\s*\[(.*?)\];", text, re.DOTALL)
     assert match
     body = match.group(1)
-    for field in ("name", "durationMinutes", "priceCents"):
+    for field in ("name", "durationMinutes", "priceKobo"):
         assert re.search(rf"\b{field}:", body), f"DEMO_SERVICES entries must declare {field}"
 
 
