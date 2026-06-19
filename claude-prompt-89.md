@@ -54,10 +54,10 @@ Owner can create, edit, archive, and delete services. Fields: name, durationMinu
 Complete these in order. Mark checkbox done ONLY after implementation is verified:
 
 - [x] Zod schemas for create/update
-- [ ] API routes with tenant scoping
+- [x] API routes with tenant scoping
 - [ ] List + form UI
-- [ ] Soft delete via active=false
-- [ ] Integration tests for all verbs
+- [x] Soft delete via active=false
+- [x] Integration tests for all verbs
 
 ### Acceptance Criteria
 The PR is complete when ALL of these are satisfied:
@@ -66,6 +66,11 @@ The PR is complete when ALL of these are satisfied:
 - [ ] Prices stored in kobo (integer)
 - [ ] Validation errors shown inline
 - [ ] Archived services hidden from booking surfaces
+
+### Recently Attempted Tasks
+Avoid repeating these unless a task needs explicit follow-up:
+
+- Zod schemas for create/update
 
 ### Suggested Next Task
 - API routes with tenant scoping
