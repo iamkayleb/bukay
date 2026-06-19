@@ -50,7 +50,7 @@ model Service {
   name            String
   description     String?
   durationMinutes Int
-  priceCents      Int
+  priceKobo       Int
   currency        String    @default("NGN")
   active          Boolean   @default(true)
   bookings        Booking[]
@@ -269,7 +269,7 @@ model Service {
   name            String
   description     String?
   durationMinutes Int
-  priceCents      Int
+  priceKobo       Int
   active          Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

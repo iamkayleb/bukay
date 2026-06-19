@@ -6,7 +6,7 @@ export type ServiceRecord = {
   tenantId: string;
   name: string;
   durationMinutes: number;
-  priceCents: number;
+  priceKobo: number;
   active: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -29,7 +29,7 @@ function createDataFor(tenantId: string, input: CreateServiceInput) {
     tenantId,
     name: input.name,
     durationMinutes: input.durationMinutes,
-    priceCents: input.priceKobo,
+    priceKobo: input.priceKobo,
     active: input.active,
   };
 }
@@ -38,7 +38,7 @@ function updateDataFor(input: UpdateServiceInput) {
   const data: Record<string, unknown> = {};
   if (input.name !== undefined) data.name = input.name;
   if (input.durationMinutes !== undefined) data.durationMinutes = input.durationMinutes;
-  if (input.priceKobo !== undefined) data.priceCents = input.priceKobo;
+  if (input.priceKobo !== undefined) data.priceKobo = input.priceKobo;
   if (input.active !== undefined) data.active = input.active;
   return data;
 }
@@ -107,7 +107,7 @@ export function toServiceDto(record: ServiceRecord) {
     id: record.id,
     name: record.name,
     durationMinutes: record.durationMinutes,
-    priceKobo: record.priceCents,
+    priceKobo: record.priceKobo,
     active: record.active,
     createdAt: record.createdAt instanceof Date ? record.createdAt.toISOString() : record.createdAt,
     updatedAt: record.updatedAt instanceof Date ? record.updatedAt.toISOString() : record.updatedAt,

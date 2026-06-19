@@ -25,19 +25,19 @@ const DEMO_SERVICES = [
     name: "Classic Haircut",
     description: "Traditional cut and style, includes wash.",
     durationMinutes: 30,
-    priceCents: 5000,
+    priceKobo: 5000,
   },
   {
     name: "Beard Trim",
     description: "Shape and tidy beard with hot-towel finish.",
     durationMinutes: 20,
-    priceCents: 3000,
+    priceKobo: 3000,
   },
   {
     name: "Full Grooming Package",
     description: "Haircut, beard trim, and facial treatment.",
     durationMinutes: 75,
-    priceCents: 12000,
+    priceKobo: 12000,
   },
 ];
 
@@ -176,7 +176,7 @@ async function main() {
     data: {
       tenantId: tenant.id,
       bookingId: booking.id,
-      amountCents: haircut.priceCents,
+      amountCents: haircut.priceKobo,
       currency: tenant.currency,
       method: PaymentMethod.MOBILE_MONEY,
       status: PaymentStatus.PAID,

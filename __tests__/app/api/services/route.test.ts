@@ -51,7 +51,7 @@ function makeRecord(overrides: Partial<ServiceRecord> = {}): ServiceRecord {
     tenantId: TENANT,
     name: "Haircut",
     durationMinutes: 30,
-    priceCents: 500000,
+    priceKobo: 500000,
     active: true,
     createdAt: new Date("2026-06-19T10:00:00.000Z"),
     updatedAt: new Date("2026-06-19T10:00:00.000Z"),
@@ -210,6 +210,39 @@ describe("POST /api/services", () => {
     expect(body.error).toBe("validation_failed");
     expect(body.fieldErrors.name).toBeDefined();
   });
+
+  it("stores priceKobo as an integer with no scaling", async () => {
+    const repo = installRepoStub();
+    // Mirror back whatever the repository was asked to persist so we can
+    // assert the post-storage DTO matches the input kobo value exactly.
+    repo.create.mockImplementationOnce(async (_tenantId, input) =>
+      makeRecord({
+        id: "svc_kobo",
+        name: input.name,
+        durationMinutes: input.durationMinutes,
+        priceKobo: input.priceKobo,
+        active: input.active,
+      })
+    );
+
+    const KOBO = 1234567;
+    const res = await POST(
+      makeRequest("http://test/api/services", {
+        method: "POST",
+        body: { name: "Premium Cut", durationMinutes: 60, priceKobo: KOBO },
+      })
+    );
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    // Repository receives the kobo value verbatim — no /100 or *100 scaling.
+    expect(repo.create).toHaveBeenCalledWith(
+      TENANT,
+      expect.objectContaining({ priceKobo: KOBO })
+    );
+    // And the DTO sent back to the client mirrors it as the same integer.
+    expect(body.service.priceKobo).toBe(KOBO);
+    expect(Number.isInteger(body.service.priceKobo)).toBe(true);
+  });
 });
 
 describe("GET /api/services/:id", () => {
@@ -248,7 +281,7 @@ describe("PATCH /api/services/:id", () => {
   it("updates a service and returns the new state", async () => {
     const repo = installRepoStub();
     repo.update.mockResolvedValueOnce(
-      makeRecord({ id: "svc_1", name: "Renamed", priceCents: 999 })
+      makeRecord({ id: "svc_1", name: "Renamed", priceKobo: 999 })
     );
     const res = await PATCH(
       makeRequest("http://test/api/services/svc_1", {
