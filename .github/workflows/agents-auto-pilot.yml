@@ -144,7 +144,7 @@ jobs:
 
       - name: Checkout repository
         if: steps.check_enabled.outputs.enabled == 'true'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
           token: ${{ steps.app_token.outputs.token || github.token }}
 
@@ -187,7 +187,7 @@ jobs:
 
       - name: Checkout Workflows scripts
         if: steps.check_enabled.outputs.enabled == 'true'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
           token: ${{ steps.app_token.outputs.token || github.token }}
           repository: iamkayleb/Workflows
