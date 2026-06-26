@@ -11,6 +11,11 @@ const navigationItems = [
   { label: "Settings", href: "/app/settings" },
 ];
 
+type AppSidebarProps = {
+  onNavigate?: () => void;
+  variant?: "desktop" | "mobile";
+};
+
 function isActiveRoute(pathname: string, href: string): boolean {
   if (href === "/app") {
     return pathname === href;
@@ -19,14 +24,24 @@ function isActiveRoute(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AppSidebar() {
+export function AppSidebar({ onNavigate, variant = "desktop" }: AppSidebarProps) {
   const pathname = usePathname() ?? "/app";
+  const isMobile = variant === "mobile";
 
   return (
-    <aside className="hidden min-h-screen w-64 shrink-0 border-r border-slate-800 bg-slate-950 px-4 py-6 text-slate-200 md:flex md:flex-col">
-      <div className="px-3 pb-6">
-        <p className="text-sm font-semibold text-white">Bukay</p>
-      </div>
+    <aside
+      className={[
+        "shrink-0 bg-slate-950 px-4 py-6 text-slate-200",
+        isMobile
+          ? "flex h-[calc(100%-57px)] w-full flex-col"
+          : "hidden min-h-screen w-64 border-r border-slate-800 md:flex md:flex-col",
+      ].join(" ")}
+    >
+      {isMobile ? null : (
+        <div className="px-3 pb-6">
+          <p className="text-sm font-semibold text-white">Bukay</p>
+        </div>
+      )}
       <nav aria-label="Workspace" className="flex flex-1 flex-col gap-1">
         {navigationItems.map((item) => {
           const active = isActiveRoute(pathname, item.href);
@@ -36,6 +51,7 @@ export function AppSidebar() {
               key={item.href}
               href={item.href}
               aria-current={active ? "page" : undefined}
+              onClick={onNavigate}
               className={[
                 "rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 active

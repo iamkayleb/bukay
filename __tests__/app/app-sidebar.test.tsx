@@ -31,6 +31,14 @@ describe("AppSidebar", () => {
     expect(html).toContain('href="/app/settings"');
   });
 
+  it("renders a mobile drawer variant without the desktop breakpoint classes", () => {
+    const html = renderToStaticMarkup(<AppSidebar variant="mobile" onNavigate={() => undefined} />);
+
+    expect(html).toContain('aria-label="Workspace"');
+    expect(html).toContain("w-full");
+    expect(html).not.toContain("md:flex");
+  });
+
   it("marks Today active only on the app root", () => {
     const rootHtml = renderToStaticMarkup(<AppSidebar />);
 

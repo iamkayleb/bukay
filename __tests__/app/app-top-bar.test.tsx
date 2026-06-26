@@ -19,6 +19,8 @@ describe("AppTopBar", () => {
     expect(html).toContain("Studio Kay");
     expect(html).toContain("Workspace");
     expect(html).toContain("+2348031234567");
+    expect(html).toContain('aria-label="Open navigation"');
+    expect(html).toContain('aria-controls="mobile-navigation"');
     expect(html).toContain('aria-haspopup="menu"');
     expect(html).toContain('aria-expanded="false"');
   });

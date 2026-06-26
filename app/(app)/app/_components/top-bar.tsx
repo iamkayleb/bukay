@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 type AppTopBarProps = {
+  onOpenMobileNavigation?: () => void;
   tenantName: string;
   userPhone: string;
 };
@@ -16,7 +17,7 @@ export async function requestLogout(fetchImpl: typeof fetch = fetch): Promise<vo
   }
 }
 
-export function AppTopBar({ tenantName, userPhone }: AppTopBarProps) {
+export function AppTopBar({ onOpenMobileNavigation, tenantName, userPhone }: AppTopBarProps) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -38,9 +39,24 @@ export function AppTopBar({ tenantName, userPhone }: AppTopBarProps) {
   return (
     <header className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur md:px-6">
       <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-white">{tenantName}</p>
-          <p className="truncate text-xs text-slate-400">Workspace</p>
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            type="button"
+            aria-label="Open navigation"
+            aria-controls="mobile-navigation"
+            onClick={onOpenMobileNavigation}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-slate-700 bg-slate-900 text-slate-100 transition-colors hover:border-slate-600 hover:bg-slate-800 md:hidden"
+          >
+            <span aria-hidden="true" className="flex flex-col gap-1">
+              <span className="block h-0.5 w-4 rounded-full bg-current" />
+              <span className="block h-0.5 w-4 rounded-full bg-current" />
+              <span className="block h-0.5 w-4 rounded-full bg-current" />
+            </span>
+          </button>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-white">{tenantName}</p>
+            <p className="truncate text-xs text-slate-400">Workspace</p>
+          </div>
         </div>
 
         <div className="relative">
