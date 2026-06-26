@@ -1,8 +1,12 @@
+import { SectionEmptyState } from "./_components/section-empty-state";
+
 export default function AppHomePage() {
   return (
-    <main className="min-h-screen px-6 py-8 text-white">
-      <h1 className="text-2xl font-semibold">Today</h1>
-      <p className="mt-2 text-sm text-slate-300">Your authenticated workspace is ready.</p>
-    </main>
+    <SectionEmptyState
+      eyebrow="Today"
+      title="Today"
+      description="Appointments, reminders, and check-ins scheduled for today will appear here."
+      primaryAction="Add appointment"
+    />
   );
 }
