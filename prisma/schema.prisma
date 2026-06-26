@@ -11,207 +11,6 @@ datasource db {
   url      = "file:./dev.db"
 }
 
-model Tenant {
-  id            String         @id @default(cuid())
-  name          String
-  slug          String         @unique
-  timezone      String         @default("Africa/Lagos")
-  currency      String         @default("NGN")
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  users         User[]
-  services      Service[]
-  staff         Staff[]
-  businessHours BusinessHour[]
-  clients       Client[]
-  bookings      Booking[]
-  payments      Payment[]
-  auditLogs     AuditLog[]
-}
-
-model User {
-  id        String   @id @default(cuid())
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  email     String
-  name      String
-  role      String   @default("owner")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([tenantId, email])
-  @@index([tenantId])
-}
-
-model Service {
-  id              String    @id @default(cuid())
-  tenantId        String
-  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name            String
-  description     String?
-  durationMinutes Int
-  priceCents      Int
-  currency        String    @default("NGN")
-  active          Boolean   @default(true)
-  bookings        Booking[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  @@unique([tenantId, name])
-  @@index([tenantId])
-}
-
-model Staff {
-  id        String    @id @default(cuid())
-  tenantId  String
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name      String
-  email     String?
-  phone     String?
-  active    Boolean   @default(true)
-  bookings  Booking[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  @@unique([tenantId, email])
-  @@index([tenantId])
-}
-
-model BusinessHour {
-  id        String   @id @default(cuid())
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  dayOfWeek Int
-  opensAt   String
-  closesAt  String
-  isClosed  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([tenantId, dayOfWeek])
-  @@index([tenantId])
-}
-
-model Client {
-  id        String    @id @default(cuid())
-  tenantId  String
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name      String
-  email     String?
-  phone     String
-  notes     String?
-  bookings  Booking[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  @@unique([tenantId, phone])
-  @@index([tenantId])
-}
-
-model Booking {
-  id        String    @id @default(cuid())
-  tenantId  String
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  clientId  String
-  client    Client    @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  serviceId String
-  service   Service   @relation(fields: [serviceId], references: [id], onDelete: Restrict)
-  staffId   String?
-  staff     Staff?    @relation(fields: [staffId], references: [id], onDelete: SetNull)
-  startsAt  DateTime
-  endsAt    DateTime
-  status    String    @default("pending")
-  notes     String?
-  payments  Payment[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  @@index([tenantId])
-  @@index([tenantId, startsAt])
-  @@index([clientId])
-  @@index([serviceId])
-  @@index([staffId])
-}
-
-model Payment {
-  id          String    @id @default(cuid())
-  tenantId    String
-  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  bookingId   String
-  booking     Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  amountCents Int
-  currency    String    @default("NGN")
-  provider    String?
-  providerRef String?
-  status      String    @default("pending")
-  paidAt      DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@index([tenantId])
-  @@index([bookingId])
-  @@index([providerRef])
-}
-
-model AuditLog {
-  id         String   @id @default(cuid())
-  tenantId   String
-  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  actorId    String?
-  action     String
-  entityType String
-  entityId   String?
-  metadata   String?
-  createdAt  DateTime @default(now())
-
-  @@index([tenantId])
-  @@index([tenantId, entityType, entityId])
-}
-
-// -----------------------------------------------------------------------------
-// Enums
-// -----------------------------------------------------------------------------
-
-enum UserRole {
-  OWNER
-  ADMIN
-  STAFF
-  VIEWER
-}
-
-enum BookingStatus {
-  PENDING
-  CONFIRMED
-  CANCELLED
-  COMPLETED
-  NO_SHOW
-}
-
-enum PaymentStatus {
-  PENDING
-  PAID
-  REFUNDED
-  FAILED
-}
-
-enum PaymentMethod {
-  CASH
-  CARD
-  MOBILE_MONEY
-  BANK_TRANSFER
-  OTHER
-}
-
-enum DayOfWeek {
-  MONDAY
-  TUESDAY
-  WEDNESDAY
-  THURSDAY
-  FRIDAY
-  SATURDAY
-  SUNDAY
-}
-
 // -----------------------------------------------------------------------------
 // Tenant — the root of the multi-tenant tree
 // -----------------------------------------------------------------------------
@@ -247,7 +46,7 @@ model User {
   email        String
   passwordHash String
   name         String
-  role         UserRole @default(STAFF)
+  role         String   @default("STAFF")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -310,14 +109,14 @@ model Staff {
 // -----------------------------------------------------------------------------
 
 model BusinessHour {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   tenantId    String
   staffId     String?
-  dayOfWeek   DayOfWeek
+  dayOfWeek   String
   openMinute  Int
   closeMinute Int
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   staff  Staff? @relation(fields: [staffId], references: [id], onDelete: Cascade)
@@ -353,17 +152,17 @@ model Client {
 // -----------------------------------------------------------------------------
 
 model Booking {
-  id        String        @id @default(cuid())
+  id        String   @id @default(cuid())
   tenantId  String
   clientId  String
   serviceId String
   staffId   String?
   startsAt  DateTime
   endsAt    DateTime
-  status    BookingStatus @default(PENDING)
+  status    String   @default("PENDING")
   notes     String?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -381,16 +180,16 @@ model Booking {
 // -----------------------------------------------------------------------------
 
 model Payment {
-  id          String        @id @default(cuid())
+  id          String   @id @default(cuid())
   tenantId    String
   bookingId   String
   amountCents Int
   currency    String
-  method      PaymentMethod
-  status      PaymentStatus @default(PENDING)
+  method      String
+  status      String   @default("PENDING")
   externalRef String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
@@ -410,7 +209,7 @@ model AuditLog {
   action     String
   entityType String
   entityId   String?
-  metadata   Json?
+  metadata   String?
   createdAt  DateTime @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)

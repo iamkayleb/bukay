@@ -7,18 +7,31 @@
 // Idempotent: re-running upserts the demo tenant and reinserts its child
 // rows so the seeded counts stay stable.
 
-import {
-  PrismaClient,
-  UserRole,
-  DayOfWeek,
-  BookingStatus,
-  PaymentMethod,
-  PaymentStatus,
-} from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 const DEMO_TENANT_SLUG = "demo";
+const UserRole = {
+  OWNER: "OWNER",
+} as const;
+const DayOfWeek = {
+  MONDAY: "MONDAY",
+  TUESDAY: "TUESDAY",
+  WEDNESDAY: "WEDNESDAY",
+  THURSDAY: "THURSDAY",
+  FRIDAY: "FRIDAY",
+  SATURDAY: "SATURDAY",
+} as const;
+const BookingStatus = {
+  CONFIRMED: "CONFIRMED",
+} as const;
+const PaymentMethod = {
+  MOBILE_MONEY: "MOBILE_MONEY",
+} as const;
+const PaymentStatus = {
+  PAID: "PAID",
+} as const;
 
 const DEMO_SERVICES = [
   {
@@ -101,7 +114,7 @@ async function main() {
   console.log(`Inserted ${services.length} services for ${tenant.slug}`);
 
   // Default business hours: Mon–Sat, 09:00–18:00.
-  const weekdays: DayOfWeek[] = [
+  const weekdays = [
     DayOfWeek.MONDAY,
     DayOfWeek.TUESDAY,
     DayOfWeek.WEDNESDAY,
@@ -192,7 +205,7 @@ async function main() {
       action: "seed.bootstrap",
       entityType: "Tenant",
       entityId: tenant.id,
-      metadata: { services: services.length, bookings: 1, payments: 1 },
+      metadata: JSON.stringify({ services: services.length, bookings: 1, payments: 1 }),
     },
   });
   console.log("Audit log entry recorded for seed.bootstrap");

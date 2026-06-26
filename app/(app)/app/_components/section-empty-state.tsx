@@ -12,7 +12,7 @@ export function SectionEmptyState({
   primaryAction,
 }: SectionEmptyStateProps) {
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-100 sm:px-6 lg:px-8">
+    <main className="min-h-[calc(100vh-65px)] bg-slate-950 px-4 py-8 text-slate-100 sm:px-6 lg:px-8">
       <section className="mx-auto flex max-w-5xl flex-col gap-8">
         <div>
           <p className="text-sm font-medium uppercase tracking-[0.18em] text-emerald-300">
