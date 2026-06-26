@@ -1,7 +1,11 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AppSidebar } from "@/app/(app)/app/_components/sidebar";
+import {
+  AppSidebar,
+  appNavigationItems,
+  isActiveAppRoute,
+} from "@/app/(app)/app/_components/sidebar";
 
 const navigation = vi.hoisted(() => ({
   pathname: "/app",
@@ -24,19 +28,22 @@ describe("AppSidebar", () => {
     const html = renderToStaticMarkup(<AppSidebar />);
 
     expect(html).toContain('aria-label="Workspace"');
-    expect(html).toContain('href="/app"');
-    expect(html).toContain('href="/app/calendar"');
-    expect(html).toContain('href="/app/clients"');
-    expect(html).toContain('href="/app/services"');
-    expect(html).toContain('href="/app/settings"');
+    for (const item of appNavigationItems) {
+      expect(html).toContain(`href="${item.href}"`);
+      expect(html).toContain(`>${item.label}</a>`);
+    }
   });
 
-  it("renders a mobile drawer variant without the desktop breakpoint classes", () => {
+  it("renders the same navigation targets in the mobile drawer variant", () => {
     const html = renderToStaticMarkup(<AppSidebar variant="mobile" onNavigate={() => undefined} />);
 
     expect(html).toContain('aria-label="Workspace"');
     expect(html).toContain("w-full");
     expect(html).not.toContain("md:flex");
+    for (const item of appNavigationItems) {
+      expect(html).toContain(`href="${item.href}"`);
+      expect(html).toContain(`>${item.label}</a>`);
+    }
   });
 
   it("marks Today active only on the app root", () => {
@@ -57,5 +64,15 @@ describe("AppSidebar", () => {
     const html = renderToStaticMarkup(<AppSidebar />);
 
     expectActiveLink(html, "/app/services");
+  });
+
+  it("maps every navigation target to the matching active route state", () => {
+    for (const item of appNavigationItems) {
+      expect(isActiveAppRoute(item.href, item.href)).toBe(true);
+    }
+
+    expect(isActiveAppRoute("/app/calendar/week", "/app/calendar")).toBe(true);
+    expect(isActiveAppRoute("/app/calendar", "/app")).toBe(false);
+    expect(isActiveAppRoute("/app/services-extra", "/app/services")).toBe(false);
   });
 });

@@ -3,20 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const navigationItems = [
+export const appNavigationItems = [
   { label: "Today", href: "/app" },
   { label: "Calendar", href: "/app/calendar" },
   { label: "Clients", href: "/app/clients" },
   { label: "Services", href: "/app/services" },
   { label: "Settings", href: "/app/settings" },
-];
+] as const;
 
 type AppSidebarProps = {
   onNavigate?: () => void;
   variant?: "desktop" | "mobile";
 };
 
-function isActiveRoute(pathname: string, href: string): boolean {
+export function isActiveAppRoute(pathname: string, href: string): boolean {
   if (href === "/app") {
     return pathname === href;
   }
@@ -43,8 +43,8 @@ export function AppSidebar({ onNavigate, variant = "desktop" }: AppSidebarProps)
         </div>
       )}
       <nav aria-label="Workspace" className="flex flex-1 flex-col gap-1">
-        {navigationItems.map((item) => {
-          const active = isActiveRoute(pathname, item.href);
+        {appNavigationItems.map((item) => {
+          const active = isActiveAppRoute(pathname, item.href);
 
           return (
             <Link
