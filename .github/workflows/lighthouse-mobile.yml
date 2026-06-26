@@ -29,8 +29,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate
+
       - name: Build
         run: pnpm build
+        env:
+          DATABASE_URL: "file:./dev.db"
+          SESSION_SECRET: "lighthouse-ci-session-secret-placeholder-32-chars-min"
 
       - name: Run Lighthouse CI (mobile)
         run: npx --yes @lhci/cli@0.13.x autorun --config=lighthouserc.json
