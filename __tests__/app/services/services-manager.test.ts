@@ -6,7 +6,7 @@ import {
   serviceToForm,
   validateServiceForm,
   type ServiceFormState,
-} from "@/app/services/services-manager";
+} from "@/app/(app)/services/services-manager";
 
 const validForm: ServiceFormState = {
   name: "Classic Haircut",
