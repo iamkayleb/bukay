@@ -26,11 +26,15 @@ const serviceDelegate = prisma.service as unknown as {
   update(args: unknown): Promise<ServiceRecord>;
 };
 
+async function findTenantService(tenantId: string, id: string) {
+  return serviceDelegate.findFirst({
+    where: { tenantId, id },
+  });
+}
+
 export async function GET(req: NextRequest, { params }: RouteContext) {
   return runForTenant(req, async (tenantId) => {
-    const service = await serviceDelegate.findFirst({
-      where: { tenantId, id: params.id },
-    });
+    const service = await findTenantService(tenantId, params.id);
 
     if (!service) {
       return jsonError("service_not_found", 404);
@@ -53,8 +57,13 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
   return runForTenant(req, async (tenantId) => {
     try {
+      const existingService = await findTenantService(tenantId, params.id);
+      if (!existingService) {
+        return jsonError("service_not_found", 404);
+      }
+
       const service = await serviceDelegate.update({
-        where: { tenantId, id: params.id },
+        where: { id: existingService.id },
         data: parsed.data,
       });
 
@@ -76,8 +85,13 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 export async function DELETE(req: NextRequest, { params }: RouteContext) {
   return runForTenant(req, async (tenantId) => {
     try {
+      const existingService = await findTenantService(tenantId, params.id);
+      if (!existingService) {
+        return jsonError("service_not_found", 404);
+      }
+
       const service = await serviceDelegate.update({
-        where: { tenantId, id: params.id },
+        where: { id: existingService.id },
         data: { active: false },
       });
 

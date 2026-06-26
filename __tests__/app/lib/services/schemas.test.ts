@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import { createServiceSchema, updateServiceSchema } from "@/app/lib/services/schemas";
 
+type ServiceFieldErrors = {
+  _form?: string[];
+  active?: string[];
+  bufferMinutes?: string[];
+  durationMinutes?: string[];
+  name?: string[];
+  priceKobo?: string[];
+};
+
 describe("service schemas", () => {
   it("parses a valid create payload and applies create defaults", () => {
     const result = createServiceSchema.parse({
@@ -69,9 +78,8 @@ describe("service schemas", () => {
     const result = updateServiceSchema.safeParse({});
 
     expect(result.success).toBe(false);
-    expect(result.success ? undefined : result.error.flatten().fieldErrors._form).toContain(
-      "At least one service field is required"
-    );
+    const errors = result.success ? {} : (result.error.flatten().fieldErrors as ServiceFieldErrors);
+    expect(errors._form).toContain("At least one service field is required");
   });
 
   it("rejects unknown fields", () => {
