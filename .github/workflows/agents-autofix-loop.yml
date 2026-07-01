@@ -73,7 +73,7 @@ jobs:
           owner: ${{ github.repository_owner }}
 
       - name: Checkout (for security gate)
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
 
           token: ${{ steps.app_token.outputs.token || github.token }}
@@ -681,7 +681,7 @@ jobs:
           owner: ${{ github.repository_owner }}
 
       - name: Checkout (for retry helpers)
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
 
           token: ${{ steps.app_token.outputs.token || github.token }}
@@ -771,7 +771,7 @@ jobs:
           owner: ${{ github.repository_owner }}
 
       - name: Checkout (for retry helpers)
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
 
           token: ${{ steps.app_token.outputs.token || github.token }}
@@ -956,7 +956,7 @@ jobs:
           PY
 
       - name: Upload metrics artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: agents-autofix-metrics
           path: autofix-metrics.ndjson

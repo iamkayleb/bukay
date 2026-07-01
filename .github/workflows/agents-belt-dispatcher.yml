@@ -20,6 +20,11 @@ on:
         required: false
         default: false
         type: boolean
+      base_branch:
+        description: 'Override base branch for the automation PR (defaults to issue marker or repository default)'
+        required: false
+        default: ''
+        type: string
     secrets:
       ACTIONS_BOT_PAT:
         required: false
@@ -59,4 +64,5 @@ jobs:
       agent_key: ${{ inputs.agent_key }}
       force_issue: ${{ inputs.force_issue }}
       dry_run: ${{ inputs.dry_run }}
+      base_branch: ${{ inputs.base_branch }}
     secrets: inherit

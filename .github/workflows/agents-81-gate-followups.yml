@@ -75,7 +75,7 @@ jobs:
       security_reason: ${{ steps.security_gate.outputs.reason }}
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Setup API client
         uses: ./.github/actions/setup-api-client
@@ -287,7 +287,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Setup API client
         uses: ./.github/actions/setup-api-client
@@ -416,7 +416,7 @@ jobs:
     environment: agent-standard
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Setup API client
         uses: ./.github/actions/setup-api-client
@@ -492,7 +492,7 @@ jobs:
           echo "$metrics_json" >> keepalive-metrics.ndjson
 
       - name: Upload keepalive metrics artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: keepalive-metrics
           path: keepalive-metrics.ndjson
@@ -702,7 +702,7 @@ jobs:
       security_reason: ${{ steps.security_gate.outputs.reason }}
     steps:
       - name: Checkout (for security gate + agent registry)
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           sparse-checkout: |
             .github/actions/setup-api-client
@@ -1122,7 +1122,7 @@ jobs:
     environment: agent-standard
     steps:
       - name: Checkout (for retry helpers)
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           sparse-checkout: |
             .github/scripts/github-api-with-retry.js
@@ -1193,7 +1193,7 @@ jobs:
     environment: agent-standard
     steps:
       - name: Checkout (for retry helpers)
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           sparse-checkout: |
             .github/scripts/github-api-with-retry.js
@@ -1370,7 +1370,7 @@ jobs:
           PY
 
       - name: Upload metrics artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: agents-autofix-metrics
           path: autofix-metrics.ndjson
