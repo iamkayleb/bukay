@@ -144,7 +144,7 @@ jobs:
 
       - name: Checkout repository
         if: steps.check_enabled.outputs.enabled == 'true'
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           token: ${{ steps.app_token.outputs.token || github.token }}
 
@@ -187,7 +187,7 @@ jobs:
 
       - name: Checkout Workflows scripts
         if: steps.check_enabled.outputs.enabled == 'true'
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           token: ${{ steps.app_token.outputs.token || github.token }}
           repository: iamkayleb/Workflows
@@ -229,7 +229,7 @@ jobs:
 
       - name: Cache pip (LLM requirements)
         if: steps.check_enabled.outputs.enabled == 'true'
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
         with:
           path: |
             ~/.cache/pip
@@ -2477,10 +2477,49 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo
             }));
-            const baseBranch = repoInfo.default_branch;
+            let baseBranch = repoInfo.default_branch;
             if (!baseBranch) {
               core.setFailed('Repository default branch not available');
               return;
+            }
+
+            // Honor an eval-branch follow-up marker in the issue body so the PR
+            // (and the ahead-of-base comparison below) targets the same branch
+            // the originating PR merged into, not the repository default.
+            // Set by agents-verify-to-new-pr; see agents-71-codex-belt-dispatcher.
+            try {
+              const { data: markerIssue } = await withRetry((client) => client.rest.issues.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber
+              }));
+              const markerMatch = (markerIssue.body || '').match(
+                /<!--\s*base-branch:\s*([^\s>]+)\s*-->/
+              );
+              if (markerMatch) {
+                const marked = markerMatch[1].trim();
+                if (marked && marked !== baseBranch) {
+                  try {
+                    await withRetry((client) => client.rest.repos.getBranch({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      branch: marked
+                    }));
+                    baseBranch = marked;
+                    core.info(`Auto-pilot PR base overridden to '${marked}' from issue marker.`);
+                  } catch (branchErr) {
+                    core.warning(
+                      `Marked base branch '${marked}' not found; ` +
+                      `using default '${baseBranch}'.`
+                    );
+                  }
+                }
+              }
+            } catch (markerErr) {
+              core.warning(
+                `Could not read issue #${issueNumber} for base marker: ` +
+                `${markerErr?.message || markerErr}`
+              );
             }
 
             // If a PR already exists for this branch, stop create-pr loop
@@ -3152,7 +3191,7 @@ jobs:
       # ── Upload auto-pilot metrics for weekly aggregation ───────────
       - name: Upload auto-pilot metrics
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         continue-on-error: true
         with:
           name: autopilot-metrics-${{ github.run_id }}-${{ github.run_attempt }}

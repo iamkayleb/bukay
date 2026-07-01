@@ -70,7 +70,7 @@ jobs:
 
       - name: Checkout repository
         if: steps.check-merged.outputs.merged == 'true'
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           repository: iamkayleb/Workflows
           token: ${{ steps.select-token.outputs.token }}
@@ -244,6 +244,22 @@ jobs:
             }
             core.info(`Follow-up chain depth: ${chainDepth}`);
             core.setOutput('chain_depth', String(chainDepth));
+
+            // Capture the merged PR's base branch so eval-branch follow-ups
+            // target the same branch instead of the repository default. Only
+            // emit it when it differs from the default (otherwise the belt
+            // dispatcher's normal default-branch path applies).
+            const prBaseRef = context.payload.pull_request.base?.ref || '';
+            const defaultBranch = context.payload.repository?.default_branch || '';
+            const nonDefaultBase =
+              prBaseRef && prBaseRef !== defaultBranch ? prBaseRef : '';
+            if (nonDefaultBase) {
+              core.info(
+                `PR base branch '${nonDefaultBase}' differs from default ` +
+                `'${defaultBranch}'; follow-up will target it.`
+              );
+            }
+            core.setOutput('pr_base_ref', nonDefaultBase);
 
             // Set outputs
             core.setOutput('has_original_issue', linkedIssueNumber ? 'true' : 'false');
@@ -432,6 +448,7 @@ jobs:
           ORIGINAL_ISSUE_TITLE: ${{ steps.collect.outputs.original_issue_title }}
           PR_NUMBER: ${{ steps.check-merged.outputs.pr_number }}
           FOLLOW_UP_DEPTH: ${{ steps.chain-check.outputs.next_depth }}
+          PR_BASE_REF: ${{ steps.collect.outputs.pr_base_ref }}
         run: |
           # Generate using Python script
           python scripts/langchain/followup_issue_generator.py \
@@ -446,6 +463,12 @@ jobs:
           # Inject chain depth marker into generated body
           depth="${FOLLOW_UP_DEPTH:-1}"
           marker="<!-- follow-up-depth: ${depth} -->"
+          # Preserve the base branch for eval-branch follow-ups so the belt
+          # dispatcher targets the same branch instead of the default branch
+          # (see .github/workflows/agents-71-codex-belt-dispatcher.yml).
+          if [ -n "${PR_BASE_REF:-}" ]; then
+            marker="$(printf '%s\n%s' "$marker" "<!-- base-branch: ${PR_BASE_REF} -->")"
+          fi
           jq --arg marker "$marker" \
             '.body = $marker + "\n" + .body' \
             followup_issue.json > followup_issue_tmp.json
@@ -471,6 +494,7 @@ jobs:
         env:
           FOLLOW_UP_DEPTH: ${{ steps.chain-check.outputs.next_depth }}
           EXTRACTED_VERDICT: ${{ steps.extract-verdict.outputs.verdict }}
+          PR_BASE_REF: ${{ steps.collect.outputs.pr_base_ref }}
         with:
           github-token: ${{ steps.select-token.outputs.token }}
           script: |
@@ -479,6 +503,7 @@ jobs:
             const prNumber = context.payload.pull_request.number;
             const prUrl = context.payload.pull_request.html_url;
             const depth = process.env.FOLLOW_UP_DEPTH || '1';
+            const prBaseRef = process.env.PR_BASE_REF || '';
 
             let verificationText = '';
             try {
@@ -596,6 +621,7 @@ jobs:
 
             const issueBody = [
               `<!-- follow-up-depth: ${depth} -->`,
+              ...(prBaseRef ? [`<!-- base-branch: ${prBaseRef} -->`] : []),
               '## Why',
               '',
               `PR #${prNumber} was verified with verdict **${verdict}**. ` +

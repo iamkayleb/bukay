@@ -20,6 +20,11 @@ on:
         required: false
         default: false
         type: boolean
+      base_branch:
+        description: 'Override base branch for the automation PR (defaults to issue marker or repository default)'
+        required: false
+        default: ''
+        type: string
     secrets:
       ACTIONS_BOT_PAT:
         required: false
@@ -63,6 +68,11 @@ on:
         required: false
         default: false
         type: boolean
+      base_branch:
+        description: 'Override base branch for the automation PR (defaults to issue marker or repository default)'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: write
@@ -167,7 +177,7 @@ jobs:
           echo "dry_run=${{ inputs.dry_run }}" >>"$GITHUB_OUTPUT"
 
       - name: Checkout repo (for retry helpers)
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           token: ${{ env.GH_DISPATCH_TOKEN }}
           fetch-depth: 1
@@ -198,7 +208,7 @@ jobs:
             core.setOutput('ref', data.default_branch);
 
       - name: Checkout (for retry helpers)
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           repository: iamkayleb/Workflows
           ref: ${{ steps.workflows_ref.outputs.ref }}
@@ -277,11 +287,57 @@ jobs:
             ]);
 
             const { data: repoInfo } = await withRetry((client) => client.rest.repos.get({ owner, repo }));
-            const base = repoInfo.default_branch;
-            if (!base) {
+            const defaultBranch = repoInfo.default_branch;
+            if (!defaultBranch) {
               core.setFailed('Repository default branch not available');
               return;
             }
+
+            // Resolve the PR base branch. Precedence:
+            //   1. explicit base_branch input
+            //   2. <!-- base-branch: X --> marker in the issue body
+            //      (set by agents-verify-to-new-pr for eval-branch follow-ups)
+            //   3. repository default branch
+            let base = String('${{ inputs.base_branch }}' || '').trim();
+            let baseSource = base ? 'input' : '';
+            if (!base) {
+              let issueBody = '';
+              try {
+                const { data: issueData } = await withRetry((client) =>
+                  client.rest.issues.get({ owner, repo, issue_number: issueNumber }));
+                issueBody = issueData.body || '';
+              } catch (error) {
+                core.warning(
+                  `Could not fetch issue #${issueNumber} body for base marker: ${error.message}`
+                );
+              }
+              const markerMatch = issueBody.match(/<!--\s*base-branch:\s*([^\s>]+)\s*-->/);
+              if (markerMatch) {
+                base = markerMatch[1].trim();
+                baseSource = 'issue-marker';
+              }
+            }
+            if (!base) {
+              base = defaultBranch;
+              baseSource = 'default';
+            }
+
+            // Guard: never target a base branch that does not exist. A stale or
+            // mistyped marker would otherwise wedge dispatch, so fall back to
+            // the default branch.
+            if (base !== defaultBranch) {
+              try {
+                await withRetry((client) => client.rest.repos.getBranch({ owner, repo, branch: base }));
+              } catch (error) {
+                core.warning(
+                  `Base branch '${base}' (from ${baseSource}) not found; ` +
+                  `falling back to '${defaultBranch}'.`
+                );
+                base = defaultBranch;
+                baseSource = 'default-fallback';
+              }
+            }
+            core.info(`Resolved PR base branch: ${base} (source: ${baseSource})`);
 
             let branchPrefix = 'codex/issue-';
             try {
@@ -307,7 +363,7 @@ jobs:
 
       - name: Checkout default branch
         if: ${{ steps.pick.outputs.issue != '' && steps.mode.outputs.dry_run != 'true' }}
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           ref: ${{ steps.pick.outputs.base }}
           token: ${{ env.GH_DISPATCH_TOKEN }}
