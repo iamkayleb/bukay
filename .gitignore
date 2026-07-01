@@ -215,3 +215,5 @@ node_modules/
 prisma/generated/
 # pnpm
 pnpm-debug.log*
+# Lighthouse CI
+.lighthouseci/

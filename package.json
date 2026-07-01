@@ -10,6 +10,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
+    "lighthouse:mobile": "lhci autorun --config=lighthouserc.json",
     "prisma:generate": "prisma generate",
     "migrate:dev": "prisma migrate dev",
     "db:seed": "prisma db seed"
