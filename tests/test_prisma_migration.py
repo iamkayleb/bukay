@@ -24,6 +24,7 @@ REQUIRED_MODELS = {
     "Service",
     "Staff",
     "BusinessHour",
+    "Blackout",
     "Client",
     "Booking",
     "Payment",
@@ -43,6 +44,12 @@ def _initial_migration_dir() -> Path:
     return sorted(candidates)[0]
 
 
+def _all_migration_sql() -> str:
+    migration_files = sorted(MIGRATIONS_DIR.glob("*/migration.sql"))
+    assert migration_files, f"no migration.sql files found under {MIGRATIONS_DIR}"
+    return "\n".join(path.read_text() for path in migration_files)
+
+
 def test_migration_lock_present() -> None:
     lock = MIGRATIONS_DIR / "migration_lock.toml"
     assert lock.exists(), "prisma/migrations/migration_lock.toml must be checked in"
@@ -54,18 +61,18 @@ def test_initial_migration_exists() -> None:
     assert sql_file.exists(), f"missing migration.sql in {init_dir}"
 
 
-def test_migration_creates_every_required_model() -> None:
-    """Every model in the schema must have a CREATE TABLE in the initial migration."""
-    sql = (_initial_migration_dir() / "migration.sql").read_text()
+def test_migrations_create_every_required_model() -> None:
+    """Every model in the schema must have a CREATE TABLE in the migration history."""
+    sql = _all_migration_sql()
     for model in REQUIRED_MODELS:
         assert (
             f'CREATE TABLE "{model}"' in sql
-        ), f"initial migration is missing CREATE TABLE for {model}"
+        ), f"migration history is missing CREATE TABLE for {model}"
 
 
-def test_migration_indexes_tenant_id_on_scoped_tables() -> None:
+def test_migrations_index_tenant_id_on_scoped_tables() -> None:
     """Every tenant-scoped table needs an index on tenantId in the SQL."""
-    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    sql = _all_migration_sql()
     for model in REQUIRED_MODELS - {"Tenant"}:
         # Prisma emits `CREATE INDEX "<Model>_tenantId_idx" ON "<Model>"("tenantId")`
         # (or a composite index whose first column is tenantId).
@@ -73,7 +80,7 @@ def test_migration_indexes_tenant_id_on_scoped_tables() -> None:
             rf'CREATE INDEX\s+"{model}_tenantId[^"]*_idx"\s+ON\s+"{model}"\s*\(\s*"tenantId"',
             re.IGNORECASE,
         )
-        assert pattern.search(sql), f"initial migration missing tenantId index for {model}"
+        assert pattern.search(sql), f"migration history missing tenantId index for {model}"
 
 
 def test_data_model_doc_exists_and_covers_every_model() -> None:

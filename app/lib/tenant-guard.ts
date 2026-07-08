@@ -5,6 +5,7 @@ export const TENANT_SCOPED_MODELS = [
   "Service",
   "Staff",
   "BusinessHour",
+  "Blackout",
   "Client",
   "Booking",
   "Payment",
