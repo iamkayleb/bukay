@@ -136,10 +136,11 @@ describe("/api/settings/schedule", () => {
     const res = await PUT(
       jsonRequest("/api/settings/schedule", {
         businessHours: [
-          { dayOfWeek: 1, opensAt: "09:00", closesAt: "12:00" },
+          { dayOfWeek: 2, opensAt: "10:00", closesAt: "16:00" },
           { dayOfWeek: 1, opensAt: "14:00", closesAt: "18:00" },
+          { dayOfWeek: 1, opensAt: "09:00", closesAt: "12:00" },
         ],
-        blackouts: [{ date: "2026-12-25", reason: "Christmas" }],
+        blackouts: [{ date: "2026-12-25", reason: " Christmas " }],
       })
     );
 
@@ -151,6 +152,7 @@ describe("/api/settings/schedule", () => {
       data: [
         { tenantId: "tenant-1", dayOfWeek: 1, opensAt: "09:00", closesAt: "12:00" },
         { tenantId: "tenant-1", dayOfWeek: 1, opensAt: "14:00", closesAt: "18:00" },
+        { tenantId: "tenant-1", dayOfWeek: 2, opensAt: "10:00", closesAt: "16:00" },
       ],
     });
     expect(state.blackoutCreateMany).toHaveBeenCalledWith({

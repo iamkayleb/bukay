@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/app/db/prisma";
-import { updateScheduleSchema } from "@/app/lib/schedule/schemas";
+import { normalizeScheduleInput, updateScheduleSchema } from "@/app/lib/schedule/schemas";
 import { readJson, runForTenant, validationError } from "@/app/api/services/_helpers";
 
 export const dynamic = "force-dynamic";
@@ -86,16 +86,18 @@ export async function PUT(req: NextRequest) {
     return validationError(parsed.error);
   }
 
+  const schedule = normalizeScheduleInput(parsed.data);
+
   return runForTenant(req, async (tenantId) => {
     const operations = [
       scheduleDb.businessHour.deleteMany({ where: { tenantId } }),
       scheduleDb.blackout.deleteMany({ where: { tenantId } }),
     ];
 
-    if (parsed.data.businessHours.length > 0) {
+    if (schedule.businessHours.length > 0) {
       operations.push(
         scheduleDb.businessHour.createMany({
-          data: parsed.data.businessHours.map((hour) => ({
+          data: schedule.businessHours.map((hour) => ({
             tenantId,
             dayOfWeek: hour.dayOfWeek,
             opensAt: hour.opensAt,
@@ -105,10 +107,10 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    if (parsed.data.blackouts.length > 0) {
+    if (schedule.blackouts.length > 0) {
       operations.push(
         scheduleDb.blackout.createMany({
-          data: parsed.data.blackouts.map((blackout) => ({
+          data: schedule.blackouts.map((blackout) => ({
             tenantId,
             date: blackout.date,
             reason: blackout.reason.trim() || null,

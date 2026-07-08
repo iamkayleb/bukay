@@ -41,3 +41,15 @@ export const updateScheduleSchema = z
   });
 
 export type UpdateScheduleInput = z.infer<typeof updateScheduleSchema>;
+
+export function normalizeScheduleInput(input: UpdateScheduleInput): UpdateScheduleInput {
+  return {
+    businessHours: [...input.businessHours].sort(
+      (left, right) =>
+        left.dayOfWeek - right.dayOfWeek ||
+        left.opensAt.localeCompare(right.opensAt) ||
+        left.closesAt.localeCompare(right.closesAt)
+    ),
+    blackouts: [...input.blackouts].sort((left, right) => left.date.localeCompare(right.date)),
+  };
+}
