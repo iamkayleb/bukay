@@ -35,8 +35,8 @@ The root of the multi-tenant tree.
 | `timezone` | `String` | IANA tz, defaults to `Africa/Lagos`    |
 | `currency` | `String` | ISO 4217, defaults to `NGN`            |
 
-Children: `users`, `services`, `staff`, `businessHours`, `clients`, `bookings`,
-`payments`, `auditLogs`.
+Children: `users`, `services`, `staff`, `businessHours`, `blackouts`,
+`clients`, `bookings`, `payments`, `auditLogs`.
 
 ### User
 
@@ -79,19 +79,34 @@ member also logs in.
 
 ### BusinessHour
 
-Weekly availability template. Rows with `staffId = null` define the tenant's
-default hours; rows with a `staffId` override for that staff member.
+Weekly availability template. Each row is one open window. Multiple rows for
+the same weekday allow split schedules such as 09:00-12:00 and 13:00-17:00.
+Closed weekdays have no rows.
 
-| Column        | Type        | Notes                                           |
-|---------------|-------------|-------------------------------------------------|
-| `tenantId`    | `String`    | FK → `Tenant.id`, indexed                       |
-| `staffId`     | `String?`   | Optional FK → `Staff.id`                        |
-| `dayOfWeek`   | `DayOfWeek` | Enum                                            |
-| `openMinute`  | `Int`       | Minutes since midnight (`9*60` → 09:00)         |
-| `closeMinute` | `Int`       | Minutes since midnight                          |
+| Column      | Type     | Notes                                           |
+|-------------|----------|-------------------------------------------------|
+| `tenantId`  | `String` | FK → `Tenant.id`, indexed                       |
+| `dayOfWeek` | `Int`    | Weekday number used by the availability helper  |
+| `opensAt`   | `String` | Local wall-clock time, `HH:mm`                  |
+| `closesAt`  | `String` | Local wall-clock time, `HH:mm`                  |
 
-Composite index `@@index([tenantId, staffId, dayOfWeek])` supports the
-availability lookup path.
+Composite index `@@index([tenantId, dayOfWeek])` supports the availability
+lookup path. `@@unique([tenantId, dayOfWeek, opensAt, closesAt])` prevents
+duplicate windows without limiting a weekday to one window.
+
+### Blackout
+
+Date-specific closure override for holidays and one-off closures. A blackout
+applies to the whole local date for its tenant; when present, availability
+returns no open windows for that date.
+
+| Column     | Type      | Notes                                      |
+|------------|-----------|--------------------------------------------|
+| `tenantId` | `String`  | FK -> `Tenant.id`, indexed                 |
+| `date`     | `String`  | Local calendar date, `YYYY-MM-DD`          |
+| `reason`   | `String?` | Optional owner-facing note                 |
+
+`@@unique([tenantId, date])` keeps each tenant to one blackout row per date.
 
 ### Client
 
@@ -163,7 +178,8 @@ Every tenant-scoped table has at least `@@index([tenantId])`:
 | `User`         | ✓            | `@@unique([tenantId, email])`                     |
 | `Service`      | ✓            | —                                                 |
 | `Staff`        | ✓            | `@unique` on `userId`                             |
-| `BusinessHour` | ✓            | `@@index([tenantId, staffId, dayOfWeek])`         |
+| `BusinessHour` | ✓            | `…dayOfWeek`, `…dayOfWeek, opensAt, closesAt`     |
+| `Blackout`     | ✓            | `@@unique([tenantId, date])`, `…date`             |
 | `Client`       | ✓            | `@@unique([tenantId, phone])`, `…email]`          |
 | `Booking`      | ✓            | `…startsAt`, `…staffId, startsAt`                 |
 | `Payment`      | ✓            | `@@index([tenantId, bookingId])`                  |
