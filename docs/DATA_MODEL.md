@@ -93,6 +93,20 @@ default hours; rows with a `staffId` override for that staff member.
 Composite index `@@index([tenantId, staffId, dayOfWeek])` supports the
 availability lookup path.
 
+### Blackout
+
+Date-specific override that closes the tenant for the whole day (holidays,
+one-off closures). The availability helper subtracts these dates from the
+weekly template before returning open windows.
+
+| Column     | Type       | Notes                                          |
+|------------|------------|------------------------------------------------|
+| `tenantId` | `String`   | FK → `Tenant.id`, indexed                      |
+| `date`     | `String`   | ISO `YYYY-MM-DD`, tenant's local calendar day  |
+| `reason`   | `String?`  | Optional human-readable label                  |
+
+`@@unique([tenantId, date])` prevents duplicate blackouts for the same day.
+
 ### Client
 
 End-customers who book services. Email and phone are each unique within a
