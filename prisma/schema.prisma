@@ -23,6 +23,7 @@ model Tenant {
   services      Service[]
   staff         Staff[]
   businessHours BusinessHour[]
+  blackouts     Blackout[]
   clients       Client[]
   bookings      Booking[]
   payments      Payment[]
@@ -84,11 +85,23 @@ model BusinessHour {
   dayOfWeek Int
   opensAt   String
   closesAt  String
-  isClosed  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([tenantId, dayOfWeek])
+  @@index([tenantId])
+  @@index([tenantId, dayOfWeek])
+}
+
+model Blackout {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  date      String
+  reason    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, date])
   @@index([tenantId])
 }
 
@@ -167,4 +180,3 @@ model AuditLog {
   @@index([tenantId])
   @@index([tenantId, entityType, entityId])
 }
-
