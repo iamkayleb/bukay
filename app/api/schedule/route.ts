@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/app/db/prisma";
-import { jsonError, readJson, runForTenant, validationError } from "@/app/api/_helpers";
+import { readJson, runForTenant, validationError } from "@/app/api/_helpers";
 import {
   scheduleUpdateSchema,
   type ScheduleUpdatePayload,
@@ -95,7 +95,3 @@ function flattenSchedule(tenantId: string, payload: ScheduleUpdatePayload) {
   rows.sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.opensAt.localeCompare(b.opensAt));
   return rows;
 }
-
-// jsonError re-exported for tests that assert the error contract without
-// depending on the shared helpers module.
-export { jsonError };
