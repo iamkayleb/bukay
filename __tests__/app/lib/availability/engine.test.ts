@@ -6,6 +6,8 @@ const calls = vi.hoisted(() => ({
 
 vi.mock("@/app/lib/availability/open-windows", () => ({
   getOpenWindows: calls.getOpenWindows,
+  toTenantLocalDate: (value: Date | string) =>
+    typeof value === "string" ? value : value.toISOString().slice(0, 10),
 }));
 
 import { getAvailabilityWindows } from "@/app/lib/availability/engine";
@@ -33,5 +35,16 @@ describe("getAvailabilityWindows", () => {
     await expect(
       getAvailabilityWindows({ tenantId: "tenant-1", date: "2026-12-25" })
     ).resolves.toEqual([]);
+  });
+
+  it("normalizes Date inputs through the availability helper", async () => {
+    const date = new Date("2026-07-06T23:45:00.000Z");
+    calls.getOpenWindows.mockResolvedValue([{ opensAt: "16:00", closesAt: "18:00" }]);
+
+    await expect(getAvailabilityWindows({ tenantId: "tenant-1", date })).resolves.toEqual([
+      { date: "2026-07-06", opensAt: "16:00", closesAt: "18:00" },
+    ]);
+
+    expect(calls.getOpenWindows).toHaveBeenCalledWith("tenant-1", date);
   });
 });

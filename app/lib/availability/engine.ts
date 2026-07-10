@@ -1,4 +1,8 @@
-import { getOpenWindows, type OpenWindow } from "@/app/lib/availability/open-windows";
+import {
+  getOpenWindows,
+  toTenantLocalDate,
+  type OpenWindow,
+} from "@/app/lib/availability/open-windows";
 
 export type AvailabilityWindow = OpenWindow & {
   date: string;
@@ -14,7 +18,7 @@ export async function getAvailabilityWindows({
   date,
 }: AvailabilityEngineOptions): Promise<AvailabilityWindow[]> {
   const windows = await getOpenWindows(tenantId, date);
-  const localDate = typeof date === "string" ? date : date.toISOString().slice(0, 10);
+  const localDate = toTenantLocalDate(date);
 
   return windows.map((window) => ({
     date: localDate,
