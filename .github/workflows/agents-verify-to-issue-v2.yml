@@ -91,7 +91,7 @@ jobs:
 
       - name: Set up Python
         if: steps.check-merged.outputs.merged == 'true'
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -129,9 +129,11 @@ jobs:
 
             // Find verification comment(s) - both evaluate and compare
             const verifyComments = comments.filter(c =>
+              c.body.includes('## Provider Comparison Report') ||
               c.body.includes('## PR Verification Report') ||
               c.body.includes('## PR Verification Comparison') ||
               c.body.includes('### Concerns') ||
+              c.body.includes('### Unique Insights') ||
               c.body.includes('Verdict:') ||
               c.body.includes('### ⚠️ Issues Detected')
             );
@@ -229,7 +231,15 @@ jobs:
 
       - name: Fallback to simple extraction
         id: fallback
-        if: steps.generate.outcome == 'failure' && steps.check-merged.outputs.merged == 'true'
+        # Fire not only on a hard failure but also when generation "succeeds"
+        # yet yields an empty title/body (e.g. the no-LLM path produced
+        # nothing usable). Without this the create step dies on empty output
+        # and no follow-up issue is created.
+        if: >-
+          steps.check-merged.outputs.merged == 'true' &&
+          (steps.generate.outcome == 'failure' ||
+           steps.generate.outputs.issue_title == '' ||
+           steps.generate.outputs.issue_body == '')
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ steps.select-token.outputs.token }}
