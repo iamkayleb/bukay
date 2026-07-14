@@ -199,6 +199,25 @@ function resolveAgentRoutingFromLabels(labels, { registryPath } = {}) {
     mode = 'auto';
     agentKey = registry.default_agent;
     requested = 'auto';
+  } else {
+    // No explicit `agent:` label. Honor the originating agent recorded on
+    // follow-up issues/PRs via `from:<agent>` or `runner:<agent>` before
+    // falling back to the registry default — otherwise a Claude follow-up
+    // whose `agent:claude` label was dropped (e.g. by the capability/block
+    // flow) is silently rerouted to the default agent.
+    const affinity = labelList
+      .map(normalizeLabel)
+      .filter(Boolean)
+      .map((value) => {
+        const match = value.match(/^(?:from|runner):(.+)$/);
+        return match ? match[1] : null;
+      })
+      .find((value) => value && knownAgents.has(value));
+    if (affinity) {
+      mode = 'affinity';
+      agentKey = affinity;
+      requested = affinity;
+    }
   }
 
   if (!registry.agents[agentKey]) {
