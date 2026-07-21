@@ -202,6 +202,10 @@ jobs:
         id: generate
         if: steps.check-merged.outputs.merged == 'true'
         env:
+          # Repo root on PYTHONPATH so `from scripts.langchain import ...`
+          # resolves (running the script directly only puts scripts/langchain
+          # on the path, which breaks the import).
+          PYTHONPATH: ${{ github.workspace }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           GITHUB_TOKEN: ${{ steps.select-token.outputs.token }}
@@ -232,10 +236,12 @@ jobs:
       - name: Fallback to simple extraction
         id: fallback
         # Fire not only on a hard failure but also when generation "succeeds"
-        # yet yields an empty title/body (e.g. the no-LLM path produced
-        # nothing usable). Without this the create step dies on empty output
-        # and no follow-up issue is created.
+        # yet yields an empty title/body. The leading !cancelled() supplies a
+        # status-check function so this step still evaluates after `generate`
+        # fails — without it the implicit success() gate would skip the
+        # fallback (and no follow-up issue would be created).
         if: >-
+          !cancelled() &&
           steps.check-merged.outputs.merged == 'true' &&
           (steps.generate.outcome == 'failure' ||
            steps.generate.outputs.issue_title == '' ||
@@ -322,7 +328,11 @@ jobs:
 
       - name: Create follow-up issue
         id: create-issue
-        if: steps.check-merged.outputs.merged == 'true'
+        # !cancelled() so this runs even when `generate` failed and the
+        # fallback produced the title/body.
+        if: >-
+          !cancelled() &&
+          steps.check-merged.outputs.merged == 'true'
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           ISSUE_TITLE: >-
