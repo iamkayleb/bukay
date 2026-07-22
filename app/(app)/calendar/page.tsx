@@ -47,6 +47,7 @@ async function loadCalendarData() {
         take: 100,
         select: {
           id: true,
+          serviceId: true,
           startsAt: true,
           endsAt: true,
           status: true,
@@ -72,6 +73,7 @@ async function loadCalendarData() {
       bookings: bookings.map(
         (booking): CalendarBooking => ({
           id: booking.id,
+          serviceId: booking.serviceId,
           clientName: booking.client.name,
           serviceName: booking.service.name,
           staffName: booking.staff?.name ?? null,
@@ -94,7 +96,11 @@ export default async function CalendarPage() {
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-100 sm:px-6 lg:px-8">
       <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[420px_minmax(0,1fr)]">
         <ManualBookingForm clients={clients} services={services} />
-        <CalendarView bookings={bookings} initialDate={new Date().toISOString()} />
+        <CalendarView
+          bookings={bookings}
+          initialDate={new Date().toISOString()}
+          services={services}
+        />
       </div>
     </main>
   );

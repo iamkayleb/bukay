@@ -6,6 +6,9 @@ import {
   bookingHeightPx,
   bookingOffsetPercent,
   bookingsForDay,
+  buildEditBookingPayload,
+  dateTimeLocalValue,
+  editFormFromBooking,
   hasBookingOverlap,
   isInsideCalendarHours,
   moveBookingToStart,
@@ -19,6 +22,7 @@ import {
 const bookings: CalendarBooking[] = [
   {
     id: "booking-1",
+    serviceId: "service-1",
     clientName: "Ada Okafor",
     serviceName: "Classic Haircut",
     staffName: "Owner",
@@ -29,6 +33,7 @@ const bookings: CalendarBooking[] = [
   },
   {
     id: "booking-2",
+    serviceId: "service-2",
     clientName: "Bola Mensah",
     serviceName: "Beard Trim",
     staffName: null,
@@ -37,6 +42,11 @@ const bookings: CalendarBooking[] = [
     status: "pending",
     notes: null,
   },
+];
+
+const services = [
+  { id: "service-1", name: "Classic Haircut", durationMinutes: 45 },
+  { id: "service-2", name: "Beard Trim", durationMinutes: 20 },
 ];
 
 describe("calendar view helpers", () => {
@@ -67,6 +77,7 @@ describe("calendar view helpers", () => {
     expect(
       normalizeBooking({
         id: "booking-3",
+        serviceId: "service-2",
         client: { name: "Chika" },
         service: { name: "Braids" },
         staff: { name: "Amaka" },
@@ -75,6 +86,7 @@ describe("calendar view helpers", () => {
       })
     ).toEqual({
       id: "booking-3",
+      serviceId: "service-2",
       clientName: "Chika",
       serviceName: "Braids",
       staffName: "Amaka",
@@ -102,6 +114,33 @@ describe("calendar view helpers", () => {
       id: "booking-1",
       startsAt: "2026-07-24T13:15:00.000Z",
       endsAt: "2026-07-24T14:00:00.000Z",
+    });
+  });
+
+  it("builds edit payloads with service duration and trimmed notes", () => {
+    expect(dateTimeLocalValue("2026-07-22T10:00:00.000Z")).toBe("2026-07-22T10:00");
+    expect(editFormFromBooking(bookings[0])).toEqual({
+      serviceId: "service-1",
+      startsAt: "2026-07-22T10:00",
+      notes: "Prefers mornings",
+      status: "confirmed",
+    });
+    expect(
+      buildEditBookingPayload(
+        {
+          serviceId: "service-2",
+          startsAt: "2026-07-22T11:00",
+          notes: "  Bring reference photo  ",
+          status: "completed",
+        },
+        services
+      )
+    ).toEqual({
+      serviceId: "service-2",
+      startsAt: "2026-07-22T11:00:00.000Z",
+      endsAt: "2026-07-22T11:20:00.000Z",
+      notes: "Bring reference photo",
+      status: "completed",
     });
   });
 

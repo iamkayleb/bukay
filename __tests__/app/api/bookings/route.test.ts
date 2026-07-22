@@ -23,6 +23,7 @@ type NextRequestInit = NonNullable<ConstructorParameters<typeof NextRequest>[1]>
 const state = vi.hoisted(() => ({
   bookings: [] as BookingRow[],
   auditLogs: [] as unknown[],
+  serviceFindFirst: vi.fn(),
   bookingFindFirst: vi.fn(),
   bookingUpdate: vi.fn(),
   auditLogCreate: vi.fn(),
@@ -35,6 +36,9 @@ vi.mock("@/app/db/prisma", () => ({
     booking: {
       findFirst: state.bookingFindFirst,
       update: state.bookingUpdate,
+    },
+    service: {
+      findFirst: state.serviceFindFirst,
     },
     auditLog: {
       create: state.auditLogCreate,
@@ -90,12 +94,14 @@ beforeEach(() => {
 
   state.bookingFindFirst.mockReset();
   state.bookingUpdate.mockReset();
+  state.serviceFindFirst.mockReset();
   state.auditLogCreate.mockReset();
   state.transaction.mockReset();
   state.tenantFindUnique.mockReset();
 
   state.transaction.mockImplementation(async (callback) =>
     callback({
+      service: { findFirst: state.serviceFindFirst },
       booking: { findFirst: state.bookingFindFirst, update: state.bookingUpdate },
       auditLog: { create: state.auditLogCreate },
     })
@@ -107,7 +113,7 @@ beforeEach(() => {
       ) ?? null
   );
   state.bookingUpdate.mockImplementation(
-    async (args: { where: { id: string }; data: { startsAt: Date; endsAt: Date } }) => {
+    async (args: { where: { id: string }; data: Partial<BookingRow> }) => {
       const index = state.bookings.findIndex((booking) => booking.id === args.where.id);
       if (index === -1) {
         throw Object.assign(new Error("Record not found"), { code: "P2025" });
@@ -115,11 +121,23 @@ beforeEach(() => {
 
       state.bookings[index] = {
         ...state.bookings[index],
-        startsAt: args.data.startsAt,
-        endsAt: args.data.endsAt,
+        ...args.data,
+        service:
+          args.data.serviceId === "service-2"
+            ? { name: "Beard Trim" }
+            : state.bookings[index].service,
         updatedAt: new Date("2026-07-22T12:00:00.000Z"),
       };
       return state.bookings[index];
+    }
+  );
+  state.serviceFindFirst.mockImplementation(
+    async (args: { where: { tenantId: string; id: string; active: boolean } }) => {
+      if (args.where.tenantId !== "tenant-1" || !args.where.active) {
+        return null;
+      }
+
+      return ["service-1", "service-2"].includes(args.where.id) ? { id: args.where.id } : null;
     }
   );
   state.auditLogCreate.mockImplementation(async (args: unknown) => {
@@ -169,6 +187,100 @@ describe("PATCH /api/bookings/:id", () => {
       oldEndsAt: "2026-07-22T10:45:00.000Z",
       newStartsAt: "2026-07-23T14:00:00.000Z",
       newEndsAt: "2026-07-23T14:45:00.000Z",
+      oldServiceId: "service-1",
+      newServiceId: "service-1",
+      oldStatus: "confirmed",
+      newStatus: "confirmed",
+      oldNotes: "Prefers mornings",
+      newNotes: "Prefers mornings",
+    });
+  });
+
+  it("updates service, time, notes, and status for the edit modal", async () => {
+    const res = await PATCH(
+      jsonRequest("/api/bookings/booking-1", {
+        serviceId: "service-2",
+        startsAt: "2026-07-23T11:00:00.000Z",
+        endsAt: "2026-07-23T11:20:00.000Z",
+        notes: "Bring reference photo",
+        status: "completed",
+      }),
+      { params: { id: "booking-1" } }
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.booking).toMatchObject({
+      id: "booking-1",
+      serviceId: "service-2",
+      startsAt: "2026-07-23T11:00:00.000Z",
+      endsAt: "2026-07-23T11:20:00.000Z",
+      notes: "Bring reference photo",
+      status: "completed",
+      service: { name: "Beard Trim" },
+    });
+    expect(state.serviceFindFirst).toHaveBeenCalledWith({
+      where: { tenantId: "tenant-1", id: "service-2", active: true },
+      select: { id: true },
+    });
+    expect(state.bookingUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "booking-1" },
+        data: {
+          serviceId: "service-2",
+          startsAt: new Date("2026-07-23T11:00:00.000Z"),
+          endsAt: new Date("2026-07-23T11:20:00.000Z"),
+          notes: "Bring reference photo",
+          status: "completed",
+        },
+      })
+    );
+  });
+
+  it("returns not found when the edited service is outside the tenant", async () => {
+    const res = await PATCH(
+      jsonRequest("/api/bookings/booking-1", {
+        serviceId: "missing-service",
+        startsAt: "2026-07-23T11:00:00.000Z",
+        endsAt: "2026-07-23T11:20:00.000Z",
+        notes: null,
+        status: "confirmed",
+      }),
+      { params: { id: "booking-1" } }
+    );
+
+    expect(res.status).toBe(404);
+    await expect(res.json()).resolves.toEqual({
+      ok: false,
+      error: "booking_dependency_not_found",
+    });
+    expect(state.bookingUpdate).not.toHaveBeenCalled();
+    expect(state.auditLogCreate).not.toHaveBeenCalled();
+  });
+
+  it("uses a booking update audit action when the time does not change", async () => {
+    const res = await PATCH(
+      jsonRequest("/api/bookings/booking-1", {
+        notes: "Updated notes",
+        status: "pending",
+      }),
+      { params: { id: "booking-1" } }
+    );
+
+    expect(res.status).toBe(200);
+    expect(state.bookingUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          notes: "Updated notes",
+          status: "pending",
+        },
+      })
+    );
+    expect(state.auditLogCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "booking_updated",
+        entityId: "booking-1",
+      }),
     });
   });
 

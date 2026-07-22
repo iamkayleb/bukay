@@ -1,9 +1,12 @@
 "use client";
 
-import { DragEvent, useEffect, useMemo, useState } from "react";
+import { DragEvent, FormEvent, useEffect, useMemo, useState } from "react";
+
+import type { ServiceOption } from "./manual-booking-form";
 
 export type CalendarBooking = {
   id: string;
+  serviceId: string;
   clientName: string;
   serviceName: string;
   staffName: string | null;
@@ -16,9 +19,20 @@ export type CalendarBooking = {
 type CalendarViewProps = {
   bookings?: CalendarBooking[];
   initialDate: string;
+  services?: ServiceOption[];
 };
 
 type CalendarMode = "day" | "week";
+type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed";
+
+type EditBookingFormState = {
+  serviceId: string;
+  startsAt: string;
+  notes: string;
+  status: BookingStatus;
+};
+
+type EditBookingFieldErrors = Partial<Record<keyof EditBookingFormState | "_form", string>>;
 
 const calendarStartHour = 8;
 const calendarEndHour = 18;
@@ -89,6 +103,62 @@ export function moveBookingToStart(booking: CalendarBooking, startsAt: Date) {
     ...booking,
     startsAt: startsAt.toISOString(),
     endsAt: endsAt.toISOString(),
+  };
+}
+
+export function dateTimeLocalValue(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * minuteMs);
+  return local.toISOString().slice(0, 16);
+}
+
+export function editFormFromBooking(booking: CalendarBooking): EditBookingFormState {
+  return {
+    serviceId: booking.serviceId,
+    startsAt: dateTimeLocalValue(booking.startsAt),
+    notes: booking.notes ?? "",
+    status: booking.status as BookingStatus,
+  };
+}
+
+export function validateEditBookingForm(
+  form: EditBookingFormState,
+  services: ServiceOption[]
+): EditBookingFieldErrors {
+  const errors: EditBookingFieldErrors = {};
+  const startsAt = form.startsAt ? new Date(form.startsAt) : null;
+
+  if (!services.some((service) => service.id === form.serviceId)) {
+    errors.serviceId = "Choose a service";
+  }
+
+  if (!startsAt || Number.isNaN(startsAt.getTime())) {
+    errors.startsAt = "Choose a valid time";
+  }
+
+  if (!["pending", "confirmed", "cancelled", "completed"].includes(form.status)) {
+    errors.status = "Choose a status";
+  }
+
+  return errors;
+}
+
+export function buildEditBookingPayload(form: EditBookingFormState, services: ServiceOption[]) {
+  const service = services.find((option) => option.id === form.serviceId);
+  const startsAt = new Date(form.startsAt);
+  const endsAt = new Date(startsAt.getTime() + (service?.durationMinutes ?? 0) * minuteMs);
+
+  return {
+    serviceId: form.serviceId,
+    startsAt: startsAt.toISOString(),
+    endsAt: endsAt.toISOString(),
+    notes: form.notes.trim() || null,
+    status: form.status,
   };
 }
 
@@ -166,6 +236,7 @@ export function normalizeBooking(input: BookingPayload) {
 
   return {
     id: String(input.id),
+    serviceId: typeof input.serviceId === "string" ? input.serviceId : "",
     clientName:
       typeof input.clientName === "string"
         ? input.clientName
@@ -188,6 +259,30 @@ export function normalizeBooking(input: BookingPayload) {
     endsAt: String(input.endsAt),
     status: typeof input.status === "string" ? input.status : "confirmed",
     notes: typeof input.notes === "string" ? input.notes : null,
+  };
+}
+
+function hasErrors(errors: EditBookingFieldErrors) {
+  return Object.values(errors).some(Boolean);
+}
+
+function firstError(errors: string[] | undefined) {
+  return errors?.[0];
+}
+
+function apiEditErrors(error: {
+  error?: string;
+  fieldErrors?: Partial<Record<string, string[]>>;
+  formErrors?: string[];
+}): EditBookingFieldErrors {
+  const fieldErrors = error.fieldErrors ?? {};
+
+  return {
+    serviceId: firstError(fieldErrors.serviceId),
+    startsAt: firstError(fieldErrors.startsAt),
+    notes: firstError(fieldErrors.notes),
+    status: firstError(fieldErrors.status),
+    _form: firstError(error.formErrors) ?? error.error,
   };
 }
 
@@ -227,7 +322,13 @@ function timeSlots() {
   });
 }
 
-function BookingBlock({ booking }: { booking: CalendarBooking }) {
+function BookingBlock({
+  booking,
+  onEdit,
+}: {
+  booking: CalendarBooking;
+  onEdit: (booking: CalendarBooking) => void;
+}) {
   return (
     <button
       draggable
@@ -236,6 +337,7 @@ function BookingBlock({ booking }: { booking: CalendarBooking }) {
         event.dataTransfer.effectAllowed = "move";
         event.dataTransfer.setData("text/plain", booking.id);
       }}
+      onClick={() => onEdit(booking)}
       style={{
         top: `${bookingOffsetPercent(booking)}%`,
         height: `${bookingHeightPx(booking)}px`,
@@ -254,10 +356,12 @@ function BookingBlock({ booking }: { booking: CalendarBooking }) {
 function DayColumn({
   bookings,
   day,
+  onBookingEdit,
   onBookingDrop,
 }: {
   bookings: CalendarBooking[];
   day: Date;
+  onBookingEdit: (booking: CalendarBooking) => void;
   onBookingDrop: (bookingId: string, day: Date, event: DragEvent<HTMLDivElement>) => void;
 }) {
   return (
@@ -282,7 +386,9 @@ function DayColumn({
         style={{ height: `${(calendarEndHour - calendarStartHour) * hourHeight}px` }}
       >
         {bookings.length ? (
-          bookings.map((booking) => <BookingBlock booking={booking} key={booking.id} />)
+          bookings.map((booking) => (
+            <BookingBlock booking={booking} key={booking.id} onEdit={onBookingEdit} />
+          ))
         ) : (
           <p className="px-2 py-4 text-center text-xs text-slate-500">Open</p>
         )}
@@ -291,11 +397,15 @@ function DayColumn({
   );
 }
 
-export function CalendarView({ bookings = [], initialDate }: CalendarViewProps) {
+export function CalendarView({ bookings = [], initialDate, services = [] }: CalendarViewProps) {
   const [mode, setMode] = useState<CalendarMode>("week");
   const [anchorDate, setAnchorDate] = useState(() => startOfDay(new Date(initialDate)));
   const [visibleBookings, setVisibleBookings] = useState(() => bookings.map(normalizeBooking));
   const [notice, setNotice] = useState<string | null>(null);
+  const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<EditBookingFormState | null>(null);
+  const [editErrors, setEditErrors] = useState<EditBookingFieldErrors>({});
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const days = useMemo(() => {
     if (mode === "day") {
       return [anchorDate];
@@ -306,6 +416,20 @@ export function CalendarView({ bookings = [], initialDate }: CalendarViewProps) 
   }, [anchorDate, mode]);
   const rangeStart = mode === "day" ? anchorDate : days[0];
   const slots = useMemo(() => timeSlots(), []);
+  const editingBooking = visibleBookings.find((booking) => booking.id === editingBookingId) ?? null;
+
+  function openEditor(booking: CalendarBooking) {
+    setEditingBookingId(booking.id);
+    setEditForm(editFormFromBooking(booking));
+    setEditErrors({});
+    setNotice(null);
+  }
+
+  function closeEditor() {
+    setEditingBookingId(null);
+    setEditForm(null);
+    setEditErrors({});
+  }
 
   useEffect(() => {
     function addCreatedBooking(event: Event) {
@@ -375,6 +499,87 @@ export function CalendarView({ bookings = [], initialDate }: CalendarViewProps) 
     } catch (error) {
       setVisibleBookings(previousBookings);
       setNotice(error instanceof Error ? error.message : "Unable to reschedule booking");
+    }
+  }
+
+  async function saveBookingEdits(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setNotice(null);
+
+    if (!editingBooking || !editForm) {
+      return;
+    }
+
+    const nextErrors = validateEditBookingForm(editForm, services);
+    if (hasErrors(nextErrors)) {
+      setEditErrors(nextErrors);
+      return;
+    }
+
+    const payload = buildEditBookingPayload(editForm, services);
+    const service = services.find((option) => option.id === payload.serviceId);
+    const nextBooking = {
+      ...editingBooking,
+      serviceId: payload.serviceId,
+      serviceName: service?.name ?? editingBooking.serviceName,
+      startsAt: payload.startsAt,
+      endsAt: payload.endsAt,
+      notes: payload.notes,
+      status: payload.status,
+    };
+    const invalidReason = validateReschedule(nextBooking, visibleBookings);
+
+    if (invalidReason) {
+      setEditErrors({
+        _form:
+          invalidReason === "booking_overlap"
+            ? "That time overlaps another booking."
+            : "Choose a time inside business hours.",
+      });
+      return;
+    }
+
+    const previousBookings = visibleBookings;
+    setEditErrors({});
+    setIsSavingEdit(true);
+    setVisibleBookings((current) =>
+      current.map((booking) => (booking.id === nextBooking.id ? nextBooking : booking))
+    );
+
+    try {
+      const response = await fetch(`/api/bookings/${encodeURIComponent(editingBooking.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        if (data.error === "validation_failed") {
+          setVisibleBookings(previousBookings);
+          setEditErrors(apiEditErrors(data));
+          return;
+        }
+
+        throw new Error(data.error ?? "Unable to update booking");
+      }
+
+      if (data.booking) {
+        const savedBooking = normalizeBooking(data.booking);
+        setVisibleBookings((current) =>
+          current.map((booking) => (booking.id === savedBooking.id ? savedBooking : booking))
+        );
+      }
+
+      closeEditor();
+      setNotice("Booking updated.");
+    } catch (error) {
+      setVisibleBookings(previousBookings);
+      setEditErrors({
+        _form: error instanceof Error ? error.message : "Unable to update booking",
+      });
+    } finally {
+      setIsSavingEdit(false);
     }
   }
 
@@ -460,6 +665,7 @@ export function CalendarView({ bookings = [], initialDate }: CalendarViewProps) 
               bookings={bookingsForDay(visibleBookings, day)}
               day={day}
               key={day.toISOString()}
+              onBookingEdit={openEditor}
               onBookingDrop={(bookingId, dropDay, dropEvent) =>
                 void rescheduleBooking(bookingId, dropDay, dropEvent)
               }
@@ -467,6 +673,126 @@ export function CalendarView({ bookings = [], initialDate }: CalendarViewProps) 
           ))}
         </div>
       </div>
+
+      {editingBooking && editForm ? (
+        <div
+          aria-modal="true"
+          className="fixed inset-0 z-50 grid place-items-center bg-slate-950/75 px-4 py-6"
+          role="dialog"
+        >
+          <form
+            className="w-full max-w-md rounded-lg border border-slate-700 bg-slate-900 p-5 shadow-xl"
+            onSubmit={(event) => void saveBookingEdits(event)}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-emerald-300">
+                  Edit booking
+                </p>
+                <h3 className="mt-1 text-xl font-semibold text-white">
+                  {editingBooking.clientName}
+                </h3>
+              </div>
+              <button
+                aria-label="Close editor"
+                className="rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-200 hover:border-emerald-400"
+                onClick={closeEditor}
+                type="button"
+              >
+                Close
+              </button>
+            </div>
+
+            {editErrors._form ? (
+              <p className="mt-4 rounded-md border border-red-900/70 bg-red-950/50 px-3 py-2 text-sm text-red-200">
+                {editErrors._form}
+              </p>
+            ) : null}
+
+            <div className="mt-5 grid gap-4">
+              <label className="block">
+                <span className="text-sm font-medium text-slate-200">Service</span>
+                <select
+                  className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
+                  value={editForm.serviceId}
+                  onChange={(event) => setEditForm({ ...editForm, serviceId: event.target.value })}
+                >
+                  <option value="">Choose service</option>
+                  {services.map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {service.name} - {service.durationMinutes} min
+                    </option>
+                  ))}
+                </select>
+                {editErrors.serviceId ? (
+                  <span className="mt-1 block text-xs text-red-300">{editErrors.serviceId}</span>
+                ) : null}
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-medium text-slate-200">Time</span>
+                <input
+                  className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
+                  type="datetime-local"
+                  value={editForm.startsAt}
+                  onChange={(event) => setEditForm({ ...editForm, startsAt: event.target.value })}
+                />
+                {editErrors.startsAt ? (
+                  <span className="mt-1 block text-xs text-red-300">{editErrors.startsAt}</span>
+                ) : null}
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-medium text-slate-200">Status</span>
+                <select
+                  className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
+                  value={editForm.status}
+                  onChange={(event) =>
+                    setEditForm({ ...editForm, status: event.target.value as BookingStatus })
+                  }
+                >
+                  <option value="pending">Pending</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="completed">Completed</option>
+                </select>
+                {editErrors.status ? (
+                  <span className="mt-1 block text-xs text-red-300">{editErrors.status}</span>
+                ) : null}
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-medium text-slate-200">Notes</span>
+                <textarea
+                  className="mt-1 min-h-24 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
+                  value={editForm.notes}
+                  onChange={(event) => setEditForm({ ...editForm, notes: event.target.value })}
+                />
+                {editErrors.notes ? (
+                  <span className="mt-1 block text-xs text-red-300">{editErrors.notes}</span>
+                ) : null}
+              </label>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                className="rounded-md border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 hover:border-emerald-400"
+                onClick={closeEditor}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isSavingEdit}
+                type="submit"
+              >
+                {isSavingEdit ? "Saving..." : "Save changes"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </section>
   );
 }
