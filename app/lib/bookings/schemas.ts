@@ -52,3 +52,35 @@ export const manualBookingSchema = z
   });
 
 export type ManualBookingInput = z.infer<typeof manualBookingSchema>;
+
+const bookingStatuses = [
+  "pending",
+  "confirmed",
+  "completed",
+  "cancelled",
+  "no_show",
+] as const;
+
+export const bookingUpdateSchema = z
+  .object({
+    serviceId: nonEmptyTrimmed("serviceId", 60).optional(),
+    staffId: z.union([z.string().trim().min(1), z.null()]).optional(),
+    startsAt: isoDateTime.optional(),
+    notes: z
+      .union([
+        z
+          .string()
+          .trim()
+          .max(1000, "Notes must be 1000 characters or fewer"),
+        z.null(),
+      ])
+      .optional(),
+    status: z.enum(bookingStatuses).optional(),
+  })
+  .strict()
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "At least one field must be provided",
+    path: ["_form"],
+  });
+
+export type BookingUpdateInput = z.infer<typeof bookingUpdateSchema>;
