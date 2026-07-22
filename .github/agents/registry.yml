@@ -14,6 +14,7 @@ agents:
     required_secrets:
       - CODEX_AUTH_JSON
     branch_prefix: codex/issue-
+    base_branch: eval/codex
     ui_mentions_allowed: false
     automation_logins:
       - chatgpt-codex-connector
@@ -38,6 +39,7 @@ agents:
       - CLAUDE_AUTH_JSON          # fallback: credentials.json (short-lived OAuth)
     required_secrets_mode: any    # at least one must be present
     branch_prefix: claude/issue-
+    base_branch: eval/claude
     ui_mentions_allowed: false
     automation_logins:
       - kayleb-automation-bot

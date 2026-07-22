@@ -34,7 +34,7 @@ jobs:
           github_token: ${{ github.token }}
 
       - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.11"
 
@@ -111,7 +111,13 @@ jobs:
           "
 
       - name: Add needs-human label if blocked
-        if: steps.check.outputs.recommendation == 'BLOCKED'
+        # Skip blocking when a human has applied `capability:override` — the
+        # reviewer has explicitly decided the agent should attempt the issue
+        # anyway. Without this escape hatch, re-adding the agent label just
+        # re-runs the check, re-blocks, and strips the label again (a loop).
+        if: >-
+          steps.check.outputs.recommendation == 'BLOCKED' &&
+          !contains(github.event.issue.labels.*.name, 'capability:override')
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
@@ -151,6 +157,57 @@ jobs:
                 core.warning(`Could not remove ${agentLabel} label`);
               }
             }
+
+      - name: Respect capability override
+        # When blocked but overridden, keep the agent label, clear any prior
+        # needs-human, and leave a note so the agent can proceed.
+        if: >-
+          steps.check.outputs.recommendation == 'BLOCKED' &&
+          contains(github.event.issue.labels.*.name, 'capability:override')
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          AGENT_NAME: ${{ needs.check-agent-label.outputs.agent_name }}
+        with:
+          script: |
+            const { createTokenAwareRetry } = require('./.github/scripts/github-api-with-retry.js');
+            const { withRetry } = await createTokenAwareRetry({
+              github,
+              core,
+              env: process.env,
+              task: 'agents-capability-check',
+              capabilities: ['issues:write'],
+            });
+
+            // Clear a prior needs-human so the issue is no longer blocked.
+            try {
+              await withRetry((client) => client.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: 'needs-human',
+              }));
+            } catch (e) {
+              if (!String(e.message || '').includes('Label does not exist')) {
+                core.warning(`Could not remove needs-human: ${e.message}`);
+              }
+            }
+
+            await withRetry((client) => client.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: [
+                '⚠️ **Capability block overridden** (`capability:override`).',
+                '',
+                `The capability check rated this **BLOCKED**, but a human has ` +
+                `chosen to let ${process.env.AGENT_NAME || 'the agent'} attempt ` +
+                `it anyway. The agent label is preserved and \`needs-human\` was ` +
+                'cleared.',
+                '',
+                '> If the agent stalls on a task it genuinely cannot do, see the ' +
+                'capability report above for what needs a human decision.',
+              ].join('\n'),
+            }));
 
       - name: Post capability report
         if: steps.check.outputs.check_failed != 'true'
