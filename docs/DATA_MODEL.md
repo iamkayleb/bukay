@@ -93,6 +93,23 @@ default hours; rows with a `staffId` override for that staff member.
 Composite index `@@index([tenantId, staffId, dayOfWeek])` supports the
 availability lookup path.
 
+### Blackout
+
+Date-specific override that suppresses the weekly `BusinessHour` schedule for
+a single day. `date` is stored as an ISO wall-clock string (`YYYY-MM-DD`) in
+the tenant's timezone so blackouts are independent of DST and UTC offset. The
+`(tenantId, date)` pair is unique — a tenant cannot register two blackouts on
+the same calendar day.
+
+| Column     | Type      | Notes                                          |
+|------------|-----------|------------------------------------------------|
+| `tenantId` | `String`  | FK → `Tenant.id`, indexed                      |
+| `date`     | `String`  | `YYYY-MM-DD` in the tenant timezone            |
+| `reason`   | `String?` | Optional owner-facing note                     |
+
+`@@unique([tenantId, date])` and `@@index([tenantId])` support tenant-scoped
+lookups from the availability engine.
+
 ### Client
 
 End-customers who book services. Email and phone are each unique within a
