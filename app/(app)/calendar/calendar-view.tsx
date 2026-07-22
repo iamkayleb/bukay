@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { DragEvent, useEffect, useMemo, useState } from "react";
 
 export type CalendarBooking = {
   id: string;
@@ -23,6 +23,7 @@ type CalendarMode = "day" | "week";
 const calendarStartHour = 8;
 const calendarEndHour = 18;
 const hourHeight = 72;
+const snapMinutes = 15;
 const minuteMs = 60_000;
 const dayMs = 24 * 60 * minuteMs;
 
@@ -76,6 +77,77 @@ export function bookingsForDay(bookings: CalendarBooking[], day: Date) {
   return bookings
     .filter((booking) => sameDay(new Date(booking.startsAt), day))
     .sort((left, right) => new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime());
+}
+
+export function moveBookingToStart(booking: CalendarBooking, startsAt: Date) {
+  const currentStart = new Date(booking.startsAt);
+  const currentEnd = new Date(booking.endsAt);
+  const durationMs = currentEnd.getTime() - currentStart.getTime();
+  const endsAt = new Date(startsAt.getTime() + durationMs);
+
+  return {
+    ...booking,
+    startsAt: startsAt.toISOString(),
+    endsAt: endsAt.toISOString(),
+  };
+}
+
+export function startForDrop(day: Date, clientY: number, bounds: Pick<DOMRect, "top" | "height">) {
+  const offsetY = clientY - bounds.top;
+
+  if (offsetY < 0 || offsetY > bounds.height) {
+    return null;
+  }
+
+  const minutesFromOpen = Math.floor((offsetY / hourHeight) * 60);
+  const snappedMinutes = Math.floor(minutesFromOpen / snapMinutes) * snapMinutes;
+  const startsAt = new Date(day);
+  startsAt.setHours(calendarStartHour, 0, 0, 0);
+  startsAt.setMinutes(startsAt.getMinutes() + snappedMinutes);
+
+  return startsAt;
+}
+
+export function isInsideCalendarHours(booking: Pick<CalendarBooking, "startsAt" | "endsAt">) {
+  const startsAt = new Date(booking.startsAt);
+  const endsAt = new Date(booking.endsAt);
+  const calendarStart = startOfDay(startsAt);
+  calendarStart.setHours(calendarStartHour, 0, 0, 0);
+  const calendarEnd = startOfDay(startsAt);
+  calendarEnd.setHours(calendarEndHour, 0, 0, 0);
+
+  return startsAt >= calendarStart && endsAt <= calendarEnd && startsAt < endsAt;
+}
+
+export function hasBookingOverlap(candidate: CalendarBooking, bookings: CalendarBooking[]) {
+  const candidateStart = new Date(candidate.startsAt).getTime();
+  const candidateEnd = new Date(candidate.endsAt).getTime();
+
+  return bookings.some((booking) => {
+    if (booking.id === candidate.id) {
+      return false;
+    }
+
+    if (!sameDay(new Date(candidate.startsAt), new Date(booking.startsAt))) {
+      return false;
+    }
+
+    const bookingStart = new Date(booking.startsAt).getTime();
+    const bookingEnd = new Date(booking.endsAt).getTime();
+    return candidateStart < bookingEnd && candidateEnd > bookingStart;
+  });
+}
+
+export function validateReschedule(candidate: CalendarBooking, bookings: CalendarBooking[]) {
+  if (!isInsideCalendarHours(candidate)) {
+    return "outside_hours";
+  }
+
+  if (hasBookingOverlap(candidate, bookings)) {
+    return "booking_overlap";
+  }
+
+  return null;
 }
 
 export type BookingPayload = Partial<CalendarBooking> & {
@@ -158,7 +230,12 @@ function timeSlots() {
 function BookingBlock({ booking }: { booking: CalendarBooking }) {
   return (
     <button
+      draggable
       className="absolute left-1 right-1 overflow-hidden rounded-md border border-emerald-300/40 bg-emerald-500 px-2 py-1 text-left text-xs text-slate-950 shadow-sm shadow-slate-950/40"
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", booking.id);
+      }}
       style={{
         top: `${bookingOffsetPercent(booking)}%`,
         height: `${bookingHeightPx(booking)}px`,
@@ -174,7 +251,15 @@ function BookingBlock({ booking }: { booking: CalendarBooking }) {
   );
 }
 
-function DayColumn({ bookings, day }: { bookings: CalendarBooking[]; day: Date }) {
+function DayColumn({
+  bookings,
+  day,
+  onBookingDrop,
+}: {
+  bookings: CalendarBooking[];
+  day: Date;
+  onBookingDrop: (bookingId: string, day: Date, event: DragEvent<HTMLDivElement>) => void;
+}) {
   return (
     <div className="min-w-0 border-l border-slate-800 first:border-l-0">
       <div className="border-b border-slate-800 px-2 py-2 text-center">
@@ -183,6 +268,17 @@ function DayColumn({ bookings, day }: { bookings: CalendarBooking[]; day: Date }
       </div>
       <div
         className="relative"
+        onDragOver={(event) => {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          const bookingId = event.dataTransfer.getData("text/plain");
+          if (bookingId) {
+            onBookingDrop(bookingId, day, event);
+          }
+        }}
         style={{ height: `${(calendarEndHour - calendarStartHour) * hourHeight}px` }}
       >
         {bookings.length ? (
@@ -199,6 +295,7 @@ export function CalendarView({ bookings = [], initialDate }: CalendarViewProps) 
   const [mode, setMode] = useState<CalendarMode>("week");
   const [anchorDate, setAnchorDate] = useState(() => startOfDay(new Date(initialDate)));
   const [visibleBookings, setVisibleBookings] = useState(() => bookings.map(normalizeBooking));
+  const [notice, setNotice] = useState<string | null>(null);
   const days = useMemo(() => {
     if (mode === "day") {
       return [anchorDate];
@@ -226,6 +323,60 @@ export function CalendarView({ bookings = [], initialDate }: CalendarViewProps) 
     window.addEventListener("booking:manual-created", addCreatedBooking);
     return () => window.removeEventListener("booking:manual-created", addCreatedBooking);
   }, []);
+
+  async function rescheduleBooking(bookingId: string, day: Date, event: DragEvent<HTMLDivElement>) {
+    setNotice(null);
+
+    const booking = visibleBookings.find((current) => current.id === bookingId);
+    const startsAt = startForDrop(day, event.clientY, event.currentTarget.getBoundingClientRect());
+    if (!booking || !startsAt) {
+      setNotice("Drop inside business hours to reschedule.");
+      return;
+    }
+
+    const nextBooking = moveBookingToStart(booking, startsAt);
+    const invalidReason = validateReschedule(nextBooking, visibleBookings);
+    if (invalidReason) {
+      setNotice(
+        invalidReason === "booking_overlap"
+          ? "That time overlaps another booking."
+          : "Drop inside business hours to reschedule."
+      );
+      return;
+    }
+
+    const previousBookings = visibleBookings;
+    setVisibleBookings((current) =>
+      current.map((currentBooking) =>
+        currentBooking.id === nextBooking.id ? nextBooking : currentBooking
+      )
+    );
+
+    try {
+      const response = await fetch(`/api/bookings/${encodeURIComponent(nextBooking.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ startsAt: nextBooking.startsAt, endsAt: nextBooking.endsAt }),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error ?? "Unable to reschedule booking");
+      }
+
+      if (data.booking) {
+        const savedBooking = normalizeBooking(data.booking);
+        setVisibleBookings((current) =>
+          current.map((currentBooking) =>
+            currentBooking.id === savedBooking.id ? savedBooking : currentBooking
+          )
+        );
+      }
+    } catch (error) {
+      setVisibleBookings(previousBookings);
+      setNotice(error instanceof Error ? error.message : "Unable to reschedule booking");
+    }
+  }
 
   return (
     <section className="rounded-lg border border-slate-800 bg-slate-900/40 p-5">
@@ -279,6 +430,15 @@ export function CalendarView({ bookings = [], initialDate }: CalendarViewProps) 
         </div>
       </div>
 
+      {notice ? (
+        <p
+          className="mt-4 rounded-md border border-red-900/70 bg-red-950/50 px-3 py-2 text-sm text-red-200"
+          role="status"
+        >
+          {notice}
+        </p>
+      ) : null}
+
       <div className="mt-5 overflow-x-auto rounded-lg border border-slate-800">
         <div
           className={`grid min-w-[760px] ${mode === "day" ? "grid-cols-[72px_1fr]" : "grid-cols-[72px_repeat(7,minmax(96px,1fr))]"}`}
@@ -300,6 +460,9 @@ export function CalendarView({ bookings = [], initialDate }: CalendarViewProps) 
               bookings={bookingsForDay(visibleBookings, day)}
               day={day}
               key={day.toISOString()}
+              onBookingDrop={(bookingId, dropDay, dropEvent) =>
+                void rescheduleBooking(bookingId, dropDay, dropEvent)
+              }
             />
           ))}
         </div>

@@ -6,8 +6,13 @@ import {
   bookingHeightPx,
   bookingOffsetPercent,
   bookingsForDay,
+  hasBookingOverlap,
+  isInsideCalendarHours,
+  moveBookingToStart,
   normalizeBooking,
+  startForDrop,
   startOfWeek,
+  validateReschedule,
   type CalendarBooking,
 } from "@/app/(app)/calendar/calendar-view";
 
@@ -79,6 +84,42 @@ describe("calendar view helpers", () => {
       notes: null,
     });
   });
+
+  it("snaps drag drops to 15 minute starts", () => {
+    const startsAt = startForDrop(new Date("2026-07-22T00:00:00.000Z"), 91, {
+      top: 20,
+      height: 720,
+    });
+
+    expect(startsAt?.toISOString()).toBe("2026-07-22T08:45:00.000Z");
+    expect(startForDrop(new Date("2026-07-22T00:00:00.000Z"), 10, { top: 20, height: 720 })).toBe(
+      null
+    );
+  });
+
+  it("moves bookings while preserving duration", () => {
+    expect(moveBookingToStart(bookings[0], new Date("2026-07-24T13:15:00.000Z"))).toMatchObject({
+      id: "booking-1",
+      startsAt: "2026-07-24T13:15:00.000Z",
+      endsAt: "2026-07-24T14:00:00.000Z",
+    });
+  });
+
+  it("rejects drops outside calendar hours", () => {
+    const earlyBooking = moveBookingToStart(bookings[0], new Date("2026-07-24T07:45:00.000Z"));
+    const lateBooking = moveBookingToStart(bookings[0], new Date("2026-07-24T17:30:00.000Z"));
+
+    expect(isInsideCalendarHours(earlyBooking)).toBe(false);
+    expect(isInsideCalendarHours(lateBooking)).toBe(false);
+    expect(validateReschedule(lateBooking, bookings)).toBe("outside_hours");
+  });
+
+  it("rejects drag reschedules that overlap another booking", () => {
+    const candidate = moveBookingToStart(bookings[0], new Date("2026-07-23T09:15:00.000Z"));
+
+    expect(hasBookingOverlap(candidate, bookings)).toBe(true);
+    expect(validateReschedule(candidate, bookings)).toBe("booking_overlap");
+  });
 });
 
 describe("CalendarView", () => {
@@ -91,5 +132,6 @@ describe("CalendarView", () => {
     expect(html).toContain("Wed, Jul 22");
     expect(html).toContain("Ada Okafor");
     expect(html).toContain("Classic Haircut");
+    expect(html).toContain('draggable="true"');
   });
 });
