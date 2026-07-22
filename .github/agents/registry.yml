@@ -5,6 +5,17 @@ default_agent: codex
 # Shared keepalive marker prefix (agent-agnostic)
 keepalive_marker_prefix: agent-keepalive
 
+# Optional per-agent field: base_branch
+#   The branch an agent's work branches from and its PRs target. When unset
+#   (the default), the bridge uses the repository default branch. Set it to a
+#   long-lived per-agent integration branch to stack an agent's work there
+#   instead of the default branch — e.g. for a Codex-vs-Claude evaluation:
+#       codex:  { base_branch: eval/codex }
+#       claude: { base_branch: eval/claude }
+#   The branch MUST already exist on origin. See
+#   docs/evaluations/AGENT_EVAL_RUNBOOK.md and
+#   docs/ops/CONSUMER_REPO_MAINTENANCE.md before enabling it.
+
 agents:
   codex:
     runner_workflow: .github/workflows/reusable-codex-run.yml
@@ -14,6 +25,7 @@ agents:
     required_secrets:
       - CODEX_AUTH_JSON
     branch_prefix: codex/issue-
+    # base_branch: eval/codex   # optional; see note above. Unset -> repo default branch.
     ui_mentions_allowed: false
     automation_logins:
       - chatgpt-codex-connector
@@ -38,6 +50,7 @@ agents:
       - CLAUDE_AUTH_JSON          # fallback: credentials.json (short-lived OAuth)
     required_secrets_mode: any    # at least one must be present
     branch_prefix: claude/issue-
+    # base_branch: eval/claude   # optional; see note above. Unset -> repo default branch.
     ui_mentions_allowed: false
     automation_logins:
       - kayleb-automation-bot
