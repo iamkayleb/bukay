@@ -19,9 +19,7 @@ type Booking = {
   staffName?: string | null;
 };
 
-const services = [
-  { id: "svc-1", name: "Haircut", durationMinutes: 30, active: true },
-];
+const services = [{ id: "svc-1", name: "Haircut", durationMinutes: 30, active: true }];
 const staff = [{ id: "staff-1", name: "Alice", active: true }];
 
 const initialBooking: Booking = {
@@ -50,11 +48,7 @@ function jsonResponse(body: unknown, init: ResponseInit = {}) {
 
 function renderCalendar() {
   return render(
-    <BookingCalendar
-      services={services}
-      staff={staff}
-      initialBookings={[{ ...initialBooking }]}
-    />,
+    <BookingCalendar services={services} staff={staff} initialBookings={[{ ...initialBooking }]} />
   );
 }
 
@@ -82,6 +76,40 @@ function fireHtml5Drop(bookingId: string, slotIndex: number) {
   fireEvent.dragOver(slot, { dataTransfer });
   fireEvent.drop(slot, { dataTransfer });
   fireEvent.dragEnd(button, { dataTransfer });
+}
+
+// Simulate a touch drag via Pointer Events. Mobile browsers don't fire
+// HTML5 drag events reliably, so BookingCalendar wires touch/pen input
+// through pointerdown/move/up on booking buttons + elementFromPoint on
+// the slot grid. We stub elementFromPoint so the "drop" target is
+// deterministic in happy-dom.
+function fireTouchDrop(bookingId: string, slotIndex: number) {
+  const button = getBookingButton(bookingId);
+  const slot = screen.getByTestId(`slot-0-${slotIndex}`);
+  const origFromPoint = document.elementFromPoint;
+  document.elementFromPoint = () => slot;
+  try {
+    fireEvent.pointerDown(button, {
+      pointerId: 1,
+      pointerType: "touch",
+      clientX: 10,
+      clientY: 10,
+    });
+    fireEvent.pointerMove(button, {
+      pointerId: 1,
+      pointerType: "touch",
+      clientX: 200,
+      clientY: 400,
+    });
+    fireEvent.pointerUp(button, {
+      pointerId: 1,
+      pointerType: "touch",
+      clientX: 200,
+      clientY: 400,
+    });
+  } finally {
+    document.elementFromPoint = origFromPoint;
+  }
 }
 
 beforeEach(() => {
@@ -140,7 +168,9 @@ describe("BookingCalendar drag-and-drop reschedule", () => {
   });
 
   it("reverts the block and shows an error toast when the server rejects the drop", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ ok: false, error: "booking_conflict" }, { status: 409 }));
+    fetchMock.mockResolvedValue(
+      jsonResponse({ ok: false, error: "booking_conflict" }, { status: 409 })
+    );
 
     renderCalendar();
 
@@ -180,6 +210,68 @@ describe("BookingCalendar drag-and-drop reschedule", () => {
 
     const toast = await screen.findByRole("status");
     expect(toast.textContent ?? "").toMatch(/reach the server/i);
+  });
+
+  it("reschedules via touch pointer events (mobile drag path)", async () => {
+    fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
+      expect(url).toBe(`/api/bookings/${initialBooking.id}`);
+      expect(init.method).toBe("PATCH");
+      const body = JSON.parse(String(init.body));
+      expect(body).toEqual({ startsAt: "2026-07-15T14:00:00.000Z" });
+      return jsonResponse({
+        ok: true,
+        booking: {
+          ...initialBooking,
+          startsAt: "2026-07-15T14:00:00.000Z",
+          endsAt: "2026-07-15T14:30:00.000Z",
+        },
+      });
+    });
+
+    renderCalendar();
+
+    await act(async () => {
+      fireTouchDrop(initialBooking.id, 14);
+    });
+    // Flush the fetch resolution.
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // Optimistic block now sits in the row for 14:00.
+    const button = getBookingButton(initialBooking.id);
+    expect(button.getAttribute("style")).toMatch(/grid-row:\s*16/);
+
+    const toast = await screen.findByRole("status");
+    expect(toast.textContent ?? "").toMatch(/rescheduled/i);
+  });
+
+  it("does not reschedule on a stationary touch tap (treated as click, opens modal)", async () => {
+    renderCalendar();
+    const button = getBookingButton(initialBooking.id);
+
+    // Tap without moving — should not trigger a PATCH.
+    fireEvent.pointerDown(button, {
+      pointerId: 1,
+      pointerType: "touch",
+      clientX: 10,
+      clientY: 10,
+    });
+    fireEvent.pointerUp(button, {
+      pointerId: 1,
+      pointerType: "touch",
+      clientX: 10,
+      clientY: 10,
+    });
+    fireEvent.click(button);
+
+    // No fetch is fired for a plain tap.
+    expect(fetchMock).not.toHaveBeenCalled();
+    // Modal opens instead.
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toBeTruthy();
   });
 
   it("only persists edits from the modal after Save is clicked, and reflects the change", async () => {
