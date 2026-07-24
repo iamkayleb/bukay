@@ -274,6 +274,46 @@ describe("BookingCalendar drag-and-drop reschedule", () => {
     expect(dialog).toBeTruthy();
   });
 
+  it("uses navigator.language to pick the week-start day (en-GB → Monday first)", async () => {
+    const original = Object.getOwnPropertyDescriptor(
+      window.navigator,
+      "language",
+    );
+    Object.defineProperty(window.navigator, "language", {
+      configurable: true,
+      value: "en-GB",
+    });
+
+    try {
+      const { container } = render(
+        <BookingCalendar services={services} staff={staff} initialBookings={[]} />,
+      );
+
+      // Switch to week view.
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /^Week$/i }));
+      });
+      // Flush the mount effect that reads navigator.language.
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      const grid = container.querySelector('[data-testid="day-week-view"]') as HTMLElement;
+      expect(grid).toBeTruthy();
+      const text = grid.textContent ?? "";
+      const monIdx = text.indexOf("Mon");
+      const sunIdx = text.indexOf("Sun");
+      expect(monIdx).toBeGreaterThan(-1);
+      expect(sunIdx).toBeGreaterThan(-1);
+      // Monday appears before Sunday when Monday is the first column.
+      expect(monIdx).toBeLessThan(sunIdx);
+    } finally {
+      if (original) {
+        Object.defineProperty(window.navigator, "language", original);
+      }
+    }
+  });
+
   it("only persists edits from the modal after Save is clicked, and reflects the change", async () => {
     fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
       expect(url).toBe(`/api/bookings/${initialBooking.id}`);
