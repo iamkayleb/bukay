@@ -214,8 +214,11 @@ export async function PATCH(
       parsed.data.startsAt !== undefined &&
       new Date(parsed.data.startsAt).getTime() !== existing.startsAt.getTime();
     const serviceChanged = parsed.data.serviceId && parsed.data.serviceId !== existing.serviceId;
+    const staffChanged =
+      parsed.data.staffId !== undefined &&
+      (parsed.data.staffId ?? null) !== (existing.staffId ?? null);
 
-    if (startChanged || serviceChanged) {
+    if (startChanged || serviceChanged || staffChanged) {
       if (!service && serviceChanged === false) {
         service = await serviceDelegate.findFirst({
           where: { tenantId, id: nextServiceId },

@@ -1,7 +1,14 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import type { CSSProperties, DragEvent } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import type { CSSProperties, DragEvent, PointerEvent as ReactPointerEvent } from "react";
+import {
+  addDays,
+  resolveWeekStart,
+  startOfDay,
+  startOfWeek,
+  type Weekday,
+} from "@/app/lib/calendar/week";
 
 export type BookingRow = {
   id: string;
@@ -32,6 +39,8 @@ type DayWeekViewProps = {
   openingHour?: number;
   closingHour?: number;
   slotMinutes?: number;
+  weekStartsOn?: Weekday;
+  locale?: string;
   onSelect?: (booking: BookingRow) => void;
   onReschedule?: (target: RescheduleTarget) => void | Promise<void>;
 };
@@ -40,25 +49,6 @@ const DEFAULT_OPENING_HOUR = 7;
 const DEFAULT_CLOSING_HOUR = 20;
 const DEFAULT_SLOT_MINUTES = 30;
 const ROW_HEIGHT_PX = 32;
-
-function startOfDay(date: Date): Date {
-  const copy = new Date(date);
-  copy.setHours(0, 0, 0, 0);
-  return copy;
-}
-
-function startOfWeek(date: Date): Date {
-  const copy = startOfDay(date);
-  const weekday = copy.getDay();
-  copy.setDate(copy.getDate() - weekday);
-  return copy;
-}
-
-function addDays(date: Date, days: number): Date {
-  const copy = new Date(date);
-  copy.setDate(copy.getDate() + days);
-  return copy;
-}
 
 function sameDay(a: Date, b: Date): boolean {
   return (
@@ -100,12 +90,17 @@ export function DayWeekView({
   openingHour = DEFAULT_OPENING_HOUR,
   closingHour = DEFAULT_CLOSING_HOUR,
   slotMinutes = DEFAULT_SLOT_MINUTES,
+  weekStartsOn,
+  locale,
   onSelect,
   onReschedule,
 }: DayWeekViewProps) {
   const dayCount = mode === "day" ? 1 : 7;
+  const resolvedWeekStart: Weekday = weekStartsOn ?? resolveWeekStart(locale);
   const gridStart =
-    mode === "day" ? startOfDay(anchorDate) : startOfWeek(anchorDate);
+    mode === "day"
+      ? startOfDay(anchorDate)
+      : startOfWeek(anchorDate, resolvedWeekStart);
 
   const days = useMemo(
     () => Array.from({ length: dayCount }, (_, i) => addDays(gridStart, i)),
@@ -170,14 +165,9 @@ export function DayWeekView({
     setDropTarget(null);
   }, []);
 
-  const handleDrop = useCallback(
-    (event: DragEvent<HTMLDivElement>, dayIndex: number, slotIndex: number) => {
-      event.preventDefault();
-      const bookingId = event.dataTransfer.getData("text/plain");
-      setDraggingId(null);
-      setDropTarget(null);
-      if (!bookingId || !onReschedule) return;
-
+  const performReschedule = useCallback(
+    (bookingId: string, dayIndex: number, slotIndex: number) => {
+      if (!onReschedule) return;
       const booking = bookings.find((b) => b.id === bookingId);
       if (!booking) return;
 
@@ -202,6 +192,99 @@ export function DayWeekView({
       });
     },
     [bookings, days, openingHour, slotMinutes, onReschedule],
+  );
+
+  const handleDrop = useCallback(
+    (event: DragEvent<HTMLDivElement>, dayIndex: number, slotIndex: number) => {
+      event.preventDefault();
+      const bookingId = event.dataTransfer.getData("text/plain");
+      setDraggingId(null);
+      setDropTarget(null);
+      if (!bookingId) return;
+      performReschedule(bookingId, dayIndex, slotIndex);
+    },
+    [performReschedule],
+  );
+
+  // Touch/pen drag support via Pointer Events. Mouse users still get the
+  // native HTML5 drag-and-drop path above; this branch only activates for
+  // touch/pen pointers (HTML5 DnD is unreliable on mobile).
+  const pointerDragRef = useRef<{
+    pointerId: number;
+    bookingId: string;
+    moved: boolean;
+    lastTarget: { dayIndex: number; slotIndex: number } | null;
+  } | null>(null);
+
+  const findSlotFromPoint = useCallback(
+    (clientX: number, clientY: number):
+      | { dayIndex: number; slotIndex: number }
+      | null => {
+      if (typeof document === "undefined") return null;
+      const el = document.elementFromPoint(clientX, clientY);
+      if (!el) return null;
+      const slotEl = (el as Element).closest?.("[data-slot-day]");
+      if (!slotEl) return null;
+      const day = Number((slotEl as HTMLElement).dataset.slotDay);
+      const slot = Number((slotEl as HTMLElement).dataset.slotIndex);
+      if (Number.isNaN(day) || Number.isNaN(slot)) return null;
+      return { dayIndex: day, slotIndex: slot };
+    },
+    [],
+  );
+
+  const handlePointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>, booking: BookingRow) => {
+      if (event.pointerType === "mouse") return;
+      pointerDragRef.current = {
+        pointerId: event.pointerId,
+        bookingId: booking.id,
+        moved: false,
+        lastTarget: null,
+      };
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // setPointerCapture can throw in some jsdom environments; ignore.
+      }
+    },
+    [],
+  );
+
+  const handlePointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>) => {
+      const drag = pointerDragRef.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      if (event.pointerType === "mouse") return;
+      event.preventDefault();
+      drag.moved = true;
+      if (draggingId !== drag.bookingId) setDraggingId(drag.bookingId);
+      const hit = findSlotFromPoint(event.clientX, event.clientY);
+      drag.lastTarget = hit;
+      setDropTarget(hit);
+    },
+    [draggingId, findSlotFromPoint],
+  );
+
+  const handlePointerEnd = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>) => {
+      const drag = pointerDragRef.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      pointerDragRef.current = null;
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      } catch {
+        // ignore
+      }
+      const target = drag.lastTarget;
+      setDraggingId(null);
+      setDropTarget(null);
+      if (event.type === "pointercancel") return;
+      if (!drag.moved) return; // treat stationary tap as click; onClick handles it
+      if (!target) return;
+      performReschedule(drag.bookingId, target.dayIndex, target.slotIndex);
+    },
+    [performReschedule],
   );
 
   const gridStyle: CSSProperties = {
@@ -248,6 +331,8 @@ export function DayWeekView({
             <div
               key={`cell-${dayIndex}-${slotIndex}`}
               data-testid={`slot-${dayIndex}-${slotIndex}`}
+              data-slot-day={dayIndex}
+              data-slot-index={slotIndex}
               onDragOver={(e) => handleDragOver(e, dayIndex, slotIndex)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, dayIndex, slotIndex)}
@@ -301,6 +386,10 @@ export function DayWeekView({
               draggable
               onDragStart={(e) => handleDragStart(e, b)}
               onDragEnd={handleDragEnd}
+              onPointerDown={(e) => handlePointerDown(e, b)}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerEnd}
+              onPointerCancel={handlePointerEnd}
               onClick={() => onSelect?.(b)}
               data-testid={`booking-${b.id}`}
               aria-label={`Booking for ${b.clientName ?? "client"}`}
@@ -308,6 +397,7 @@ export function DayWeekView({
                 gridColumn: dayIndex + 2,
                 gridRow: `${rowStart + 2} / span ${rowSpan}`,
                 opacity: isDragging ? 0.4 : 1,
+                touchAction: "none",
               }}
               className="m-[2px] flex cursor-grab flex-col overflow-hidden rounded border border-emerald-500/60 bg-emerald-500/20 px-2 py-1 text-left text-[11px] text-white shadow-sm hover:bg-emerald-500/30 active:cursor-grabbing"
             >
@@ -333,6 +423,8 @@ export type DayWeekNavigatorProps = {
   onModeChange: (mode: ViewMode) => void;
   anchorDate: Date;
   onAnchorChange: (date: Date) => void;
+  weekStartsOn?: Weekday;
+  locale?: string;
 };
 
 export function DayWeekNavigator({
@@ -340,13 +432,16 @@ export function DayWeekNavigator({
   onModeChange,
   anchorDate,
   onAnchorChange,
+  weekStartsOn,
+  locale,
 }: DayWeekNavigatorProps) {
   const step = mode === "day" ? 1 : 7;
+  const resolvedWeekStart: Weekday = weekStartsOn ?? resolveWeekStart(locale);
   const rangeLabel =
     mode === "day"
       ? formatDayLabel(anchorDate)
-      : `${formatDayLabel(startOfWeek(anchorDate))} – ${formatDayLabel(
-          addDays(startOfWeek(anchorDate), 6),
+      : `${formatDayLabel(startOfWeek(anchorDate, resolvedWeekStart))} – ${formatDayLabel(
+          addDays(startOfWeek(anchorDate, resolvedWeekStart), 6),
         )}`;
 
   return (

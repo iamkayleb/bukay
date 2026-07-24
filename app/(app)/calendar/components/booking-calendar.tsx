@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ManualBookingForm } from "./manual-booking-form";
 import {
   DayWeekNavigator,
@@ -85,6 +85,15 @@ export function BookingCalendar({ services, staff, initialBookings }: BookingCal
   });
   const [editing, setEditing] = useState<BookingRow | null>(null);
   const [toast, setToast] = useState<Toast>(null);
+  // Locale is read from the browser after mount to avoid an SSR/CSR hydration
+  // mismatch — server renders with the Sunday-start default; the effect then
+  // upgrades to the user's locale (Monday-first for en-GB, etc).
+  const [locale, setLocale] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && navigator.language) {
+      setLocale(navigator.language);
+    }
+  }, []);
 
   const decorate = useCallback(
     (created: BookingRow): BookingRow => {
@@ -215,6 +224,7 @@ export function BookingCalendar({ services, staff, initialBookings }: BookingCal
           onModeChange={setMode}
           anchorDate={anchorDate}
           onAnchorChange={setAnchorDate}
+          locale={locale}
         />
         <DayWeekView
           bookings={bookings}
@@ -222,6 +232,7 @@ export function BookingCalendar({ services, staff, initialBookings }: BookingCal
           anchorDate={anchorDate}
           onSelect={(b) => setEditing(b)}
           onReschedule={handleReschedule}
+          locale={locale}
         />
       </div>
 
