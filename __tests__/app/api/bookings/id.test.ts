@@ -415,6 +415,72 @@ describe("PATCH /api/bookings/[id]", () => {
     expect(body.error).toBe("tenant_required");
   });
 
+  it("returns 409 when reassigning to a staff who already has an overlapping booking", async () => {
+    state.bookings.push({
+      id: "booking-3",
+      tenantId: "tenant-1",
+      clientId: "client-3",
+      serviceId: "svc-1",
+      staffId: "staff-2",
+      startsAt: new Date("2026-07-15T10:00:00.000Z"),
+      endsAt: new Date("2026-07-15T10:30:00.000Z"),
+      status: "confirmed",
+      notes: null,
+      createdAt: fixedNow(),
+      updatedAt: fixedNow(),
+    });
+
+    const res = await PATCH(
+      jsonRequest("booking-1", { staffId: "staff-2" }),
+      { params: { id: "booking-1" } },
+    );
+
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error).toBe("booking_conflict");
+    // Original row untouched
+    const original = state.bookings.find((b) => b.id === "booking-1");
+    expect(original?.staffId).toBe("staff-1");
+    expect(state.auditLogs).toHaveLength(0);
+  });
+
+  it("returns 409 when reassigning staff and the booking now falls outside business hours", async () => {
+    state.bookings[0].startsAt = new Date("2026-07-15T22:00:00.000Z");
+    state.bookings[0].endsAt = new Date("2026-07-15T22:30:00.000Z");
+    state.getOpenWindows.mockResolvedValueOnce([
+      {
+        opensAt: new Date("2026-07-15T09:00:00.000Z"),
+        closesAt: new Date("2026-07-15T17:00:00.000Z"),
+      },
+    ]);
+
+    const res = await PATCH(
+      jsonRequest("booking-1", { staffId: "staff-2" }),
+      { params: { id: "booking-1" } },
+    );
+
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error).toBe("outside_business_hours");
+    expect(state.auditLogs).toHaveLength(0);
+  });
+
+  it("updates staffId and records both previous and new staffId in the audit log", async () => {
+    const res = await PATCH(
+      jsonRequest("booking-1", { staffId: "staff-2" }),
+      { params: { id: "booking-1" } },
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.booking.staffId).toBe("staff-2");
+    expect(state.auditLogs).toHaveLength(1);
+    const meta = JSON.parse(state.auditLogs[0].metadata as string);
+    expect(meta.previous.staffId).toBe("staff-1");
+    expect(meta.next.staffId).toBe("staff-2");
+    expect(meta.changes).toContain("staffId");
+  });
+
   it("returns 409 when the DB exclusion constraint rejects the update", async () => {
     state.bookingUpdateError = Object.assign(
       new Error(
