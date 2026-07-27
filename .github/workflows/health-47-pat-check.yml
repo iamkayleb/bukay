@@ -1,0 +1,182 @@
+# Scheduled check for bot PAT validity (OWNER_PR_PAT / SERVICE_BOT_PAT).
+#
+# These PATs are what the issue-bridge uses to open agent bootstrap PRs (and to
+# trigger downstream workflows). Unlike CODEX_AUTH_JSON they carry no decodable
+# expiry, so we can only detect *invalid/revoked* (a live authenticated probe),
+# not "expiring in N days". A present-but-expired PAT is the worst case: it is
+# still a non-empty secret, so the `||` token chains select it and hard-fail
+# with 401. This check surfaces that BEFORE the next bridge run breaks.
+name: Health 47 Bot PAT Check
+
+on:
+  schedule:
+    # Twice daily at 7am and 7pm UTC
+    - cron: '0 7,19 * * *'
+  workflow_dispatch:
+    inputs:
+      force_check:
+        description: 'Create/refresh the issue even if one is already open'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-pats:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout retry helpers
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            .github/scripts/github-api-with-retry.js
+          sparse-checkout-cone-mode: false
+
+      - name: Check for existing open issue
+        id: existing
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'pat-invalid',
+              per_page: 1,
+            });
+            const exists = issues.data.length > 0;
+            console.log(`Existing pat-invalid issue: ${exists}`);
+            return exists;
+          result-encoding: string
+
+      - name: Probe bot PATs
+        id: check
+        if: steps.existing.outputs.result != 'true' || inputs.force_check
+        env:
+          OWNER_PR_PAT: ${{ secrets.OWNER_PR_PAT }}
+          SERVICE_BOT_PAT: ${{ secrets.SERVICE_BOT_PAT }}
+        run: |
+          set -uo pipefail
+          : > /tmp/invalid_pats
+          : > /tmp/pat_report
+
+          probe() {
+            local name="$1" token="$2"
+            if [ -z "$token" ]; then
+              echo "- ${name}: not set (skipped)" >> /tmp/pat_report
+              return 0
+            fi
+            code=$(curl -sS -o /dev/null -w '%{http_code}' \
+              -H "Authorization: token ${token}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "User-Agent: health-pat-check" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}" || echo 000)
+            if [ "$code" = "200" ]; then
+              echo "- ${name}: OK" >> /tmp/pat_report
+            else
+              echo "- ${name}: INVALID (HTTP ${code})" >> /tmp/pat_report
+              echo "${name}" >> /tmp/invalid_pats
+            fi
+          }
+
+          probe "OWNER_PR_PAT" "${OWNER_PR_PAT:-}"
+          probe "SERVICE_BOT_PAT" "${SERVICE_BOT_PAT:-}"
+
+          echo "Report:"
+          cat /tmp/pat_report
+
+          if [ -s /tmp/invalid_pats ]; then
+            echo "status=invalid" >> "$GITHUB_OUTPUT"
+            {
+              echo "invalid_list<<EOF"
+              cat /tmp/invalid_pats
+              echo "EOF"
+              echo "report<<EOF"
+              cat /tmp/pat_report
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "status=ok" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create PAT invalid issue
+        if: steps.check.outputs.status == 'invalid'
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const rawInvalid = `${{ steps.check.outputs.invalid_list }}`;
+            const invalid = rawInvalid.trim().split('\n').filter(Boolean);
+            const report = `${{ steps.check.outputs.report }}`;
+            const { owner, repo } = context.repo;
+            const title =
+              `🚨 Bot PAT invalid (${invalid.join(', ')}) — bootstrap PRs will fail`;
+            const body = [
+              '## A bot PAT failed authentication',
+              '',
+              'The issue-bridge uses these PATs to open agent bootstrap PRs and to',
+              'trigger downstream workflows. A **present-but-invalid** PAT does not',
+              'fall through automatically in older token chains — it hard-fails PR',
+              'creation with `401 Bad credentials`.',
+              '',
+              '### Probe result',
+              '```',
+              report.trim(),
+              '```',
+              '',
+              '### Action required',
+              `Regenerate the affected PAT(s) and update the repo secret(s):`,
+              '',
+              `1. Create a new token as the bot/owner account:`,
+              '   - Classic PAT: scopes `repo` + `workflow`.',
+              '   - Fine-grained: Contents (RW), Pull requests (RW), Workflows (RW) on this repo.',
+              `2. Update the secret at:`,
+              `   https://github.com/${owner}/${repo}/settings/secrets/actions`,
+              `3. Re-run any bridge dispatch that failed (Agents 63 Issue Intake → agent_bridge).`,
+              '',
+              '> The bridge now falls through to the next credential on 401 (see',
+              '> `resolve_working_token.js`), but a fully-refreshed PAT is required',
+              '> for PRs that must trigger downstream automation.',
+              '',
+              '---',
+              '*Auto-created by the `health-47-pat-check` workflow.*',
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title,
+              body,
+              labels: ['pat-invalid', 'ci', 'priority:high'],
+            });
+            console.log(`Created issue: ${title}`);
+
+      - name: Summary
+        env:
+          STATUS: ${{ steps.check.outputs.status }}
+          EXISTING: ${{ steps.existing.outputs.result }}
+          REPORT: ${{ steps.check.outputs.report }}
+        run: |
+          {
+            echo "## Bot PAT Check"
+            echo ""
+            if [ "$EXISTING" = "true" ] && [ "${{ inputs.force_check }}" != "true" ]; then
+              echo "⏭️ Skipped — an open \`pat-invalid\` issue already exists."
+            elif [ "$STATUS" = "ok" ]; then
+              echo "✅ All configured bot PATs authenticate."
+            elif [ "$STATUS" = "invalid" ]; then
+              echo "🚨 One or more bot PATs are invalid — issue created."
+              echo ""
+              echo "$REPORT"
+            else
+              echo "ℹ️ No check run."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
