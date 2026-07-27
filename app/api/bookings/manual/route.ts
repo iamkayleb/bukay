@@ -213,13 +213,13 @@ export async function POST(req: NextRequest) {
             action: "manual_booking_created",
             entityType: "Booking",
             entityId: created.id,
-            metadata: JSON.stringify({
+            metadata: {
               clientId: client.id,
               serviceId: service.id,
               staffId: staff.id,
               startsAt: startsAt.toISOString(),
               endsAt: endsAt.toISOString(),
-            }),
+            },
           },
         });
 

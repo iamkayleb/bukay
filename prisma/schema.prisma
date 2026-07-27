@@ -7,8 +7,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Tenant {
@@ -174,7 +174,7 @@ model AuditLog {
   action     String
   entityType String
   entityId   String?
-  metadata   String?
+  metadata   Json?
   createdAt  DateTime @default(now())
 
   @@index([tenantId])

@@ -86,3 +86,10 @@ def test_blackout_has_unique_tenant_local_date() -> None:
     body = blocks["Blackout"]
     assert re.search(r"^\s*date\s+String\b", body, re.MULTILINE)
     assert "@@unique([tenantId, date])" in body
+
+
+def test_audit_log_metadata_is_structured_json() -> None:
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    body = blocks["AuditLog"]
+    assert re.search(r"^\s*metadata\s+Json\?", body, re.MULTILINE)
+    assert not re.search(r"^\s*metadata\s+String\?", body, re.MULTILINE)

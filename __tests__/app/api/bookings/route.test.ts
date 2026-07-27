@@ -292,8 +292,8 @@ describe("PATCH /api/bookings/:id", () => {
       }),
     });
 
-    const auditArgs = state.auditLogs[0] as { data: { metadata: string } };
-    expect(JSON.parse(auditArgs.data.metadata)).toEqual({
+    const auditArgs = state.auditLogs[0] as { data: { metadata: Record<string, unknown> } };
+    expect(auditArgs.data.metadata).toEqual({
       oldStartsAt: "2026-07-22T10:00:00.000Z",
       oldEndsAt: "2026-07-22T10:45:00.000Z",
       newStartsAt: "2026-07-23T14:00:00.000Z",

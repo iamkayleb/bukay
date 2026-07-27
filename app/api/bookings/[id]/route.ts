@@ -322,7 +322,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
             action: timeChanged ? "booking_rescheduled" : "booking_updated",
             entityType: "Booking",
             entityId: existing.id,
-            metadata: JSON.stringify({
+            metadata: {
               oldStartsAt: isoDate(existing.startsAt),
               oldEndsAt: isoDate(existing.endsAt),
               newStartsAt: isoDate(updated.startsAt),
@@ -333,7 +333,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
               newStatus: updated.status,
               oldNotes: existing.notes,
               newNotes: updated.notes,
-            }),
+            },
           },
         });
 
