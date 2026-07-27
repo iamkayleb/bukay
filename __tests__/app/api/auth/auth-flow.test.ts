@@ -7,10 +7,7 @@ import { POST as logout } from "@/app/api/auth/logout/route";
 import { GET as me } from "@/app/api/auth/me/route";
 
 import { MemorySmsProvider } from "@/app/lib/sms/memory";
-import {
-  __resetSmsProviderForTests,
-  setSmsProviderForTests,
-} from "@/app/lib/auth/sms";
+import { __resetSmsProviderForTests, setSmsProviderForTests } from "@/app/lib/auth/sms";
 import { __resetOtpStoreForTests, getOtpStore } from "@/app/lib/auth/otp";
 import { SESSION_COOKIE_NAME } from "@/app/lib/auth/session";
 
@@ -49,9 +46,7 @@ beforeEach(() => {
 
 describe("end-to-end auth flow", () => {
   it("signs up + logs in: phone -> OTP -> session cookie -> /me returns user", async () => {
-    const loginRes = await login(
-      jsonRequest("http://test/api/auth/login", { phone: PHONE_LOCAL })
-    );
+    const loginRes = await login(jsonRequest("http://test/api/auth/login", { phone: PHONE_LOCAL }));
     expect(loginRes.status).toBe(200);
     const loginBody = await loginRes.json();
     expect(loginBody.ok).toBe(true);
@@ -119,14 +114,10 @@ describe("end-to-end auth flow", () => {
 
   it("rate-limits brute-force OTP requests", async () => {
     // First /login is fine; subsequent rapid logins should hit cooldown -> 429
-    const first = await login(
-      jsonRequest("http://test/api/auth/login", { phone: PHONE_LOCAL })
-    );
+    const first = await login(jsonRequest("http://test/api/auth/login", { phone: PHONE_LOCAL }));
     expect(first.status).toBe(200);
 
-    const second = await login(
-      jsonRequest("http://test/api/auth/login", { phone: PHONE_LOCAL })
-    );
+    const second = await login(jsonRequest("http://test/api/auth/login", { phone: PHONE_LOCAL }));
     expect(second.status).toBe(429);
     expect(second.headers.get("retry-after")).toMatch(/^\d+$/);
     const body = await second.json();
@@ -134,9 +125,7 @@ describe("end-to-end auth flow", () => {
   });
 
   it("rejects an invalid phone number", async () => {
-    const res = await login(
-      jsonRequest("http://test/api/auth/login", { phone: "not-a-phone" })
-    );
+    const res = await login(jsonRequest("http://test/api/auth/login", { phone: "not-a-phone" }));
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toBe("invalid_phone");

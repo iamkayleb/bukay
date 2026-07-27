@@ -30,7 +30,7 @@ export function validationError(error: ZodError) {
       fieldErrors: flattened.fieldErrors,
       formErrors: flattened.formErrors,
     },
-    { status: 422 },
+    { status: 422 }
   );
 }
 
@@ -44,7 +44,7 @@ export async function readJson(req: NextRequest): Promise<unknown | NextResponse
 
 export async function runForTenant<T>(
   req: NextRequest,
-  callback: (tenantId: string) => Promise<T>,
+  callback: (tenantId: string) => Promise<T>
 ): Promise<T | NextResponse> {
   const resolved = resolveTenant({ headers: req.headers });
 

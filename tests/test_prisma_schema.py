@@ -12,8 +12,7 @@ from pathlib import Path
 
 SCHEMA_PATH = Path(__file__).resolve().parent.parent / "prisma" / "schema.prisma"
 
-# Models scoped to a tenant (everything except Tenant itself).
-TENANT_SCOPED_MODELS = {
+EXPECTED_TENANT_SCOPED_MODELS = {
     "User",
     "Service",
     "Staff",
@@ -26,7 +25,7 @@ TENANT_SCOPED_MODELS = {
 }
 
 # Models the scope requires to exist at all.
-REQUIRED_MODELS = TENANT_SCOPED_MODELS | {"Tenant"}
+REQUIRED_MODELS = EXPECTED_TENANT_SCOPED_MODELS | {"Tenant"}
 
 
 def _model_blocks(schema_text: str) -> dict[str, str]:
@@ -36,6 +35,18 @@ def _model_blocks(schema_text: str) -> dict[str, str]:
     for match in pattern.finditer(schema_text):
         blocks[match.group(1)] = match.group(2)
     return blocks
+
+
+def _has_tenant_id_column(model_body: str) -> bool:
+    return re.search(r"^\s*tenantId\s+String\b", model_body, re.MULTILINE) is not None
+
+
+def _tenant_scoped_models(blocks: dict[str, str]) -> set[str]:
+    return {name for name, body in blocks.items() if _has_tenant_id_column(body)}
+
+
+def _has_tenant_id_index(model_body: str) -> bool:
+    return re.search(r"@@index\(\[\s*tenantId\s*(?:,|\])", model_body) is not None
 
 
 def test_schema_file_exists() -> None:
@@ -48,22 +59,21 @@ def test_all_required_models_present() -> None:
     assert not missing, f"prisma schema missing required models: {sorted(missing)}"
 
 
-def test_every_tenant_scoped_model_has_tenant_id_column() -> None:
+def test_expected_tenant_scoped_models_have_tenant_id_column() -> None:
     blocks = _model_blocks(SCHEMA_PATH.read_text())
-    for name in TENANT_SCOPED_MODELS:
+    for name in EXPECTED_TENANT_SCOPED_MODELS:
         body = blocks[name]
-        assert re.search(
-            r"^\s*tenantId\s+String\b", body, re.MULTILINE
-        ), f"model {name} is missing a `tenantId String` column"
+        assert _has_tenant_id_column(body), f"model {name} is missing a `tenantId String` column"
 
 
 def test_every_tenant_scoped_model_has_tenant_index() -> None:
     blocks = _model_blocks(SCHEMA_PATH.read_text())
-    for name in TENANT_SCOPED_MODELS:
+    scoped_models = _tenant_scoped_models(blocks)
+    assert scoped_models, "schema has no tenant-scoped models"
+
+    for name in scoped_models:
         body = blocks[name]
-        assert "@@index([tenantId])" in body or re.search(
-            r"@@index\(\[tenantId,", body
-        ), f"model {name} is missing `@@index([tenantId])`"
+        assert _has_tenant_id_index(body), f"model {name} is missing `@@index([tenantId])`"
 
 
 def test_tenant_model_has_no_tenant_id() -> None:

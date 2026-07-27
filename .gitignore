@@ -175,6 +175,8 @@ archives/metrics/
 
 # Build artifacts
 .autofix-venv/
+tsconfig.tsbuildinfo
+verifier-pr-diff.patch
 
 # PR automation generated files (MEDIUM conflict risk)
 pr_body.md
@@ -185,6 +187,8 @@ coverage.xml
 # Wrong package manager artifacts (defense-in-depth)
 Pipfile.lock
 poetry.lock
+package-lock.json
+pnpm-lock.yaml
 
 # END WORKFLOWS STATUS FILES
 # =============================================================================
@@ -218,3 +222,10 @@ prisma/generated/
 pnpm-debug.log*
 # Lighthouse CI
 .lighthouseci/
+
+# TypeScript incremental build info
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Patch files (e.g. verifier diffs)
+*.patch
