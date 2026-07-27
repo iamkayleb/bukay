@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { InvalidPhoneNumberError, normalizeNigerianPhone } from "@/app/lib/auth/phone";
 import { getOtpStore } from "@/app/lib/auth/otp";
-import {
-  SESSION_TTL_MS,
-  buildSessionCookie,
-  signSession,
-} from "@/app/lib/auth/session";
+import { SESSION_TTL_MS, buildSessionCookie, signSession } from "@/app/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
