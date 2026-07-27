@@ -18,23 +18,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SEED_PATH = ROOT / "prisma" / "seed.ts"
 PACKAGE_JSON = ROOT / "package.json"
-PNPM_LOCK = ROOT / "pnpm-lock.yaml"
 
 
 def _seed_text() -> str:
     return SEED_PATH.read_text()
 
 
-def _locked_package_version(package: str) -> str:
-    lock_text = PNPM_LOCK.read_text()
-    package_key = re.escape(package)
-    match = re.search(
-        rf"^\s+['\"]?{package_key}['\"]?:\n\s+specifier: [^\n]+\n\s+version: ([^\s(]+)",
-        lock_text,
-        re.MULTILINE,
-    )
-    assert match, f"could not find locked {package} version in {PNPM_LOCK}"
-    return match.group(1)
+def _package_version(package: str) -> str:
+    pkg = json.loads(PACKAGE_JSON.read_text())
+    spec = pkg.get("dependencies", {}).get(package) or pkg.get("devDependencies", {}).get(package)
+    assert spec, f"could not find {package} version in {PACKAGE_JSON}"
+    return spec
 
 
 def _prepare_node_modules(project_dir: Path) -> Path:
@@ -51,9 +45,9 @@ def _prepare_node_modules(project_dir: Path) -> Path:
             "--no-audit",
             "--no-fund",
             "--ignore-scripts",
-            f"prisma@{_locked_package_version('prisma')}",
-            f"@prisma/client@{_locked_package_version('@prisma/client')}",
-            f"tsx@{_locked_package_version('tsx')}",
+            f"prisma@{_package_version('prisma')}",
+            f"@prisma/client@{_package_version('@prisma/client')}",
+            f"tsx@{_package_version('tsx')}",
         ],
         cwd=project_dir,
         text=True,
