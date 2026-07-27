@@ -228,6 +228,17 @@ function outsideBusinessHoursError() {
   );
 }
 
+function bookingOverlapError() {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: "BOOKING_OVERLAP",
+      message: "Booking reschedules must not overlap another booking for the same staff member.",
+    },
+    { status: 409 }
+  );
+}
+
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
   const body = await readJson(req);
   if (body instanceof NextResponse) {
@@ -266,6 +277,23 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
         if (startsAt && endsAt && !(await isInsideBusinessHours(tx, tenantId, startsAt, endsAt))) {
           return "outside_business_hours";
+        }
+
+        if (startsAt && endsAt && existing.staffId) {
+          const overlapping = await tx.booking.findFirst({
+            where: {
+              tenantId,
+              staffId: existing.staffId,
+              id: { not: existing.id },
+              startsAt: { lt: endsAt },
+              endsAt: { gt: startsAt },
+            },
+            select: { id: true },
+          });
+
+          if (overlapping) {
+            return "booking_overlap";
+          }
         }
 
         const data = {
@@ -324,10 +352,14 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         return outsideBusinessHoursError();
       }
 
+      if (booking === "booking_overlap") {
+        return bookingOverlapError();
+      }
+
       return NextResponse.json({ ok: true, booking: serializeBooking(booking) });
     } catch (error) {
       if (isBookingOverlapError(error)) {
-        return jsonError("booking_overlap", 409);
+        return bookingOverlapError();
       }
 
       throw error;

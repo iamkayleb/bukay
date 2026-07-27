@@ -172,10 +172,42 @@ beforeEach(() => {
     })
   );
   state.bookingFindFirst.mockImplementation(
-    async (args: { where: { tenantId: string; id: string } }) =>
-      state.bookings.find(
-        (booking) => booking.tenantId === args.where.tenantId && booking.id === args.where.id
-      ) ?? null
+    async (args: {
+      where: {
+        tenantId: string;
+        id?: string | { not: string };
+        staffId?: string | null;
+        startsAt?: { lt: Date };
+        endsAt?: { gt: Date };
+      };
+    }) =>
+      state.bookings.find((booking) => {
+        if (booking.tenantId !== args.where.tenantId) {
+          return false;
+        }
+
+        if (typeof args.where.id === "string" && booking.id !== args.where.id) {
+          return false;
+        }
+
+        if (typeof args.where.id === "object" && booking.id === args.where.id.not) {
+          return false;
+        }
+
+        if ("staffId" in args.where && booking.staffId !== args.where.staffId) {
+          return false;
+        }
+
+        if (args.where.startsAt && !(booking.startsAt < args.where.startsAt.lt)) {
+          return false;
+        }
+
+        if (args.where.endsAt && !(booking.endsAt > args.where.endsAt.gt)) {
+          return false;
+        }
+
+        return true;
+      }) ?? null
   );
   state.bookingUpdate.mockImplementation(
     async (args: { where: { id: string }; data: Partial<BookingRow> }) => {
@@ -435,6 +467,49 @@ describe("PATCH /api/bookings/:id", () => {
     expect(state.auditLogCreate).not.toHaveBeenCalled();
   });
 
+  it("rejects reschedules that overlap an existing booking before writing", async () => {
+    state.bookings.push({
+      id: "booking-2",
+      tenantId: "tenant-1",
+      clientId: "client-2",
+      serviceId: "service-1",
+      staffId: "staff-1",
+      startsAt: new Date("2026-07-23T14:30:00.000Z"),
+      endsAt: new Date("2026-07-23T15:15:00.000Z"),
+      status: "confirmed",
+      notes: null,
+      createdAt: new Date("2026-07-20T09:00:00.000Z"),
+      updatedAt: new Date("2026-07-20T09:00:00.000Z"),
+    });
+
+    const res = await PATCH(
+      jsonRequest("/api/bookings/booking-1", {
+        startsAt: "2026-07-23T14:00:00.000Z",
+        endsAt: "2026-07-23T14:45:00.000Z",
+      }),
+      { params: { id: "booking-1" } }
+    );
+
+    expect(res.status).toBe(409);
+    await expect(res.json()).resolves.toEqual({
+      ok: false,
+      error: "BOOKING_OVERLAP",
+      message: "Booking reschedules must not overlap another booking for the same staff member.",
+    });
+    expect(state.bookingFindFirst).toHaveBeenCalledWith({
+      where: {
+        tenantId: "tenant-1",
+        staffId: "staff-1",
+        id: { not: "booking-1" },
+        startsAt: { lt: new Date("2026-07-23T14:45:00.000Z") },
+        endsAt: { gt: new Date("2026-07-23T14:00:00.000Z") },
+      },
+      select: { id: true },
+    });
+    expect(state.bookingUpdate).not.toHaveBeenCalled();
+    expect(state.auditLogCreate).not.toHaveBeenCalled();
+  });
+
   it("returns not found when the booking is outside the tenant", async () => {
     const res = await PATCH(
       jsonRequest("/api/bookings/missing", {
@@ -465,7 +540,11 @@ describe("PATCH /api/bookings/:id", () => {
     );
 
     expect(res.status).toBe(409);
-    await expect(res.json()).resolves.toEqual({ ok: false, error: "booking_overlap" });
+    await expect(res.json()).resolves.toEqual({
+      ok: false,
+      error: "BOOKING_OVERLAP",
+      message: "Booking reschedules must not overlap another booking for the same staff member.",
+    });
     expect(state.auditLogCreate).not.toHaveBeenCalled();
   });
 });
