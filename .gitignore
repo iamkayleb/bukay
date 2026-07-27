@@ -211,6 +211,9 @@ prisma/dev.db-journal
 out/
 node_modules/
 .env*.local
+# TypeScript incremental build info
+tsconfig.tsbuildinfo
+*.tsbuildinfo
 # Prisma generated
 prisma/generated/
 # pnpm

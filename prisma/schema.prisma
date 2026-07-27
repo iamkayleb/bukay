@@ -23,6 +23,7 @@ model Tenant {
   services      Service[]
   staff         Staff[]
   businessHours BusinessHour[]
+  blackouts     Blackout[]
   clients       Client[]
   bookings      Booking[]
   payments      Payment[]
@@ -88,7 +89,25 @@ model BusinessHour {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([tenantId, dayOfWeek])
+  @@index([tenantId])
+  @@index([tenantId, dayOfWeek])
+}
+
+// Date-specific override that suppresses the weekly schedule for one day.
+// `date` is stored as an ISO wall-clock date (YYYY-MM-DD) in the tenant's
+// timezone, so blackouts are independent of DST or UTC offset. The
+// (tenantId, date) pair is unique — a tenant cannot have two blackouts on
+// the same calendar date.
+model Blackout {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  date      String
+  reason    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, date])
   @@index([tenantId])
 }
 
