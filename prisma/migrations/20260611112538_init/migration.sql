@@ -56,10 +56,20 @@ CREATE TABLE "BusinessHour" (
     "dayOfWeek" INTEGER NOT NULL,
     "opensAt" TEXT NOT NULL,
     "closesAt" TEXT NOT NULL,
-    "isClosed" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     CONSTRAINT "BusinessHour_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "Blackout" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "date" TEXT NOT NULL,
+    "reason" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "Blackout_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -149,7 +159,19 @@ CREATE UNIQUE INDEX "Staff_tenantId_email_key" ON "Staff"("tenantId", "email");
 CREATE INDEX "BusinessHour_tenantId_idx" ON "BusinessHour"("tenantId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "BusinessHour_tenantId_dayOfWeek_key" ON "BusinessHour"("tenantId", "dayOfWeek");
+CREATE INDEX "BusinessHour_tenantId_dayOfWeek_idx" ON "BusinessHour"("tenantId", "dayOfWeek");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "BusinessHour_tenantId_dayOfWeek_opensAt_closesAt_key" ON "BusinessHour"("tenantId", "dayOfWeek", "opensAt", "closesAt");
+
+-- CreateIndex
+CREATE INDEX "Blackout_tenantId_idx" ON "Blackout"("tenantId");
+
+-- CreateIndex
+CREATE INDEX "Blackout_tenantId_date_idx" ON "Blackout"("tenantId", "date");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Blackout_tenantId_date_key" ON "Blackout"("tenantId", "date");
 
 -- CreateIndex
 CREATE INDEX "Client_tenantId_idx" ON "Client"("tenantId");

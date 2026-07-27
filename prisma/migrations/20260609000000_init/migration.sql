@@ -85,6 +85,18 @@ CREATE TABLE "BusinessHour" (
 );
 
 -- CreateTable
+CREATE TABLE "Blackout" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "date" TEXT NOT NULL,
+    "reason" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Blackout_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Client" (
     "id" TEXT NOT NULL,
     "tenantId" TEXT NOT NULL,
@@ -179,6 +191,15 @@ CREATE INDEX "BusinessHour_tenantId_idx" ON "BusinessHour"("tenantId");
 CREATE INDEX "BusinessHour_tenantId_staffId_dayOfWeek_idx" ON "BusinessHour"("tenantId", "staffId", "dayOfWeek");
 
 -- CreateIndex
+CREATE INDEX "Blackout_tenantId_idx" ON "Blackout"("tenantId");
+
+-- CreateIndex
+CREATE INDEX "Blackout_tenantId_date_idx" ON "Blackout"("tenantId", "date");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Blackout_tenantId_date_key" ON "Blackout"("tenantId", "date");
+
+-- CreateIndex
 CREATE INDEX "Client_tenantId_idx" ON "Client"("tenantId");
 
 -- CreateIndex
@@ -236,6 +257,9 @@ ALTER TABLE "BusinessHour" ADD CONSTRAINT "BusinessHour_tenantId_fkey" FOREIGN K
 ALTER TABLE "BusinessHour" ADD CONSTRAINT "BusinessHour_staffId_fkey" FOREIGN KEY ("staffId") REFERENCES "Staff"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Blackout" ADD CONSTRAINT "Blackout_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Client" ADD CONSTRAINT "Client_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -267,4 +291,3 @@ ALTER TABLE "_StaffServices" ADD CONSTRAINT "_StaffServices_A_fkey" FOREIGN KEY 
 
 -- AddForeignKey
 ALTER TABLE "_StaffServices" ADD CONSTRAINT "_StaffServices_B_fkey" FOREIGN KEY ("B") REFERENCES "Staff"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-

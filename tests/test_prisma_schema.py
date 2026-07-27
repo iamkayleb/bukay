@@ -18,6 +18,7 @@ TENANT_SCOPED_MODELS = {
     "Service",
     "Staff",
     "BusinessHour",
+    "Blackout",
     "Client",
     "Booking",
     "Payment",
@@ -71,3 +72,17 @@ def test_tenant_model_has_no_tenant_id() -> None:
     assert not re.search(
         r"^\s*tenantId\s+", body, re.MULTILINE
     ), "Tenant model must not carry its own tenantId column"
+
+
+def test_business_hour_supports_multiple_windows_per_weekday() -> None:
+    body = _model_blocks(SCHEMA_PATH.read_text())["BusinessHour"]
+    assert "@@unique([tenantId, dayOfWeek])" not in body
+    assert "@@index([tenantId, dayOfWeek])" in body
+    assert "@@unique([tenantId, dayOfWeek, opensAt, closesAt])" in body
+
+
+def test_blackout_is_date_specific_per_tenant() -> None:
+    body = _model_blocks(SCHEMA_PATH.read_text())["Blackout"]
+    assert re.search(r"^\s*date\s+String\b", body, re.MULTILINE)
+    assert "@@unique([tenantId, date])" in body
+    assert "@@index([tenantId, date])" in body
