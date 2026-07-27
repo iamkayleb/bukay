@@ -29,9 +29,24 @@ type BookingRecord = {
   staff?: { name: string } | null;
 };
 
+type BusinessHourRecord = {
+  opensAt: string;
+  closesAt: string;
+};
+
+type BlackoutRecord = {
+  id: string;
+};
+
 type BookingTx = {
   service: {
     findFirst(args: unknown): Promise<{ id: string } | null>;
+  };
+  businessHour: {
+    findMany(args: unknown): Promise<BusinessHourRecord[]>;
+  };
+  blackout: {
+    findFirst(args: unknown): Promise<BlackoutRecord | null>;
   };
   booking: {
     findFirst(args: unknown): Promise<BookingRecord | null>;
@@ -89,6 +104,8 @@ const bookingDb = prisma as unknown as BookingTx & {
   $transaction<T>(callback: (tx: BookingTx) => Promise<T>): Promise<T>;
 };
 
+const WALL_CLOCK_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 function isoDate(value: Date | string) {
   return value instanceof Date ? value.toISOString() : value;
 }
@@ -130,6 +147,87 @@ function isBookingOverlapError(error: unknown) {
   );
 }
 
+function localDate(value: Date) {
+  return value.toISOString().slice(0, 10);
+}
+
+function dayOfWeekForLocalDate(date: string) {
+  return new Date(`${date}T00:00:00.000Z`).getUTCDay();
+}
+
+function minutesSinceMidnight(value: Date) {
+  return value.getUTCHours() * 60 + value.getUTCMinutes();
+}
+
+function wallClockToMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function isValidBusinessWindow(window: BusinessHourRecord) {
+  return (
+    WALL_CLOCK_PATTERN.test(window.opensAt) &&
+    WALL_CLOCK_PATTERN.test(window.closesAt) &&
+    window.opensAt < window.closesAt
+  );
+}
+
+async function isInsideBusinessHours(
+  tx: BookingTx,
+  tenantId: string,
+  startsAt: Date,
+  endsAt: Date
+) {
+  const startsOn = localDate(startsAt);
+  if (startsOn !== localDate(endsAt)) {
+    return false;
+  }
+
+  const blackout = await tx.blackout.findFirst({
+    where: {
+      tenantId,
+      date: startsOn,
+    },
+    select: { id: true },
+  });
+
+  if (blackout) {
+    return false;
+  }
+
+  const windows = await tx.businessHour.findMany({
+    where: {
+      tenantId,
+      dayOfWeek: dayOfWeekForLocalDate(startsOn),
+    },
+    orderBy: [{ opensAt: "asc" }, { closesAt: "asc" }],
+    select: {
+      opensAt: true,
+      closesAt: true,
+    },
+  });
+  const startMinutes = minutesSinceMidnight(startsAt);
+  const endMinutes = minutesSinceMidnight(endsAt);
+
+  return windows.filter(isValidBusinessWindow).some((window) => {
+    return (
+      startMinutes >= wallClockToMinutes(window.opensAt) &&
+      endMinutes <= wallClockToMinutes(window.closesAt)
+    );
+  });
+}
+
+function outsideBusinessHoursError() {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: "OUTSIDE_BUSINESS_HOURS",
+      message: "Booking reschedules must start and end inside configured business hours.",
+    },
+    { status: 400 }
+  );
+}
+
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
   const body = await readJson(req);
   if (body instanceof NextResponse) {
@@ -165,6 +263,11 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
         const startsAt = parsed.data.startsAt ? new Date(parsed.data.startsAt) : undefined;
         const endsAt = parsed.data.endsAt ? new Date(parsed.data.endsAt) : undefined;
+
+        if (startsAt && endsAt && !(await isInsideBusinessHours(tx, tenantId, startsAt, endsAt))) {
+          return "outside_business_hours";
+        }
+
         const data = {
           ...(parsed.data.serviceId ? { serviceId: parsed.data.serviceId } : {}),
           ...(startsAt ? { startsAt } : {}),
@@ -215,6 +318,10 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
       if (booking === "service_not_found") {
         return jsonError("booking_dependency_not_found", 404);
+      }
+
+      if (booking === "outside_business_hours") {
+        return outsideBusinessHoursError();
       }
 
       return NextResponse.json({ ok: true, booking: serializeBooking(booking) });
