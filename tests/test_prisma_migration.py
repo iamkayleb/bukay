@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_PATH = ROOT / "prisma" / "schema.prisma"
 MIGRATIONS_DIR = ROOT / "prisma" / "migrations"
 DATA_MODEL_DOC = ROOT / "docs" / "DATA_MODEL.md"
+PNPM_LOCK = ROOT / "pnpm-lock.yaml"
 
 # Models the scope requires to exist; mirrors test_prisma_schema.py.
 REQUIRED_MODELS = {
@@ -45,6 +46,25 @@ def _initial_migration_dir() -> Path:
     return sorted(candidates)[0]
 
 
+def _locked_package_version(package: str) -> str:
+    lock_text = PNPM_LOCK.read_text()
+    package_key = re.escape(package)
+    match = re.search(
+        rf"^\s+['\"]?{package_key}['\"]?:\n\s+specifier: [^\n]+\n\s+version: ([^\s(]+)",
+        lock_text,
+        re.MULTILINE,
+    )
+    assert match, f"could not find locked {package} version in {PNPM_LOCK}"
+    return match.group(1)
+
+
+def _prisma_command() -> list[str]:
+    prisma_bin = ROOT / "node_modules" / ".bin" / "prisma"
+    if prisma_bin.exists():
+        return [str(prisma_bin)]
+    return ["npx", "--yes", "--package", f"prisma@{_locked_package_version('prisma')}", "prisma"]
+
+
 def test_migration_lock_present() -> None:
     lock = MIGRATIONS_DIR / "migration_lock.toml"
     assert lock.exists(), "prisma/migrations/migration_lock.toml must be checked in"
@@ -63,8 +83,7 @@ def test_prisma_migrate_dev_runs_on_clean_database(tmp_path: Path) -> None:
 
     result = subprocess.run(
         [
-            "npx",
-            "prisma",
+            *_prisma_command(),
             "migrate",
             "dev",
             "--schema",

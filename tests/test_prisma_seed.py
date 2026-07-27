@@ -18,10 +18,52 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SEED_PATH = ROOT / "prisma" / "seed.ts"
 PACKAGE_JSON = ROOT / "package.json"
+PNPM_LOCK = ROOT / "pnpm-lock.yaml"
 
 
 def _seed_text() -> str:
     return SEED_PATH.read_text()
+
+
+def _locked_package_version(package: str) -> str:
+    lock_text = PNPM_LOCK.read_text()
+    package_key = re.escape(package)
+    match = re.search(
+        rf"^\s+['\"]?{package_key}['\"]?:\n\s+specifier: [^\n]+\n\s+version: ([^\s(]+)",
+        lock_text,
+        re.MULTILINE,
+    )
+    assert match, f"could not find locked {package} version in {PNPM_LOCK}"
+    return match.group(1)
+
+
+def _prepare_node_modules(project_dir: Path) -> Path:
+    node_modules = project_dir / "node_modules"
+    root_node_modules = ROOT / "node_modules"
+    if root_node_modules.exists():
+        node_modules.symlink_to(root_node_modules, target_is_directory=True)
+        return node_modules / ".bin" / "prisma"
+
+    install = subprocess.run(
+        [
+            "npm",
+            "install",
+            "--no-audit",
+            "--no-fund",
+            "--ignore-scripts",
+            f"prisma@{_locked_package_version('prisma')}",
+            f"@prisma/client@{_locked_package_version('@prisma/client')}",
+            f"tsx@{_locked_package_version('tsx')}",
+        ],
+        cwd=project_dir,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=120,
+        check=False,
+    )
+    assert install.returncode == 0, install.stdout
+    return node_modules / ".bin" / "prisma"
 
 
 def test_seed_file_exists() -> None:
@@ -96,9 +138,7 @@ def test_prisma_db_seed_creates_demo_tenant_on_clean_database(tmp_path: Path) ->
             }
         )
     )
-    (project_dir / "node_modules").symlink_to(ROOT / "node_modules", target_is_directory=True)
-
-    prisma_bin = project_dir / "node_modules" / ".bin" / "prisma"
+    prisma_bin = _prepare_node_modules(project_dir)
     env = {
         **os.environ,
         "PATH": f"{project_dir / 'node_modules' / '.bin'}{os.pathsep}{os.environ['PATH']}",
