@@ -2,6 +2,7 @@
 
 import { DragEvent, FormEvent, useEffect, useMemo, useState } from "react";
 
+import { Toast } from "../components/toast";
 import type { ServiceOption } from "./manual-booking-form";
 
 export type CalendarBooking = {
@@ -33,6 +34,10 @@ type EditBookingFormState = {
 };
 
 type EditBookingFieldErrors = Partial<Record<keyof EditBookingFormState | "_form", string>>;
+type CalendarNotice = {
+  message: string;
+  tone: "error" | "success";
+};
 
 const calendarStartHour = 8;
 const calendarEndHour = 18;
@@ -220,6 +225,12 @@ export function validateReschedule(candidate: CalendarBooking, bookings: Calenda
   return null;
 }
 
+export function rescheduleNoticeForReason(reason: "outside_hours" | "booking_overlap") {
+  return reason === "booking_overlap"
+    ? "That time overlaps another booking."
+    : "Drop inside business hours to reschedule.";
+}
+
 export type BookingPayload = Partial<CalendarBooking> & {
   id: unknown;
   startsAt: unknown;
@@ -401,7 +412,7 @@ export function CalendarView({ bookings = [], initialDate, services = [] }: Cale
   const [mode, setMode] = useState<CalendarMode>("week");
   const [anchorDate, setAnchorDate] = useState(() => startOfDay(new Date(initialDate)));
   const [visibleBookings, setVisibleBookings] = useState(() => bookings.map(normalizeBooking));
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<CalendarNotice | null>(null);
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditBookingFormState | null>(null);
   const [editErrors, setEditErrors] = useState<EditBookingFieldErrors>({});
@@ -454,18 +465,14 @@ export function CalendarView({ bookings = [], initialDate, services = [] }: Cale
     const booking = visibleBookings.find((current) => current.id === bookingId);
     const startsAt = startForDrop(day, event.clientY, event.currentTarget.getBoundingClientRect());
     if (!booking || !startsAt) {
-      setNotice("Drop inside business hours to reschedule.");
+      setNotice({ message: rescheduleNoticeForReason("outside_hours"), tone: "error" });
       return;
     }
 
     const nextBooking = moveBookingToStart(booking, startsAt);
     const invalidReason = validateReschedule(nextBooking, visibleBookings);
     if (invalidReason) {
-      setNotice(
-        invalidReason === "booking_overlap"
-          ? "That time overlaps another booking."
-          : "Drop inside business hours to reschedule."
-      );
+      setNotice({ message: rescheduleNoticeForReason(invalidReason), tone: "error" });
       return;
     }
 
@@ -498,7 +505,10 @@ export function CalendarView({ bookings = [], initialDate, services = [] }: Cale
       }
     } catch (error) {
       setVisibleBookings(previousBookings);
-      setNotice(error instanceof Error ? error.message : "Unable to reschedule booking");
+      setNotice({
+        message: error instanceof Error ? error.message : "Unable to reschedule booking",
+        tone: "error",
+      });
     }
   }
 
@@ -572,7 +582,7 @@ export function CalendarView({ bookings = [], initialDate, services = [] }: Cale
       }
 
       closeEditor();
-      setNotice("Booking updated.");
+      setNotice({ message: "Booking updated.", tone: "success" });
     } catch (error) {
       setVisibleBookings(previousBookings);
       setEditErrors({
@@ -635,14 +645,7 @@ export function CalendarView({ bookings = [], initialDate, services = [] }: Cale
         </div>
       </div>
 
-      {notice ? (
-        <p
-          className="mt-4 rounded-md border border-red-900/70 bg-red-950/50 px-3 py-2 text-sm text-red-200"
-          role="status"
-        >
-          {notice}
-        </p>
-      ) : null}
+      <Toast message={notice?.message ?? null} tone={notice?.tone} />
 
       <div className="mt-5 overflow-x-auto rounded-lg border border-slate-800">
         <div

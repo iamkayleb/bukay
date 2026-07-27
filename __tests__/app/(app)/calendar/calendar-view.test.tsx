@@ -13,11 +13,13 @@ import {
   isInsideCalendarHours,
   moveBookingToStart,
   normalizeBooking,
+  rescheduleNoticeForReason,
   startForDrop,
   startOfWeek,
   validateReschedule,
   type CalendarBooking,
 } from "@/app/(app)/calendar/calendar-view";
+import { Toast } from "@/app/(app)/components/toast";
 
 const bookings: CalendarBooking[] = [
   {
@@ -159,6 +161,15 @@ describe("calendar view helpers", () => {
     expect(hasBookingOverlap(candidate, bookings)).toBe(true);
     expect(validateReschedule(candidate, bookings)).toBe("booking_overlap");
   });
+
+  it("maps invalid drag actions to toast messages", () => {
+    expect(rescheduleNoticeForReason("outside_hours")).toBe(
+      "Drop inside business hours to reschedule."
+    );
+    expect(rescheduleNoticeForReason("booking_overlap")).toBe(
+      "That time overlaps another booking."
+    );
+  });
 });
 
 describe("CalendarView", () => {
@@ -172,5 +183,18 @@ describe("CalendarView", () => {
     expect(html).toContain("Ada Okafor");
     expect(html).toContain("Classic Haircut");
     expect(html).toContain('draggable="true"');
+    expect(html).not.toContain('role="status"');
+  });
+});
+
+describe("Toast", () => {
+  it("renders notices as toast alerts", () => {
+    const html = renderToStaticMarkup(
+      <Toast message="Drop inside business hours to reschedule." tone="error" />
+    );
+
+    expect(html).toContain('role="alert"');
+    expect(html).toContain("Drop inside business hours to reschedule.");
+    expect(html).toContain("fixed");
   });
 });
