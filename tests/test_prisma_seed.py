@@ -1,16 +1,18 @@
-"""Static checks on prisma/seed.ts.
+"""Checks for prisma/seed.ts.
 
 These guard the seed-script acceptance criteria from the data-model PR:
 `prisma db seed` must insert a demo tenant with exactly three sample
-services. We can't execute the TypeScript seed from pytest, but we can
-assert the seed source declares those invariants so a regression that
-removes a service or renames the demo slug is caught in CI.
+services and CI must catch regressions that break the executable seed.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import re
+import shutil
+import sqlite3
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -42,7 +44,8 @@ def test_tenant_scoped_upserts_have_top_level_tenant_id() -> None:
     text = _seed_text()
     for model in ("user", "client"):
         assert re.search(
-            rf"prisma\.{model}\.upsert\(\{{\s*where:\s*\{{\s*tenantId:\s*tenant\.id,",
+            rf"prisma\.{model}\.upsert\(\{{\s*where:\s*\{{"
+            rf"\s*tenantId_\w+:\s*\{{\s*tenantId:\s*tenant\.id,",
             text,
         ), f"prisma.{model}.upsert must include a top-level tenantId in where"
 
@@ -76,3 +79,80 @@ def test_package_json_wires_seed_script() -> None:
     assert "prisma/seed.ts" in seed_cmd, (
         "package.json `prisma.seed` must reference prisma/seed.ts; " f"got: {seed_cmd!r}"
     )
+
+
+def test_prisma_db_seed_creates_demo_tenant_on_clean_database(tmp_path: Path) -> None:
+    """Acceptance check: `prisma db seed` creates a tenant with slug `demo`."""
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    prisma_dir = project_dir / "prisma"
+    shutil.copytree(ROOT / "prisma", prisma_dir)
+    (project_dir / "package.json").write_text(
+        json.dumps(
+            {
+                "name": "bukay-prisma-seed-test",
+                "private": True,
+                "prisma": {"seed": "tsx prisma/seed.ts"},
+            }
+        )
+    )
+    (project_dir / "node_modules").symlink_to(ROOT / "node_modules", target_is_directory=True)
+
+    prisma_bin = project_dir / "node_modules" / ".bin" / "prisma"
+    env = {
+        **os.environ,
+        "PATH": f"{project_dir / 'node_modules' / '.bin'}{os.pathsep}{os.environ['PATH']}",
+    }
+
+    migrate = subprocess.run(
+        [
+            str(prisma_bin),
+            "migrate",
+            "dev",
+            "--schema",
+            "prisma/schema.prisma",
+            "--skip-seed",
+            "--skip-generate",
+        ],
+        cwd=project_dir,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert migrate.returncode == 0, migrate.stdout
+
+    generate = subprocess.run(
+        [str(prisma_bin), "generate", "--schema", "prisma/schema.prisma"],
+        cwd=project_dir,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert generate.returncode == 0, generate.stdout
+
+    seed = subprocess.run(
+        [str(prisma_bin), "db", "seed", "--schema", "prisma/schema.prisma"],
+        cwd=project_dir,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert seed.returncode == 0, seed.stdout
+
+    db_path = prisma_dir / "dev.db"
+    with sqlite3.connect(db_path) as conn:
+        demo_tenant_count = conn.execute(
+            'SELECT COUNT(*) FROM "Tenant" WHERE "slug" = ?',
+            ("demo",),
+        ).fetchone()[0]
+
+    assert demo_tenant_count == 1, "prisma db seed did not create Tenant.slug = 'demo'"
