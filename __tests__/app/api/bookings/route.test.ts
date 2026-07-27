@@ -18,14 +18,30 @@ type BookingRow = {
   staff?: { name: string } | null;
 };
 
+type BusinessHourRow = {
+  tenantId: string;
+  dayOfWeek: number;
+  opensAt: string;
+  closesAt: string;
+};
+
+type BlackoutRow = {
+  tenantId: string;
+  date: string;
+};
+
 type NextRequestInit = NonNullable<ConstructorParameters<typeof NextRequest>[1]>;
 
 const state = vi.hoisted(() => ({
   bookings: [] as BookingRow[],
+  businessHours: [] as BusinessHourRow[],
+  blackouts: [] as BlackoutRow[],
   auditLogs: [] as unknown[],
   serviceFindFirst: vi.fn(),
   bookingFindFirst: vi.fn(),
   bookingUpdate: vi.fn(),
+  businessHourFindMany: vi.fn(),
+  blackoutFindFirst: vi.fn(),
   auditLogCreate: vi.fn(),
   transaction: vi.fn(),
   tenantFindUnique: vi.fn(),
@@ -39,6 +55,12 @@ vi.mock("@/app/db/prisma", () => ({
     },
     service: {
       findFirst: state.serviceFindFirst,
+    },
+    businessHour: {
+      findMany: state.businessHourFindMany,
+    },
+    blackout: {
+      findFirst: state.blackoutFindFirst,
     },
     auditLog: {
       create: state.auditLogCreate,
@@ -90,11 +112,52 @@ beforeEach(() => {
       staff: { name: "Owner" },
     },
   ];
+  state.businessHours = [
+    {
+      tenantId: "tenant-1",
+      dayOfWeek: 1,
+      opensAt: "09:00",
+      closesAt: "18:00",
+    },
+    {
+      tenantId: "tenant-1",
+      dayOfWeek: 2,
+      opensAt: "09:00",
+      closesAt: "18:00",
+    },
+    {
+      tenantId: "tenant-1",
+      dayOfWeek: 3,
+      opensAt: "09:00",
+      closesAt: "18:00",
+    },
+    {
+      tenantId: "tenant-1",
+      dayOfWeek: 4,
+      opensAt: "09:00",
+      closesAt: "18:00",
+    },
+    {
+      tenantId: "tenant-1",
+      dayOfWeek: 5,
+      opensAt: "09:00",
+      closesAt: "18:00",
+    },
+    {
+      tenantId: "tenant-1",
+      dayOfWeek: 6,
+      opensAt: "09:00",
+      closesAt: "18:00",
+    },
+  ];
+  state.blackouts = [];
   state.auditLogs = [];
 
   state.bookingFindFirst.mockReset();
   state.bookingUpdate.mockReset();
   state.serviceFindFirst.mockReset();
+  state.businessHourFindMany.mockReset();
+  state.blackoutFindFirst.mockReset();
   state.auditLogCreate.mockReset();
   state.transaction.mockReset();
   state.tenantFindUnique.mockReset();
@@ -102,15 +165,49 @@ beforeEach(() => {
   state.transaction.mockImplementation(async (callback) =>
     callback({
       service: { findFirst: state.serviceFindFirst },
+      businessHour: { findMany: state.businessHourFindMany },
+      blackout: { findFirst: state.blackoutFindFirst },
       booking: { findFirst: state.bookingFindFirst, update: state.bookingUpdate },
       auditLog: { create: state.auditLogCreate },
     })
   );
   state.bookingFindFirst.mockImplementation(
-    async (args: { where: { tenantId: string; id: string } }) =>
-      state.bookings.find(
-        (booking) => booking.tenantId === args.where.tenantId && booking.id === args.where.id
-      ) ?? null
+    async (args: {
+      where: {
+        tenantId: string;
+        id?: string | { not: string };
+        staffId?: string | null;
+        startsAt?: { lt: Date };
+        endsAt?: { gt: Date };
+      };
+    }) =>
+      state.bookings.find((booking) => {
+        if (booking.tenantId !== args.where.tenantId) {
+          return false;
+        }
+
+        if (typeof args.where.id === "string" && booking.id !== args.where.id) {
+          return false;
+        }
+
+        if (typeof args.where.id === "object" && booking.id === args.where.id.not) {
+          return false;
+        }
+
+        if ("staffId" in args.where && booking.staffId !== args.where.staffId) {
+          return false;
+        }
+
+        if (args.where.startsAt && !(booking.startsAt < args.where.startsAt.lt)) {
+          return false;
+        }
+
+        if (args.where.endsAt && !(booking.endsAt > args.where.endsAt.gt)) {
+          return false;
+        }
+
+        return true;
+      }) ?? null
   );
   state.bookingUpdate.mockImplementation(
     async (args: { where: { id: string }; data: Partial<BookingRow> }) => {
@@ -139,6 +236,20 @@ beforeEach(() => {
 
       return ["service-1", "service-2"].includes(args.where.id) ? { id: args.where.id } : null;
     }
+  );
+  state.businessHourFindMany.mockImplementation(
+    async (args: { where: { tenantId: string; dayOfWeek: number } }) =>
+      state.businessHours
+        .filter(
+          (hour) => hour.tenantId === args.where.tenantId && hour.dayOfWeek === args.where.dayOfWeek
+        )
+        .map(({ opensAt, closesAt }) => ({ opensAt, closesAt }))
+  );
+  state.blackoutFindFirst.mockImplementation(
+    async (args: { where: { tenantId: string; date: string } }) =>
+      state.blackouts.find(
+        (blackout) => blackout.tenantId === args.where.tenantId && blackout.date === args.where.date
+      ) ?? null
   );
   state.auditLogCreate.mockImplementation(async (args: unknown) => {
     state.auditLogs.push(args);
@@ -181,8 +292,8 @@ describe("PATCH /api/bookings/:id", () => {
       }),
     });
 
-    const auditArgs = state.auditLogs[0] as { data: { metadata: string } };
-    expect(JSON.parse(auditArgs.data.metadata)).toEqual({
+    const auditArgs = state.auditLogs[0] as { data: { metadata: Record<string, unknown> } };
+    expect(auditArgs.data.metadata).toEqual({
       oldStartsAt: "2026-07-22T10:00:00.000Z",
       oldEndsAt: "2026-07-22T10:45:00.000Z",
       newStartsAt: "2026-07-23T14:00:00.000Z",
@@ -298,6 +409,107 @@ describe("PATCH /api/bookings/:id", () => {
     expect(state.auditLogCreate).not.toHaveBeenCalled();
   });
 
+  it("rejects reschedules that start before configured business hours", async () => {
+    const res = await PATCH(
+      jsonRequest("/api/bookings/booking-1", {
+        startsAt: "2026-07-23T08:45:00.000Z",
+        endsAt: "2026-07-23T09:30:00.000Z",
+      }),
+      { params: { id: "booking-1" } }
+    );
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({
+      ok: false,
+      error: "OUTSIDE_BUSINESS_HOURS",
+      message: "Booking reschedules must start and end inside configured business hours.",
+    });
+    expect(state.bookingUpdate).not.toHaveBeenCalled();
+    expect(state.auditLogCreate).not.toHaveBeenCalled();
+  });
+
+  it("rejects reschedules that end after configured business hours", async () => {
+    const res = await PATCH(
+      jsonRequest("/api/bookings/booking-1", {
+        startsAt: "2026-07-23T17:30:00.000Z",
+        endsAt: "2026-07-23T18:15:00.000Z",
+      }),
+      { params: { id: "booking-1" } }
+    );
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({
+      ok: false,
+      error: "OUTSIDE_BUSINESS_HOURS",
+      message: expect.stringContaining("configured business hours"),
+    });
+    expect(state.bookingUpdate).not.toHaveBeenCalled();
+    expect(state.auditLogCreate).not.toHaveBeenCalled();
+  });
+
+  it("rejects reschedules on blackout dates", async () => {
+    state.blackouts = [{ tenantId: "tenant-1", date: "2026-07-23" }];
+
+    const res = await PATCH(
+      jsonRequest("/api/bookings/booking-1", {
+        startsAt: "2026-07-23T14:00:00.000Z",
+        endsAt: "2026-07-23T14:45:00.000Z",
+      }),
+      { params: { id: "booking-1" } }
+    );
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({
+      ok: false,
+      error: "OUTSIDE_BUSINESS_HOURS",
+    });
+    expect(state.bookingUpdate).not.toHaveBeenCalled();
+    expect(state.auditLogCreate).not.toHaveBeenCalled();
+  });
+
+  it("rejects reschedules that overlap an existing booking before writing", async () => {
+    state.bookings.push({
+      id: "booking-2",
+      tenantId: "tenant-1",
+      clientId: "client-2",
+      serviceId: "service-1",
+      staffId: "staff-1",
+      startsAt: new Date("2026-07-23T14:30:00.000Z"),
+      endsAt: new Date("2026-07-23T15:15:00.000Z"),
+      status: "confirmed",
+      notes: null,
+      createdAt: new Date("2026-07-20T09:00:00.000Z"),
+      updatedAt: new Date("2026-07-20T09:00:00.000Z"),
+    });
+
+    const res = await PATCH(
+      jsonRequest("/api/bookings/booking-1", {
+        startsAt: "2026-07-23T14:00:00.000Z",
+        endsAt: "2026-07-23T14:45:00.000Z",
+      }),
+      { params: { id: "booking-1" } }
+    );
+
+    expect(res.status).toBe(409);
+    await expect(res.json()).resolves.toEqual({
+      ok: false,
+      error: "BOOKING_OVERLAP",
+      message: "Booking reschedules must not overlap another booking for the same staff member.",
+    });
+    expect(state.bookingFindFirst).toHaveBeenCalledWith({
+      where: {
+        tenantId: "tenant-1",
+        staffId: "staff-1",
+        id: { not: "booking-1" },
+        startsAt: { lt: new Date("2026-07-23T14:45:00.000Z") },
+        endsAt: { gt: new Date("2026-07-23T14:00:00.000Z") },
+      },
+      select: { id: true },
+    });
+    expect(state.bookingUpdate).not.toHaveBeenCalled();
+    expect(state.auditLogCreate).not.toHaveBeenCalled();
+  });
+
   it("returns not found when the booking is outside the tenant", async () => {
     const res = await PATCH(
       jsonRequest("/api/bookings/missing", {
@@ -328,7 +540,11 @@ describe("PATCH /api/bookings/:id", () => {
     );
 
     expect(res.status).toBe(409);
-    await expect(res.json()).resolves.toEqual({ ok: false, error: "booking_overlap" });
+    await expect(res.json()).resolves.toEqual({
+      ok: false,
+      error: "BOOKING_OVERLAP",
+      message: "Booking reschedules must not overlap another booking for the same staff member.",
+    });
     expect(state.auditLogCreate).not.toHaveBeenCalled();
   });
 });

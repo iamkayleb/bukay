@@ -105,6 +105,23 @@ def test_booking_staff_overlap_exclusion_constraint_exists() -> None:
     ), "Booking overlap exclusion should only apply when staffId is present"
 
 
+def test_audit_log_metadata_migrates_to_jsonb() -> None:
+    sql = _all_migration_sql()
+    assert re.search(
+        r'ALTER TABLE\s+"AuditLog"\s+ALTER COLUMN\s+"metadata"\s+TYPE\s+JSONB',
+        sql,
+        re.IGNORECASE,
+    )
+    assert re.search(
+        r'USING\s+CASE\s+WHEN\s+"metadata"\s+IS\s+NULL\s+THEN\s+NULL'
+        r'\s+WHEN\s+btrim\("metadata"\)\s+=\s+\'\'\s+THEN\s+NULL'
+        r'\s+WHEN\s+"metadata"\s+~\s+\'\^\\s\*\[\\\[\{\]\'\s+THEN\s+"metadata"::jsonb'
+        r'\s+ELSE\s+to_jsonb\("metadata"\)\s+END',
+        sql,
+        re.IGNORECASE,
+    )
+
+
 def test_data_model_doc_exists_and_covers_every_model() -> None:
     assert DATA_MODEL_DOC.exists(), "docs/DATA_MODEL.md must be checked in"
     doc = DATA_MODEL_DOC.read_text()

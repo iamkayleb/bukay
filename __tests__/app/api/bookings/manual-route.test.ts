@@ -245,6 +245,13 @@ describe("POST /api/bookings/manual", () => {
         action: "manual_booking_created",
         entityType: "Booking",
         entityId: "booking-1",
+        metadata: {
+          clientId: "client-1",
+          serviceId: "service-1",
+          staffId: "staff-1",
+          startsAt: "2026-07-23T10:00:00.000Z",
+          endsAt: "2026-07-23T10:45:00.000Z",
+        },
       }),
     });
   });

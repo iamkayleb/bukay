@@ -209,6 +209,7 @@ prisma/dev.db-journal
 # Next.js
 .next/
 out/
+tsconfig.tsbuildinfo
 node_modules/
 .env*.local
 # Prisma generated
