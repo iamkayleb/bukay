@@ -217,3 +217,10 @@ prisma/generated/
 pnpm-debug.log*
 # Lighthouse CI
 .lighthouseci/
+
+# TypeScript incremental build info
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Patch files (e.g. verifier diffs)
+*.patch

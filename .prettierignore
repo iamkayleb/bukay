@@ -1,0 +1,53 @@
+# Dependency & build output
+node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+prisma/generated/
+
+# Lockfiles (managed by their tools)
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# TypeScript & tooling artifacts
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+next-env.d.ts
+
+# Non-source assets
+public/
+app/favicon.ico
+
+# Patches & diffs
+*.patch
+
+# Python & venv
+.venv/
+__pycache__/
+*.py[cod]
+pyproject.toml
+
+# Workflows lib (synced from Workflows repo)
+.workflows-lib/
+
+# GitHub-scoped automation is synced from iamkayleb/Workflows; don't reformat here
+.github/
+
+# Repository docs & agent instructions (synced or hand-managed)
+docs/
+*.md
+!public/README.md
+
+# Agent working files
+claude-*.md
+codex-*.md
+claude-session-*.log
+
+# Python tests directory (formatted by Black, not Prettier)
+tests/
+
+# Prisma migrations (SQL is not formatted)
+prisma/migrations/

@@ -18,7 +18,12 @@ beforeEach(() => {
 describe("session signing", () => {
   it("round-trips a payload through sign/verify", () => {
     const now = Date.now();
-    const payload = { sub: "user:+2348031234567", phone: "+2348031234567", iat: now, exp: now + SESSION_TTL_MS };
+    const payload = {
+      sub: "user:+2348031234567",
+      phone: "+2348031234567",
+      iat: now,
+      exp: now + SESSION_TTL_MS,
+    };
     const token = signSession(payload);
     expect(verifySession(token)).toEqual(payload);
   });
@@ -32,7 +37,10 @@ describe("session signing", () => {
 
   it("rejects a token signed with a different secret", () => {
     const now = Date.now();
-    const token = signSession({ sub: "u", phone: "+234", iat: now, exp: now + 60_000 }, "another-very-long-secret");
+    const token = signSession(
+      { sub: "u", phone: "+234", iat: now, exp: now + 60_000 },
+      "another-very-long-secret"
+    );
     expect(verifySession(token)).toBeNull();
   });
 

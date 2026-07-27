@@ -22,7 +22,9 @@ export function getTenantId(): string | undefined {
 export function requireTenantId(): string {
   const id = getTenantId();
   if (!id) {
-    throw new Error("No tenant in context. Call runWithTenant() before issuing tenant-scoped queries.");
+    throw new Error(
+      "No tenant in context. Call runWithTenant() before issuing tenant-scoped queries."
+    );
   }
   return id;
 }

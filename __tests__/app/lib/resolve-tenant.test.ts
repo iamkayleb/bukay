@@ -41,7 +41,7 @@ describe("resolveTenant", () => {
       makeReq({
         headers: { host: "acme.example.com" },
         session: { tenantId: "t-from-session", tenantSlug: "acme" },
-      }),
+      })
     );
     expect(result).toEqual({
       tenantId: "t-from-session",
@@ -57,7 +57,7 @@ describe("resolveTenant", () => {
 
   it("honours x-tenant-id header before subdomain", () => {
     const result = resolveTenant(
-      makeReq({ headers: { host: "acme.example.com", "x-tenant-id": "t-header" } }),
+      makeReq({ headers: { host: "acme.example.com", "x-tenant-id": "t-header" } })
     );
     expect(result.tenantId).toBe("t-header");
     expect(result.source).toBe("header");

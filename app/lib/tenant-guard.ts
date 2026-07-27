@@ -25,13 +25,7 @@ const READ_OPS = new Set([
   "aggregate",
   "groupBy",
 ]);
-const WRITE_OPS_WITH_WHERE = new Set([
-  "update",
-  "updateMany",
-  "delete",
-  "deleteMany",
-  "upsert",
-]);
+const WRITE_OPS_WITH_WHERE = new Set(["update", "updateMany", "delete", "deleteMany", "upsert"]);
 const WRITE_OPS_WITH_DATA = new Set(["create", "createMany", "upsert"]);
 
 export class TenantScopeError extends Error {
@@ -86,17 +80,16 @@ export function assertTenantScope({ model, operation, args, tenantId }: AssertOp
   if (READ_OPS.has(operation) || WRITE_OPS_WITH_WHERE.has(operation)) {
     if (!whereHasTenant(a.where, tenantId)) {
       throw new TenantScopeError(
-        `Refusing ${model}.${operation}: where clause must include tenantId${tenantId ? ` === "${tenantId}"` : ""}.`,
+        `Refusing ${model}.${operation}: where clause must include tenantId${tenantId ? ` === "${tenantId}"` : ""}.`
       );
     }
   }
 
   if (WRITE_OPS_WITH_DATA.has(operation)) {
-    const payload =
-      operation === "upsert" ? ((a.create ?? a.update) as unknown) : a.data;
+    const payload = operation === "upsert" ? ((a.create ?? a.update) as unknown) : a.data;
     if (!dataHasTenant(payload, tenantId)) {
       throw new TenantScopeError(
-        `Refusing ${model}.${operation}: data must include tenantId${tenantId ? ` === "${tenantId}"` : ""}.`,
+        `Refusing ${model}.${operation}: data must include tenantId${tenantId ? ` === "${tenantId}"` : ""}.`
       );
     }
   }
@@ -137,7 +130,7 @@ export type ClientLike = Record<string, ModelLike | unknown>;
 
 export function withTenantGuard<T extends ClientLike>(
   client: T,
-  config: TenantGuardConfig = {},
+  config: TenantGuardConfig = {}
 ): T {
   const models = new Set(config.models ?? TENANT_SCOPED_MODELS);
   const readTenant = config.getTenantId ?? getTenantId;
