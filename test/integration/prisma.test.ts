@@ -105,6 +105,11 @@ suite("prisma migrate + db seed (integration)", () => {
       expect(tenant?.name).toMatch(/demo/i);
       const tenantId = tenant!.id;
 
+      const users = await prisma.user.findMany({ where: { tenantId } });
+      expect(users.length).toBe(1);
+      expect(users[0].email).toBe("owner@demo.bukay.dev");
+      expect(users[0].role).toBe("owner");
+
       const services = await prisma.service.findMany({ where: { tenantId } });
       expect(services.length).toBe(3);
       expect(services.map((s) => s.name).sort()).toEqual(
@@ -128,20 +133,43 @@ suite("prisma migrate + db seed (integration)", () => {
       expect(businessHours.every((h) => h.opensAt === "09:00" && h.closesAt === "18:00")).toBe(
         true
       );
+      expect(businessHours.map((h) => h.dayOfWeek).sort()).toEqual([1, 2, 3, 4, 5, 6]);
+
+      const blackouts = await prisma.blackout.findMany({ where: { tenantId } });
+      expect(blackouts.length).toBe(1);
+      expect(blackouts[0].date).toBe("2026-12-25");
+      expect(blackouts[0].reason).toBe("Christmas Day");
+
+      const clients = await prisma.client.findMany({ where: { tenantId } });
+      expect(clients.length).toBe(1);
+      expect(clients[0].phone).toBe("+2348000000099");
+      expect(clients[0].email).toBe("client@demo.bukay.dev");
+
+      const haircut = services.find((s) => s.name === "Classic Haircut");
+      expect(haircut).toBeTruthy();
 
       const bookings = await prisma.booking.findMany({ where: { tenantId } });
       expect(bookings.length).toBe(1);
       expect(bookings[0].status).toBe("confirmed");
+      expect(bookings[0].clientId).toBe(clients[0].id);
+      expect(bookings[0].serviceId).toBe(haircut!.id);
+      expect(bookings[0].staffId).toBe(staff[0].id);
 
       const payments = await prisma.payment.findMany({ where: { tenantId } });
       expect(payments.length).toBe(1);
       expect(payments[0].bookingId).toBe(bookings[0].id);
       expect(payments[0].status).toBe("paid");
+      expect(payments[0].provider).toBe("mobile_money");
       expect(payments[0].providerRef).toBe("demo-mm-0001");
+      expect(payments[0].amountCents).toBe(haircut!.priceCents);
+      expect(payments[0].currency).toBe(tenant!.currency);
 
       const auditLogs = await prisma.auditLog.findMany({ where: { tenantId } });
       expect(auditLogs.length).toBeGreaterThanOrEqual(1);
       expect(auditLogs.some((l) => l.action === "seed.bootstrap")).toBe(true);
+      const bootstrapLog = auditLogs.find((l) => l.action === "seed.bootstrap");
+      expect(bootstrapLog?.entityType).toBe("Tenant");
+      expect(bootstrapLog?.entityId).toBe(tenantId);
     } finally {
       await prisma.$disconnect();
     }
