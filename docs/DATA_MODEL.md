@@ -77,6 +77,22 @@ member also logs in.
 | `userId`   | `String?` | Optional FK → `User.id` (`SetNull` on delete)  |
 | `name`     | `String`  | Display name                                   |
 
+### StaffService
+
+Explicit join table between `Staff` and `Service`. Prisma implicit M2M join
+tables can't carry a `tenantId` column, which would break the multi-tenant
+scoping invariant — every row must be attributable to a single tenant. The
+row also enables per-assignment metadata (e.g. custom pricing) later
+without another migration.
+
+| Column      | Type     | Notes                                          |
+|-------------|----------|------------------------------------------------|
+| `tenantId`  | `String` | FK → `Tenant.id`, indexed                      |
+| `staffId`   | `String` | FK → `Staff.id` (`Cascade` on delete)          |
+| `serviceId` | `String` | FK → `Service.id` (`Cascade` on delete)        |
+
+`@@unique([staffId, serviceId])` prevents duplicate assignments.
+
 ### BusinessHour
 
 Weekly availability template. Rows with `staffId = null` define the tenant's

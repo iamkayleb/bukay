@@ -45,7 +45,7 @@ A coverage task is NOT complete just because you added tests. It is complete ONL
 ---
 ## PR Tasks and Acceptance Criteria
 
-**Progress:** 7/14 tasks complete, 7 remaining
+**Progress:** 9/14 tasks complete, 5 remaining
 
 ### Scope
 PR #63 addressed issue #62 and passed verification, but runtime concerns remain: static checks did not catch migration or seeding errors, and the implicit many-to-many join table between Staff and Service cannot include tenantId. This follow-up improves test coverage and schema structure to ensure tenant scoping and migration reliability.
@@ -73,21 +73,18 @@ Complete these in order. Mark checkbox done ONLY after implementation is verifie
 ### Acceptance Criteria
 The PR is complete when ALL of these are satisfied:
 
-- [ ] Integration tests in `test/integration/prisma.test.ts` running `prisma migrate dev` against the test database complete with exit code 0 and no errors, and all migrations are applied.
-- [ ] Integration tests in `test/integration/prisma.test.ts` running `prisma db seed` against the test database insert a demo tenant and associated data.
+- [x] Integration tests in `test/integration/prisma.test.ts` running `prisma migrate dev` against the test database complete with exit code 0 and no errors, and all migrations are applied.
+- [x] Integration tests in `test/integration/prisma.test.ts` running `prisma db seed` against the test database insert a demo tenant and associated data.
 - [x] The `package.json` file contains a `prisma.seed` script that runs `ts-node prisma/seed.ts`.
-- [ ] The Prisma schema in `prisma/schema.prisma` defines an explicit `StaffService` model with a `tenantId` field and an `@@index([tenantId])`.
-- [ ] Every tenant-scoped table in `prisma/schema.prisma` includes an explicit `@@index([tenantId])`.
-- [ ] The `prisma/schema.prisma` file is checked into version control and reflects the latest model definitions, including the explicit `StaffService` model and all required indexes.
+- [x] The Prisma schema in `prisma/schema.prisma` defines an explicit `StaffService` model with a `tenantId` field and an `@@index([tenantId])`.
+- [x] Every tenant-scoped table in `prisma/schema.prisma` includes an explicit `@@index([tenantId])`.
+- [x] The `prisma/schema.prisma` file is checked into version control and reflects the latest model definitions, including the explicit `StaffService` model and all required indexes.
 
 ### Recently Attempted Tasks
 Avoid repeating these unless a task needs explicit follow-up:
 
 - Create integration tests in `test/integration/prisma.test.ts` that run `prisma db seed` against a disposable SQLite or test Postgres database to verify seeding executes successfully.
 - Create integration tests in `test/integration/prisma.test.ts` that run `prisma migrate dev` against a disposable SQLite or test Postgres database to verify migrations execute successfully.
-- Update `package.json` to include a `prisma.seed` script that runs `ts-node prisma/seed.ts`.
-
-### Suggested Next Task
 - Update `package.json` to include a `prisma.seed` script that runs `ts-node prisma/seed.ts`.
 
 ---
