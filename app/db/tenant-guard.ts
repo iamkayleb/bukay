@@ -3,6 +3,7 @@ import { tenantContext } from "@/app/tenancy/tenant-context";
 
 const TENANT_SCOPED_MODELS = new Set([
   "AuditLog",
+  "Blackout",
   "Booking",
   "BusinessHour",
   "Client",
