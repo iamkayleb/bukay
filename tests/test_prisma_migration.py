@@ -10,6 +10,7 @@ These tests assert both invariants without needing a live database.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -91,6 +92,7 @@ def test_prisma_migrate_dev_runs_on_clean_database(tmp_path: Path) -> None:
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
+        env={**os.environ, "DATABASE_URL": f"file:{prisma_dir / 'dev.db'}"},
         timeout=60,
         check=False,
     )

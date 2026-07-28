@@ -18,7 +18,9 @@ The tenant-owned models are:
 | `User` | Login or staff identity for a tenant | `@@unique([tenantId, email])`, `@@index([tenantId])` |
 | `Service` | Bookable service with duration and price | `@@unique([tenantId, name])`, `@@index([tenantId])` |
 | `Staff` | Staff member who can be assigned to bookings | `@@unique([tenantId, email])`, `@@index([tenantId])` |
+| `StaffService` | Explicit join between staff and services carrying `tenantId` | `@@unique([staffId, serviceId])`, `@@index([tenantId])`, `@@index([staffId])`, `@@index([serviceId])` |
 | `BusinessHour` | Weekly opening hours by day of week | `@@unique([tenantId, dayOfWeek])`, `@@index([tenantId])` |
+| `Blackout` | Date-specific override that closes a tenant for one day | `@@unique([tenantId, date])`, `@@index([tenantId])` |
 | `Client` | Customer profile scoped to a tenant | `@@unique([tenantId, phone])`, `@@index([tenantId])` |
 | `Booking` | Appointment linking client, service, and optional staff | `@@index([tenantId])`, `@@index([tenantId, startsAt])` |
 | `Payment` | Payment ledger row for a booking | `@@index([tenantId])`, `@@index([bookingId])`, `@@index([providerRef])` |
@@ -50,10 +52,23 @@ an `active` flag.
 `Staff` stores contact information and an `active` flag. Bookings may reference staff, but the
 booking remains if staff is later deleted.
 
+### StaffService
+
+`StaffService` is the explicit join table between `Staff` and `Service`. Prisma's implicit M2M
+tables cannot carry a `tenantId` column, so the join is modelled explicitly to preserve the
+multi-tenant scoping invariant. Deleting the parent staff or service cascades to the join row.
+
 ### BusinessHour
 
 `BusinessHour` stores one row per tenant and weekday, with `opensAt` and `closesAt` as `HH:MM`
 strings and an `isClosed` flag.
+
+### Blackout
+
+`Blackout` stores date-specific overrides that suppress the weekly schedule for one day. A row
+for `(tenantId, date)` means the tenant is closed that day regardless of the `BusinessHour`
+rules (holidays, one-off closures). `date` is stored as an ISO `YYYY-MM-DD` wall-clock string
+in the tenant's timezone so the row is independent of DST or UTC offset.
 
 ### Client
 

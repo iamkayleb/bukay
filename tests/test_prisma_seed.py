@@ -136,6 +136,7 @@ def test_prisma_db_seed_creates_demo_tenant_on_clean_database(tmp_path: Path) ->
     env = {
         **os.environ,
         "PATH": f"{project_dir / 'node_modules' / '.bin'}{os.pathsep}{os.environ['PATH']}",
+        "DATABASE_URL": f"file:{prisma_dir / 'dev.db'}",
     }
 
     migrate = subprocess.run(
