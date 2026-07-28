@@ -50,10 +50,22 @@ an `active` flag.
 `Staff` stores contact information and an `active` flag. Bookings may reference staff, but the
 booking remains if staff is later deleted.
 
+### StaffService
+
+`StaffService` is the explicit join table between `Staff` and `Service`. It carries `tenantId` so
+join rows stay within the tenant boundary and enforces `@@unique([staffId, serviceId])` so each
+staff/service pairing exists at most once.
+
 ### BusinessHour
 
 `BusinessHour` stores one row per tenant and weekday, with `opensAt` and `closesAt` as `HH:MM`
 strings and an `isClosed` flag.
+
+### Blackout
+
+`Blackout` records date-specific closures that override the weekly `BusinessHour` schedule. `date`
+is stored as an ISO `YYYY-MM-DD` wall-clock string in the tenant's timezone, and
+`@@unique([tenantId, date])` prevents duplicate rows for the same day.
 
 ### Client
 
