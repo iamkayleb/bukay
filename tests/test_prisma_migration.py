@@ -9,13 +9,18 @@ These tests assert both invariants without needing a live database.
 
 from __future__ import annotations
 
+import json
+import os
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_PATH = ROOT / "prisma" / "schema.prisma"
 MIGRATIONS_DIR = ROOT / "prisma" / "migrations"
 DATA_MODEL_DOC = ROOT / "docs" / "DATA_MODEL.md"
+PACKAGE_JSON = ROOT / "package.json"
 
 # Models the scope requires to exist; mirrors test_prisma_schema.py.
 REQUIRED_MODELS = {
@@ -37,10 +42,24 @@ def _model_blocks(schema_text: str) -> dict[str, str]:
 
 
 def _initial_migration_dir() -> Path:
-    candidates = [p for p in MIGRATIONS_DIR.iterdir() if p.is_dir()]
+    candidates = [p for p in MIGRATIONS_DIR.iterdir() if (p / "migration.sql").exists()]
     assert candidates, f"no migration directories found under {MIGRATIONS_DIR}"
     # The init migration sorts first by timestamp prefix.
     return sorted(candidates)[0]
+
+
+def _package_version(package: str) -> str:
+    pkg = json.loads(PACKAGE_JSON.read_text())
+    spec = pkg.get("dependencies", {}).get(package) or pkg.get("devDependencies", {}).get(package)
+    assert spec, f"could not find {package} version in {PACKAGE_JSON}"
+    return spec
+
+
+def _prisma_command() -> list[str]:
+    prisma_bin = ROOT / "node_modules" / ".bin" / "prisma"
+    if prisma_bin.exists():
+        return [str(prisma_bin)]
+    return ["npx", "--yes", "--package", f"prisma@{_package_version('prisma')}", "prisma"]
 
 
 def test_migration_lock_present() -> None:
@@ -52,6 +71,34 @@ def test_initial_migration_exists() -> None:
     init_dir = _initial_migration_dir()
     sql_file = init_dir / "migration.sql"
     assert sql_file.exists(), f"missing migration.sql in {init_dir}"
+
+
+def test_prisma_migrate_dev_runs_on_clean_database(tmp_path: Path) -> None:
+    """Acceptance check: `prisma migrate dev` must succeed on a clean database."""
+    prisma_dir = tmp_path / "prisma"
+    shutil.copytree(ROOT / "prisma", prisma_dir)
+
+    result = subprocess.run(
+        [
+            *_prisma_command(),
+            "migrate",
+            "dev",
+            "--schema",
+            str(prisma_dir / "schema.prisma"),
+            "--skip-seed",
+            "--skip-generate",
+        ],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        env={**os.environ, "DATABASE_URL": f"file:{prisma_dir / 'dev.db'}"},
+        timeout=60,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout
+    assert (prisma_dir / "dev.db").exists(), "prisma migrate dev did not create a clean db"
 
 
 def test_migration_creates_every_required_model() -> None:

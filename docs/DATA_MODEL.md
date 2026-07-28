@@ -1,81 +1,62 @@
 # Data Model
 
-This document describes the Prisma data model for Bukay. The canonical source
-is [`prisma/schema.prisma`](../prisma/schema.prisma); if the two ever disagree,
-the schema wins — update this doc.
+This document describes the Prisma data model for Bukay. The canonical source is
+[`prisma/schema.prisma`](../prisma/schema.prisma); if this document and the schema disagree,
+update the schema first and then align this document.
 
-## Tenancy Model
+## Summary
 
-Bukay is **multi-tenant** with row-level scoping. Every domain row outside of
-the `Tenant` table itself carries a `tenantId` column that points at
-`Tenant.id`. Every such table also declares a Prisma `@@index([tenantId])` so
-that:
+Bukay uses a multi-tenant SQLite data model. `Tenant` is the root record for a business, and
+every tenant-owned model stores a required `tenantId String` foreign key back to `Tenant.id`.
+Tenant-owned models also declare `@@index([tenantId])` so tenant-filtered reads can use a direct
+index.
 
-- Application queries that filter by tenant hit the index immediately.
-- Cross-tenant scans are visible in `pg_stat` and easy to flag in review.
+The tenant-owned models are:
 
-The application layer is responsible for setting `tenantId` on every write and
-including it in every read filter. The schema gives us the storage shape and
-indexes; it does not, on its own, enforce row-level isolation.
+| Model | Purpose | Tenant-specific constraints and indexes |
+|-------|---------|-----------------------------------------|
+| `User` | Login or staff identity for a tenant | `@@unique([tenantId, email])`, `@@index([tenantId])` |
+| `Service` | Bookable service with duration and price | `@@unique([tenantId, name])`, `@@index([tenantId])` |
+| `Staff` | Staff member who can be assigned to bookings | `@@unique([tenantId, email])`, `@@index([tenantId])` |
+| `StaffService` | Explicit join between staff and services carrying `tenantId` | `@@unique([staffId, serviceId])`, `@@index([tenantId])`, `@@index([staffId])`, `@@index([serviceId])` |
+| `BusinessHour` | Weekly opening hours by day of week | `@@unique([tenantId, dayOfWeek])`, `@@index([tenantId])` |
+| `Blackout` | Date-specific override that closes a tenant for one day | `@@unique([tenantId, date])`, `@@index([tenantId])` |
+| `Client` | Customer profile scoped to a tenant | `@@unique([tenantId, phone])`, `@@index([tenantId])` |
+| `Booking` | Appointment linking client, service, and optional staff | `@@index([tenantId])`, `@@index([tenantId, startsAt])` |
+| `Payment` | Payment ledger row for a booking | `@@index([tenantId])`, `@@index([bookingId])`, `@@index([providerRef])` |
+| `AuditLog` | Append-only tenant activity record | `@@index([tenantId])`, `@@index([tenantId, entityType, entityId])` |
 
-`onDelete: Cascade` is used from `Tenant` down through every owned table, so
-deleting a tenant deletes its full data island.
+`Tenant` itself is not tenant-scoped and must not carry a `tenantId` column. Deleting a tenant
+cascades to its owned rows through the Prisma relations. `Booking` restricts deletion of referenced
+clients and services, and sets `staffId` to null when a referenced staff row is deleted.
 
-## Models
+## Model Details
 
 ### Tenant
 
-The root of the multi-tenant tree.
-
-| Column     | Type     | Notes                                  |
-|------------|----------|----------------------------------------|
-| `id`       | `String` | `cuid()` primary key                   |
-| `slug`     | `String` | URL-safe identifier, globally unique   |
-| `name`     | `String` | Display name                           |
-| `timezone` | `String` | IANA tz, defaults to `Africa/Lagos`    |
-| `currency` | `String` | ISO 4217, defaults to `NGN`            |
-
-Children: `users`, `services`, `staff`, `businessHours`, `clients`, `bookings`,
-`payments`, `auditLogs`.
+`Tenant` stores the business name, globally unique slug, timezone, currency, and relations to all
+tenant-owned records. The defaults are `Africa/Lagos` for timezone and `NGN` for currency.
 
 ### User
 
-Login identity scoped to a tenant. The same email can exist in two different
-tenants — `@@unique([tenantId, email])` enforces uniqueness within a tenant.
-
-| Column         | Type       | Notes                                  |
-|----------------|------------|----------------------------------------|
-| `tenantId`     | `String`   | FK → `Tenant.id`, indexed              |
-| `email`        | `String`   | Unique within tenant                   |
-| `passwordHash` | `String`   | bcrypt/argon2 hash, never plaintext    |
-| `role`         | `UserRole` | `OWNER` / `ADMIN` / `STAFF` / `VIEWER` |
-
-A `User` may be linked 1:1 to a `Staff` row (the human who fulfils bookings).
+`User` stores email, display name, and role. Roles are currently stored as strings with a default of
+`owner`.
 
 ### Service
 
-A bookable offering.
-
-| Column            | Type      | Notes                              |
-|-------------------|-----------|------------------------------------|
-| `tenantId`        | `String`  | FK → `Tenant.id`, indexed          |
-| `name`            | `String`  | Display name                       |
-| `durationMinutes` | `Int`     | Slot length                        |
-| `priceCents`      | `Int`     | Stored as minor units              |
-| `active`          | `Boolean` | Soft-disable without deleting      |
-
-Services can be assigned to multiple staff via the `StaffServices` join.
+`Service` stores name, optional description, duration in minutes, price in minor units, currency, and
+an `active` flag.
 
 ### Staff
 
-People who fulfil bookings. May optionally link to a `User` if the staff
-member also logs in.
+`Staff` stores contact information and an `active` flag. Bookings may reference staff, but the
+booking remains if staff is later deleted.
 
-| Column     | Type      | Notes                                          |
-|------------|-----------|------------------------------------------------|
-| `tenantId` | `String`  | FK → `Tenant.id`, indexed                      |
-| `userId`   | `String?` | Optional FK → `User.id` (`SetNull` on delete)  |
-| `name`     | `String`  | Display name                                   |
+### StaffService
+
+`StaffService` is the explicit join table between `Staff` and `Service`. Prisma's implicit M2M
+tables cannot carry a `tenantId` column, so the join is modelled explicitly to preserve the
+multi-tenant scoping invariant. Deleting the parent staff or service cascades to the join row.
 
 ### StaffService
 
@@ -95,19 +76,15 @@ without another migration.
 
 ### BusinessHour
 
-Weekly availability template. Rows with `staffId = null` define the tenant's
-default hours; rows with a `staffId` override for that staff member.
+`BusinessHour` stores one row per tenant and weekday, with `opensAt` and `closesAt` as `HH:MM`
+strings and an `isClosed` flag.
 
-| Column        | Type        | Notes                                           |
-|---------------|-------------|-------------------------------------------------|
-| `tenantId`    | `String`    | FK → `Tenant.id`, indexed                       |
-| `staffId`     | `String?`   | Optional FK → `Staff.id`                        |
-| `dayOfWeek`   | `DayOfWeek` | Enum                                            |
-| `openMinute`  | `Int`       | Minutes since midnight (`9*60` → 09:00)         |
-| `closeMinute` | `Int`       | Minutes since midnight                          |
+### Blackout
 
-Composite index `@@index([tenantId, staffId, dayOfWeek])` supports the
-availability lookup path.
+`Blackout` stores date-specific overrides that suppress the weekly schedule for one day. A row
+for `(tenantId, date)` means the tenant is closed that day regardless of the `BusinessHour`
+rules (holidays, one-off closures). `date` is stored as an ISO `YYYY-MM-DD` wall-clock string
+in the tenant's timezone so the row is independent of DST or UTC offset.
 
 ### Blackout
 
@@ -125,108 +102,55 @@ weekly template before returning open windows.
 
 ### Client
 
-End-customers who book services. Email and phone are each unique within a
-tenant — duplicates would force the booking flow to disambiguate.
+`Client` stores customer name, optional email, required phone number, optional notes, and booking
+relations.
 
 ### Booking
 
-The appointment itself.
-
-| Column      | Type            | Notes                                  |
-|-------------|-----------------|----------------------------------------|
-| `tenantId`  | `String`        | FK → `Tenant.id`, indexed              |
-| `clientId`  | `String`        | FK → `Client.id`                       |
-| `serviceId` | `String`        | FK → `Service.id` (`Restrict` delete)  |
-| `staffId`   | `String?`       | Optional FK → `Staff.id`               |
-| `startsAt`  | `DateTime`      | UTC                                    |
-| `endsAt`    | `DateTime`      | UTC                                    |
-| `status`    | `BookingStatus` | Enum                                   |
-
-Indexes target the common query shapes:
-- `@@index([tenantId, startsAt])` — tenant calendar views.
-- `@@index([tenantId, staffId, startsAt])` — per-staff schedule lookups.
+`Booking` links a client, service, optional staff member, start and end timestamps, status string, and
+optional notes. The tenant/start index supports calendar views.
 
 ### Payment
 
-Money received against a booking. `Payment` carries its own `tenantId` (rather
-than relying on the booking's) so the payments ledger can be queried directly
-without a join.
-
-| Column        | Type            | Notes                                |
-|---------------|-----------------|--------------------------------------|
-| `tenantId`    | `String`        | FK → `Tenant.id`, indexed            |
-| `bookingId`   | `String`        | FK → `Booking.id`                    |
-| `amountCents` | `Int`           | Minor units                          |
-| `currency`    | `String`        | ISO 4217                             |
-| `method`      | `PaymentMethod` | Enum incl. `MOBILE_MONEY`            |
-| `status`      | `PaymentStatus` | Enum                                 |
+`Payment` links to a booking and stores amount, currency, provider metadata, status string, optional
+paid timestamp, and audit timestamps.
 
 ### AuditLog
 
-Append-only history of tenant-scoped actions. Indexed by `(tenantId, createdAt)`
-for chronological scans and `(tenantId, entityType, entityId)` for entity
-history.
+`AuditLog` stores action history with optional actor and entity references. `metadata` is stored as a
+string so callers can serialize structured context when needed.
 
-| Column       | Type     | Notes                                  |
-|--------------|----------|----------------------------------------|
-| `tenantId`   | `String` | FK → `Tenant.id`, indexed              |
-| `actorId`    | `String?`| Optional FK → `User.id`                |
-| `action`     | `String` | Free-form verb (`booking.cancelled`)   |
-| `entityType` | `String` | e.g. `Booking`, `Payment`              |
-| `entityId`   | `String?`| Target row id                          |
-| `metadata`   | `Json?`  | Action-specific payload                |
+## Running Migrations
 
-## Enums
-
-- `UserRole`: `OWNER`, `ADMIN`, `STAFF`, `VIEWER`
-- `BookingStatus`: `PENDING`, `CONFIRMED`, `CANCELLED`, `COMPLETED`, `NO_SHOW`
-- `PaymentStatus`: `PENDING`, `PAID`, `REFUNDED`, `FAILED`
-- `PaymentMethod`: `CASH`, `CARD`, `MOBILE_MONEY`, `BANK_TRANSFER`, `OTHER`
-- `DayOfWeek`: `MONDAY` … `SUNDAY`
-
-## Index Summary
-
-Every tenant-scoped table has at least `@@index([tenantId])`:
-
-| Table          | Tenant index | Additional indexes                                |
-|----------------|--------------|---------------------------------------------------|
-| `User`         | ✓            | `@@unique([tenantId, email])`                     |
-| `Service`      | ✓            | —                                                 |
-| `Staff`        | ✓            | `@unique` on `userId`                             |
-| `BusinessHour` | ✓            | `@@index([tenantId, staffId, dayOfWeek])`         |
-| `Client`       | ✓            | `@@unique([tenantId, phone])`, `…email]`          |
-| `Booking`      | ✓            | `…startsAt`, `…staffId, startsAt`                 |
-| `Payment`      | ✓            | `@@index([tenantId, bookingId])`                  |
-| `AuditLog`     | ✓            | `…createdAt`, `…entityType, entityId`             |
-
-## Local Workflow
+The schema uses SQLite with `url = "file:./dev.db"`, so local migrations create
+`prisma/dev.db`.
 
 ```bash
-# 1. Configure DATABASE_URL in .env (copy from .env.example).
-cp .env.example .env
-
-# 2. Install JS deps + generate the Prisma client.
+# Install dependencies and generate the Prisma client.
 npm install
 npm run prisma:generate
 
-# 3. Apply migrations to a local Postgres.
-npm run prisma:migrate:dev
+# Apply migrations to the local SQLite database.
+npm run migrate:dev -- --schema prisma/schema.prisma
 
-# 4. Insert the demo tenant + sample services.
-npm run db:seed
+# Seed the demo tenant and sample data.
+npm run db:seed -- --schema prisma/schema.prisma
 ```
 
-After seeding, the demo tenant (`slug='demo'`) contains:
+The seed script is configured in `package.json` as `tsx prisma/seed.ts`. It is idempotent: it upserts
+the demo tenant with slug `demo`, removes dependent demo rows in foreign-key order, and recreates a
+stable sample dataset with an owner user, services, business hours, staff, client, booking, payment,
+and audit log.
 
-- one `OWNER` user (`owner@demo.bukay.dev`),
-- three services (`Classic Haircut`, `Beard Trim`, `Full Grooming Package`),
-- one staff member linked to the owner user and assigned every service,
-- Mon–Sat 09:00–18:00 business hours,
-- one demo client,
-- one `CONFIRMED` booking for the Classic Haircut on 2026-06-15 10:00 UTC,
-- one `PAID` mobile-money payment matching that booking,
-- one `seed.bootstrap` audit log entry.
+## Migration History
 
-The seed is idempotent: re-running it tears down the dependent rows in FK
-order (payments → bookings → audit logs → services → staff → business hours)
-before recreating them, so the row counts above stay stable.
+Migrations live under [`prisma/migrations`](../prisma/migrations). The current history contains one
+checked-in migration:
+
+| Migration | Description |
+|-----------|-------------|
+| `20260611112538_init` | Creates the initial SQLite schema for tenants, users, services, staff, business hours, clients, bookings, payments, and audit logs. It also creates all unique constraints and tenant indexes declared in `schema.prisma`. |
+
+[`prisma/migrations/migration_lock.toml`](../prisma/migrations/migration_lock.toml) records the
+database provider as `sqlite`. Do not edit generated migration files by hand after they have been
+applied; create a new migration from schema changes instead.

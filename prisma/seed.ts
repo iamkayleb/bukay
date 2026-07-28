@@ -59,7 +59,6 @@ async function main() {
 
   const owner = await prisma.user.upsert({
     where: {
-      tenantId: tenant.id,
       tenantId_email: { tenantId: tenant.id, email: "owner@demo.bukay.dev" },
     },
     update: { name: "Demo Owner", role: "owner" },
@@ -80,6 +79,7 @@ async function main() {
   await prisma.booking.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.auditLog.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.staffService.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.blackout.deleteMany({ where: { tenantId: tenant.id } });
 
   // Wipe and reinsert demo services so the count stays at three on re-seed.
   await prisma.service.deleteMany({ where: { tenantId: tenant.id } });
@@ -105,8 +105,8 @@ async function main() {
   });
   console.log("Business hours set: Mon–Sat 09:00–18:00");
 
-  // Re-create the demo staff member and assign every service to them via
-  // the explicit StaffService join model.
+  // Re-create the demo staff member (linked to the owner user) and assign
+  // every service to them through the explicit StaffService join model.
   await prisma.staff.deleteMany({ where: { tenantId: tenant.id } });
   const staff = await prisma.staff.create({
     data: {
@@ -125,10 +125,18 @@ async function main() {
   });
   console.log(`Staff ready: ${staff.name} (${staff.id}) with ${services.length} services`);
 
+  // One demo blackout so the schema's holiday-override path is exercised end-to-end.
+  await prisma.blackout.create({
+    data: {
+      tenantId: tenant.id,
+      date: "2026-12-25",
+      reason: "Christmas Day",
+    },
+  });
+
   // Demo client.
   const client = await prisma.client.upsert({
     where: {
-      tenantId: tenant.id,
       tenantId_phone: { tenantId: tenant.id, phone: "+2348000000099" },
     },
     update: { name: "Demo Client", email: "client@demo.bukay.dev" },
@@ -171,7 +179,7 @@ async function main() {
       provider: "mobile_money",
       providerRef: "demo-mm-0001",
       status: "paid",
-      paidAt: new Date(),
+      paidAt: startsAt,
     },
   });
   console.log(`Payment ready: ${payment.id} (${payment.amountCents} ${payment.currency})`);
