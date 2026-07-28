@@ -10,6 +10,7 @@ These tests assert both invariants without needing a live database.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -76,6 +77,7 @@ def test_prisma_migrate_dev_runs_on_clean_database(tmp_path: Path) -> None:
     """Acceptance check: `prisma migrate dev` must succeed on a clean database."""
     prisma_dir = tmp_path / "prisma"
     shutil.copytree(ROOT / "prisma", prisma_dir)
+    db_path = prisma_dir / "dev.db"
 
     result = subprocess.run(
         [
@@ -91,12 +93,13 @@ def test_prisma_migrate_dev_runs_on_clean_database(tmp_path: Path) -> None:
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
+        env={**os.environ, "DATABASE_URL": f"file:{db_path}"},
         timeout=60,
         check=False,
     )
 
     assert result.returncode == 0, result.stdout
-    assert (prisma_dir / "dev.db").exists(), "prisma migrate dev did not create a clean db"
+    assert db_path.exists(), "prisma migrate dev did not create a clean db"
 
 
 def test_migration_creates_every_required_model() -> None:
