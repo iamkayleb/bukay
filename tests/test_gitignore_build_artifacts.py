@@ -22,8 +22,7 @@ def test_tsconfig_buildinfo_is_not_tracked() -> None:
         ["git", "ls-files", TSCONFIG_BUILDINFO],
         cwd=ROOT,
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=False,
     )
     assert result.returncode == 0, result.stderr

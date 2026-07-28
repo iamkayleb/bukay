@@ -188,7 +188,6 @@ coverage.xml
 Pipfile.lock
 poetry.lock
 package-lock.json
-pnpm-lock.yaml
 
 # END WORKFLOWS STATUS FILES
 # =============================================================================
