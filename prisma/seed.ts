@@ -7,14 +7,7 @@
 // Idempotent: re-running upserts the demo tenant and reinserts its child
 // rows so the seeded counts stay stable.
 
-import {
-  PrismaClient,
-  UserRole,
-  DayOfWeek,
-  BookingStatus,
-  PaymentMethod,
-  PaymentStatus,
-} from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -69,14 +62,12 @@ async function main() {
       tenantId: tenant.id,
       tenantId_email: { tenantId: tenant.id, email: "owner@demo.bukay.dev" },
     },
-    update: { name: "Demo Owner", role: UserRole.OWNER },
+    update: { name: "Demo Owner", role: "owner" },
     create: {
       tenantId: tenant.id,
       email: "owner@demo.bukay.dev",
-      // Placeholder bcrypt-shaped hash; replace before any real login is wired up.
-      passwordHash: "$2a$10$DEMOHASHDEMOHASHDEMOHASHDEMOHASHDEMOHASHDEMOHASHDEMO",
       name: "Demo Owner",
-      role: UserRole.OWNER,
+      role: "owner",
     },
   });
 
@@ -88,6 +79,7 @@ async function main() {
   await prisma.payment.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.booking.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.auditLog.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.staffService.deleteMany({ where: { tenantId: tenant.id } });
 
   // Wipe and reinsert demo services so the count stays at three on re-seed.
   await prisma.service.deleteMany({ where: { tenantId: tenant.id } });
@@ -101,39 +93,37 @@ async function main() {
   console.log(`Inserted ${services.length} services for ${tenant.slug}`);
 
   // Default business hours: Mon–Sat, 09:00–18:00.
-  const weekdays: DayOfWeek[] = [
-    DayOfWeek.MONDAY,
-    DayOfWeek.TUESDAY,
-    DayOfWeek.WEDNESDAY,
-    DayOfWeek.THURSDAY,
-    DayOfWeek.FRIDAY,
-    DayOfWeek.SATURDAY,
-  ];
-  await prisma.businessHour.deleteMany({ where: { tenantId: tenant.id, staffId: null } });
+  const weekdays = [1, 2, 3, 4, 5, 6];
+  await prisma.businessHour.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.businessHour.createMany({
     data: weekdays.map((day) => ({
       tenantId: tenant.id,
       dayOfWeek: day,
-      openMinute: 9 * 60,
-      closeMinute: 18 * 60,
+      opensAt: "09:00",
+      closesAt: "18:00",
     })),
   });
   console.log("Business hours set: Mon–Sat 09:00–18:00");
 
-  // Re-create the demo staff member (linked to the owner user) and assign
-  // every service to them.
+  // Re-create the demo staff member and assign every service to them via
+  // the explicit StaffService join model.
   await prisma.staff.deleteMany({ where: { tenantId: tenant.id } });
   const staff = await prisma.staff.create({
     data: {
       tenantId: tenant.id,
-      userId: owner.id,
       name: "Demo Owner",
       email: owner.email,
       phone: "+2348000000001",
-      services: { connect: services.map((s) => ({ id: s.id })) },
     },
   });
-  console.log(`Staff ready: ${staff.name} (${staff.id})`);
+  await prisma.staffService.createMany({
+    data: services.map((s) => ({
+      tenantId: tenant.id,
+      staffId: staff.id,
+      serviceId: s.id,
+    })),
+  });
+  console.log(`Staff ready: ${staff.name} (${staff.id}) with ${services.length} services`);
 
   // Demo client.
   const client = await prisma.client.upsert({
@@ -166,7 +156,7 @@ async function main() {
       staffId: staff.id,
       startsAt,
       endsAt,
-      status: BookingStatus.CONFIRMED,
+      status: "confirmed",
       notes: "Seeded demo appointment.",
     },
   });
@@ -178,9 +168,10 @@ async function main() {
       bookingId: booking.id,
       amountCents: haircut.priceCents,
       currency: tenant.currency,
-      method: PaymentMethod.MOBILE_MONEY,
-      status: PaymentStatus.PAID,
-      externalRef: "demo-mm-0001",
+      provider: "mobile_money",
+      providerRef: "demo-mm-0001",
+      status: "paid",
+      paidAt: new Date(),
     },
   });
   console.log(`Payment ready: ${payment.id} (${payment.amountCents} ${payment.currency})`);
@@ -192,7 +183,7 @@ async function main() {
       action: "seed.bootstrap",
       entityType: "Tenant",
       entityId: tenant.id,
-      metadata: { services: services.length, bookings: 1, payments: 1 },
+      metadata: JSON.stringify({ services: services.length, bookings: 1, payments: 1 }),
     },
   });
   console.log("Audit log entry recorded for seed.bootstrap");

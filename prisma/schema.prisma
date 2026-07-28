@@ -8,7 +8,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = env("DATABASE_URL")
 }
 
 model Tenant {
@@ -22,6 +22,7 @@ model Tenant {
   users         User[]
   services      Service[]
   staff         Staff[]
+  staffServices StaffService[]
   businessHours BusinessHour[]
   blackouts     Blackout[]
   clients       Client[]
@@ -45,37 +46,59 @@ model User {
 }
 
 model Service {
-  id              String    @id @default(cuid())
-  tenantId        String
-  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name            String
-  description     String?
-  durationMinutes Int
-  priceCents      Int
-  currency        String    @default("NGN")
-  active          Boolean   @default(true)
-  bookings        Booking[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id               String         @id @default(cuid())
+  tenantId         String
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name             String
+  description      String?
+  durationMinutes  Int
+  priceCents       Int
+  currency         String         @default("NGN")
+  active           Boolean        @default(true)
+  bookings         Booking[]
+  staffAssignments StaffService[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   @@unique([tenantId, name])
   @@index([tenantId])
 }
 
 model Staff {
-  id        String    @id @default(cuid())
+  id        String         @id @default(cuid())
   tenantId  String
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name      String
   email     String?
   phone     String?
-  active    Boolean   @default(true)
+  active    Boolean        @default(true)
   bookings  Booking[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  services  StaffService[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
 
   @@unique([tenantId, email])
   @@index([tenantId])
+}
+
+// Explicit join table between Staff and Service. Carries `tenantId` so the row
+// is queryable within a tenant boundary (implicit Prisma M2M tables can't hold
+// a tenantId column, which would break the multi-tenant scoping invariant).
+model StaffService {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  staffId   String
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  serviceId String
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([staffId, serviceId])
+  @@index([tenantId])
+  @@index([staffId])
+  @@index([serviceId])
 }
 
 // A tenant's weekly schedule. Each row is one open→close window on a specific

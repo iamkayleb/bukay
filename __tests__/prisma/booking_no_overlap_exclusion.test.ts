@@ -2,12 +2,15 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+// The no-overlap EXCLUDE constraint is Postgres-only (SQLite lacks GiST),
+// so the SQL lives in `prisma/postgres-supplemental/` instead of the
+// Prisma migrations directory (which now targets the SQLite baseline).
 const MIGRATION_PATH = path.resolve(
   __dirname,
   "..",
   "..",
   "prisma",
-  "migrations",
+  "postgres-supplemental",
   "20260722000000_booking_no_overlap_exclusion",
   "migration.sql"
 );
