@@ -18,9 +18,7 @@ The tenant-owned models are:
 | `User` | Login or staff identity for a tenant | `@@unique([tenantId, email])`, `@@index([tenantId])` |
 | `Service` | Bookable service with duration and price | `@@unique([tenantId, name])`, `@@index([tenantId])` |
 | `Staff` | Staff member who can be assigned to bookings | `@@unique([tenantId, email])`, `@@index([tenantId])` |
-| `StaffService` | Explicit join table linking staff to the services they perform | `@@unique([staffId, serviceId])`, `@@index([tenantId])`, `@@index([staffId])`, `@@index([serviceId])` |
 | `BusinessHour` | Weekly opening hours by day of week | `@@unique([tenantId, dayOfWeek])`, `@@index([tenantId])` |
-| `Blackout` | Date-specific override that closes the schedule for one day | `@@unique([tenantId, date])`, `@@index([tenantId])` |
 | `Client` | Customer profile scoped to a tenant | `@@unique([tenantId, phone])`, `@@index([tenantId])` |
 | `Booking` | Appointment linking client, service, and optional staff | `@@index([tenantId])`, `@@index([tenantId, startsAt])` |
 | `Payment` | Payment ledger row for a booking | `@@index([tenantId])`, `@@index([bookingId])`, `@@index([providerRef])` |
@@ -52,22 +50,10 @@ an `active` flag.
 `Staff` stores contact information and an `active` flag. Bookings may reference staff, but the
 booking remains if staff is later deleted.
 
-### StaffService
-
-`StaffService` is the explicit join table between `Staff` and `Service`. It carries `tenantId`
-so each staff-to-service assignment stays queryable within a tenant boundary (an implicit Prisma
-M2M table cannot hold a `tenantId` column, which would break the multi-tenant scoping invariant).
-
 ### BusinessHour
 
 `BusinessHour` stores one row per tenant and weekday, with `opensAt` and `closesAt` as `HH:MM`
 strings and an `isClosed` flag.
-
-### Blackout
-
-`Blackout` stores a date-specific override (`date` as an ISO `YYYY-MM-DD` wall-clock in the
-tenant's timezone) that suppresses the weekly `BusinessHour` schedule for that day. Rows are
-unique per `(tenantId, date)`.
 
 ### Client
 
@@ -91,9 +77,8 @@ string so callers can serialize structured context when needed.
 
 ## Running Migrations
 
-The schema uses SQLite with `url = env("DATABASE_URL")`. `.env.example` defaults `DATABASE_URL` to
-`file:./dev.db`, so local migrations create `prisma/dev.db`. Integration tests point `DATABASE_URL`
-at a disposable temp file.
+The schema uses SQLite with `url = "file:./dev.db"`, so local migrations create
+`prisma/dev.db`.
 
 ```bash
 # Install dependencies and generate the Prisma client.
@@ -120,7 +105,6 @@ checked-in migration:
 | Migration | Description |
 |-----------|-------------|
 | `20260611112538_init` | Creates the initial SQLite schema for tenants, users, services, staff, business hours, clients, bookings, payments, and audit logs. It also creates all unique constraints and tenant indexes declared in `schema.prisma`. |
-| `20260728000000_staff_service_and_blackout` | Adds the explicit `StaffService` join table (linking staff to the services they perform) and the `Blackout` table (date-specific schedule overrides), together with their tenant/staff/service/date indexes and unique constraints. |
 
 [`prisma/migrations/migration_lock.toml`](../prisma/migrations/migration_lock.toml) records the
 database provider as `sqlite`. Do not edit generated migration files by hand after they have been
