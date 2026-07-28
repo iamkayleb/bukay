@@ -7,9 +7,9 @@
 //   1. every migration in `prisma/migrations/` landed in `_prisma_migrations`,
 //   2. every model the seed script touches has the expected rows.
 //
-// The suite is skipped automatically when the Prisma CLI + tsx aren't
-// installed (fresh checkout without `npm install`) so unrelated test runs
-// stay green.
+// The suite is skipped automatically when the Prisma CLI + seed runner
+// (ts-node/tsx) aren't installed (fresh checkout without `npm install`) so
+// unrelated test runs stay green.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
@@ -21,15 +21,17 @@ const ROOT = process.cwd();
 const BIN_DIR = join(ROOT, "node_modules", ".bin");
 const PRISMA_BIN = join(BIN_DIR, "prisma");
 const MIGRATIONS_DIR = join(ROOT, "prisma", "migrations");
-const cliInstalled = existsSync(PRISMA_BIN) && existsSync(join(BIN_DIR, "tsx"));
+const cliInstalled =
+  existsSync(PRISMA_BIN) &&
+  (existsSync(join(BIN_DIR, "ts-node")) || existsSync(join(BIN_DIR, "tsx")));
 const suite = cliInstalled ? describe : describe.skip;
 
 type RunResult = { status: number | null; stdout: string; stderr: string };
 
 function runPrisma(args: string[], env: NodeJS.ProcessEnv): RunResult {
   // Prepend node_modules/.bin to PATH so `prisma db seed`'s child process
-  // (which runs `tsx prisma/seed.ts`) can resolve tsx from the project
-  // install rather than a global one.
+  // (which runs the package.json seed command) can resolve ts-node/tsx from
+  // the project install rather than a global one.
   const augmentedPath = `${BIN_DIR}${delimiter}${process.env.PATH ?? ""}`;
   const result = spawnSync(PRISMA_BIN, args, {
     cwd: ROOT,

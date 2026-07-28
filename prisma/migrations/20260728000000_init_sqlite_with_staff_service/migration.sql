@@ -50,6 +50,19 @@ CREATE TABLE "Staff" (
 );
 
 -- CreateTable
+CREATE TABLE "StaffService" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "staffId" TEXT NOT NULL,
+    "serviceId" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "StaffService_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "StaffService_staffId_fkey" FOREIGN KEY ("staffId") REFERENCES "Staff" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "StaffService_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "Service" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
 CREATE TABLE "BusinessHour" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "tenantId" TEXT NOT NULL,
@@ -60,6 +73,17 @@ CREATE TABLE "BusinessHour" (
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     CONSTRAINT "BusinessHour_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "Blackout" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tenantId" TEXT NOT NULL,
+    "date" TEXT NOT NULL,
+    "reason" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "Blackout_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -146,10 +170,28 @@ CREATE INDEX "Staff_tenantId_idx" ON "Staff"("tenantId");
 CREATE UNIQUE INDEX "Staff_tenantId_email_key" ON "Staff"("tenantId", "email");
 
 -- CreateIndex
+CREATE INDEX "StaffService_tenantId_idx" ON "StaffService"("tenantId");
+
+-- CreateIndex
+CREATE INDEX "StaffService_staffId_idx" ON "StaffService"("staffId");
+
+-- CreateIndex
+CREATE INDEX "StaffService_serviceId_idx" ON "StaffService"("serviceId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "StaffService_staffId_serviceId_key" ON "StaffService"("staffId", "serviceId");
+
+-- CreateIndex
 CREATE INDEX "BusinessHour_tenantId_idx" ON "BusinessHour"("tenantId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "BusinessHour_tenantId_dayOfWeek_key" ON "BusinessHour"("tenantId", "dayOfWeek");
+CREATE INDEX "BusinessHour_tenantId_dayOfWeek_idx" ON "BusinessHour"("tenantId", "dayOfWeek");
+
+-- CreateIndex
+CREATE INDEX "Blackout_tenantId_idx" ON "Blackout"("tenantId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Blackout_tenantId_date_key" ON "Blackout"("tenantId", "date");
 
 -- CreateIndex
 CREATE INDEX "Client_tenantId_idx" ON "Client"("tenantId");
@@ -186,3 +228,4 @@ CREATE INDEX "AuditLog_tenantId_idx" ON "AuditLog"("tenantId");
 
 -- CreateIndex
 CREATE INDEX "AuditLog_tenantId_entityType_entityId_idx" ON "AuditLog"("tenantId", "entityType", "entityId");
+

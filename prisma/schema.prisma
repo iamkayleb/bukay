@@ -101,6 +101,10 @@ model StaffService {
   @@index([serviceId])
 }
 
+// A tenant's weekly schedule. Each row is one open→close window on a specific
+// weekday; multiple rows per (tenantId, dayOfWeek) let owners define split
+// shifts (e.g. 09:00–13:00 and 14:00–18:00). opensAt/closesAt are wall-clock
+// "HH:mm" strings interpreted in the tenant's timezone.
 model BusinessHour {
   id        String   @id @default(cuid())
   tenantId  String
@@ -112,15 +116,15 @@ model BusinessHour {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([tenantId, dayOfWeek])
   @@index([tenantId])
+  @@index([tenantId, dayOfWeek])
 }
 
-// Date-specific overrides that suppress the weekly schedule for one day.
-// A Blackout row for (tenantId, date) means the tenant is closed that day
-// regardless of BusinessHour rules (holidays, one-off closures). `date` is
-// stored as an ISO "YYYY-MM-DD" wall-clock in the tenant's timezone so the
-// row is independent of DST or UTC offset.
+// Date-specific overrides that suppress the weekly schedule entirely.
+// A Blackout row for a given (tenantId, date) means the tenant is closed that
+// day regardless of what BusinessHour would otherwise say (holidays, one-off
+// closures). `date` is stored as an ISO "YYYY-MM-DD" wall-clock date in the
+// tenant's timezone so the row is independent of DST or UTC offset.
 model Blackout {
   id        String   @id @default(cuid())
   tenantId  String
