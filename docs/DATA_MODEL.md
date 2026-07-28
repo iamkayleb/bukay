@@ -6,7 +6,7 @@ update the schema first and then align this document.
 
 ## Summary
 
-Bukay uses a multi-tenant SQLite data model. `Tenant` is the root record for a business, and
+Bukay uses a multi-tenant PostgreSQL data model. `Tenant` is the root record for a business, and
 every tenant-owned model stores a required `tenantId String` foreign key back to `Tenant.id`.
 Tenant-owned models also declare `@@index([tenantId])` so tenant-filtered reads can use a direct
 index.
@@ -18,7 +18,8 @@ The tenant-owned models are:
 | `User` | Login or staff identity for a tenant | `@@unique([tenantId, email])`, `@@index([tenantId])` |
 | `Service` | Bookable service with duration and price | `@@unique([tenantId, name])`, `@@index([tenantId])` |
 | `Staff` | Staff member who can be assigned to bookings | `@@unique([tenantId, email])`, `@@index([tenantId])` |
-| `BusinessHour` | Weekly opening hours by day of week | `@@unique([tenantId, dayOfWeek])`, `@@index([tenantId])` |
+| `BusinessHour` | Weekly opening hours by day of week | `@@index([tenantId])`, `@@index([tenantId, dayOfWeek])` |
+| `Blackout` | Tenant-local unavailable calendar date | `@@unique([tenantId, date])`, `@@index([tenantId])` |
 | `Client` | Customer profile scoped to a tenant | `@@unique([tenantId, phone])`, `@@index([tenantId])` |
 | `Booking` | Appointment linking client, service, and optional staff | `@@index([tenantId])`, `@@index([tenantId, startsAt])` |
 | `Payment` | Payment ledger row for a booking | `@@index([tenantId])`, `@@index([bookingId])`, `@@index([providerRef])` |
@@ -53,7 +54,11 @@ booking remains if staff is later deleted.
 ### BusinessHour
 
 `BusinessHour` stores one row per tenant and weekday, with `opensAt` and `closesAt` as `HH:MM`
-strings and an `isClosed` flag.
+strings. Multiple windows per weekday are supported.
+
+### Blackout
+
+`Blackout` stores tenant-local unavailable dates with an optional reason.
 
 ### Client
 
@@ -73,12 +78,12 @@ paid timestamp, and audit timestamps.
 ### AuditLog
 
 `AuditLog` stores action history with optional actor and entity references. `metadata` is stored as a
-string so callers can serialize structured context when needed.
+structured JSON value.
 
 ## Running Migrations
 
-The schema uses SQLite with `url = "file:./dev.db"`, so local migrations create
-`prisma/dev.db`.
+The schema uses PostgreSQL with `url = env("DATABASE_URL")`, so local migration commands require a
+PostgreSQL connection string.
 
 ```bash
 # Install dependencies and generate the Prisma client.
@@ -99,13 +104,16 @@ and audit log.
 
 ## Migration History
 
-Migrations live under [`prisma/migrations`](../prisma/migrations). The current history contains one
-checked-in migration:
+Migrations live under [`prisma/migrations`](../prisma/migrations). The current history contains
+checked-in migrations:
 
 | Migration | Description |
 |-----------|-------------|
-| `20260611112538_init` | Creates the initial SQLite schema for tenants, users, services, staff, business hours, clients, bookings, payments, and audit logs. It also creates all unique constraints and tenant indexes declared in `schema.prisma`. |
+| `20260611112538_init` | Creates the initial schema for tenants, users, services, staff, business hours, clients, bookings, payments, and audit logs. It also creates unique constraints and tenant indexes declared at the time. |
+| `20260708000000_add_schedule_blackouts` | Adds blackout dates and changes business hours to support multiple windows per day. |
+| `20260722000000_add_booking_staff_overlap_constraint` | Adds the PostgreSQL exclusion constraint that prevents overlapping staff bookings within a tenant. |
+| `20260727000000_audit_log_metadata_jsonb` | Converts audit metadata to PostgreSQL `JSONB`. |
 
 [`prisma/migrations/migration_lock.toml`](../prisma/migrations/migration_lock.toml) records the
-database provider as `sqlite`. Do not edit generated migration files by hand after they have been
+database provider as `postgresql`. Do not edit generated migration files by hand after they have been
 applied; create a new migration from schema changes instead.
