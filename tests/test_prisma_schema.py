@@ -65,6 +65,16 @@ def test_expected_tenant_scoped_models_have_tenant_id_column() -> None:
         assert _has_tenant_id_column(body), f"model {name} is missing a `tenantId String` column"
 
 
+def test_expected_tenant_scoped_model_list_matches_schema() -> None:
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    tenant_scoped_models = _tenant_scoped_models(blocks)
+    assert tenant_scoped_models == EXPECTED_TENANT_SCOPED_MODELS, (
+        "EXPECTED_TENANT_SCOPED_MODELS must match models with a tenantId column; "
+        f"missing from expected: {sorted(tenant_scoped_models - EXPECTED_TENANT_SCOPED_MODELS)}, "
+        f"stale expected entries: {sorted(EXPECTED_TENANT_SCOPED_MODELS - tenant_scoped_models)}"
+    )
+
+
 def test_every_tenant_scoped_model_has_tenant_index() -> None:
     blocks = _model_blocks(SCHEMA_PATH.read_text())
     scoped_models = _tenant_scoped_models(blocks)
