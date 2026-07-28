@@ -76,14 +76,26 @@ def test_seed_upserts_tenant() -> None:
     assert "prisma.tenant.upsert" in text, "seed.ts must upsert the demo tenant"
 
 
-def test_tenant_scoped_upserts_have_top_level_tenant_id() -> None:
+def test_tenant_scoped_upserts_use_only_compound_unique_where() -> None:
     text = _seed_text()
     for model in ("user", "client"):
         assert re.search(
             rf"prisma\.{model}\.upsert\(\{{\s*where:\s*\{{"
             rf"\s*tenantId_\w+:\s*\{{\s*tenantId:\s*tenant\.id,",
             text,
-        ), f"prisma.{model}.upsert must include a top-level tenantId in where"
+        ), f"prisma.{model}.upsert must use a tenantId compound unique key"
+
+        where_match = re.search(
+            rf"prisma\.{model}\.upsert\(\{{\s*where:\s*\{{(?P<where>.*?)\}}\s*,\s*update:",
+            text,
+            re.DOTALL,
+        )
+        assert where_match, f"prisma.{model}.upsert must declare a where clause"
+        where_body = where_match.group("where")
+        top_level_tenant_ids = re.findall(r"^\s*tenantId\s*:", where_body, re.MULTILINE)
+        assert (
+            not top_level_tenant_ids
+        ), f"prisma.{model}.upsert where must not include an extra top-level tenantId"
 
 
 def test_seed_defines_exactly_three_services() -> None:
