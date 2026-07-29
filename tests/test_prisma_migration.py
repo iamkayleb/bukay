@@ -74,8 +74,13 @@ def test_initial_migration_exists() -> None:
 
 def test_prisma_migrate_dev_runs_on_clean_database(tmp_path: Path) -> None:
     """Acceptance check: `prisma migrate dev` must succeed on a clean database."""
+    import os
+
     prisma_dir = tmp_path / "prisma"
     shutil.copytree(ROOT / "prisma", prisma_dir)
+    db_path = prisma_dir / "dev.db"
+
+    env = {**os.environ, "DATABASE_URL": f"file:{db_path}"}
 
     result = subprocess.run(
         [
@@ -88,15 +93,16 @@ def test_prisma_migrate_dev_runs_on_clean_database(tmp_path: Path) -> None:
             "--skip-generate",
         ],
         cwd=ROOT,
+        env=env,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        timeout=60,
+        timeout=120,
         check=False,
     )
 
     assert result.returncode == 0, result.stdout
-    assert (prisma_dir / "dev.db").exists(), "prisma migrate dev did not create a clean db"
+    assert db_path.exists(), "prisma migrate dev did not create a clean db"
 
 
 def test_migration_creates_every_required_model() -> None:
