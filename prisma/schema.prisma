@@ -167,7 +167,22 @@ model BusinessHour {
   staff  Staff? @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
+  @@index([tenantId, dayOfWeek])
   @@index([tenantId, staffId, dayOfWeek])
+}
+
+model Blackout {
+  id        String   @id @default(cuid())
+  tenantId  String
+  date      String
+  reason    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, date])
+  @@index([tenantId])
 }
 
 // -----------------------------------------------------------------------------
