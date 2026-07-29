@@ -24,6 +24,34 @@ def _seed_text() -> str:
     return SEED_PATH.read_text()
 
 
+def _extract_balanced_block(text: str, start: int) -> str:
+    depth = 0
+    for index in range(start, len(text)):
+        char = text[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : index + 1]
+
+    raise AssertionError(f"could not find balanced block starting at offset {start}")
+
+
+def _find_seed_upsert_where_clauses() -> dict[str, str]:
+    text = _seed_text()
+    clauses: dict[str, str] = {}
+
+    for match in re.finditer(r"prisma\.(?P<model>\w+)\.upsert\(\{", text):
+        model = match.group("model")
+        call_body = _extract_balanced_block(text, match.end() - 1)
+        where_match = re.search(r"\bwhere:\s*\{", call_body)
+        assert where_match, f"prisma.{model}.upsert must declare a where clause"
+        clauses[model] = _extract_balanced_block(call_body, where_match.end() - 1)
+
+    return clauses
+
+
 def _package_version(package: str) -> str:
     pkg = json.loads(PACKAGE_JSON.read_text())
     spec = pkg.get("dependencies", {}).get(package) or pkg.get("devDependencies", {}).get(package)
@@ -76,26 +104,55 @@ def test_seed_upserts_tenant() -> None:
     assert "prisma.tenant.upsert" in text, "seed.ts must upsert the demo tenant"
 
 
-def test_tenant_scoped_upserts_use_only_compound_unique_where() -> None:
-    text = _seed_text()
-    for model in ("user", "client"):
-        assert re.search(
-            rf"prisma\.{model}\.upsert\(\{{\s*where:\s*\{{"
-            rf"\s*tenantId_\w+:\s*\{{\s*tenantId:\s*tenant\.id,",
-            text,
-        ), f"prisma.{model}.upsert must use a tenantId compound unique key"
+def test_tenant_scoped_upserts_use_only_compound_unique_key_in_where() -> None:
+    expected_compound_keys = {
+        "user": "tenantId_email",
+        "client": "tenantId_phone",
+    }
+    upsert_where_clauses = _find_seed_upsert_where_clauses()
 
-        where_match = re.search(
-            rf"prisma\.{model}\.upsert\(\{{\s*where:\s*\{{(?P<where>.*?)\}}\s*,\s*update:",
-            text,
+    for model, compound_key in expected_compound_keys.items():
+        where_clause = upsert_where_clauses.get(model)
+        assert where_clause, f"prisma.{model}.upsert must declare a where clause"
+
+        assert re.search(
+            rf"\b{compound_key}:\s*\{{\s*tenantId:\s*tenant\.id,",
+            where_clause,
             re.DOTALL,
-        )
-        assert where_match, f"prisma.{model}.upsert must declare a where clause"
-        where_body = where_match.group("where")
-        top_level_tenant_ids = re.findall(r"^\s*tenantId\s*:", where_body, re.MULTILINE)
+        ), f"prisma.{model}.upsert must use the {compound_key} compound unique key"
+        assert not re.search(
+            r"(?:^|[,{]\s*)tenantId:\s*tenant\.id\s*,?\s*(?:$|[},])",
+            where_clause.replace(
+                re.search(rf"{compound_key}:\s*\{{.*?\}}", where_clause, re.DOTALL).group(0),
+                "",
+            ),
+            re.DOTALL,
+        ), f"prisma.{model}.upsert must not include top-level tenantId in where"
+
+
+def test_all_seed_upserts_are_audited_for_tenant_scoping() -> None:
+    """Keep the seed upsert audit aligned with every upsert in prisma/seed.ts."""
+    expected_non_tenant_upserts = {"tenant"}
+    expected_tenant_scoped_upsert_keys = {
+        "user": "tenantId_email",
+        "client": "tenantId_phone",
+    }
+    audited_models = expected_non_tenant_upserts | set(expected_tenant_scoped_upsert_keys)
+    upsert_where_clauses = _find_seed_upsert_where_clauses()
+
+    assert set(upsert_where_clauses) == audited_models
+
+    for model, compound_key in expected_tenant_scoped_upsert_keys.items():
+        where_clause = upsert_where_clauses[model]
+        compound_key_match = re.search(rf"\b{compound_key}:\s*\{{", where_clause)
+        assert compound_key_match, f"prisma.{model}.upsert must use {compound_key}"
+
+        compound_key_block = _extract_balanced_block(where_clause, compound_key_match.end() - 1)
+        compound_key_end = compound_key_match.end() - 1 + len(compound_key_block)
+        remainder = where_clause[: compound_key_match.start()] + where_clause[compound_key_end:]
         assert (
-            not top_level_tenant_ids
-        ), f"prisma.{model}.upsert where must not include an extra top-level tenantId"
+            "tenantId:" not in remainder
+        ), f"prisma.{model}.upsert must not include tenantId outside {compound_key}"
 
 
 def test_seed_defines_exactly_three_services() -> None:

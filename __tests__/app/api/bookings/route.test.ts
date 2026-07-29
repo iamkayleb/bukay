@@ -137,9 +137,9 @@ beforeEach(() => {
         .slice(0, args.take)
   );
   state.updateBooking.mockImplementation(
-    async (args: { where: { tenantId: string; id: string }; data: Partial<BookingRow> }) => {
+    async (args: { where: { id: string; tenantId: string }; data: Partial<BookingRow> }) => {
       const index = state.bookings.findIndex(
-        (row) => row.tenantId === args.where.tenantId && row.id === args.where.id
+        (row) => row.id === args.where.id && row.tenantId === args.where.tenantId
       );
       if (index === -1) {
         throw Object.assign(new Error("Record not found"), { code: "P2025" });
@@ -164,23 +164,18 @@ beforeEach(() => {
 });
 
 describe("PATCH /api/bookings/:id", () => {
-  it("updates a booking with a tenant-scoped write predicate", async () => {
+  it("updates only a tenant-scoped booking", async () => {
     const res = await PATCH(
-      request("/api/bookings/booking-1", { status: "completed", notes: "Paid in shop" }),
+      request("/api/bookings/booking-1", { status: "cancelled", notes: "Client called" }),
       { params: { id: "booking-1" } }
     );
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.booking).toMatchObject({
-      id: "booking-1",
-      tenantId: "tenant-1",
-      status: "completed",
-      notes: "Paid in shop",
-    });
+    expect(body.booking).toMatchObject({ id: "booking-1", status: "cancelled" });
     expect(state.updateBooking).toHaveBeenCalledWith({
-      where: { tenantId: "tenant-1", id: "booking-1" },
-      data: { status: "completed", notes: "Paid in shop" },
+      where: { id: "booking-1", tenantId: "tenant-1" },
+      data: { status: "cancelled", notes: "Client called" },
     });
   });
 

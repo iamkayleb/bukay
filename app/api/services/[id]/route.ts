@@ -63,7 +63,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       }
 
       const service = await serviceDelegate.update({
-        where: { tenantId, id: existingService.id },
+        where: { id: existingService.id, tenantId },
         data: parsed.data,
       });
 
@@ -91,7 +91,7 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
       }
 
       const service = await serviceDelegate.update({
-        where: { tenantId, id: existingService.id },
+        where: { id: existingService.id, tenantId },
         data: { active: false },
       });
 

@@ -115,9 +115,9 @@ beforeEach(() => {
       ) ?? null
   );
   state.update.mockImplementation(
-    async (args: { where: { tenantId: string; id: string }; data: Partial<ServiceRow> }) => {
+    async (args: { where: { id: string; tenantId: string }; data: Partial<ServiceRow> }) => {
       const index = state.services.findIndex(
-        (row) => row.tenantId === args.where.tenantId && row.id === args.where.id
+        (row) => row.id === args.where.id && row.tenantId === args.where.tenantId
       );
       if (index === -1) {
         throw Object.assign(new Error("Record not found"), { code: "P2025" });
@@ -249,7 +249,7 @@ describe("/api/services", () => {
       where: { tenantId: "tenant-1", id: "service-1" },
     });
     expect(state.update).toHaveBeenCalledWith({
-      where: { tenantId: "tenant-1", id: "service-1" },
+      where: { id: "service-1", tenantId: "tenant-1" },
       data: { priceKobo: 900000, active: false },
     });
   });
@@ -296,7 +296,7 @@ describe("/api/services", () => {
       where: { tenantId: "tenant-1", id: "service-1" },
     });
     expect(state.update).toHaveBeenCalledWith({
-      where: { tenantId: "tenant-1", id: "service-1" },
+      where: { id: "service-1", tenantId: "tenant-1" },
       data: { active: false },
     });
   });
