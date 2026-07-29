@@ -90,8 +90,20 @@ default hours; rows with a `staffId` override for that staff member.
 | `openMinute`  | `Int`       | Minutes since midnight (`9*60` → 09:00)         |
 | `closeMinute` | `Int`       | Minutes since midnight                          |
 
-Composite index `@@index([tenantId, staffId, dayOfWeek])` supports the
-availability lookup path.
+Composite indexes `@@index([tenantId, dayOfWeek])` and
+`@@index([tenantId, staffId, dayOfWeek])` support availability lookup paths.
+
+### Blackout
+
+Tenant-local closure dates that block availability for a full day.
+
+| Column     | Type      | Notes                                 |
+|------------|-----------|---------------------------------------|
+| `tenantId` | `String`  | FK → `Tenant.id`, indexed             |
+| `date`     | `String`  | Tenant-local date (`YYYY-MM-DD`)      |
+| `reason`   | `String?` | Optional internal reason              |
+
+`@@unique([tenantId, date])` prevents duplicate blackout rows for a tenant day.
 
 ### Client
 
@@ -163,7 +175,8 @@ Every tenant-scoped table has at least `@@index([tenantId])`:
 | `User`         | ✓            | `@@unique([tenantId, email])`                     |
 | `Service`      | ✓            | —                                                 |
 | `Staff`        | ✓            | `@unique` on `userId`                             |
-| `BusinessHour` | ✓            | `@@index([tenantId, staffId, dayOfWeek])`         |
+| `BusinessHour` | ✓            | `…dayOfWeek`, `…staffId, dayOfWeek`               |
+| `Blackout`     | ✓            | `@@unique([tenantId, date])`                      |
 | `Client`       | ✓            | `@@unique([tenantId, phone])`, `…email]`          |
 | `Booking`      | ✓            | `…startsAt`, `…staffId, startsAt`                 |
 | `Payment`      | ✓            | `@@index([tenantId, bookingId])`                  |

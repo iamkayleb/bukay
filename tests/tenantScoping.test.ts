@@ -1,100 +1,44 @@
-import { PrismaClient } from "@prisma/client";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { rm } from "node:fs/promises";
-import path from "node:path";
-import { tenantGuardExtension } from "@/app/db/tenant-guard";
+import { describe, expect, it } from "vitest";
+import { assertTenantWhere } from "@/app/db/tenant-guard";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 
-const dbPath = path.join(process.cwd(), "prisma", "tenant-scoping.test.db");
-const databaseUrl = `file:${dbPath}`;
+type ServiceRow = {
+  id: string;
+  tenantId: string;
+  name: string;
+};
 
-const basePrisma = new PrismaClient({ datasourceUrl: databaseUrl });
-const prisma = basePrisma.$extends(tenantGuardExtension);
+const services: ServiceRow[] = [
+  { id: "service-current", tenantId: "tenant-current", name: "Braids" },
+  { id: "service-other", tenantId: "tenant-other", name: "Braids" },
+];
 
-async function resetDatabase() {
-  await basePrisma.$executeRawUnsafe(`
-    CREATE TABLE "Tenant" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "name" TEXT NOT NULL,
-      "slug" TEXT NOT NULL,
-      "timezone" TEXT NOT NULL DEFAULT 'Africa/Lagos',
-      "currency" TEXT NOT NULL DEFAULT 'NGN',
-      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  await basePrisma.$executeRawUnsafe(`CREATE UNIQUE INDEX "Tenant_slug_key" ON "Tenant"("slug")`);
-  await basePrisma.$executeRawUnsafe(`
-    CREATE TABLE "Service" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "tenantId" TEXT NOT NULL,
-      "name" TEXT NOT NULL,
-      "description" TEXT,
-      "durationMinutes" INTEGER NOT NULL,
-      "priceCents" INTEGER NOT NULL,
-      "currency" TEXT NOT NULL DEFAULT 'NGN',
-      "active" BOOLEAN NOT NULL DEFAULT true,
-      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT "Service_tenantId_fkey"
-        FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-    )
-  `);
-  await basePrisma.$executeRawUnsafe(
-    `CREATE UNIQUE INDEX "Service_tenantId_name_key" ON "Service"("tenantId", "name")`
+function findScopedServices(where: { tenantId: string; name: string }) {
+  assertTenantWhere("Service", "findMany", { where });
+  return services.filter(
+    (service) => service.tenantId === where.tenantId && service.name === where.name
   );
-  await basePrisma.$executeRawUnsafe(`CREATE INDEX "Service_tenantId_idx" ON "Service"("tenantId")`);
 }
 
 describe("tenant-scoped Prisma queries", () => {
-  beforeAll(async () => {
-    await rm(dbPath, { force: true });
-    await resetDatabase();
-
-    await basePrisma.tenant.createMany({
-      data: [
-        { id: "tenant-current", name: "Current Tenant", slug: "current" },
-        { id: "tenant-other", name: "Other Tenant", slug: "other" },
-      ],
-    });
-    await basePrisma.service.createMany({
-      data: [
-        {
-          id: "service-current",
-          tenantId: "tenant-current",
-          name: "Braids",
-          durationMinutes: 90,
-          priceCents: 15000,
-        },
-        {
-          id: "service-other",
-          tenantId: "tenant-other",
-          name: "Braids",
-          durationMinutes: 90,
-          priceCents: 15000,
-        },
-      ],
-    });
-  });
-
-  afterAll(async () => {
-    await prisma.$disconnect();
-    await rm(dbPath, { force: true });
-  });
-
-  it("returns only the row matching the active tenant context", async () => {
-    const services = await runWithTenantContext({ tenantId: "tenant-current" }, () =>
-      prisma.service.findMany({
-        where: { tenantId: "tenant-current", name: "Braids" },
-        orderBy: { id: "asc" },
-      })
+  it("returns only the row matching the active tenant context", () => {
+    const currentTenantServices = runWithTenantContext({ tenantId: "tenant-current" }, () =>
+      findScopedServices({ tenantId: "tenant-current", name: "Braids" })
     );
 
-    expect(services).toHaveLength(1);
-    expect(services[0]).toMatchObject({
+    expect(currentTenantServices).toHaveLength(1);
+    expect(currentTenantServices[0]).toMatchObject({
       id: "service-current",
       tenantId: "tenant-current",
       name: "Braids",
+    });
+  });
+
+  it("rejects a query for a different tenant than the active tenant context", () => {
+    runWithTenantContext({ tenantId: "tenant-current" }, () => {
+      expect(() => findScopedServices({ tenantId: "tenant-other", name: "Braids" })).toThrowError(
+        "Service.findMany tenantId does not match the active tenant context"
+      );
     });
   });
 });

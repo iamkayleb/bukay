@@ -70,20 +70,21 @@ async function loadCalendarData() {
     ]);
 
     return {
-      bookings: bookings.map(
-        (booking): CalendarBooking => ({
-          id: booking.id,
-          serviceId: booking.serviceId,
-          clientName: booking.client.name,
-          serviceName: booking.service.name,
-          staffName: booking.staff?.name ?? null,
-          startsAt: booking.startsAt.toISOString(),
-          endsAt: booking.endsAt.toISOString(),
-          status: booking.status,
-          notes: booking.notes,
-        })
-      ),
-      clients,
+      bookings: bookings.map((booking): CalendarBooking => ({
+        id: booking.id,
+        serviceId: booking.serviceId,
+        clientName: booking.client.name,
+        serviceName: booking.service.name,
+        staffName: booking.staff?.name ?? null,
+        startsAt: booking.startsAt.toISOString(),
+        endsAt: booking.endsAt.toISOString(),
+        status: booking.status,
+        notes: booking.notes,
+      })),
+      clients: clients.map((client) => ({
+        ...client,
+        phone: client.phone ?? "",
+      })),
       services,
     };
   });
