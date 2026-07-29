@@ -28,6 +28,13 @@ The tenant-owned models are:
 cascades to its owned rows through the Prisma relations. `Booking` restricts deletion of referenced
 clients and services, and sets `staffId` to null when a referenced staff row is deleted.
 
+Authentication state is stored in shared non-tenant-scoped tables:
+
+| Model | Purpose | Constraints and indexes |
+|-------|---------|-------------------------|
+| `OtpCode` | Pending or consumed one-time login codes keyed by phone | `phone` primary key, `@@index([expiresAt])` |
+| `OtpRateLimit` | OTP request counters keyed by phone | `phone` primary key, `@@index([windowStart])` |
+
 ## Model Details
 
 ### Tenant
@@ -75,6 +82,18 @@ paid timestamp, and audit timestamps.
 `AuditLog` stores action history with optional actor and entity references. `metadata` is stored as a
 string so callers can serialize structured context when needed.
 
+### OtpCode
+
+`OtpCode` stores the hashed one-time code, expiry timestamp, failed-attempt count, and consumed flag
+for a normalized phone number. Keeping consumed rows until expiry lets verification return an
+explicit already-used response across server instances.
+
+### OtpRateLimit
+
+`OtpRateLimit` stores the current OTP request window, request count, and last-send timestamp for a
+normalized phone number. This keeps resend cooldowns and rate limits consistent across server
+instances.
+
 ## Running Migrations
 
 The schema uses SQLite with `url = "file:./dev.db"`, so local migrations create
@@ -105,6 +124,7 @@ checked-in migration:
 | Migration | Description |
 |-----------|-------------|
 | `20260611112538_init` | Creates the initial SQLite schema for tenants, users, services, staff, business hours, clients, bookings, payments, and audit logs. It also creates all unique constraints and tenant indexes declared in `schema.prisma`. |
+| `20260729112000_add_otp_persistent_store` | Adds shared OTP code and OTP rate-limit tables used by phone authentication. |
 
 [`prisma/migrations/migration_lock.toml`](../prisma/migrations/migration_lock.toml) records the
 database provider as `sqlite`. Do not edit generated migration files by hand after they have been

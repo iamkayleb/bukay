@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     throw err;
   }
 
-  const result = getOtpStore().issue(phone);
+  const result = await getOtpStore().issue(phone);
   if (!result.ok) {
     const retryAfter = Math.max(1, Math.ceil(result.retryAfterMs / 1000));
     const message =

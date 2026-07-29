@@ -12,8 +12,10 @@ import {
   OTP_MAX_REQUESTS_PER_WINDOW,
   OTP_RESEND_COOLDOWN_MS,
   OTP_TTL_MS,
+  MemoryOtpStateStore,
   __resetOtpStoreForTests,
   getOtpStore,
+  setOtpStateStoreForTests,
 } from "@/app/lib/auth/otp";
 import { SESSION_COOKIE_NAME, SESSION_TTL_MS, signSession } from "@/app/lib/auth/session";
 
@@ -46,6 +48,7 @@ beforeEach(() => {
   vi.useRealTimers();
   process.env.SESSION_SECRET = "test-secret-must-be-long-enough";
   __resetOtpStoreForTests();
+  setOtpStateStoreForTests(new MemoryOtpStateStore());
   __resetSmsProviderForTests();
   sms = new MemorySmsProvider();
   setSmsProviderForTests(sms);
@@ -139,7 +142,8 @@ describe("end-to-end auth flow", () => {
     );
     expect(second.status).toBe(401);
     const body = await second.json();
-    expect(body.error).toBe("not_found");
+    expect(body.error).toBe("used");
+    expect(body.message).toBe("OTP already used");
   });
 
   it("applies resend cooldown between consecutive OTP requests", async () => {
