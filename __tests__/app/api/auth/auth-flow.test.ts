@@ -15,7 +15,7 @@ import {
   __resetOtpStoreForTests,
   getOtpStore,
 } from "@/app/lib/auth/otp";
-import { SESSION_COOKIE_NAME } from "@/app/lib/auth/session";
+import { SESSION_COOKIE_NAME, SESSION_TTL_MS, signSession } from "@/app/lib/auth/session";
 
 function jsonRequest(url: string, body: unknown, init?: { cookie?: string }): NextRequest {
   const headers: Record<string, string> = { "content-type": "application/json" };
@@ -191,6 +191,53 @@ describe("end-to-end auth flow", () => {
   it("/me returns 401 with no cookie", async () => {
     const res = await me(new NextRequest("http://test/api/auth/me"));
     expect(res.status).toBe(401);
+  });
+
+  it("rejects an expired session cookie with an explicit expiration message", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+    const now = Date.now();
+    const token = signSession({
+      sub: `user:${PHONE_E164}`,
+      phone: PHONE_E164,
+      iat: now - SESSION_TTL_MS,
+      exp: now - 1,
+    });
+
+    const res = await me(
+      new NextRequest("http://test/api/auth/me", {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
+      })
+    );
+
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.ok).toBe(false);
+    expect(body.error).toBe("session_expired");
+    expect(body.message).toBe("session expired");
+  });
+
+  it("rejects a tampered session cookie with an explicit invalid-session message", async () => {
+    const now = Date.now();
+    const token = signSession({
+      sub: `user:${PHONE_E164}`,
+      phone: PHONE_E164,
+      iat: now,
+      exp: now + SESSION_TTL_MS,
+    });
+    const tampered = `${token.slice(0, -1)}${token.endsWith("a") ? "b" : "a"}`;
+
+    const res = await me(
+      new NextRequest("http://test/api/auth/me", {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${tampered}` },
+      })
+    );
+
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.ok).toBe(false);
+    expect(body.error).toBe("session_invalid");
+    expect(body.message).toBe("session invalid");
   });
 
   it("normalizes 234-prefixed phone the same as 0-prefixed", async () => {
