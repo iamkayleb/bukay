@@ -170,9 +170,27 @@ suite("prisma migrate + seed (integration)", () => {
       datasources: { db: { url: `file:${dbPath}` } },
     });
     try {
+      // Read ALL rows first so a half-applied migration (finished_at IS NULL)
+      // fails the check instead of being silently excluded — an unfinished
+      // migration matching an on-disk file is not "applied".
       const rows = (await prisma.$queryRawUnsafe(
-        `SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NOT NULL ORDER BY migration_name`
-      )) as Array<{ migration_name: string }>;
+        `SELECT migration_name, finished_at, rolled_back_at FROM _prisma_migrations ORDER BY migration_name`
+      )) as Array<{
+        migration_name: string;
+        finished_at: Date | string | null;
+        rolled_back_at: Date | string | null;
+      }>;
+      const unfinished = rows.filter((r) => r.finished_at === null);
+      expect(
+        unfinished,
+        `unfinished migrations detected: ${unfinished.map((r) => r.migration_name).join(", ")}`
+      ).toEqual([]);
+      const rolledBack = rows.filter((r) => r.rolled_back_at !== null);
+      expect(
+        rolledBack,
+        `rolled-back migrations detected: ${rolledBack.map((r) => r.migration_name).join(", ")}`
+      ).toEqual([]);
+
       const applied = rows.map((r) => r.migration_name).sort();
       const onDisk = listMigrationFolders();
 
