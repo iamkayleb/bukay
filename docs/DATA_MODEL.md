@@ -19,6 +19,7 @@ The tenant-owned models are:
 | `Service` | Bookable service with duration and price | `@@unique([tenantId, name])`, `@@index([tenantId])` |
 | `Staff` | Staff member who can be assigned to bookings | `@@unique([tenantId, email])`, `@@index([tenantId])` |
 | `BusinessHour` | Weekly opening hours by day of week | `@@unique([tenantId, dayOfWeek])`, `@@index([tenantId])` |
+| `Blackout` | Tenant-specific unavailable local dates | `@@unique([tenantId, date])`, `@@index([tenantId])` |
 | `Client` | Customer profile scoped to a tenant | `@@unique([tenantId, phone])`, `@@index([tenantId])` |
 | `Booking` | Appointment linking client, service, and optional staff | `@@index([tenantId])`, `@@index([tenantId, startsAt])` |
 | `Payment` | Payment ledger row for a booking | `@@index([tenantId])`, `@@index([bookingId])`, `@@index([providerRef])` |
@@ -54,6 +55,10 @@ booking remains if staff is later deleted.
 
 `BusinessHour` stores one row per tenant and weekday, with `opensAt` and `closesAt` as `HH:MM`
 strings and an `isClosed` flag.
+
+### Blackout
+
+`Blackout` stores tenant-specific unavailable local dates with an optional reason.
 
 ### Client
 

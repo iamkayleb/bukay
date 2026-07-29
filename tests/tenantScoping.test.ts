@@ -1,17 +1,22 @@
 import { PrismaClient } from "@prisma/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { rm } from "node:fs/promises";
-import path from "node:path";
 import { tenantGuardExtension } from "@/app/db/tenant-guard";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 
-const dbPath = path.join(process.cwd(), "prisma", "tenant-scoping.test.db");
-const databaseUrl = `file:${dbPath}`;
+const databaseUrl = process.env.DATABASE_URL;
+const describeWithDatabase =
+  process.env.RUN_LIVE_DATABASE_TESTS === "1" && databaseUrl?.startsWith("postgres")
+    ? describe
+    : describe.skip;
 
-const basePrisma = new PrismaClient({ datasourceUrl: databaseUrl });
+const basePrisma = new PrismaClient({
+  datasourceUrl: databaseUrl ?? "postgresql://user:pass@localhost:5432/bukay",
+});
 const prisma = basePrisma.$extends(tenantGuardExtension);
 
 async function resetDatabase() {
+  await basePrisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "Service"`);
+  await basePrisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "Tenant" CASCADE`);
   await basePrisma.$executeRawUnsafe(`
     CREATE TABLE "Tenant" (
       "id" TEXT NOT NULL PRIMARY KEY,
@@ -19,8 +24,8 @@ async function resetDatabase() {
       "slug" TEXT NOT NULL,
       "timezone" TEXT NOT NULL DEFAULT 'Africa/Lagos',
       "currency" TEXT NOT NULL DEFAULT 'NGN',
-      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
   await basePrisma.$executeRawUnsafe(`CREATE UNIQUE INDEX "Tenant_slug_key" ON "Tenant"("slug")`);
@@ -34,8 +39,8 @@ async function resetDatabase() {
       "priceCents" INTEGER NOT NULL,
       "currency" TEXT NOT NULL DEFAULT 'NGN',
       "active" BOOLEAN NOT NULL DEFAULT true,
-      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT "Service_tenantId_fkey"
         FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE
     )
@@ -46,9 +51,8 @@ async function resetDatabase() {
   await basePrisma.$executeRawUnsafe(`CREATE INDEX "Service_tenantId_idx" ON "Service"("tenantId")`);
 }
 
-describe("tenant-scoped Prisma queries", () => {
+describeWithDatabase("tenant-scoped Prisma queries", () => {
   beforeAll(async () => {
-    await rm(dbPath, { force: true });
     await resetDatabase();
 
     await basePrisma.tenant.createMany({
@@ -79,7 +83,6 @@ describe("tenant-scoped Prisma queries", () => {
 
   afterAll(async () => {
     await prisma.$disconnect();
-    await rm(dbPath, { force: true });
   });
 
   it("returns only the row matching the active tenant context", async () => {

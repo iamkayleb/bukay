@@ -11,9 +11,10 @@ import json
 import os
 import re
 import shutil
-import sqlite3
 import subprocess
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 SEED_PATH = ROOT / "prisma" / "seed.ts"
@@ -115,17 +116,17 @@ def test_tenant_scoped_upserts_use_only_compound_unique_key_in_where() -> None:
         where_clause = upsert_where_clauses.get(model)
         assert where_clause, f"prisma.{model}.upsert must declare a where clause"
 
-        assert re.search(
+        compound_match = re.search(
             rf"\b{compound_key}:\s*\{{\s*tenantId:\s*tenant\.id,",
             where_clause,
             re.DOTALL,
+        )
+        assert (
+            compound_match
         ), f"prisma.{model}.upsert must use the {compound_key} compound unique key"
         assert not re.search(
             r"(?:^|[,{]\s*)tenantId:\s*tenant\.id\s*,?\s*(?:$|[},])",
-            where_clause.replace(
-                re.search(rf"{compound_key}:\s*\{{.*?\}}", where_clause, re.DOTALL).group(0),
-                "",
-            ),
+            where_clause.replace(compound_match.group(0), ""),
             re.DOTALL,
         ), f"prisma.{model}.upsert must not include top-level tenantId in where"
 
@@ -188,6 +189,9 @@ def test_package_json_wires_seed_script() -> None:
 
 def test_prisma_db_seed_creates_demo_tenant_on_clean_database(tmp_path: Path) -> None:
     """Acceptance check: `prisma db seed` creates a tenant with slug `demo`."""
+    if "DATABASE_URL" not in os.environ:
+        pytest.skip("DATABASE_URL is required for live Prisma seed checks")
+
     project_dir = tmp_path / "project"
     project_dir.mkdir()
     prisma_dir = project_dir / "prisma"
@@ -251,11 +255,28 @@ def test_prisma_db_seed_creates_demo_tenant_on_clean_database(tmp_path: Path) ->
     )
     assert seed.returncode == 0, seed.stdout
 
-    db_path = prisma_dir / "dev.db"
-    with sqlite3.connect(db_path) as conn:
-        demo_tenant_count = conn.execute(
-            'SELECT COUNT(*) FROM "Tenant" WHERE "slug" = ?',
-            ("demo",),
-        ).fetchone()[0]
+    verify = subprocess.run(
+        [
+            str(project_dir / "node_modules" / ".bin" / "tsx"),
+            "--eval",
+            (
+                "import { PrismaClient } from '@prisma/client';"
+                "const prisma = new PrismaClient();"
+                "try {"
+                "const count = await prisma.tenant.count({ where: { slug: 'demo' } });"
+                "console.log(count);"
+                "} finally { await prisma.$disconnect(); }"
+            ),
+        ],
+        cwd=project_dir,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        env=env,
+        timeout=60,
+        check=False,
+    )
+    assert verify.returncode == 0, verify.stdout
+    demo_tenant_count = int(verify.stdout.strip().splitlines()[-1])
 
     assert demo_tenant_count == 1, "prisma db seed did not create Tenant.slug = 'demo'"
