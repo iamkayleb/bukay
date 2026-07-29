@@ -58,14 +58,6 @@ booking remains if staff is later deleted.
 tables cannot carry a `tenantId` column, so the join is modelled explicitly to preserve the
 multi-tenant scoping invariant. Deleting the parent staff or service cascades to the join row.
 
-### StaffService
-
-Explicit join table between `Staff` and `Service`. Prisma implicit M2M join
-tables can't carry a `tenantId` column, which would break the multi-tenant
-scoping invariant — every row must be attributable to a single tenant. The
-row also enables per-assignment metadata (e.g. custom pricing) later
-without another migration.
-
 | Column      | Type     | Notes                                          |
 |-------------|----------|------------------------------------------------|
 | `tenantId`  | `String` | FK → `Tenant.id`, indexed                      |
@@ -85,12 +77,6 @@ strings and an `isClosed` flag.
 for `(tenantId, date)` means the tenant is closed that day regardless of the `BusinessHour`
 rules (holidays, one-off closures). `date` is stored as an ISO `YYYY-MM-DD` wall-clock string
 in the tenant's timezone so the row is independent of DST or UTC offset.
-
-### Blackout
-
-Date-specific override that closes the tenant for the whole day (holidays,
-one-off closures). The availability helper subtracts these dates from the
-weekly template before returning open windows.
 
 | Column     | Type       | Notes                                          |
 |------------|------------|------------------------------------------------|
