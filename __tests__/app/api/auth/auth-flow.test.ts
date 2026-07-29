@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 import { POST as login } from "@/app/api/auth/login/route";
@@ -8,8 +8,16 @@ import { GET as me } from "@/app/api/auth/me/route";
 
 import { MemorySmsProvider } from "@/app/lib/sms/memory";
 import { __resetSmsProviderForTests, setSmsProviderForTests } from "@/app/lib/auth/sms";
-import { __resetOtpStoreForTests, getOtpStore } from "@/app/lib/auth/otp";
-import { SESSION_COOKIE_NAME } from "@/app/lib/auth/session";
+import {
+  OTP_MAX_REQUESTS_PER_WINDOW,
+  OTP_RESEND_COOLDOWN_MS,
+  OTP_TTL_MS,
+  MemoryOtpStateStore,
+  __resetOtpStoreForTests,
+  getOtpStore,
+  setOtpStateStoreForTests,
+} from "@/app/lib/auth/otp";
+import { SESSION_COOKIE_NAME, SESSION_TTL_MS, signSession } from "@/app/lib/auth/session";
 
 function jsonRequest(url: string, body: unknown, init?: { cookie?: string }): NextRequest {
   const headers: Record<string, string> = { "content-type": "application/json" };
@@ -37,11 +45,17 @@ const PHONE_E164 = "+2348031234567";
 let sms: MemorySmsProvider;
 
 beforeEach(() => {
+  vi.useRealTimers();
   process.env.SESSION_SECRET = "test-secret-must-be-long-enough";
   __resetOtpStoreForTests();
+  setOtpStateStoreForTests(new MemoryOtpStateStore());
   __resetSmsProviderForTests();
   sms = new MemorySmsProvider();
   setSmsProviderForTests(sms);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("end-to-end auth flow", () => {
@@ -95,6 +109,25 @@ describe("end-to-end auth flow", () => {
     expect(body.error).toBe("mismatch");
   });
 
+  it("rejects an expired OTP with an explicit expiration message", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+
+    await login(jsonRequest("http://test/api/auth/login", { phone: PHONE_LOCAL }));
+    const code = extractCode(sms.lastTo(PHONE_E164)!.body);
+
+    vi.advanceTimersByTime(OTP_TTL_MS + 1);
+
+    const res = await verify(
+      jsonRequest("http://test/api/auth/verify", { phone: PHONE_LOCAL, code })
+    );
+    expect([400, 401]).toContain(res.status);
+    const body = await res.json();
+    expect(body.ok).toBe(false);
+    expect(body.error).toBe("expired");
+    expect(body.message).toBe("OTP expired");
+  });
+
   it("rejects a used OTP on second verify", async () => {
     await login(jsonRequest("http://test/api/auth/login", { phone: PHONE_LOCAL }));
     const code = extractCode(sms.lastTo(PHONE_E164)!.body);
@@ -109,10 +142,11 @@ describe("end-to-end auth flow", () => {
     );
     expect(second.status).toBe(401);
     const body = await second.json();
-    expect(body.error).toBe("not_found");
+    expect(body.error).toBe("used");
+    expect(body.message).toBe("OTP already used");
   });
 
-  it("rate-limits brute-force OTP requests", async () => {
+  it("applies resend cooldown between consecutive OTP requests", async () => {
     // First /login is fine; subsequent rapid logins should hit cooldown -> 429
     const first = await login(jsonRequest("http://test/api/auth/login", { phone: PHONE_LOCAL }));
     expect(first.status).toBe(200);
@@ -122,6 +156,25 @@ describe("end-to-end auth flow", () => {
     expect(second.headers.get("retry-after")).toMatch(/^\d+$/);
     const body = await second.json();
     expect(body.error).toBe("cooldown");
+  });
+
+  it("rejects OTP requests beyond the configured rate-limit window", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+
+    for (let i = 0; i < OTP_MAX_REQUESTS_PER_WINDOW; i++) {
+      const res = await login(jsonRequest("http://test/api/auth/login", { phone: PHONE_LOCAL }));
+      expect(res.status).toBe(200);
+      vi.advanceTimersByTime(OTP_RESEND_COOLDOWN_MS + 1);
+    }
+
+    const blocked = await login(jsonRequest("http://test/api/auth/login", { phone: PHONE_LOCAL }));
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers.get("retry-after")).toMatch(/^\d+$/);
+    const body = await blocked.json();
+    expect(body.ok).toBe(false);
+    expect(body.error).toBe("rate_limited");
+    expect(body.message).toBe("rate limit exceeded");
   });
 
   it("rejects an invalid phone number", async () => {
@@ -142,6 +195,53 @@ describe("end-to-end auth flow", () => {
   it("/me returns 401 with no cookie", async () => {
     const res = await me(new NextRequest("http://test/api/auth/me"));
     expect(res.status).toBe(401);
+  });
+
+  it("rejects an expired session cookie with an explicit expiration message", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+    const now = Date.now();
+    const token = signSession({
+      sub: `user:${PHONE_E164}`,
+      phone: PHONE_E164,
+      iat: now - SESSION_TTL_MS,
+      exp: now - 1,
+    });
+
+    const res = await me(
+      new NextRequest("http://test/api/auth/me", {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
+      })
+    );
+
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.ok).toBe(false);
+    expect(body.error).toBe("session_expired");
+    expect(body.message).toBe("session expired");
+  });
+
+  it("rejects a tampered session cookie with an explicit invalid-session message", async () => {
+    const now = Date.now();
+    const token = signSession({
+      sub: `user:${PHONE_E164}`,
+      phone: PHONE_E164,
+      iat: now,
+      exp: now + SESSION_TTL_MS,
+    });
+    const tampered = `${token.slice(0, -1)}${token.endsWith("a") ? "b" : "a"}`;
+
+    const res = await me(
+      new NextRequest("http://test/api/auth/me", {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${tampered}` },
+      })
+    );
+
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.ok).toBe(false);
+    expect(body.error).toBe("session_invalid");
+    expect(body.message).toBe("session invalid");
   });
 
   it("normalizes 234-prefixed phone the same as 0-prefixed", async () => {

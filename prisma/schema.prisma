@@ -72,6 +72,7 @@ model Tenant {
   services      Service[]
   staff         Staff[]
   businessHours BusinessHour[]
+  blackouts     Blackout[]
   clients       Client[]
   bookings      Booking[]
   payments      Payment[]
