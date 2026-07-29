@@ -11,12 +11,14 @@ import json
 import os
 import re
 import shutil
-import sqlite3
 import subprocess
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 SEED_PATH = ROOT / "prisma" / "seed.ts"
+SCHEMA_PATH = ROOT / "prisma" / "schema.prisma"
 PACKAGE_JSON = ROOT / "package.json"
 
 
@@ -57,6 +59,12 @@ def _package_version(package: str) -> str:
     spec = pkg.get("dependencies", {}).get(package) or pkg.get("devDependencies", {}).get(package)
     assert spec, f"could not find {package} version in {PACKAGE_JSON}"
     return spec
+
+
+def _schema_provider() -> str:
+    match = re.search(r'provider\s*=\s*"([^"]+)"', SCHEMA_PATH.read_text())
+    assert match, "schema.prisma must declare a datasource provider"
+    return match.group(1)
 
 
 def _prepare_node_modules(project_dir: Path) -> Path:
@@ -188,6 +196,9 @@ def test_package_json_wires_seed_script() -> None:
 
 def test_prisma_db_seed_creates_demo_tenant_on_clean_database(tmp_path: Path) -> None:
     """Acceptance check: `prisma db seed` creates a tenant with slug `demo`."""
+    if _schema_provider() != "sqlite":
+        pytest.skip("live seed smoke test requires the local SQLite schema")
+
     project_dir = tmp_path / "project"
     project_dir.mkdir()
     prisma_dir = project_dir / "prisma"
@@ -250,6 +261,8 @@ def test_prisma_db_seed_creates_demo_tenant_on_clean_database(tmp_path: Path) ->
         check=False,
     )
     assert seed.returncode == 0, seed.stdout
+
+    import sqlite3
 
     db_path = prisma_dir / "dev.db"
     with sqlite3.connect(db_path) as conn:

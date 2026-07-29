@@ -6,7 +6,7 @@ update the schema first and then align this document.
 
 ## Summary
 
-Bukay uses a multi-tenant SQLite data model. `Tenant` is the root record for a business, and
+Bukay uses a multi-tenant PostgreSQL data model. `Tenant` is the root record for a business, and
 every tenant-owned model stores a required `tenantId String` foreign key back to `Tenant.id`.
 Tenant-owned models also declare `@@index([tenantId])` so tenant-filtered reads can use a direct
 index.
@@ -19,6 +19,7 @@ The tenant-owned models are:
 | `Service` | Bookable service with duration and price | `@@unique([tenantId, name])`, `@@index([tenantId])` |
 | `Staff` | Staff member who can be assigned to bookings | `@@unique([tenantId, email])`, `@@index([tenantId])` |
 | `BusinessHour` | Weekly opening hours by day of week | `@@unique([tenantId, dayOfWeek])`, `@@index([tenantId])` |
+| `Blackout` | Tenant-local closed dates | `@@unique([tenantId, date])`, `@@index([tenantId])` |
 | `Client` | Customer profile scoped to a tenant | `@@unique([tenantId, phone])`, `@@index([tenantId])` |
 | `Booking` | Appointment linking client, service, and optional staff | `@@index([tenantId])`, `@@index([tenantId, startsAt])` |
 | `Payment` | Payment ledger row for a booking | `@@index([tenantId])`, `@@index([bookingId])`, `@@index([providerRef])` |
@@ -62,6 +63,10 @@ booking remains if staff is later deleted.
 `BusinessHour` stores one row per tenant and weekday, with `opensAt` and `closesAt` as `HH:MM`
 strings and an `isClosed` flag.
 
+### Blackout
+
+`Blackout` stores tenant-local dates when online booking is unavailable, plus an optional reason.
+
 ### Client
 
 `Client` stores customer name, optional email, required phone number, optional notes, and booking
@@ -79,8 +84,8 @@ paid timestamp, and audit timestamps.
 
 ### AuditLog
 
-`AuditLog` stores action history with optional actor and entity references. `metadata` is stored as a
-string so callers can serialize structured context when needed.
+`AuditLog` stores action history with optional actor and entity references. `metadata` is stored as
+structured JSON.
 
 ### OtpCode
 
@@ -96,15 +101,15 @@ instances.
 
 ## Running Migrations
 
-The schema uses SQLite with `url = "file:./dev.db"`, so local migrations create
-`prisma/dev.db`.
+The schema uses PostgreSQL with `url = env("DATABASE_URL")`, so local migrations require a
+configured PostgreSQL database URL.
 
 ```bash
 # Install dependencies and generate the Prisma client.
 npm install
 npm run prisma:generate
 
-# Apply migrations to the local SQLite database.
+# Apply migrations to the configured PostgreSQL database.
 npm run migrate:dev -- --schema prisma/schema.prisma
 
 # Seed the demo tenant and sample data.
@@ -123,9 +128,12 @@ checked-in migration:
 
 | Migration | Description |
 |-----------|-------------|
-| `20260611112538_init` | Creates the initial SQLite schema for tenants, users, services, staff, business hours, clients, bookings, payments, and audit logs. It also creates all unique constraints and tenant indexes declared in `schema.prisma`. |
+| `20260611112538_init` | Creates the initial schema for tenants, users, services, staff, business hours, clients, bookings, payments, and audit logs. It also creates all unique constraints and tenant indexes declared in `schema.prisma`. |
+| `20260708000000_add_schedule_blackouts` | Adds tenant-scoped blackout dates and relaxes business hours to support multiple windows per day. |
+| `20260722000000_add_booking_staff_overlap_constraint` | Adds a PostgreSQL exclusion constraint that prevents overlapping bookings for the same tenant and staff member. |
+| `20260727000000_audit_log_metadata_jsonb` | Converts audit metadata to JSONB. |
 | `20260729112000_add_otp_persistent_store` | Adds shared OTP code and OTP rate-limit tables used by phone authentication. |
 
 [`prisma/migrations/migration_lock.toml`](../prisma/migrations/migration_lock.toml) records the
-database provider as `sqlite`. Do not edit generated migration files by hand after they have been
+database provider as `postgresql`. Do not edit generated migration files by hand after they have been
 applied; create a new migration from schema changes instead.
