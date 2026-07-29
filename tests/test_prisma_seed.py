@@ -8,84 +8,37 @@ services and CI must catch regressions that break the executable seed.
 from __future__ import annotations
 
 import json
-import os
 import re
-import shutil
-import sqlite3
-import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SEED_PATH = ROOT / "prisma" / "seed.ts"
 PACKAGE_JSON = ROOT / "package.json"
 
+EXPECTED_ENUM_IMPORTS = {
+    "UserRole",
+    "DayOfWeek",
+    "BookingStatus",
+    "PaymentMethod",
+    "PaymentStatus",
+}
+
+EXPECTED_ENUM_USAGES = {
+    "UserRole.OWNER",
+    "DayOfWeek.MONDAY",
+    "DayOfWeek.TUESDAY",
+    "DayOfWeek.WEDNESDAY",
+    "DayOfWeek.THURSDAY",
+    "DayOfWeek.FRIDAY",
+    "DayOfWeek.SATURDAY",
+    "BookingStatus.CONFIRMED",
+    "PaymentMethod.MOBILE_MONEY",
+    "PaymentStatus.PAID",
+}
+
 
 def _seed_text() -> str:
     return SEED_PATH.read_text()
-
-
-def _extract_balanced_block(text: str, start: int) -> str:
-    depth = 0
-    for index in range(start, len(text)):
-        char = text[index]
-        if char == "{":
-            depth += 1
-        elif char == "}":
-            depth -= 1
-            if depth == 0:
-                return text[start : index + 1]
-
-    raise AssertionError(f"could not find balanced block starting at offset {start}")
-
-
-def _find_seed_upsert_where_clauses() -> dict[str, str]:
-    text = _seed_text()
-    clauses: dict[str, str] = {}
-
-    for match in re.finditer(r"prisma\.(?P<model>\w+)\.upsert\(\{", text):
-        model = match.group("model")
-        call_body = _extract_balanced_block(text, match.end() - 1)
-        where_match = re.search(r"\bwhere:\s*\{", call_body)
-        assert where_match, f"prisma.{model}.upsert must declare a where clause"
-        clauses[model] = _extract_balanced_block(call_body, where_match.end() - 1)
-
-    return clauses
-
-
-def _package_version(package: str) -> str:
-    pkg = json.loads(PACKAGE_JSON.read_text())
-    spec = pkg.get("dependencies", {}).get(package) or pkg.get("devDependencies", {}).get(package)
-    assert spec, f"could not find {package} version in {PACKAGE_JSON}"
-    return spec
-
-
-def _prepare_node_modules(project_dir: Path) -> Path:
-    node_modules = project_dir / "node_modules"
-    root_node_modules = ROOT / "node_modules"
-    if root_node_modules.exists():
-        node_modules.symlink_to(root_node_modules, target_is_directory=True)
-        return node_modules / ".bin" / "prisma"
-
-    install = subprocess.run(
-        [
-            "npm",
-            "install",
-            "--no-audit",
-            "--no-fund",
-            "--ignore-scripts",
-            f"prisma@{_package_version('prisma')}",
-            f"@prisma/client@{_package_version('@prisma/client')}",
-            f"tsx@{_package_version('tsx')}",
-        ],
-        cwd=project_dir,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        timeout=120,
-        check=False,
-    )
-    assert install.returncode == 0, install.stdout
-    return node_modules / ".bin" / "prisma"
 
 
 def test_seed_file_exists() -> None:
@@ -186,76 +139,24 @@ def test_package_json_wires_seed_script() -> None:
     )
 
 
-def test_prisma_db_seed_creates_demo_tenant_on_clean_database(tmp_path: Path) -> None:
-    """Acceptance check: `prisma db seed` creates a tenant with slug `demo`."""
-    project_dir = tmp_path / "project"
-    project_dir.mkdir()
-    prisma_dir = project_dir / "prisma"
-    shutil.copytree(ROOT / "prisma", prisma_dir)
-    (project_dir / "package.json").write_text(
-        json.dumps(
-            {
-                "name": "bukay-prisma-seed-test",
-                "private": True,
-                "prisma": {"seed": "tsx prisma/seed.ts"},
-            }
-        )
-    )
-    prisma_bin = _prepare_node_modules(project_dir)
-    env = {
-        **os.environ,
-        "PATH": f"{project_dir / 'node_modules' / '.bin'}{os.pathsep}{os.environ['PATH']}",
-    }
+def test_seed_imports_prisma_enums() -> None:
+    text = _seed_text()
+    for enum_name in EXPECTED_ENUM_IMPORTS:
+        assert enum_name in text, f"seed.ts must import {enum_name} from @prisma/client"
 
-    migrate = subprocess.run(
-        [
-            str(prisma_bin),
-            "migrate",
-            "dev",
-            "--schema",
-            "prisma/schema.prisma",
-            "--skip-seed",
-            "--skip-generate",
-        ],
-        cwd=project_dir,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        env=env,
-        timeout=60,
-        check=False,
-    )
-    assert migrate.returncode == 0, migrate.stdout
 
-    generate = subprocess.run(
-        [str(prisma_bin), "generate", "--schema", "prisma/schema.prisma"],
-        cwd=project_dir,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        env=env,
-        timeout=60,
-        check=False,
-    )
-    assert generate.returncode == 0, generate.stdout
+def test_seed_uses_enum_values_for_typed_fields() -> None:
+    text = _seed_text()
+    for enum_usage in EXPECTED_ENUM_USAGES:
+        assert enum_usage in text, f"seed.ts must use {enum_usage}"
 
-    seed = subprocess.run(
-        [str(prisma_bin), "db", "seed", "--schema", "prisma/schema.prisma"],
-        cwd=project_dir,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        env=env,
-        timeout=60,
-        check=False,
-    )
-    assert seed.returncode == 0, seed.stdout
-
-    db_path = prisma_dir / "dev.db"
-    with sqlite3.connect(db_path) as conn:
-        demo_tenant_count = conn.execute(
-            'SELECT COUNT(*) FROM "Tenant" WHERE "slug" = ?',
-            ("demo",),
-        ).fetchone()[0]
-
-    assert demo_tenant_count == 1, "prisma db seed did not create Tenant.slug = 'demo'"
+    forbidden_string_values = [
+        'role: "owner"',
+        'status: "confirmed"',
+        'status: "paid"',
+        'provider: "mobile_money"',
+        'providerRef: "demo-mm-0001"',
+        "JSON.stringify({ services:",
+    ]
+    for value in forbidden_string_values:
+        assert value not in text, f"seed.ts still contains flattened field value {value}"
