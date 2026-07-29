@@ -58,7 +58,15 @@ suite("prisma migrate + seed (integration)", () => {
     if (existsSync(staleDb)) rmSync(staleDb);
 
     dbPath = join(prismaDir, "dev.db");
-    env = { ...process.env, DATABASE_URL: `file:${dbPath}` };
+    // `prisma db seed` shells out to `tsx prisma/seed.ts`; add node_modules/.bin
+    // to PATH so the child process can find tsx and prisma binaries.
+    const nmBin = join(ROOT, "node_modules", ".bin");
+    const currentPath = process.env.PATH ?? "";
+    env = {
+      ...process.env,
+      DATABASE_URL: `file:${dbPath}`,
+      PATH: `${nmBin}:${currentPath}`,
+    };
 
     // Give the seed script a package.json + node_modules symlink so
     // `prisma db seed` (which runs `tsx prisma/seed.ts`) resolves.
