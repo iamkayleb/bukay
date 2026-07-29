@@ -137,8 +137,10 @@ beforeEach(() => {
         .slice(0, args.take)
   );
   state.updateBooking.mockImplementation(
-    async (args: { where: { id: string }; data: Partial<BookingRow> }) => {
-      const index = state.bookings.findIndex((row) => row.id === args.where.id);
+    async (args: { where: { id: string; tenantId: string }; data: Partial<BookingRow> }) => {
+      const index = state.bookings.findIndex(
+        (row) => row.id === args.where.id && row.tenantId === args.where.tenantId
+      );
       if (index === -1) {
         throw Object.assign(new Error("Record not found"), { code: "P2025" });
       }
@@ -162,6 +164,21 @@ beforeEach(() => {
 });
 
 describe("PATCH /api/bookings/:id", () => {
+  it("updates only a tenant-scoped booking", async () => {
+    const res = await PATCH(
+      request("/api/bookings/booking-1", { status: "cancelled", notes: "Client called" }),
+      { params: { id: "booking-1" } }
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.booking).toMatchObject({ id: "booking-1", status: "cancelled" });
+    expect(state.updateBooking).toHaveBeenCalledWith({
+      where: { id: "booking-1", tenantId: "tenant-1" },
+      data: { status: "cancelled", notes: "Client called" },
+    });
+  });
+
   it("rejects a startsAt-only update when the merged interval is outside business hours", async () => {
     const res = await PATCH(
       request("/api/bookings/booking-1", { startsAt: "2026-07-27T08:30:00.000Z" }),

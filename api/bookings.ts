@@ -169,7 +169,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       }
 
       const booking = await bookingDelegate.update({
-        where: { id: existingBooking.id },
+        where: { id: existingBooking.id, tenantId },
         data: updateData,
       });
 
