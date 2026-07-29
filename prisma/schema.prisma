@@ -180,3 +180,26 @@ model AuditLog {
   @@index([tenantId])
   @@index([tenantId, entityType, entityId])
 }
+
+model OtpCode {
+  phone     String   @id
+  hash      String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expiresAt])
+}
+
+model OtpRateLimit {
+  phone       String   @id
+  windowStart DateTime
+  count       Int      @default(0)
+  lastSentAt  DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([windowStart])
+}

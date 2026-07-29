@@ -38,8 +38,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "invalid_code_format" }, { status: 400 });
   }
 
-  const result = getOtpStore().verify(phone, code);
+  const result = await getOtpStore().verify(phone, code);
   if (!result.ok) {
+    if (result.reason === "expired") {
+      return NextResponse.json(
+        { ok: false, error: result.reason, message: "OTP expired" },
+        { status: 401 }
+      );
+    }
+    if (result.reason === "used") {
+      return NextResponse.json(
+        { ok: false, error: result.reason, message: "OTP already used" },
+        { status: 401 }
+      );
+    }
+
     const status = result.reason === "mismatch" || result.reason === "not_found" ? 401 : 410;
     return NextResponse.json({ ok: false, error: result.reason }, { status });
   }
