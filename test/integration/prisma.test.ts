@@ -247,17 +247,25 @@ suite("prisma migrate + seed (integration)", () => {
       });
       expect(staffRows).toHaveLength(1);
       expect(staffRows[0].name).toBe("Demo Owner");
+      expect(staffRows[0].email).toBe("owner@demo.bukay.dev");
       expect(staffRows[0].phone).toBe("+2348000000001");
+      expect(staffRows[0].active).toBe(true);
       const staffId = staffRows[0].id;
 
       const staffServices = await prisma.staffService.findMany({
         where: { tenantId },
       });
       expect(staffServices).toHaveLength(3);
+      // Every link points at the demo staff row.
       for (const link of staffServices) {
         expect(link.staffId).toBe(staffId);
-        expect(services.map((s) => s.id)).toContain(link.serviceId);
       }
+      // The linked services form the exact set of seeded services — one row
+      // per (staff, service) pair. A weaker `services.contains(serviceId)`
+      // check would silently accept duplicate links or a missing service.
+      const linkedServiceIds = staffServices.map((l) => l.serviceId).sort();
+      const expectedServiceIds = services.map((s) => s.id).sort();
+      expect(linkedServiceIds).toEqual(expectedServiceIds);
 
       const businessHours = await prisma.businessHour.findMany({
         where: { tenantId },
