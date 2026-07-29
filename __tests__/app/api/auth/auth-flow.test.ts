@@ -8,7 +8,13 @@ import { GET as me } from "@/app/api/auth/me/route";
 
 import { MemorySmsProvider } from "@/app/lib/sms/memory";
 import { __resetSmsProviderForTests, setSmsProviderForTests } from "@/app/lib/auth/sms";
-import { OTP_TTL_MS, __resetOtpStoreForTests, getOtpStore } from "@/app/lib/auth/otp";
+import {
+  OTP_MAX_REQUESTS_PER_WINDOW,
+  OTP_RESEND_COOLDOWN_MS,
+  OTP_TTL_MS,
+  __resetOtpStoreForTests,
+  getOtpStore,
+} from "@/app/lib/auth/otp";
 import { SESSION_COOKIE_NAME } from "@/app/lib/auth/session";
 
 function jsonRequest(url: string, body: unknown, init?: { cookie?: string }): NextRequest {
@@ -136,7 +142,7 @@ describe("end-to-end auth flow", () => {
     expect(body.error).toBe("not_found");
   });
 
-  it("rate-limits brute-force OTP requests", async () => {
+  it("applies resend cooldown between consecutive OTP requests", async () => {
     // First /login is fine; subsequent rapid logins should hit cooldown -> 429
     const first = await login(jsonRequest("http://test/api/auth/login", { phone: PHONE_LOCAL }));
     expect(first.status).toBe(200);
@@ -146,6 +152,25 @@ describe("end-to-end auth flow", () => {
     expect(second.headers.get("retry-after")).toMatch(/^\d+$/);
     const body = await second.json();
     expect(body.error).toBe("cooldown");
+  });
+
+  it("rejects OTP requests beyond the configured rate-limit window", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+
+    for (let i = 0; i < OTP_MAX_REQUESTS_PER_WINDOW; i++) {
+      const res = await login(jsonRequest("http://test/api/auth/login", { phone: PHONE_LOCAL }));
+      expect(res.status).toBe(200);
+      vi.advanceTimersByTime(OTP_RESEND_COOLDOWN_MS + 1);
+    }
+
+    const blocked = await login(jsonRequest("http://test/api/auth/login", { phone: PHONE_LOCAL }));
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers.get("retry-after")).toMatch(/^\d+$/);
+    const body = await blocked.json();
+    expect(body.ok).toBe(false);
+    expect(body.error).toBe("rate_limited");
+    expect(body.message).toBe("rate limit exceeded");
   });
 
   it("rejects an invalid phone number", async () => {
