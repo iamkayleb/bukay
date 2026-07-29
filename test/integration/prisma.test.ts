@@ -128,24 +128,28 @@ suite("prisma migrate + seed (integration)", () => {
     expect(existsSync(dbPath)).toBe(true);
   });
 
-  it("every tenant-scoped model has a tenantId index in the applied schema", async () => {
+  it("every tenant-scoped model has an explicit single-column tenantId index", async () => {
     // Directly validates acceptance criterion #1 at the DB level: every
     // tenant-scoped model's @@index([tenantId]) directive must materialize
-    // as an actual SQLite index. Trusting the schema file alone would miss
-    // cases where a directive is present but a migration was hand-edited.
+    // as an actual single-column SQLite index. A composite index from
+    // `@@unique([tenantId, x])` also contains tenantId, so we assert the
+    // exact Prisma-emitted name (`{Model}_tenantId_idx`) to catch cases
+    // where the explicit `@@index([tenantId])` was silently dropped but a
+    // composite tenantId index still exists.
     const { PrismaClient } = await import("@prisma/client");
     const prisma = new PrismaClient({
       datasources: { db: { url: `file:${dbPath}` } },
     });
     try {
       const rows = (await prisma.$queryRawUnsafe(
-        `SELECT tbl_name, name FROM sqlite_master WHERE type = 'index' AND sql LIKE '%tenantId%'`
-      )) as Array<{ tbl_name: string; name: string }>;
-      const tablesWithTenantIndex = new Set(rows.map((r) => r.tbl_name));
+        `SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE '%_tenantId_idx'`
+      )) as Array<{ name: string }>;
+      const indexNames = new Set(rows.map((r) => r.name));
       for (const model of TENANT_SCOPED_MODELS) {
+        const expected = `${model}_tenantId_idx`;
         expect(
-          tablesWithTenantIndex.has(model),
-          `expected ${model} to have a tenantId index; saw indexes on: ${[...tablesWithTenantIndex].sort().join(", ")}`
+          indexNames.has(expected),
+          `expected explicit single-column index ${expected}; saw: ${[...indexNames].sort().join(", ")}`
         ).toBe(true);
       }
     } finally {
