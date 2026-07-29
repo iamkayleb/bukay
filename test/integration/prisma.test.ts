@@ -32,6 +32,22 @@ const ROOT = process.cwd();
 const PRISMA_BIN = join(ROOT, "node_modules", ".bin", "prisma");
 const MIGRATIONS_DIR = join(ROOT, "prisma", "migrations");
 
+// Every tenant-scoped model whose @@index([tenantId]) directive is required
+// by the multi-tenant scoping invariant. Kept in sync with the tables listed
+// in the acceptance criteria and in docs/DATA_MODEL.md.
+const TENANT_SCOPED_MODELS = [
+  "AuditLog",
+  "Blackout",
+  "Booking",
+  "BusinessHour",
+  "Client",
+  "Payment",
+  "Service",
+  "Staff",
+  "StaffService",
+  "User",
+] as const;
+
 const canRun = existsSync(PRISMA_BIN);
 const suite = canRun ? describe : describe.skip;
 
@@ -110,6 +126,31 @@ suite("prisma migrate + seed (integration)", () => {
     // (b) no error keywords emitted
     expect(combined.toLowerCase()).not.toMatch(/\berror\b|\bfailed\b|migration engine panicked/);
     expect(existsSync(dbPath)).toBe(true);
+  });
+
+  it("every tenant-scoped model has a tenantId index in the applied schema", async () => {
+    // Directly validates acceptance criterion #1 at the DB level: every
+    // tenant-scoped model's @@index([tenantId]) directive must materialize
+    // as an actual SQLite index. Trusting the schema file alone would miss
+    // cases where a directive is present but a migration was hand-edited.
+    const { PrismaClient } = await import("@prisma/client");
+    const prisma = new PrismaClient({
+      datasources: { db: { url: `file:${dbPath}` } },
+    });
+    try {
+      const rows = (await prisma.$queryRawUnsafe(
+        `SELECT tbl_name, name FROM sqlite_master WHERE type = 'index' AND sql LIKE '%tenantId%'`
+      )) as Array<{ tbl_name: string; name: string }>;
+      const tablesWithTenantIndex = new Set(rows.map((r) => r.tbl_name));
+      for (const model of TENANT_SCOPED_MODELS) {
+        expect(
+          tablesWithTenantIndex.has(model),
+          `expected ${model} to have a tenantId index; saw indexes on: ${[...tablesWithTenantIndex].sort().join(", ")}`
+        ).toBe(true);
+      }
+    } finally {
+      await prisma.$disconnect();
+    }
   });
 
   it("_prisma_migrations rows match the checked-in migration folders exactly", async () => {
