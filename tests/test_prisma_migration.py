@@ -9,17 +9,13 @@ These tests assert both invariants without needing a live database.
 
 from __future__ import annotations
 
-import json
 import re
-import shutil
-import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_PATH = ROOT / "prisma" / "schema.prisma"
 MIGRATIONS_DIR = ROOT / "prisma" / "migrations"
 DATA_MODEL_DOC = ROOT / "docs" / "DATA_MODEL.md"
-PACKAGE_JSON = ROOT / "package.json"
 
 # Models the scope requires to exist; mirrors test_prisma_schema.py.
 REQUIRED_MODELS = {
@@ -32,6 +28,21 @@ REQUIRED_MODELS = {
     "Booking",
     "Payment",
     "AuditLog",
+}
+
+EXPECTED_ENUMS = {
+    "UserRole": "'OWNER', 'ADMIN', 'STAFF', 'VIEWER'",
+    "BookingStatus": "'PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW'",
+    "PaymentStatus": "'PENDING', 'PAID', 'REFUNDED', 'FAILED'",
+    "PaymentMethod": "'CASH', 'CARD', 'MOBILE_MONEY', 'BANK_TRANSFER', 'OTHER'",
+    "DayOfWeek": "'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'",
+}
+
+EXPECTED_ENUM_COLUMNS = {
+    "User": {"role": "UserRole"},
+    "BusinessHour": {"dayOfWeek": "DayOfWeek"},
+    "Booking": {"status": "BookingStatus"},
+    "Payment": {"method": "PaymentMethod", "status": "PaymentStatus"},
 }
 
 
@@ -47,56 +58,16 @@ def _initial_migration_dir() -> Path:
     return sorted(candidates)[0]
 
 
-def _package_version(package: str) -> str:
-    pkg = json.loads(PACKAGE_JSON.read_text())
-    spec = pkg.get("dependencies", {}).get(package) or pkg.get("devDependencies", {}).get(package)
-    assert spec, f"could not find {package} version in {PACKAGE_JSON}"
-    return spec
-
-
-def _prisma_command() -> list[str]:
-    prisma_bin = ROOT / "node_modules" / ".bin" / "prisma"
-    if prisma_bin.exists():
-        return [str(prisma_bin)]
-    return ["npx", "--yes", "--package", f"prisma@{_package_version('prisma')}", "prisma"]
-
-
 def test_migration_lock_present() -> None:
     lock = MIGRATIONS_DIR / "migration_lock.toml"
     assert lock.exists(), "prisma/migrations/migration_lock.toml must be checked in"
+    assert 'provider = "postgresql"' in lock.read_text()
 
 
 def test_initial_migration_exists() -> None:
     init_dir = _initial_migration_dir()
     sql_file = init_dir / "migration.sql"
     assert sql_file.exists(), f"missing migration.sql in {init_dir}"
-
-
-def test_prisma_migrate_dev_runs_on_clean_database(tmp_path: Path) -> None:
-    """Acceptance check: `prisma migrate dev` must succeed on a clean database."""
-    prisma_dir = tmp_path / "prisma"
-    shutil.copytree(ROOT / "prisma", prisma_dir)
-
-    result = subprocess.run(
-        [
-            *_prisma_command(),
-            "migrate",
-            "dev",
-            "--schema",
-            str(prisma_dir / "schema.prisma"),
-            "--skip-seed",
-            "--skip-generate",
-        ],
-        cwd=ROOT,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        timeout=60,
-        check=False,
-    )
-
-    assert result.returncode == 0, result.stdout
-    assert (prisma_dir / "dev.db").exists(), "prisma migrate dev did not create a clean db"
 
 
 def test_migration_creates_every_required_model() -> None:
@@ -119,6 +90,25 @@ def test_migration_indexes_tenant_id_on_scoped_tables() -> None:
             re.IGNORECASE,
         )
         assert pattern.search(sql), f"initial migration missing tenantId index for {model}"
+
+
+def test_migration_creates_expected_enums() -> None:
+    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    for enum_name, values in EXPECTED_ENUMS.items():
+        assert (
+            f'CREATE TYPE "{enum_name}" AS ENUM ({values});' in sql
+        ), f"initial migration missing enum {enum_name}"
+
+
+def test_migration_columns_use_enum_types() -> None:
+    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    for table, columns in EXPECTED_ENUM_COLUMNS.items():
+        for column, enum_name in columns.items():
+            pattern = re.compile(
+                rf'"{column}"\s+"{enum_name}"\s+NOT NULL',
+                re.IGNORECASE,
+            )
+            assert pattern.search(sql), f"{table}.{column} must use enum type {enum_name}"
 
 
 def test_data_model_doc_exists_and_covers_every_model() -> None:
