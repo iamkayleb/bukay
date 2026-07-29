@@ -89,8 +89,13 @@ beforeEach(() => {
   state.update.mockReset();
   state.tenantFindUnique.mockReset();
 
-  state.findMany.mockImplementation(async (args: { where: { tenantId: string } }) =>
-    state.services.filter((row) => row.tenantId === args.where.tenantId)
+  state.findMany.mockImplementation(
+    async (args: { where: { tenantId: string; active?: boolean } }) =>
+      state.services.filter(
+        (row) =>
+          row.tenantId === args.where.tenantId &&
+          (args.where.active === undefined || row.active === args.where.active)
+      )
   );
   state.create.mockImplementation(async (args: { data: CreateServiceData }) => {
     if (
@@ -163,7 +168,30 @@ describe("/api/services", () => {
       priceKobo: 750000,
     });
     expect(state.findMany).toHaveBeenCalledWith({
-      where: { tenantId: "tenant-1" },
+      where: { tenantId: "tenant-1", active: true },
+      orderBy: [{ active: "desc" }, { name: "asc" }],
+    });
+  });
+
+  it("does not expose archived services in the public list", async () => {
+    state.services.push(
+      service({ id: "service-3", tenantId: "tenant-1", name: "Archived", active: false })
+    );
+
+    const res = await GET(request("/api/services"));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.services).toHaveLength(1);
+    expect(body.services).toEqual([
+      expect.objectContaining({
+        id: "service-1",
+        active: true,
+      }),
+    ]);
+    expect(body.services.some((service: ServiceRow) => service.id === "service-3")).toBe(false);
+    expect(state.findMany).toHaveBeenCalledWith({
+      where: { tenantId: "tenant-1", active: true },
       orderBy: [{ active: "desc" }, { name: "asc" }],
     });
   });
@@ -378,7 +406,7 @@ describe("/api/services", () => {
       select: { id: true },
     });
     expect(state.findMany).toHaveBeenCalledWith({
-      where: { tenantId: "tenant-from-slug" },
+      where: { tenantId: "tenant-from-slug", active: true },
       orderBy: [{ active: "desc" }, { name: "asc" }],
     });
   });

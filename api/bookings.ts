@@ -33,6 +33,24 @@ type BookingUpdateData = {
   notes?: string | null;
 };
 
+type BookingCreateData = {
+  tenantId: string;
+  clientId: string;
+  serviceId: string;
+  staffId: string | null;
+  startsAt: Date;
+  endsAt: Date;
+  status: string;
+  notes?: string | null;
+};
+
+type BookingServiceRecord = {
+  id: string;
+  tenantId: string;
+  durationMinutes: number;
+  active: boolean;
+};
+
 const bookingDateField = z.preprocess(
   (value) => {
     if (typeof value !== "string") {
@@ -59,10 +77,25 @@ const updateBookingSchema = z
     path: ["_form"],
   });
 
+const createBookingSchema = z
+  .object({
+    clientId: z.string().trim().min(1, "Client is required"),
+    serviceId: z.string().trim().min(1, "Service is required"),
+    staffId: z.string().trim().min(1, "Staff is required").nullable().optional(),
+    startsAt: bookingDateField,
+    notes: z.string().nullable().optional(),
+  })
+  .strict();
+
 const bookingDelegate = prisma.booking as unknown as {
   findFirst(args: unknown): Promise<BookingRecord | null>;
   findMany(args: unknown): Promise<BookingRecord[]>;
+  create(args: unknown): Promise<BookingRecord>;
   update(args: unknown): Promise<BookingRecord>;
+};
+
+const serviceDelegate = prisma.service as unknown as {
+  findFirst(args: unknown): Promise<BookingServiceRecord | null>;
 };
 
 const businessHourDelegate = prisma.businessHour as unknown as {
@@ -123,6 +156,76 @@ function buildValidationStore(): BookingValidationStore {
       return overlappingBookings[0] ?? null;
     },
   };
+}
+
+export async function POST(req: NextRequest) {
+  const body = await readJson(req);
+  if (body instanceof NextResponse) {
+    return body;
+  }
+
+  const parsed = createBookingSchema.safeParse(body);
+  if (!parsed.success) {
+    return validationError(parsed.error);
+  }
+
+  return runForTenant(req, async (tenantId) => {
+    const service = await serviceDelegate.findFirst({
+      where: {
+        tenantId,
+        id: parsed.data.serviceId,
+        active: true,
+      },
+    });
+
+    if (!service) {
+      return jsonError("SERVICE_NOT_FOUND", 404);
+    }
+
+    const staffId = parsed.data.staffId ?? null;
+    const startsAt = parsed.data.startsAt;
+    const endsAt = new Date(startsAt.getTime() + service.durationMinutes * 60_000);
+    const pendingBooking = {
+      id: "new-booking",
+      tenantId,
+      staffId,
+      startsAt,
+      endsAt,
+    };
+    const validationIssue = await validateBookingInterval(buildValidationStore(), pendingBooking, {
+      startsAt,
+      endsAt,
+      staffId,
+    });
+
+    if (validationIssue) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: validationIssue.code,
+          message: validationIssue.message,
+        },
+        { status: validationIssue.status }
+      );
+    }
+
+    const data: BookingCreateData = {
+      tenantId,
+      clientId: parsed.data.clientId,
+      serviceId: service.id,
+      staffId,
+      startsAt,
+      endsAt,
+      status: "pending",
+      notes: parsed.data.notes,
+    };
+
+    const booking = await bookingDelegate.create({
+      data,
+    });
+
+    return NextResponse.json({ ok: true, booking: serializeBooking(booking) }, { status: 201 });
+  });
 }
 
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
