@@ -76,7 +76,7 @@ suite("prisma migrate + seed (integration)", () => {
         name: "bukay-prisma-integration",
         private: true,
         prisma: { seed: "tsx prisma/seed.ts" },
-      }),
+      })
     );
     const nmLink = join(projectDir, "node_modules");
     if (!existsSync(nmLink)) {
@@ -101,16 +101,14 @@ suite("prisma migrate + seed (integration)", () => {
         "--skip-seed",
         "--skip-generate",
       ],
-      { cwd: projectDir, env, encoding: "utf8", timeout: 90_000 },
+      { cwd: projectDir, env, encoding: "utf8", timeout: 90_000 }
     );
 
     const combined = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
     // (a) migrate exits with code 0
     expect(result.status, combined).toBe(0);
     // (b) no error keywords emitted
-    expect(combined.toLowerCase()).not.toMatch(
-      /\berror\b|\bfailed\b|migration engine panicked/,
-    );
+    expect(combined.toLowerCase()).not.toMatch(/\berror\b|\bfailed\b|migration engine panicked/);
     expect(existsSync(dbPath)).toBe(true);
   });
 
@@ -118,7 +116,7 @@ suite("prisma migrate + seed (integration)", () => {
     const generate = spawnSync(
       PRISMA_BIN,
       ["generate", "--schema", join(prismaDir, "schema.prisma")],
-      { cwd: projectDir, env, encoding: "utf8", timeout: 90_000 },
+      { cwd: projectDir, env, encoding: "utf8", timeout: 90_000 }
     );
     expect(generate.status, `${generate.stdout}\n${generate.stderr}`).toBe(0);
 
@@ -128,7 +126,7 @@ suite("prisma migrate + seed (integration)", () => {
     });
     try {
       const rows = (await prisma.$queryRawUnsafe(
-        `SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NOT NULL ORDER BY migration_name`,
+        `SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NOT NULL ORDER BY migration_name`
       )) as Array<{ migration_name: string }>;
       const applied = rows.map((r) => r.migration_name).sort();
       const onDisk = listMigrationFolders();
@@ -149,7 +147,7 @@ suite("prisma migrate + seed (integration)", () => {
     const seed = spawnSync(
       PRISMA_BIN,
       ["db", "seed", "--schema", join(prismaDir, "schema.prisma")],
-      { cwd: projectDir, env, encoding: "utf8", timeout: 90_000 },
+      { cwd: projectDir, env, encoding: "utf8", timeout: 90_000 }
     );
     expect(seed.status, `${seed.stdout}\n${seed.stderr}`).toBe(0);
 
@@ -177,7 +175,7 @@ suite("prisma migrate + seed (integration)", () => {
       });
       expect(services).toHaveLength(3);
       expect(services.map((s) => s.name).sort()).toEqual(
-        ["Beard Trim", "Classic Haircut", "Full Grooming Package"].sort(),
+        ["Beard Trim", "Classic Haircut", "Full Grooming Package"].sort()
       );
 
       const staffRows = await prisma.staff.findMany({
@@ -207,6 +205,7 @@ suite("prisma migrate + seed (integration)", () => {
       for (const row of businessHours) {
         expect(row.opensAt).toBe("09:00");
         expect(row.closesAt).toBe("18:00");
+        expect(row.isClosed).toBe(false);
       }
 
       const blackouts = await prisma.blackout.findMany({ where: { tenantId } });
@@ -216,6 +215,8 @@ suite("prisma migrate + seed (integration)", () => {
 
       const clients = await prisma.client.findMany({ where: { tenantId } });
       expect(clients).toHaveLength(1);
+      expect(clients[0].name).toBe("Demo Client");
+      expect(clients[0].email).toBe("client@demo.bukay.dev");
       expect(clients[0].phone).toBe("+2348000000099");
 
       const bookings = await prisma.booking.findMany({ where: { tenantId } });
@@ -225,6 +226,11 @@ suite("prisma migrate + seed (integration)", () => {
       expect(bookings[0].staffId).toBe(staffId);
       const haircut = services.find((s) => s.name === "Classic Haircut");
       expect(bookings[0].serviceId).toBe(haircut!.id);
+      // startsAt matches the seed-pinned wall clock; endsAt = startsAt + duration.
+      const expectedStart = new Date("2026-06-15T10:00:00.000Z");
+      const expectedEnd = new Date(expectedStart.getTime() + haircut!.durationMinutes * 60_000);
+      expect(bookings[0].startsAt.toISOString()).toBe(expectedStart.toISOString());
+      expect(bookings[0].endsAt.toISOString()).toBe(expectedEnd.toISOString());
 
       const payments = await prisma.payment.findMany({ where: { tenantId } });
       expect(payments).toHaveLength(1);
@@ -234,12 +240,19 @@ suite("prisma migrate + seed (integration)", () => {
       expect(payments[0].provider).toBe("mobile_money");
       expect(payments[0].providerRef).toBe("demo-mm-0001");
       expect(payments[0].bookingId).toBe(bookings[0].id);
+      expect(payments[0].paidAt).not.toBeNull();
+      expect(payments[0].paidAt!.toISOString()).toBe(expectedStart.toISOString());
 
       const auditLogs = await prisma.auditLog.findMany({ where: { tenantId } });
       expect(auditLogs).toHaveLength(1);
       expect(auditLogs[0].action).toBe("seed.bootstrap");
       expect(auditLogs[0].entityType).toBe("Tenant");
       expect(auditLogs[0].entityId).toBe(tenantId);
+      expect(auditLogs[0].actorId).toBe(users[0].id);
+      // Metadata is a JSON string; parse it and assert the seeded counts.
+      expect(auditLogs[0].metadata).not.toBeNull();
+      const meta = JSON.parse(auditLogs[0].metadata as string);
+      expect(meta).toEqual({ services: 3, bookings: 1, payments: 1 });
     } finally {
       await prisma.$disconnect();
     }
