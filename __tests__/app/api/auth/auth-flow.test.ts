@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 import { POST as login } from "@/app/api/auth/login/route";
@@ -8,7 +8,7 @@ import { GET as me } from "@/app/api/auth/me/route";
 
 import { MemorySmsProvider } from "@/app/lib/sms/memory";
 import { __resetSmsProviderForTests, setSmsProviderForTests } from "@/app/lib/auth/sms";
-import { __resetOtpStoreForTests, getOtpStore } from "@/app/lib/auth/otp";
+import { OTP_TTL_MS, __resetOtpStoreForTests, getOtpStore } from "@/app/lib/auth/otp";
 import { SESSION_COOKIE_NAME } from "@/app/lib/auth/session";
 
 function jsonRequest(url: string, body: unknown, init?: { cookie?: string }): NextRequest {
@@ -37,11 +37,16 @@ const PHONE_E164 = "+2348031234567";
 let sms: MemorySmsProvider;
 
 beforeEach(() => {
+  vi.useRealTimers();
   process.env.SESSION_SECRET = "test-secret-must-be-long-enough";
   __resetOtpStoreForTests();
   __resetSmsProviderForTests();
   sms = new MemorySmsProvider();
   setSmsProviderForTests(sms);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("end-to-end auth flow", () => {
@@ -93,6 +98,25 @@ describe("end-to-end auth flow", () => {
     const body = await res.json();
     expect(body.ok).toBe(false);
     expect(body.error).toBe("mismatch");
+  });
+
+  it("rejects an expired OTP with an explicit expiration message", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+
+    await login(jsonRequest("http://test/api/auth/login", { phone: PHONE_LOCAL }));
+    const code = extractCode(sms.lastTo(PHONE_E164)!.body);
+
+    vi.advanceTimersByTime(OTP_TTL_MS + 1);
+
+    const res = await verify(
+      jsonRequest("http://test/api/auth/verify", { phone: PHONE_LOCAL, code })
+    );
+    expect([400, 401]).toContain(res.status);
+    const body = await res.json();
+    expect(body.ok).toBe(false);
+    expect(body.error).toBe("expired");
+    expect(body.message).toBe("OTP expired");
   });
 
   it("rejects a used OTP on second verify", async () => {
