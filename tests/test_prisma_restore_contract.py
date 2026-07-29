@@ -58,6 +58,16 @@ RESTORED_SCHEMA_FIELD_CONTRACT = {
     "AuditLog": (r"metadata\s+String\?",),
 }
 
+RESTORED_SEED_STRING_CONTRACT = (
+    'import { PrismaClient } from "@prisma/client";',
+    'role: "owner"',
+    "const weekdays = [1, 2, 3, 4, 5, 6];",
+    'status: "confirmed"',
+    'provider: "mobile_money"',
+    'status: "paid"',
+    "metadata: JSON.stringify({ services: services.length, bookings: 1, payments: 1 })",
+)
+
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -101,6 +111,14 @@ def test_prisma_files_do_not_reintroduce_postgres_enum_model_changes() -> None:
 
     for marker in FORBIDDEN_POSTGRES_ENUM_MARKERS:
         assert marker not in combined_text, f"found forbidden Postgres/enum marker: {marker}"
+
+
+def test_restored_seed_uses_sqlite_string_values() -> None:
+    seed_text = (ROOT / "prisma" / "seed.ts").read_text()
+
+    assert "PrismaClient,\n" not in seed_text
+    for expected_text in RESTORED_SEED_STRING_CONTRACT:
+        assert expected_text in seed_text
 
 
 def test_restored_schema_keeps_sqlite_string_field_contract() -> None:
