@@ -1,4 +1,4 @@
-import { createHash, randomInt } from "node:crypto";
+import { createHmac, randomInt } from "node:crypto";
 import { prisma } from "@/app/db/prisma";
 
 export const OTP_TTL_MS = 5 * 60 * 1000;
@@ -28,8 +28,21 @@ export type VerifyResult =
   | { ok: true }
   | { ok: false; reason: "not_found" | "expired" | "used" | "mismatch" | "too_many_attempts" };
 
+const DEVELOPMENT_OTP_SECRET = "development-only-otp-secret";
+
+export function getOtpSecret(): string {
+  const secret = process.env.OTP_SECRET;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("OTP_SECRET must be set in production to sign OTP codes");
+  }
+  return DEVELOPMENT_OTP_SECRET;
+}
+
+getOtpSecret();
+
 function hashCode(phone: string, code: string): string {
-  return createHash("sha256").update(`${phone}:${code}`).digest("hex");
+  return createHmac("sha256", getOtpSecret()).update(`${phone}:${code}`).digest("hex");
 }
 
 function generateCode(): string {
