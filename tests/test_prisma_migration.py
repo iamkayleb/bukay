@@ -128,16 +128,24 @@ def test_migration_creates_every_required_model() -> None:
 
 
 def test_migration_indexes_tenant_id_on_scoped_tables() -> None:
-    """Every tenant-scoped table needs an index on tenantId in the migration history."""
+    """AC1 at the migration SQL level: every tenant-scoped table needs the
+    explicit single-column tenantId index `<Model>_tenantId_idx` — a composite
+    index like `Booking_tenantId_startsAt_idx` does NOT satisfy the acceptance
+    criterion because it is not the single-column form the schema declares.
+    """
     sql = _all_migrations_sql()
     for model in REQUIRED_MODELS - {"Tenant"}:
         # Prisma emits `CREATE INDEX "<Model>_tenantId_idx" ON "<Model>"("tenantId")`
-        # (or a composite index whose first column is tenantId).
+        # for the single-column `@@index([tenantId])` directive.
         pattern = re.compile(
-            rf'CREATE INDEX\s+"{model}_tenantId[^"]*_idx"\s+ON\s+"{model}"\s*\(\s*"tenantId"',
+            rf'CREATE INDEX\s+"{model}_tenantId_idx"\s+ON\s+"{model}"\s*\(\s*"tenantId"\s*\)',
             re.IGNORECASE,
         )
-        assert pattern.search(sql), f"migration history missing tenantId index for {model}"
+        assert pattern.search(sql), (
+            f"migration history missing explicit single-column tenantId index "
+            f"'{model}_tenantId_idx' for {model} (composite tenantId indexes do "
+            f"not satisfy AC1)"
+        )
 
 
 def test_data_model_doc_exists_and_covers_every_model() -> None:
