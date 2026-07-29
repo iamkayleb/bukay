@@ -76,14 +76,35 @@ def test_seed_upserts_tenant() -> None:
     assert "prisma.tenant.upsert" in text, "seed.ts must upsert the demo tenant"
 
 
-def test_tenant_scoped_upserts_have_top_level_tenant_id() -> None:
+def test_tenant_scoped_upserts_use_only_compound_unique_key_in_where() -> None:
     text = _seed_text()
-    for model in ("user", "client"):
-        assert re.search(
-            rf"prisma\.{model}\.upsert\(\{{\s*where:\s*\{{"
-            rf"\s*tenantId_\w+:\s*\{{\s*tenantId:\s*tenant\.id,",
+    expected_compound_keys = {
+        "user": "tenantId_email",
+        "client": "tenantId_phone",
+    }
+
+    for model, compound_key in expected_compound_keys.items():
+        match = re.search(
+            rf"prisma\.{model}\.upsert\(\{{\s*where:\s*\{{(?P<where>.*?)\}}\s*,\s*update:",
             text,
-        ), f"prisma.{model}.upsert must include a top-level tenantId in where"
+            re.DOTALL,
+        )
+        assert match, f"prisma.{model}.upsert must declare a where clause"
+        where_clause = match.group("where")
+
+        assert re.search(
+            rf"\b{compound_key}:\s*\{{\s*tenantId:\s*tenant\.id,",
+            where_clause,
+            re.DOTALL,
+        ), f"prisma.{model}.upsert must use the {compound_key} compound unique key"
+        assert not re.search(
+            r"(?:^|[,{]\s*)tenantId:\s*tenant\.id\s*,?\s*(?:$|[},])",
+            where_clause.replace(
+                re.search(rf"{compound_key}:\s*\{{.*?\}}", where_clause, re.DOTALL).group(0),
+                "",
+            ),
+            re.DOTALL,
+        ), f"prisma.{model}.upsert must not include top-level tenantId in where"
 
 
 def test_seed_defines_exactly_three_services() -> None:
