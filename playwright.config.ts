@@ -11,7 +11,7 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: "list",
-  snapshotPathTemplate: "{testDir}/__snapshots__/{testFilePath}/{arg}{ext}",
+  snapshotPathTemplate: "{testDir}/__snapshots__/{arg}{ext}",
   use: {
     baseURL,
     trace: "on-first-retry",

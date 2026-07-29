@@ -22,8 +22,6 @@ async function addAuthenticatedSession(context: BrowserContext) {
   const token = signSession({
     sub: "visual-user",
     phone: "+2348012345678",
-    tenantId: "visual-tenant",
-    tenantSlug: "visual-workspace",
     iat: now,
     exp: now + SESSION_TTL_MS,
   });
@@ -48,9 +46,8 @@ test.describe("authenticated app layout visual regression", () => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/today");
     await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
-    await expect(page.getByTestId("tenant-name")).toHaveText("visual-workspace");
 
-    await expect(page).toHaveScreenshot("app-layout-desktop.png", {
+    await expect(page).toHaveScreenshot("app-desktop.png", {
       animations: "disabled",
       fullPage: true,
     });
@@ -64,7 +61,19 @@ test.describe("authenticated app layout visual regression", () => {
     await page.getByRole("button", { name: "Open navigation menu" }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
 
-    await expect(page).toHaveScreenshot("app-layout-mobile-drawer.png", {
+    await expect(page).toHaveScreenshot("app-mobile-drawer.png", {
+      animations: "disabled",
+      fullPage: true,
+    });
+  });
+
+  test("matches the mobile authenticated shell baseline with the drawer closed", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/today");
+    await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
+    await expect(page.getByRole("dialog")).toBeHidden();
+
+    await expect(page).toHaveScreenshot("app-mobile-nondrawer.png", {
       animations: "disabled",
       fullPage: true,
     });
