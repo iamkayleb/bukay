@@ -9,6 +9,7 @@ and makes future drift explicit in CI.
 from __future__ import annotations
 
 import hashlib
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -46,9 +47,22 @@ FORBIDDEN_POSTGRES_ENUM_MARKERS = (
     "UserRole",
 )
 
+RESTORED_SCHEMA_FIELD_CONTRACT = {
+    "User": (r"role\s+String\s+@default\(\"owner\"\)",),
+    "BusinessHour": (r"dayOfWeek\s+Int\b",),
+    "Booking": (r"status\s+String\s+@default\(\"pending\"\)",),
+    "Payment": (r"status\s+String\s+@default\(\"pending\"\)",),
+    "AuditLog": (r"metadata\s+String\?",),
+}
+
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _model_blocks(schema_text: str) -> dict[str, str]:
+    pattern = re.compile(r"^model\s+(\w+)\s*\{([^}]*)\}", re.MULTILINE | re.DOTALL)
+    return {match.group(1): match.group(2) for match in pattern.finditer(schema_text)}
 
 
 def test_restored_data_model_files_match_pinned_contents() -> None:
@@ -79,3 +93,20 @@ def test_prisma_files_do_not_reintroduce_postgres_enum_model_changes() -> None:
 
     for marker in FORBIDDEN_POSTGRES_ENUM_MARKERS:
         assert marker not in combined_text, f"found forbidden Postgres/enum marker: {marker}"
+
+
+def test_restored_schema_keeps_sqlite_string_field_contract() -> None:
+    schema_text = (ROOT / "prisma" / "schema.prisma").read_text()
+    blocks = _model_blocks(schema_text)
+
+    assert 'provider = "sqlite"' in schema_text
+    assert 'url      = "file:./dev.db"' in schema_text
+    assert "StaffService" not in blocks
+    assert "Blackout" not in blocks
+
+    for model, field_patterns in RESTORED_SCHEMA_FIELD_CONTRACT.items():
+        body = blocks[model]
+        for field_pattern in field_patterns:
+            assert re.search(
+                field_pattern, body
+            ), f"{model} missing restored field: {field_pattern}"
