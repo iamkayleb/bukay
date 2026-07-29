@@ -83,3 +83,59 @@ def test_tenant_model_has_no_tenant_id() -> None:
     assert not re.search(
         r"^\s*tenantId\s+", body, re.MULTILINE
     ), "Tenant model must not carry its own tenantId column"
+
+
+# Payment field names the seed script writes to. If the schema drifts from
+# these names, `prisma db seed` fails at runtime — this test catches the
+# rename regression statically. Mirrors acceptance criterion #3 (c).
+PAYMENT_REQUIRED_FIELDS = {
+    "tenantId": "String",
+    "bookingId": "String",
+    "amountCents": "Int",
+    "currency": "String",
+    "provider": "String?",
+    "providerRef": "String?",
+    "status": "String",
+    "paidAt": "DateTime?",
+}
+
+
+def test_payment_model_has_expected_field_names_and_types() -> None:
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    body = blocks["Payment"]
+    for field, ptype in PAYMENT_REQUIRED_FIELDS.items():
+        # Field declarations look like `name  Type` at start of a line.
+        # Type may carry `?` (optional) or `[]` (list) modifiers.
+        pattern = re.compile(
+            rf"^\s*{re.escape(field)}\s+{re.escape(ptype)}(\s|$)",
+            re.MULTILINE,
+        )
+        assert pattern.search(
+            body
+        ), f"Payment.{field} must be declared as `{field} {ptype}`; body:\n{body}"
+
+
+def test_schema_declares_no_prisma_enums() -> None:
+    """Acceptance criterion #3 (d): enum fields converted to string/integer.
+
+    Prisma enum blocks are declared with `enum Name { ... }`. The seed script
+    writes string literals for status columns, so the schema must not carry
+    any `enum` block that would break at insert-time.
+    """
+    text = SCHEMA_PATH.read_text()
+    enum_blocks = re.findall(r"^enum\s+\w+\s*\{", text, re.MULTILINE)
+    assert not enum_blocks, (
+        f"schema.prisma must not declare Prisma enum blocks (found: {enum_blocks}); "
+        "status/type columns must be String or Int columns instead"
+    )
+
+
+def test_status_columns_are_string_typed() -> None:
+    """Status-shaped columns exercised by the seed must be `String`, not enums."""
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    for model in ("Booking", "Payment"):
+        body = blocks[model]
+        pattern = re.compile(r"^\s*status\s+String(\s|$)", re.MULTILINE)
+        assert pattern.search(
+            body
+        ), f"{model}.status must be a `String` column (not an enum reference)"
