@@ -50,6 +50,16 @@ def _has_tenant_id_index(model_body: str) -> bool:
     return re.search(r"@@index\(\[\s*tenantId\s*(?:,|\])", model_body) is not None
 
 
+def _has_single_column_tenant_id_index(model_body: str) -> bool:
+    """Strict form of acceptance criterion #1: the exact `@@index([tenantId])`
+    single-column directive must be present. A composite `@@index([tenantId, x])`
+    alone does not satisfy this — the explicit single-column index must exist
+    in the model body regardless of any composite indexes that also start
+    with tenantId.
+    """
+    return re.search(r"@@index\(\[\s*tenantId\s*\]\)", model_body) is not None
+
+
 def test_schema_file_exists() -> None:
     assert SCHEMA_PATH.exists(), f"missing prisma schema at {SCHEMA_PATH}"
 
@@ -75,6 +85,21 @@ def test_every_tenant_scoped_model_has_tenant_index() -> None:
     for name in scoped_models:
         body = blocks[name]
         assert _has_tenant_id_index(body), f"model {name} is missing `@@index([tenantId])`"
+
+
+def test_every_tenant_scoped_model_has_explicit_single_column_tenant_index() -> None:
+    """Acceptance criterion #1: every tenant-scoped model must carry the
+    explicit single-column `@@index([tenantId])` directive. A composite
+    `@@index([tenantId, x])` on its own is not enough — the single-column
+    form must be visible in the schema diff for every model in the scope.
+    """
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    for name in EXPECTED_TENANT_SCOPED_MODELS:
+        body = blocks[name]
+        assert _has_single_column_tenant_id_index(body), (
+            f"model {name} is missing the explicit single-column "
+            f"`@@index([tenantId])` directive required by acceptance criterion #1"
+        )
 
 
 def test_tenant_model_has_no_tenant_id() -> None:
