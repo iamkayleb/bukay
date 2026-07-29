@@ -28,6 +28,7 @@ REQUIRED_MODELS = {
     "Service",
     "Staff",
     "BusinessHour",
+    "Blackout",
     "Client",
     "Booking",
     "Payment",
@@ -105,12 +106,12 @@ def test_migration_creates_every_required_model() -> None:
     for model in REQUIRED_MODELS:
         assert (
             f'CREATE TABLE "{model}"' in sql
-        ), f"initial migration is missing CREATE TABLE for {model}"
+        ), f"migration history is missing CREATE TABLE for {model}"
 
 
-def test_migration_indexes_tenant_id_on_scoped_tables() -> None:
+def test_migrations_index_tenant_id_on_scoped_tables() -> None:
     """Every tenant-scoped table needs an index on tenantId in the SQL."""
-    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    sql = _all_migration_sql()
     for model in REQUIRED_MODELS - {"Tenant"}:
         # Prisma emits `CREATE INDEX "<Model>_tenantId_idx" ON "<Model>"("tenantId")`
         # (or a composite index whose first column is tenantId).
@@ -118,7 +119,46 @@ def test_migration_indexes_tenant_id_on_scoped_tables() -> None:
             rf'CREATE INDEX\s+"{model}_tenantId[^"]*_idx"\s+ON\s+"{model}"\s*\(\s*"tenantId"',
             re.IGNORECASE,
         )
-        assert pattern.search(sql), f"initial migration missing tenantId index for {model}"
+        assert pattern.search(sql), f"migration history missing tenantId index for {model}"
+
+
+def test_booking_staff_overlap_exclusion_constraint_exists() -> None:
+    """Postgres must reject double-booking the same staff member at the DB layer."""
+    sql = _all_migration_sql()
+    assert "CREATE EXTENSION IF NOT EXISTS btree_gist" in sql
+    assert 'ADD CONSTRAINT "Booking_staffId_time_overlap_excl"' in sql
+    assert re.search(
+        r'EXCLUDE\s+USING\s+gist\s*\([^;]*"tenantId"\s+WITH\s+='
+        r'[^;]*"staffId"\s+WITH\s+='
+        r"[^;]*tstzrange\("
+        r'[^;]*"startsAt"\s+AT\s+TIME\s+ZONE\s+\'UTC\''
+        r'[^;]*"endsAt"\s+AT\s+TIME\s+ZONE\s+\'UTC\''
+        r"[^;]*'\[\)'[^;]*\)\s+WITH\s+&&",
+        sql,
+        re.IGNORECASE | re.DOTALL,
+    ), "Booking migration history missing GiST exclusion on tenantId/staffId/tstzrange"
+    assert re.search(
+        r'WHERE\s*\(\s*"staffId"\s+IS\s+NOT\s+NULL\s*\)',
+        sql,
+        re.IGNORECASE,
+    ), "Booking overlap exclusion should only apply when staffId is present"
+
+
+def test_audit_log_metadata_migrates_to_jsonb() -> None:
+    sql = _all_migration_sql()
+    assert re.search(
+        r'ALTER TABLE\s+"AuditLog"\s+ALTER COLUMN\s+"metadata"\s+TYPE\s+JSONB',
+        sql,
+        re.IGNORECASE,
+    )
+    assert re.search(
+        r'USING\s+CASE\s+WHEN\s+"metadata"\s+IS\s+NULL\s+THEN\s+NULL'
+        r'\s+WHEN\s+btrim\("metadata"\)\s+=\s+\'\'\s+THEN\s+NULL'
+        r'\s+WHEN\s+"metadata"\s+~\s+\'\^\\s\*\[\\\[\{\]\'\s+THEN\s+"metadata"::jsonb'
+        r'\s+ELSE\s+to_jsonb\("metadata"\)\s+END',
+        sql,
+        re.IGNORECASE,
+    )
 
 
 def test_data_model_doc_exists_and_covers_every_model() -> None:

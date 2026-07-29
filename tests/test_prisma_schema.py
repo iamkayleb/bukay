@@ -17,6 +17,7 @@ EXPECTED_TENANT_SCOPED_MODELS = {
     "Service",
     "Staff",
     "BusinessHour",
+    "Blackout",
     "Client",
     "Booking",
     "Payment",
@@ -65,6 +66,16 @@ def test_expected_tenant_scoped_models_have_tenant_id_column() -> None:
         assert _has_tenant_id_column(body), f"model {name} is missing a `tenantId String` column"
 
 
+def test_expected_tenant_scoped_model_list_matches_schema() -> None:
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    tenant_scoped_models = _tenant_scoped_models(blocks)
+    assert tenant_scoped_models == EXPECTED_TENANT_SCOPED_MODELS, (
+        "EXPECTED_TENANT_SCOPED_MODELS must match models with a tenantId column; "
+        f"missing from expected: {sorted(tenant_scoped_models - EXPECTED_TENANT_SCOPED_MODELS)}, "
+        f"stale expected entries: {sorted(EXPECTED_TENANT_SCOPED_MODELS - tenant_scoped_models)}"
+    )
+
+
 def test_every_tenant_scoped_model_has_tenant_index() -> None:
     blocks = _model_blocks(SCHEMA_PATH.read_text())
     scoped_models = _tenant_scoped_models(blocks)
@@ -81,3 +92,24 @@ def test_tenant_model_has_no_tenant_id() -> None:
     assert not re.search(
         r"^\s*tenantId\s+", body, re.MULTILINE
     ), "Tenant model must not carry its own tenantId column"
+
+
+def test_business_hours_support_multiple_windows_per_day() -> None:
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    body = blocks["BusinessHour"]
+    assert "@@unique([tenantId, dayOfWeek])" not in body
+    assert "@@index([tenantId, dayOfWeek])" in body
+
+
+def test_blackout_has_unique_tenant_local_date() -> None:
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    body = blocks["Blackout"]
+    assert re.search(r"^\s*date\s+String\b", body, re.MULTILINE)
+    assert "@@unique([tenantId, date])" in body
+
+
+def test_audit_log_metadata_is_structured_json() -> None:
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    body = blocks["AuditLog"]
+    assert re.search(r"^\s*metadata\s+Json\?", body, re.MULTILINE)
+    assert not re.search(r"^\s*metadata\s+String\?", body, re.MULTILINE)
