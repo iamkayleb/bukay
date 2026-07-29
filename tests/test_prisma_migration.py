@@ -27,7 +27,9 @@ REQUIRED_MODELS = {
     "User",
     "Service",
     "Staff",
+    "StaffService",
     "BusinessHour",
+    "Blackout",
     "Client",
     "Booking",
     "Payment",
@@ -45,6 +47,17 @@ def _initial_migration_dir() -> Path:
     assert candidates, f"no migration directories found under {MIGRATIONS_DIR}"
     # The init migration sorts first by timestamp prefix.
     return sorted(candidates)[0]
+
+
+def _all_migrations_sql() -> str:
+    """Concatenated SQL of every checked-in migration, in timestamp order.
+
+    Some models are introduced in follow-up migrations rather than the init
+    one, so create-table / index assertions must look across the whole
+    migration history, not just the first migration.
+    """
+    dirs = sorted(p for p in MIGRATIONS_DIR.iterdir() if (p / "migration.sql").exists())
+    return "\n".join((d / "migration.sql").read_text() for d in dirs)
 
 
 def _package_version(package: str) -> str:
@@ -106,17 +119,17 @@ def test_prisma_migrate_dev_runs_on_clean_database(tmp_path: Path) -> None:
 
 
 def test_migration_creates_every_required_model() -> None:
-    """Every model in the schema must have a CREATE TABLE in the initial migration."""
-    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    """Every model in the schema must have a CREATE TABLE somewhere in the migration history."""
+    sql = _all_migrations_sql()
     for model in REQUIRED_MODELS:
         assert (
             f'CREATE TABLE "{model}"' in sql
-        ), f"initial migration is missing CREATE TABLE for {model}"
+        ), f"migration history is missing CREATE TABLE for {model}"
 
 
 def test_migration_indexes_tenant_id_on_scoped_tables() -> None:
-    """Every tenant-scoped table needs an index on tenantId in the SQL."""
-    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    """Every tenant-scoped table needs an index on tenantId in the migration history."""
+    sql = _all_migrations_sql()
     for model in REQUIRED_MODELS - {"Tenant"}:
         # Prisma emits `CREATE INDEX "<Model>_tenantId_idx" ON "<Model>"("tenantId")`
         # (or a composite index whose first column is tenantId).
@@ -124,7 +137,7 @@ def test_migration_indexes_tenant_id_on_scoped_tables() -> None:
             rf'CREATE INDEX\s+"{model}_tenantId[^"]*_idx"\s+ON\s+"{model}"\s*\(\s*"tenantId"',
             re.IGNORECASE,
         )
-        assert pattern.search(sql), f"initial migration missing tenantId index for {model}"
+        assert pattern.search(sql), f"migration history missing tenantId index for {model}"
 
 
 def test_data_model_doc_exists_and_covers_every_model() -> None:
