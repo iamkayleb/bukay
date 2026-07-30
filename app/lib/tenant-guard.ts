@@ -7,6 +7,8 @@ export const TENANT_SCOPED_MODELS = [
   "BusinessHour",
   "Blackout",
   "Client",
+  "ClientTag",
+  "Tag",
   "Booking",
   "Payment",
   "AuditLog",

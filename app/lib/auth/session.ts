@@ -61,6 +61,7 @@ export function verifySessionDetailed(
   } catch {
     return { ok: false, reason: "invalid" };
   }
+  if (b64urlEncode(provided) !== sigPart) return { ok: false, reason: "invalid" };
   if (expected.length !== provided.length) return { ok: false, reason: "invalid" };
   if (!timingSafeEqual(expected, provided)) return { ok: false, reason: "invalid" };
 

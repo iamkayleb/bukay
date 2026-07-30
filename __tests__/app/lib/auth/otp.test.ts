@@ -151,12 +151,15 @@ describe("OtpStore", () => {
 });
 
 describe("OTP_SECRET configuration", () => {
-  it("fails module startup in production when OTP_SECRET is missing", async () => {
+  it("fails OTP signing in production when OTP_SECRET is missing", async () => {
     vi.resetModules();
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("OTP_SECRET", "");
 
-    await expect(import("@/app/lib/auth/otp")).rejects.toThrow(
+    const { MemoryOtpStateStore, OtpStore } = await import("@/app/lib/auth/otp");
+    const otpStore = new OtpStore(new FakeClock(), new MemoryOtpStateStore());
+
+    await expect(otpStore.issue(PHONE)).rejects.toThrow(
       "OTP_SECRET must be set in production to sign OTP codes"
     );
   });
