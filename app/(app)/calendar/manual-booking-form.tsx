@@ -5,7 +5,7 @@ import { FormEvent, useMemo, useState } from "react";
 export type ClientOption = {
   id: string;
   name: string;
-  phone: string;
+  phone: string | null;
   email?: string | null;
 };
 
@@ -71,7 +71,7 @@ export function filterClients(query: string, clients: ClientOption[]) {
   }
 
   return clients.filter((client) =>
-    [client.name, client.phone, client.email ?? ""].some((value) =>
+    [client.name, client.phone ?? "", client.email ?? ""].some((value) =>
       value.toLowerCase().includes(normalized)
     )
   );
