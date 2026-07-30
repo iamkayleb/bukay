@@ -10,6 +10,7 @@ These tests assert both invariants without needing a live database.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess

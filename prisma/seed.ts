@@ -116,7 +116,23 @@ async function main() {
       phone: "+2348000000001",
     },
   });
-  console.log(`Staff ready: ${staff.name} (${staff.id})`);
+  await prisma.staffService.createMany({
+    data: services.map((s) => ({
+      tenantId: tenant.id,
+      staffId: staff.id,
+      serviceId: s.id,
+    })),
+  });
+  console.log(`Staff ready: ${staff.name} (${staff.id}) with ${services.length} services`);
+
+  // One demo blackout so the schema's holiday-override path is exercised end-to-end.
+  await prisma.blackout.create({
+    data: {
+      tenantId: tenant.id,
+      date: "2026-12-25",
+      reason: "Christmas Day",
+    },
+  });
 
   await prisma.staffService.createMany({
     data: services.map((s) => ({

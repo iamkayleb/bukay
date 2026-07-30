@@ -113,7 +113,25 @@ model BusinessHour {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([tenantId, dayOfWeek])
+  @@index([tenantId])
+  @@index([tenantId, dayOfWeek])
+}
+
+// Date-specific overrides that suppress the weekly schedule for one day.
+// A Blackout row for (tenantId, date) means the tenant is closed that day
+// regardless of BusinessHour rules (holidays, one-off closures). `date` is
+// stored as an ISO "YYYY-MM-DD" wall-clock in the tenant's timezone so the
+// row is independent of DST or UTC offset.
+model Blackout {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  date      String
+  reason    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, date])
   @@index([tenantId])
 }
 
@@ -209,4 +227,3 @@ model AuditLog {
   @@index([tenantId])
   @@index([tenantId, entityType, entityId])
 }
-
