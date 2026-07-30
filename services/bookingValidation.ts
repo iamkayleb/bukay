@@ -80,19 +80,21 @@ export async function validateBookingInterval(
     return businessHoursIssue;
   }
 
-  const overlappingBooking = await store.findOverlappingBooking({
-    tenantId: existing.tenantId,
-    bookingId: existing.id,
-    staffId,
-    startsAt: candidate.startsAt,
-    endsAt: candidate.endsAt,
-  });
-  if (overlappingBooking) {
-    return {
-      code: "BOOKING_OVERLAP",
-      status: 409,
-      message: "Booking overlaps with another booking for the selected time.",
-    };
+  if (staffId) {
+    const overlappingBooking = await store.findOverlappingBooking({
+      tenantId: existing.tenantId,
+      bookingId: existing.id,
+      staffId,
+      startsAt: candidate.startsAt,
+      endsAt: candidate.endsAt,
+    });
+    if (overlappingBooking) {
+      return {
+        code: "BOOKING_OVERLAP",
+        status: 409,
+        message: "Booking overlaps with another booking for the selected time.",
+      };
+    }
   }
 
   return null;

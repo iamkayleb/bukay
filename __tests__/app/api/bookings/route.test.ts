@@ -326,6 +326,48 @@ describe("POST /api/bookings", () => {
     expect(state.createBooking).not.toHaveBeenCalled();
     expect(state.createAuditLog).not.toHaveBeenCalled();
   });
+
+  it("allows overlapping manual bookings when no staff member is assigned", async () => {
+    state.bookings = [booking({ staffId: null })];
+
+    const res = await POST(
+      request("/api/bookings", {
+        clientId: "client-2",
+        serviceId: "service-1",
+        startsAt: "2026-07-27T10:30:00.000Z",
+        endsAt: "2026-07-27T11:30:00.000Z",
+      })
+    );
+
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.booking).toMatchObject({
+      id: "booking-2",
+      tenantId: "tenant-1",
+      clientId: "client-2",
+      serviceId: "service-1",
+      staffId: null,
+      startsAt: "2026-07-27T10:30:00.000Z",
+      endsAt: "2026-07-27T11:30:00.000Z",
+      status: "confirmed",
+    });
+    expect(state.findBookingMany).not.toHaveBeenCalled();
+    expect(state.createAuditLog).toHaveBeenCalledWith({
+      data: {
+        tenantId: "tenant-1",
+        action: "manual_booking_created",
+        entityType: "Booking",
+        entityId: "booking-2",
+        metadata: JSON.stringify({
+          clientId: "client-2",
+          serviceId: "service-1",
+          staffId: null,
+          startsAt: "2026-07-27T10:30:00.000Z",
+          endsAt: "2026-07-27T11:30:00.000Z",
+        }),
+      },
+    });
+  });
 });
 
 describe("PATCH /api/bookings/:id", () => {
