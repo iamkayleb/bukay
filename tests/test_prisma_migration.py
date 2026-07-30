@@ -15,6 +15,8 @@ import re
 import subprocess
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_PATH = ROOT / "prisma" / "schema.prisma"
 MIGRATIONS_DIR = ROOT / "prisma" / "migrations"
@@ -72,6 +74,7 @@ def test_initial_migration_exists() -> None:
     assert sql_file.exists(), f"missing migration.sql in {init_dir}"
 
 
+@pytest.mark.xdist_group("prisma-cli")
 def test_prisma_schema_validates_offline() -> None:
     """Acceptance check: `prisma validate` accepts the current schema.
 
@@ -98,6 +101,7 @@ def test_prisma_schema_validates_offline() -> None:
     assert result.returncode == 0, f"prisma validate failed:\n{result.stdout}"
 
 
+@pytest.mark.xdist_group("prisma-cli")
 def test_initial_migration_matches_prisma_diff_output() -> None:
     """The checked-in initial migration must match Prisma's generated Postgres SQL.
 
