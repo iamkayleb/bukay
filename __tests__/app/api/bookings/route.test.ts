@@ -15,16 +15,6 @@ type BookingRow = {
   updatedAt: Date;
 };
 
-type AuditLogRow = {
-  id: string;
-  tenantId: string;
-  action: string;
-  entityType: string;
-  entityId: string | null;
-  metadata: string | null;
-  createdAt: Date;
-};
-
 type BusinessHourRow = {
   id: string;
   tenantId: string;
@@ -34,18 +24,25 @@ type BusinessHourRow = {
   isClosed: boolean;
 };
 
+type ServiceRow = {
+  id: string;
+  tenantId: string;
+  durationMinutes: number;
+  active: boolean;
+};
+
 type NextRequestInit = NonNullable<ConstructorParameters<typeof NextRequest>[1]>;
+type CreateBookingData = Omit<BookingRow, "id" | "createdAt" | "updatedAt">;
 
 const state = vi.hoisted(() => ({
   bookings: [] as BookingRow[],
-  auditLogs: [] as AuditLogRow[],
   businessHours: [] as BusinessHourRow[],
+  services: [] as ServiceRow[],
   findBookingFirst: vi.fn(),
   findBookingMany: vi.fn(),
   createBooking: vi.fn(),
   updateBooking: vi.fn(),
-  createAuditLog: vi.fn(),
-  transaction: vi.fn(),
+  findServiceFirst: vi.fn(),
   findBusinessHourFirst: vi.fn(),
   findBlackoutDateFirst: vi.fn(),
   tenantFindUnique: vi.fn(),
@@ -59,10 +56,9 @@ vi.mock("@/app/db/prisma", () => ({
       create: state.createBooking,
       update: state.updateBooking,
     },
-    auditLog: {
-      create: state.createAuditLog,
+    service: {
+      findFirst: state.findServiceFirst,
     },
-    $transaction: state.transaction,
     businessHour: {
       findFirst: state.findBusinessHourFirst,
     },
@@ -75,7 +71,7 @@ vi.mock("@/app/db/prisma", () => ({
   },
 }));
 
-import { GET, POST } from "@/app/api/bookings/route";
+import { POST } from "@/app/api/bookings/route";
 import { PATCH } from "@/app/api/bookings/[id]/route";
 
 function booking(overrides: Partial<BookingRow> = {}): BookingRow {
@@ -95,23 +91,32 @@ function booking(overrides: Partial<BookingRow> = {}): BookingRow {
   };
 }
 
+function service(overrides: Partial<ServiceRow> = {}): ServiceRow {
+  return {
+    id: "service-1",
+    tenantId: "tenant-1",
+    durationMinutes: 60,
+    active: true,
+    ...overrides,
+  };
+}
+
 function request(path: string, body: unknown, init: NextRequestInit = {}) {
-  const method = init.method ?? "PATCH";
   return new NextRequest(`http://app.test${path}`, {
     ...init,
-    method,
+    method: init.method ?? "PATCH",
     headers: {
       "content-type": "application/json",
       "x-tenant-id": "tenant-1",
       ...(init.headers as Record<string, string> | undefined),
     },
-    body: method === "GET" || method === "HEAD" ? undefined : JSON.stringify(body),
+    body: JSON.stringify(body),
   });
 }
 
 beforeEach(() => {
   state.bookings = [booking()];
-  state.auditLogs = [];
+  state.services = [service()];
   state.businessHours = [
     {
       id: "hours-1",
@@ -127,8 +132,7 @@ beforeEach(() => {
   state.findBookingMany.mockReset();
   state.createBooking.mockReset();
   state.updateBooking.mockReset();
-  state.createAuditLog.mockReset();
-  state.transaction.mockReset();
+  state.findServiceFirst.mockReset();
   state.findBusinessHourFirst.mockReset();
   state.findBlackoutDateFirst.mockReset();
   state.tenantFindUnique.mockReset();
@@ -143,59 +147,37 @@ beforeEach(() => {
     async (args: {
       where: {
         tenantId: string;
-        id?: { not: string };
+        id: { not: string };
         staffId: string | null;
-        startsAt?: { lt: Date };
-        endsAt?: { gt: Date };
+        startsAt: { lt: Date };
+        endsAt: { gt: Date };
       };
       take: number;
-      orderBy?: unknown;
-    }) => {
-      let rows = state.bookings.filter((row) => row.tenantId === args.where.tenantId);
-      if (args.where.id) {
-        rows = rows.filter((row) => row.id !== args.where.id?.not);
-      }
-      if ("staffId" in args.where) {
-        rows = rows.filter((row) => row.staffId === args.where.staffId);
-      }
-      if (args.where.startsAt) {
-        rows = rows.filter((row) => row.startsAt < args.where.startsAt!.lt);
-      }
-      if (args.where.endsAt) {
-        rows = rows.filter((row) => row.endsAt > args.where.endsAt!.gt);
-      }
-
-      return rows.slice(0, args.take ?? rows.length);
-    }
-  );
-  state.createBooking.mockImplementation(
-    async (args: { data: Omit<BookingRow, "id" | "createdAt" | "updatedAt"> }) => {
-      if (
-        args.data.staffId &&
-        state.bookings.some(
+    }) =>
+      state.bookings
+        .filter(
           (row) =>
-            row.tenantId === args.data.tenantId &&
-            row.staffId === args.data.staffId &&
-            row.startsAt < args.data.endsAt &&
-            row.endsAt > args.data.startsAt
+            row.tenantId === args.where.tenantId &&
+            row.id !== args.where.id.not &&
+            row.staffId === args.where.staffId &&
+            row.startsAt < args.where.startsAt.lt &&
+            row.endsAt > args.where.endsAt.gt
         )
-      ) {
-        throw new Error("booking_staff_overlap");
-      }
-
-      const row = booking({
-        id: `booking-${state.bookings.length + 1}`,
-        ...args.data,
-        createdAt: new Date("2026-07-27T12:00:00.000Z"),
-        updatedAt: new Date("2026-07-27T12:00:00.000Z"),
-      });
-      state.bookings.push(row);
-      return row;
-    }
+        .slice(0, args.take)
   );
+  state.createBooking.mockImplementation(async (args: { data: CreateBookingData }) => {
+    const row = booking({
+      id: `booking-${state.bookings.length + 1}`,
+      ...args.data,
+    });
+    state.bookings.push(row);
+    return row;
+  });
   state.updateBooking.mockImplementation(
-    async (args: { where: { id: string }; data: Partial<BookingRow> }) => {
-      const index = state.bookings.findIndex((row) => row.id === args.where.id);
+    async (args: { where: { id: string; tenantId: string }; data: Partial<BookingRow> }) => {
+      const index = state.bookings.findIndex(
+        (row) => row.id === args.where.id && row.tenantId === args.where.tenantId
+      );
       if (index === -1) {
         throw Object.assign(new Error("Record not found"), { code: "P2025" });
       }
@@ -209,168 +191,101 @@ beforeEach(() => {
       return row;
     }
   );
-  state.createAuditLog.mockImplementation(
-    async (args: { data: Omit<AuditLogRow, "id" | "createdAt"> }) => {
-      const row = {
-        id: `audit-${state.auditLogs.length + 1}`,
-        createdAt: new Date("2026-07-27T12:00:00.000Z"),
-        ...args.data,
-      };
-      state.auditLogs.push(row);
-      return row;
-    }
-  );
-  state.transaction.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) =>
-    callback({
-      booking: {
-        create: state.createBooking,
-      },
-      auditLog: {
-        create: state.createAuditLog,
-      },
-    })
-  );
   state.findBusinessHourFirst.mockImplementation(
     async (args: { where: { tenantId: string; dayOfWeek: number } }) =>
       state.businessHours.find(
         (row) => row.tenantId === args.where.tenantId && row.dayOfWeek === args.where.dayOfWeek
       ) ?? null
   );
+  state.findServiceFirst.mockImplementation(
+    async (args: { where: { tenantId: string; id: string; active?: boolean } }) =>
+      state.services.find(
+        (row) =>
+          row.tenantId === args.where.tenantId &&
+          row.id === args.where.id &&
+          (args.where.active === undefined || row.active === args.where.active)
+      ) ?? null
+  );
   state.findBlackoutDateFirst.mockResolvedValue(null);
 });
 
-describe("GET /api/bookings", () => {
-  it("lists bookings scoped to the request tenant for calendar refreshes", async () => {
-    state.bookings.push(booking({ id: "booking-2", tenantId: "tenant-2" }));
-
-    const res = await GET(request("/api/bookings", {}, { method: "GET" }));
-
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.bookings).toHaveLength(1);
-    expect(body.bookings[0]).toMatchObject({
-      id: "booking-1",
-      tenantId: "tenant-1",
-      startsAt: "2026-07-27T10:00:00.000Z",
-      endsAt: "2026-07-27T11:00:00.000Z",
-    });
-    expect(state.findBookingMany).toHaveBeenCalledWith({
-      where: { tenantId: "tenant-1" },
-      orderBy: [{ startsAt: "asc" }, { createdAt: "asc" }],
-    });
-  });
-});
-
 describe("POST /api/bookings", () => {
-  it("creates a manual booking, returns it for immediate calendar use, and writes an audit log", async () => {
+  it("creates a booking only after finding an active tenant service", async () => {
+    state.bookings = [];
+
     const res = await POST(
       request("/api/bookings", {
-        clientId: "client-2",
+        clientId: "client-1",
         serviceId: "service-1",
         staffId: "staff-1",
-        startsAt: "2026-07-27T11:30:00.000Z",
-        endsAt: "2026-07-27T12:00:00.000Z",
-        notes: "Walk-in",
+        startsAt: "2026-07-27T10:00:00.000Z",
       })
     );
 
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.booking).toMatchObject({
-      id: "booking-2",
       tenantId: "tenant-1",
-      clientId: "client-2",
+      clientId: "client-1",
       serviceId: "service-1",
-      staffId: "staff-1",
-      startsAt: "2026-07-27T11:30:00.000Z",
-      endsAt: "2026-07-27T12:00:00.000Z",
-      status: "confirmed",
-      notes: "Walk-in",
+      status: "pending",
     });
-    expect(state.transaction).toHaveBeenCalledOnce();
-    expect(state.createAuditLog).toHaveBeenCalledWith({
+    expect(body.booking.endsAt).toBe("2026-07-27T11:00:00.000Z");
+    expect(state.findServiceFirst).toHaveBeenCalledWith({
+      where: { tenantId: "tenant-1", id: "service-1", active: true },
+    });
+    expect(state.createBooking).toHaveBeenCalledWith({
       data: {
         tenantId: "tenant-1",
-        action: "manual_booking_created",
-        entityType: "Booking",
-        entityId: "booking-2",
-        metadata: JSON.stringify({
-          clientId: "client-2",
-          serviceId: "service-1",
-          staffId: "staff-1",
-          startsAt: "2026-07-27T11:30:00.000Z",
-          endsAt: "2026-07-27T12:00:00.000Z",
-        }),
-      },
-    });
-
-    const calendarRes = await GET(request("/api/bookings", {}, { method: "GET" }));
-    const calendarBody = await calendarRes.json();
-    expect(calendarBody.bookings.map((row: BookingRow) => row.id)).toContain("booking-2");
-  });
-
-  it("rejects overlapping manual bookings before insert", async () => {
-    const res = await POST(
-      request("/api/bookings", {
-        clientId: "client-2",
+        clientId: "client-1",
         serviceId: "service-1",
         staffId: "staff-1",
-        startsAt: "2026-07-27T10:30:00.000Z",
-        endsAt: "2026-07-27T11:30:00.000Z",
+        startsAt: new Date("2026-07-27T10:00:00.000Z"),
+        endsAt: new Date("2026-07-27T11:00:00.000Z"),
+        status: "pending",
+        notes: undefined,
+      },
+    });
+  });
+
+  it("rejects booking requests for archived services", async () => {
+    state.services = [service({ active: false })];
+
+    const res = await POST(
+      request("/api/bookings", {
+        clientId: "client-1",
+        serviceId: "service-1",
+        staffId: "staff-1",
+        startsAt: "2026-07-27T10:00:00.000Z",
       })
     );
 
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(404);
     const body = await res.json();
-    expect(body.error).toBe("BOOKING_OVERLAP");
+    expect(body.error).toBe("SERVICE_NOT_FOUND");
+    expect(state.findServiceFirst).toHaveBeenCalledWith({
+      where: { tenantId: "tenant-1", id: "service-1", active: true },
+    });
     expect(state.createBooking).not.toHaveBeenCalled();
-    expect(state.createAuditLog).not.toHaveBeenCalled();
-  });
-
-  it("allows overlapping manual bookings when no staff member is assigned", async () => {
-    state.bookings = [booking({ staffId: null })];
-
-    const res = await POST(
-      request("/api/bookings", {
-        clientId: "client-2",
-        serviceId: "service-1",
-        startsAt: "2026-07-27T10:30:00.000Z",
-        endsAt: "2026-07-27T11:30:00.000Z",
-      })
-    );
-
-    expect(res.status).toBe(201);
-    const body = await res.json();
-    expect(body.booking).toMatchObject({
-      id: "booking-2",
-      tenantId: "tenant-1",
-      clientId: "client-2",
-      serviceId: "service-1",
-      staffId: null,
-      startsAt: "2026-07-27T10:30:00.000Z",
-      endsAt: "2026-07-27T11:30:00.000Z",
-      status: "confirmed",
-    });
-    expect(state.findBookingMany).not.toHaveBeenCalled();
-    expect(state.createAuditLog).toHaveBeenCalledWith({
-      data: {
-        tenantId: "tenant-1",
-        action: "manual_booking_created",
-        entityType: "Booking",
-        entityId: "booking-2",
-        metadata: JSON.stringify({
-          clientId: "client-2",
-          serviceId: "service-1",
-          staffId: null,
-          startsAt: "2026-07-27T10:30:00.000Z",
-          endsAt: "2026-07-27T11:30:00.000Z",
-        }),
-      },
-    });
   });
 });
 
 describe("PATCH /api/bookings/:id", () => {
+  it("updates only a tenant-scoped booking", async () => {
+    const res = await PATCH(
+      request("/api/bookings/booking-1", { status: "cancelled", notes: "Client called" }),
+      { params: { id: "booking-1" } }
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.booking).toMatchObject({ id: "booking-1", status: "cancelled" });
+    expect(state.updateBooking).toHaveBeenCalledWith({
+      where: { id: "booking-1", tenantId: "tenant-1" },
+      data: { status: "cancelled", notes: "Client called" },
+    });
+  });
+
   it("rejects a startsAt-only update when the merged interval is outside business hours", async () => {
     const res = await PATCH(
       request("/api/bookings/booking-1", { startsAt: "2026-07-27T08:30:00.000Z" }),

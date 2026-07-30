@@ -73,16 +73,18 @@ describe("(app) authenticated layout", () => {
     ).toThrowError(/__REDIRECT__:\/login/);
   });
 
-  it("renders the app shell with the session phone when authenticated", () => {
+  it("renders the app shell with the session phone and tenant when authenticated", () => {
     const now = Date.now();
     const token = signSession({
       sub: "user-1",
       phone: "+2348012345678",
+      tenantId: "tenant-from-session",
+      tenantSlug: "session-workspace",
       iat: now,
       exp: now + SESSION_TTL_MS,
     });
     headersMod.__setCookie(SESSION_COOKIE_NAME, token);
-    headersMod.__setHeader("host", "acme.example.com");
+    headersMod.__setHeader("host", "host-workspace.example.com");
 
     const result = AuthenticatedLayout({
       children: "child-content" as unknown as React.ReactNode,
@@ -94,8 +96,27 @@ describe("(app) authenticated layout", () => {
     const componentName = result.type.displayName ?? result.type.name;
     expect(componentName).toBe("AppShell");
     expect(result.props.userPhone).toBe("+2348012345678");
-    expect(result.props.tenantName).toBe("acme");
+    expect(result.props.tenantName).toBe("session-workspace");
     expect(result.props.children).toBe("child-content");
+  });
+
+  it("uses the session tenant ID when the session has no tenant slug", () => {
+    const now = Date.now();
+    const token = signSession({
+      sub: "user-1",
+      phone: "+2348012345678",
+      tenantId: "tenant-from-session",
+      iat: now,
+      exp: now + SESSION_TTL_MS,
+    });
+    headersMod.__setCookie(SESSION_COOKIE_NAME, token);
+    headersMod.__setHeader("host", "host-workspace.example.com");
+
+    const result = AuthenticatedLayout({
+      children: null as unknown as React.ReactNode,
+    }) as unknown as { props: { tenantName: string } };
+
+    expect(result.props.tenantName).toBe("tenant-from-session");
   });
 
   it("falls back to a default tenant name when none can be resolved", () => {

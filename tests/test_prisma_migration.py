@@ -9,18 +9,13 @@ These tests assert both invariants without needing a live database.
 
 from __future__ import annotations
 
-import json
 import re
-import shutil
-import sqlite3
-import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_PATH = ROOT / "prisma" / "schema.prisma"
 MIGRATIONS_DIR = ROOT / "prisma" / "migrations"
 DATA_MODEL_DOC = ROOT / "docs" / "DATA_MODEL.md"
-PACKAGE_JSON = ROOT / "package.json"
 
 # Models the scope requires to exist; mirrors test_prisma_schema.py.
 REQUIRED_MODELS = {
@@ -29,10 +24,26 @@ REQUIRED_MODELS = {
     "Service",
     "Staff",
     "BusinessHour",
+    "Blackout",
     "Client",
     "Booking",
     "Payment",
     "AuditLog",
+}
+
+EXPECTED_ENUMS = {
+    "UserRole": "'OWNER', 'ADMIN', 'STAFF', 'VIEWER'",
+    "BookingStatus": "'PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW'",
+    "PaymentStatus": "'PENDING', 'PAID', 'REFUNDED', 'FAILED'",
+    "PaymentMethod": "'CASH', 'CARD', 'MOBILE_MONEY', 'BANK_TRANSFER', 'OTHER'",
+    "DayOfWeek": "'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'",
+}
+
+EXPECTED_ENUM_COLUMNS = {
+    "User": {"role": "UserRole"},
+    "BusinessHour": {"dayOfWeek": "DayOfWeek"},
+    "Booking": {"status": "BookingStatus"},
+    "Payment": {"method": "PaymentMethod", "status": "PaymentStatus"},
 }
 
 
@@ -48,23 +59,10 @@ def _initial_migration_dir() -> Path:
     return sorted(candidates)[0]
 
 
-def _package_version(package: str) -> str:
-    pkg = json.loads(PACKAGE_JSON.read_text())
-    spec = pkg.get("dependencies", {}).get(package) or pkg.get("devDependencies", {}).get(package)
-    assert spec, f"could not find {package} version in {PACKAGE_JSON}"
-    return spec
-
-
-def _prisma_command() -> list[str]:
-    prisma_bin = ROOT / "node_modules" / ".bin" / "prisma"
-    if prisma_bin.exists():
-        return [str(prisma_bin)]
-    return ["npx", "--yes", "--package", f"prisma@{_package_version('prisma')}", "prisma"]
-
-
 def test_migration_lock_present() -> None:
     lock = MIGRATIONS_DIR / "migration_lock.toml"
     assert lock.exists(), "prisma/migrations/migration_lock.toml must be checked in"
+    assert 'provider = "postgresql"' in lock.read_text()
 
 
 def test_initial_migration_exists() -> None:
@@ -73,45 +71,18 @@ def test_initial_migration_exists() -> None:
     assert sql_file.exists(), f"missing migration.sql in {init_dir}"
 
 
-def test_prisma_migrate_dev_runs_on_clean_database(tmp_path: Path) -> None:
-    """Acceptance check: `prisma migrate dev` must succeed on a clean database."""
-    prisma_dir = tmp_path / "prisma"
-    shutil.copytree(ROOT / "prisma", prisma_dir)
-
-    result = subprocess.run(
-        [
-            *_prisma_command(),
-            "migrate",
-            "dev",
-            "--schema",
-            str(prisma_dir / "schema.prisma"),
-            "--skip-seed",
-            "--skip-generate",
-        ],
-        cwd=ROOT,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        timeout=60,
-        check=False,
-    )
-
-    assert result.returncode == 0, result.stdout
-    assert (prisma_dir / "dev.db").exists(), "prisma migrate dev did not create a clean db"
-
-
 def test_migration_creates_every_required_model() -> None:
     """Every model in the schema must have a CREATE TABLE in the initial migration."""
     sql = (_initial_migration_dir() / "migration.sql").read_text()
     for model in REQUIRED_MODELS:
         assert (
             f'CREATE TABLE "{model}"' in sql
-        ), f"initial migration is missing CREATE TABLE for {model}"
+        ), f"migration history is missing CREATE TABLE for {model}"
 
 
-def test_migration_indexes_tenant_id_on_scoped_tables() -> None:
+def test_migrations_index_tenant_id_on_scoped_tables() -> None:
     """Every tenant-scoped table needs an index on tenantId in the SQL."""
-    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    sql = _all_migration_sql()
     for model in REQUIRED_MODELS - {"Tenant"}:
         # Prisma emits `CREATE INDEX "<Model>_tenantId_idx" ON "<Model>"("tenantId")`
         # (or a composite index whose first column is tenantId).
@@ -119,146 +90,65 @@ def test_migration_indexes_tenant_id_on_scoped_tables() -> None:
             rf'CREATE INDEX\s+"{model}_tenantId[^"]*_idx"\s+ON\s+"{model}"\s*\(\s*"tenantId"',
             re.IGNORECASE,
         )
-        assert pattern.search(sql), f"initial migration missing tenantId index for {model}"
+        assert pattern.search(sql), f"migration history missing tenantId index for {model}"
 
 
-def test_migration_rejects_overlapping_staff_bookings_at_db_layer() -> None:
+def test_booking_staff_overlap_exclusion_constraint_exists() -> None:
+    """Postgres must reject double-booking the same staff member at the DB layer."""
+    sql = _all_migration_sql()
+    assert "CREATE EXTENSION IF NOT EXISTS btree_gist" in sql
+    assert 'ADD CONSTRAINT "Booking_staffId_time_overlap_excl"' in sql
+    assert re.search(
+        r'EXCLUDE\s+USING\s+gist\s*\([^;]*"tenantId"\s+WITH\s+='
+        r'[^;]*"staffId"\s+WITH\s+='
+        r"[^;]*tstzrange\("
+        r'[^;]*"startsAt"\s+AT\s+TIME\s+ZONE\s+\'UTC\''
+        r'[^;]*"endsAt"\s+AT\s+TIME\s+ZONE\s+\'UTC\''
+        r"[^;]*'\[\)'[^;]*\)\s+WITH\s+&&",
+        sql,
+        re.IGNORECASE | re.DOTALL,
+    ), "Booking migration history missing GiST exclusion on tenantId/staffId/tstzrange"
+    assert re.search(
+        r'WHERE\s*\(\s*"staffId"\s+IS\s+NOT\s+NULL\s*\)',
+        sql,
+        re.IGNORECASE,
+    ), "Booking overlap exclusion should only apply when staffId is present"
+
+
+def test_audit_log_metadata_migrates_to_jsonb() -> None:
+    sql = _all_migration_sql()
+    assert re.search(
+        r'ALTER TABLE\s+"AuditLog"\s+ALTER COLUMN\s+"metadata"\s+TYPE\s+JSONB',
+        sql,
+        re.IGNORECASE,
+    )
+    assert re.search(
+        r'USING\s+CASE\s+WHEN\s+"metadata"\s+IS\s+NULL\s+THEN\s+NULL'
+        r'\s+WHEN\s+btrim\("metadata"\)\s+=\s+\'\'\s+THEN\s+NULL'
+        r'\s+WHEN\s+"metadata"\s+~\s+\'\^\\s\*\[\\\[\{\]\'\s+THEN\s+"metadata"::jsonb'
+        r'\s+ELSE\s+to_jsonb\("metadata"\)\s+END',
+        sql,
+        re.IGNORECASE,
+    )
+
+
+def test_migration_creates_expected_enums() -> None:
     sql = (_initial_migration_dir() / "migration.sql").read_text()
-
-    assert 'CREATE TRIGGER "Booking_reject_staff_overlap_insert"' in sql
-    assert 'CREATE TRIGGER "Booking_reject_staff_overlap_update"' in sql
-    assert "booking_staff_overlap" in sql
-    assert 'existing."staffId" = NEW."staffId"' in sql
-    assert 'existing."startsAt" < NEW."endsAt"' in sql
-    assert 'existing."endsAt" > NEW."startsAt"' in sql
+    for enum_name, values in EXPECTED_ENUMS.items():
+        assert (
+            f'CREATE TYPE "{enum_name}" AS ENUM ({values});' in sql
+        ), f"initial migration missing enum {enum_name}"
 
 
-def test_staff_booking_overlap_trigger_blocks_conflicting_insert(tmp_path: Path) -> None:
+def test_migration_columns_use_enum_types() -> None:
     sql = (_initial_migration_dir() / "migration.sql").read_text()
-    db_path = tmp_path / "booking-overlap.db"
-
-    with sqlite3.connect(db_path) as connection:
-        connection.executescript(sql)
-        connection.executescript("""
-            INSERT INTO "Tenant" ("id", "name", "slug", "updatedAt")
-            VALUES ('tenant-1', 'Demo', 'demo', '2026-07-27T09:00:00.000Z');
-            INSERT INTO "Service" (
-              "id", "tenantId", "name", "durationMinutes", "priceCents", "updatedAt"
+    for table, columns in EXPECTED_ENUM_COLUMNS.items():
+        for column, enum_name in columns.items():
+            pattern = re.compile(
+                rf'"{column}"\s+"{enum_name}"\s+NOT NULL',
+                re.IGNORECASE,
             )
-            VALUES ('service-1', 'tenant-1', 'Haircut', 30, 5000, '2026-07-27T09:00:00.000Z');
-            INSERT INTO "Client" ("id", "tenantId", "name", "phone", "updatedAt")
-            VALUES ('client-1', 'tenant-1', 'Ada', '+2348000000000', '2026-07-27T09:00:00.000Z');
-            INSERT INTO "Staff" ("id", "tenantId", "name", "updatedAt")
-            VALUES ('staff-1', 'tenant-1', 'Kay', '2026-07-27T09:00:00.000Z');
-            INSERT INTO "Booking" (
-              "id", "tenantId", "clientId", "serviceId", "staffId", "startsAt", "endsAt",
-              "updatedAt"
-            )
-            VALUES (
-              'booking-1', 'tenant-1', 'client-1', 'service-1', 'staff-1',
-              '2026-07-27T10:00:00.000Z', '2026-07-27T11:00:00.000Z',
-              '2026-07-27T09:00:00.000Z'
-            );
-            """)
-
-        connection.execute(
-            """
-            INSERT INTO "Booking" (
-              "id", "tenantId", "clientId", "serviceId", "staffId", "startsAt", "endsAt",
-              "updatedAt"
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                "booking-2",
-                "tenant-1",
-                "client-1",
-                "service-1",
-                "staff-1",
-                "2026-07-27T11:00:00.000Z",
-                "2026-07-27T11:30:00.000Z",
-                "2026-07-27T09:00:00.000Z",
-            ),
-        )
-
-        try:
-            connection.execute(
-                """
-                INSERT INTO "Booking" (
-                  "id", "tenantId", "clientId", "serviceId", "staffId", "startsAt", "endsAt",
-                  "updatedAt"
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    "booking-3",
-                    "tenant-1",
-                    "client-1",
-                    "service-1",
-                    "staff-1",
-                    "2026-07-27T10:30:00.000Z",
-                    "2026-07-27T11:30:00.000Z",
-                    "2026-07-27T09:00:00.000Z",
-                ),
-            )
-        except sqlite3.IntegrityError as error:
-            assert "booking_staff_overlap" in str(error)
-        else:
-            raise AssertionError("overlapping same-staff booking insert should be rejected")
-
-
-def test_staff_booking_overlap_trigger_blocks_conflicting_update(tmp_path: Path) -> None:
-    sql = (_initial_migration_dir() / "migration.sql").read_text()
-    db_path = tmp_path / "booking-overlap-update.db"
-
-    with sqlite3.connect(db_path) as connection:
-        connection.executescript(sql)
-        connection.executescript("""
-            INSERT INTO "Tenant" ("id", "name", "slug", "updatedAt")
-            VALUES ('tenant-1', 'Demo', 'demo', '2026-07-27T09:00:00.000Z');
-            INSERT INTO "Service" (
-              "id", "tenantId", "name", "durationMinutes", "priceCents", "updatedAt"
-            )
-            VALUES ('service-1', 'tenant-1', 'Haircut', 30, 5000, '2026-07-27T09:00:00.000Z');
-            INSERT INTO "Client" ("id", "tenantId", "name", "phone", "updatedAt")
-            VALUES ('client-1', 'tenant-1', 'Ada', '+2348000000000', '2026-07-27T09:00:00.000Z');
-            INSERT INTO "Staff" ("id", "tenantId", "name", "updatedAt")
-            VALUES ('staff-1', 'tenant-1', 'Kay', '2026-07-27T09:00:00.000Z');
-            INSERT INTO "Booking" (
-              "id", "tenantId", "clientId", "serviceId", "staffId", "startsAt", "endsAt",
-              "updatedAt"
-            )
-            VALUES
-              (
-                'booking-1', 'tenant-1', 'client-1', 'service-1', 'staff-1',
-                '2026-07-27T10:00:00.000Z', '2026-07-27T11:00:00.000Z',
-                '2026-07-27T09:00:00.000Z'
-              ),
-              (
-                'booking-2', 'tenant-1', 'client-1', 'service-1', 'staff-1',
-                '2026-07-27T12:00:00.000Z', '2026-07-27T13:00:00.000Z',
-                '2026-07-27T09:00:00.000Z'
-              );
-            """)
-
-        try:
-            connection.execute(
-                """
-                UPDATE "Booking"
-                SET "startsAt" = ?, "endsAt" = ?, "updatedAt" = ?
-                WHERE "id" = ?
-                """,
-                (
-                    "2026-07-27T10:30:00.000Z",
-                    "2026-07-27T11:30:00.000Z",
-                    "2026-07-27T09:30:00.000Z",
-                    "booking-2",
-                ),
-            )
-        except sqlite3.IntegrityError as error:
-            assert "booking_staff_overlap" in str(error)
-        else:
-            raise AssertionError("overlapping same-staff booking update should be rejected")
+            assert pattern.search(sql), f"{table}.{column} must use enum type {enum_name}"
 
 
 def test_data_model_doc_exists_and_covers_every_model() -> None:

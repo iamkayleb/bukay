@@ -1,1 +1,1 @@
-export { dynamic, GET, POST } from "@/api/bookings";
+export { dynamic, POST } from "@/api/bookings";
