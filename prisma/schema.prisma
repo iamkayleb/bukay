@@ -217,7 +217,10 @@ model Booking {
 
   @@index([tenantId])
   @@index([tenantId, startsAt])
-  @@index([tenantId, staffId, startsAt])
+  @@index([tenantId, staffId, startsAt, endsAt])
+  @@index([clientId])
+  @@index([serviceId])
+  @@index([staffId])
 }
 
 // -----------------------------------------------------------------------------
