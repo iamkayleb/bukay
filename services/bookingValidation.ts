@@ -64,7 +64,7 @@ export async function validateBookingInterval(
   existing: BookingRecord,
   candidate: BookingInterval & { staffId?: string | null }
 ): Promise<BookingValidationIssue | null> {
-  const staffId = candidate.staffId ?? existing.staffId;
+  const staffId = "staffId" in candidate ? (candidate.staffId ?? null) : existing.staffId;
   const intervalIssue = validateIntervalShape(candidate);
   if (intervalIssue) {
     return intervalIssue;

@@ -464,4 +464,32 @@ describe("PATCH /api/bookings/:id", () => {
     });
     expect(state.updateBooking).not.toHaveBeenCalled();
   });
+
+  it("allows unassigning staff without checking the previous staff member for overlaps", async () => {
+    state.bookings.push(
+      booking({
+        id: "booking-2",
+        startsAt: new Date("2026-07-27T10:30:00.000Z"),
+        endsAt: new Date("2026-07-27T11:30:00.000Z"),
+      })
+    );
+
+    const res = await PATCH(request("/api/bookings/booking-1", { staffId: null }), {
+      params: { id: "booking-1" },
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.booking).toMatchObject({
+      id: "booking-1",
+      staffId: null,
+      startsAt: "2026-07-27T10:00:00.000Z",
+      endsAt: "2026-07-27T11:00:00.000Z",
+    });
+    expect(state.findBookingMany).not.toHaveBeenCalled();
+    expect(state.updateBooking).toHaveBeenCalledWith({
+      where: { id: "booking-1" },
+      data: { staffId: null },
+    });
+  });
 });
