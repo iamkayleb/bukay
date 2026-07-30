@@ -24,6 +24,12 @@ function b64urlDecode(input: string): Buffer {
   return Buffer.from(input.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat(pad), "base64");
 }
 
+function b64urlDecodeCanonical(input: string): Buffer | null {
+  if (!/^[A-Za-z0-9_-]+$/.test(input)) return null;
+  const decoded = b64urlDecode(input);
+  return b64urlEncode(decoded) === input ? decoded : null;
+}
+
 function getSecret(secret?: string): string {
   const s = secret ?? process.env.SESSION_SECRET ?? "";
   if (!s || s.length < 16) {
@@ -57,7 +63,9 @@ export function verifySessionDetailed(
   let provided: Buffer;
   try {
     expected = createHmac("sha256", getSecret(secret)).update(body).digest();
-    provided = b64urlDecode(sigPart);
+    const decodedSignature = b64urlDecodeCanonical(sigPart);
+    if (!decodedSignature) return { ok: false, reason: "invalid" };
+    provided = decodedSignature;
   } catch {
     return { ok: false, reason: "invalid" };
   }
