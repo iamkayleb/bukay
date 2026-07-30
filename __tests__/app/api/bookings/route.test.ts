@@ -403,7 +403,7 @@ describe("PATCH /api/bookings/:id", () => {
     });
     expect(state.findBookingMany).not.toHaveBeenCalled();
     expect(state.updateBooking).toHaveBeenCalledWith({
-      where: { id: "booking-1" },
+      where: { id: "booking-1", tenantId: "tenant-1" },
       data: { staffId: null },
     });
   });
