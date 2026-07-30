@@ -6,10 +6,11 @@ import {
   signSession,
   verifySession,
 } from "@/app/lib/auth/session";
+import { withTenantScope } from "@/app/lib/tenant-scope";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
+async function handler(req: NextRequest) {
   const token = readSessionTokenFromCookieHeader(req.headers.get("cookie"));
   const session = token ? verifySession(token) : null;
   if (!session) {
@@ -27,3 +28,5 @@ export async function GET(req: NextRequest) {
   res.headers.append("Set-Cookie", buildSessionCookie(refreshed));
   return res;
 }
+
+export const GET = withTenantScope(handler);

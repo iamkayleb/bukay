@@ -17,6 +17,7 @@ eggs/
 lib/
 lib64/
 !app/lib/
+!src/app/lib/
 !__tests__/**/lib/
 parts/
 sdist/
