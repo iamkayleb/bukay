@@ -207,6 +207,60 @@ def test_staff_booking_overlap_trigger_blocks_conflicting_insert(tmp_path: Path)
             raise AssertionError("overlapping same-staff booking insert should be rejected")
 
 
+def test_staff_booking_overlap_trigger_blocks_conflicting_update(tmp_path: Path) -> None:
+    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    db_path = tmp_path / "booking-overlap-update.db"
+
+    with sqlite3.connect(db_path) as connection:
+        connection.executescript(sql)
+        connection.executescript("""
+            INSERT INTO "Tenant" ("id", "name", "slug", "updatedAt")
+            VALUES ('tenant-1', 'Demo', 'demo', '2026-07-27T09:00:00.000Z');
+            INSERT INTO "Service" (
+              "id", "tenantId", "name", "durationMinutes", "priceCents", "updatedAt"
+            )
+            VALUES ('service-1', 'tenant-1', 'Haircut', 30, 5000, '2026-07-27T09:00:00.000Z');
+            INSERT INTO "Client" ("id", "tenantId", "name", "phone", "updatedAt")
+            VALUES ('client-1', 'tenant-1', 'Ada', '+2348000000000', '2026-07-27T09:00:00.000Z');
+            INSERT INTO "Staff" ("id", "tenantId", "name", "updatedAt")
+            VALUES ('staff-1', 'tenant-1', 'Kay', '2026-07-27T09:00:00.000Z');
+            INSERT INTO "Booking" (
+              "id", "tenantId", "clientId", "serviceId", "staffId", "startsAt", "endsAt",
+              "updatedAt"
+            )
+            VALUES
+              (
+                'booking-1', 'tenant-1', 'client-1', 'service-1', 'staff-1',
+                '2026-07-27T10:00:00.000Z', '2026-07-27T11:00:00.000Z',
+                '2026-07-27T09:00:00.000Z'
+              ),
+              (
+                'booking-2', 'tenant-1', 'client-1', 'service-1', 'staff-1',
+                '2026-07-27T12:00:00.000Z', '2026-07-27T13:00:00.000Z',
+                '2026-07-27T09:00:00.000Z'
+              );
+            """)
+
+        try:
+            connection.execute(
+                """
+                UPDATE "Booking"
+                SET "startsAt" = ?, "endsAt" = ?, "updatedAt" = ?
+                WHERE "id" = ?
+                """,
+                (
+                    "2026-07-27T10:30:00.000Z",
+                    "2026-07-27T11:30:00.000Z",
+                    "2026-07-27T09:30:00.000Z",
+                    "booking-2",
+                ),
+            )
+        except sqlite3.IntegrityError as error:
+            assert "booking_staff_overlap" in str(error)
+        else:
+            raise AssertionError("overlapping same-staff booking update should be rejected")
+
+
 def test_data_model_doc_exists_and_covers_every_model() -> None:
     assert DATA_MODEL_DOC.exists(), "docs/DATA_MODEL.md must be checked in"
     doc = DATA_MODEL_DOC.read_text()
