@@ -20,10 +20,10 @@ type QueryArgs = {
   model?: string;
   operation: string;
   args: unknown;
-  query: (a: unknown) => unknown;
+  query: (a: unknown) => Promise<unknown>;
 };
 
-function guardQuery({ model, operation, args, query }: QueryArgs) {
+function guardQuery({ model, operation, args, query }: QueryArgs): Promise<unknown> {
   if (model) {
     assertTenantWhere(model, operation, args);
   }
