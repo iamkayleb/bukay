@@ -5,6 +5,8 @@ import { prisma } from "@/app/db/prisma";
 import { resolveTenant } from "@/app/lib/resolve-tenant";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 
+export { withTenantScope } from "@/src/middleware/tenantContext";
+
 export type ServiceRecord = {
   id: string;
   tenantId: string;
