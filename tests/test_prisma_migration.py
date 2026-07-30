@@ -88,8 +88,6 @@ def test_initial_migration_exists() -> None:
 
 def test_prisma_migrate_dev_runs_on_clean_database(tmp_path: Path) -> None:
     """Acceptance check: `prisma migrate dev` must succeed on a clean database."""
-    import os
-
     prisma_dir = tmp_path / "prisma"
     shutil.copytree(ROOT / "prisma", prisma_dir)
     db_path = prisma_dir / "dev.db"
