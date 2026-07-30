@@ -1,8 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { tenantContext } from "@/app/tenancy/tenant-context";
 
-const TENANT_SCOPED_MODELS = new Set([
+export const TENANT_SCOPED_MODELS = [
   "AuditLog",
+  "Blackout",
   "Booking",
   "BusinessHour",
   "Client",
@@ -10,7 +11,9 @@ const TENANT_SCOPED_MODELS = new Set([
   "Service",
   "Staff",
   "User",
-]);
+] as const;
+
+const TENANT_SCOPED_MODEL_SET = new Set<string>(TENANT_SCOPED_MODELS);
 
 const OPERATIONS_WITH_WHERE = new Set([
   "aggregate",
@@ -55,7 +58,7 @@ function whereFromArgs(args: unknown): unknown {
 }
 
 export function assertTenantWhere(model: string, operation: string, args: unknown): void {
-  if (!TENANT_SCOPED_MODELS.has(model) || !OPERATIONS_WITH_WHERE.has(operation)) {
+  if (!TENANT_SCOPED_MODEL_SET.has(model) || !OPERATIONS_WITH_WHERE.has(operation)) {
     return;
   }
 
