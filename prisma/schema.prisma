@@ -22,7 +22,9 @@ model Tenant {
   users         User[]
   services      Service[]
   staff         Staff[]
+  staffServices StaffService[]
   businessHours BusinessHour[]
+  blackouts     Blackout[]
   clients       Client[]
   bookings      Booking[]
   payments      Payment[]
@@ -44,37 +46,60 @@ model User {
 }
 
 model Service {
-  id              String    @id @default(cuid())
-  tenantId        String
-  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name            String
-  description     String?
-  durationMinutes Int
-  priceCents      Int
-  currency        String    @default("NGN")
-  active          Boolean   @default(true)
-  bookings        Booking[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id               String         @id @default(cuid())
+  tenantId         String
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name             String
+  description      String?
+  durationMinutes  Int
+  priceCents       Int
+  currency         String         @default("NGN")
+  active           Boolean        @default(true)
+  bookings         Booking[]
+  staffAssignments StaffService[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   @@unique([tenantId, name])
   @@index([tenantId])
 }
 
 model Staff {
-  id        String    @id @default(cuid())
+  id        String         @id @default(cuid())
   tenantId  String
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name      String
   email     String?
   phone     String?
-  active    Boolean   @default(true)
+  active    Boolean        @default(true)
   bookings  Booking[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  services  StaffService[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
 
   @@unique([tenantId, email])
   @@index([tenantId])
+}
+
+// Explicit join table between Staff and Service. Carries `tenantId` so the
+// row is queryable within a tenant boundary — implicit Prisma M2M tables
+// cannot hold a tenantId column, which would break the multi-tenant scoping
+// invariant.
+model StaffService {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  staffId   String
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  serviceId String
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([staffId, serviceId])
+  @@index([tenantId])
+  @@index([staffId])
+  @@index([serviceId])
 }
 
 model BusinessHour {
@@ -88,7 +113,25 @@ model BusinessHour {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([tenantId, dayOfWeek])
+  @@index([tenantId])
+  @@index([tenantId, dayOfWeek])
+}
+
+// Date-specific overrides that suppress the weekly schedule for one day.
+// A Blackout row for (tenantId, date) means the tenant is closed that day
+// regardless of BusinessHour rules (holidays, one-off closures). `date` is
+// stored as an ISO "YYYY-MM-DD" wall-clock in the tenant's timezone so the
+// row is independent of DST or UTC offset.
+model Blackout {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  date      String
+  reason    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, date])
   @@index([tenantId])
 }
 
@@ -167,4 +210,3 @@ model AuditLog {
   @@index([tenantId])
   @@index([tenantId, entityType, entityId])
 }
-
