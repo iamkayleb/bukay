@@ -14,9 +14,18 @@ that:
 - Application queries that filter by tenant hit the index immediately.
 - Cross-tenant scans are visible in `pg_stat` and easy to flag in review.
 
-The application layer is responsible for setting `tenantId` on every write and
-including it in every read filter. The schema gives us the storage shape and
-indexes; it does not, on its own, enforce row-level isolation.
+| Model | Purpose | Tenant-specific constraints and indexes |
+|-------|---------|-----------------------------------------|
+| `User` | Login or staff identity for a tenant | `@@unique([tenantId, email])`, `@@index([tenantId])` |
+| `Service` | Bookable service with duration and price | `@@unique([tenantId, name])`, `@@index([tenantId])` |
+| `Staff` | Staff member who can be assigned to bookings | `@@unique([tenantId, email])`, `@@index([tenantId])` |
+| `BusinessHour` | Weekly opening hours by day of week | `@@unique([tenantId, dayOfWeek])`, `@@index([tenantId])` |
+| `Client` | Customer profile scoped to a tenant | `@@unique([tenantId, phone])`, `@@index([tenantId])` |
+| `Tag` | Reusable client label scoped to a tenant | `@@unique([tenantId, name])`, `@@index([tenantId])` |
+| `ClientTag` | Client-to-tag assignment | `@@unique([clientId, tagId])`, `@@index([tenantId])`, `@@index([tenantId, clientId])`, `@@index([tenantId, tagId])` |
+| `Booking` | Appointment linking client, service, and optional staff | `@@index([tenantId])`, `@@index([tenantId, startsAt])` |
+| `Payment` | Payment ledger row for a booking | `@@index([tenantId])`, `@@index([bookingId])`, `@@index([providerRef])` |
+| `AuditLog` | Append-only tenant activity record | `@@index([tenantId])`, `@@index([tenantId, entityType, entityId])` |
 
 `onDelete: Cascade` is used from `Tenant` down through every owned table, so
 deleting a tenant deletes its full data island.
@@ -95,8 +104,19 @@ availability lookup path.
 
 ### Client
 
-End-customers who book services. Email and phone are each unique within a
-tenant — duplicates would force the booking flow to disambiguate.
+`Client` stores customer name, optional email, required phone number, optional notes, and booking
+relations. Client tags are stored through `ClientTag` so the same free-text tag can be reused across
+many clients.
+
+### Tag
+
+`Tag` stores a reusable free-text client label for a tenant. Tag names are unique within a tenant and
+can be assigned to many clients.
+
+### ClientTag
+
+`ClientTag` links clients to tags. The unique client/tag pair prevents duplicate assignments, while
+tenant, client, and tag indexes support filtered client-list reads.
 
 ### Booking
 
@@ -188,14 +208,10 @@ npm run db:seed
 
 After seeding, the demo tenant (`slug='demo'`) contains:
 
-- one `OWNER` user (`owner@demo.bukay.dev`),
-- three services (`Classic Haircut`, `Beard Trim`, `Full Grooming Package`),
-- one staff member linked to the owner user and assigned every service,
-- Mon–Sat 09:00–18:00 business hours,
-- one demo client,
-- one `CONFIRMED` booking for the Classic Haircut on 2026-06-15 10:00 UTC,
-- one `PAID` mobile-money payment matching that booking,
-- one `seed.bootstrap` audit log entry.
+| Migration | Description |
+|-----------|-------------|
+| `20260611112538_init` | Creates the initial SQLite schema for tenants, users, services, staff, business hours, clients, bookings, payments, and audit logs. It also creates all unique constraints and tenant indexes declared in `schema.prisma`. |
+| `20260730000000_client_tags` | Adds reusable tenant-scoped tags and client/tag assignments with indexes for client-list filtering. |
 
 The seed is idempotent: re-running it tears down the dependent rows in FK
 order (payments → bookings → audit logs → services → staff → business hours)

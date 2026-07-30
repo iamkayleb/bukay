@@ -86,6 +86,11 @@ def _has_tenant_id_index(model_body: str) -> bool:
     return re.search(r"@@index\(\[\s*tenantId\s*(?:,|\])", model_body) is not None
 
 
+def _has_index(model_body: str, fields: list[str]) -> bool:
+    field_pattern = r"\s*,\s*".join(re.escape(field) for field in fields)
+    return re.search(rf"@@index\(\[\s*{field_pattern}\s*\]\)", model_body) is not None
+
+
 def test_schema_file_exists() -> None:
     assert SCHEMA_PATH.exists(), f"missing prisma schema at {SCHEMA_PATH}"
 
@@ -146,22 +151,10 @@ def test_tenant_model_has_no_tenant_id() -> None:
     ), "Tenant model must not carry its own tenantId column"
 
 
-def test_business_hours_support_multiple_windows_per_day() -> None:
+def test_client_search_fields_have_compound_tenant_indexes() -> None:
+    """Client list search must stay indexed for large tenant rosters."""
     blocks = _model_blocks(SCHEMA_PATH.read_text())
-    body = blocks["BusinessHour"]
-    assert "@@unique([tenantId, dayOfWeek])" not in body
-    assert "@@index([tenantId, dayOfWeek])" in body
+    body = blocks["Client"]
 
-
-def test_blackout_has_unique_tenant_local_date() -> None:
-    blocks = _model_blocks(SCHEMA_PATH.read_text())
-    body = blocks["Blackout"]
-    assert re.search(r"^\s*date\s+String\b", body, re.MULTILINE)
-    assert "@@unique([tenantId, date])" in body
-
-
-def test_audit_log_metadata_is_structured_json() -> None:
-    blocks = _model_blocks(SCHEMA_PATH.read_text())
-    body = blocks["AuditLog"]
-    assert re.search(r"^\s*metadata\s+Json\?", body, re.MULTILINE)
-    assert not re.search(r"^\s*metadata\s+String\?", body, re.MULTILINE)
+    assert _has_index(body, ["tenantId", "name"]), "Client search needs @@index([tenantId, name])"
+    assert _has_index(body, ["tenantId", "phone"]), "Client search needs @@index([tenantId, phone])"

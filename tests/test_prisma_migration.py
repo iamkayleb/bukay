@@ -10,6 +10,10 @@ These tests assert both invariants without needing a live database.
 from __future__ import annotations
 
 import re
+import shutil
+import sqlite3
+import subprocess
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -57,6 +61,26 @@ def _initial_migration_dir() -> Path:
     assert candidates, f"no migration directories found under {MIGRATIONS_DIR}"
     # The init migration sorts first by timestamp prefix.
     return sorted(candidates)[0]
+
+
+def _all_migration_sql() -> str:
+    migrations = sorted(MIGRATIONS_DIR.glob("*/migration.sql"))
+    assert migrations, f"no migration.sql files found under {MIGRATIONS_DIR}"
+    return "\n".join(path.read_text() for path in migrations)
+
+
+def _package_version(package: str) -> str:
+    pkg = json.loads(PACKAGE_JSON.read_text())
+    spec = pkg.get("dependencies", {}).get(package) or pkg.get("devDependencies", {}).get(package)
+    assert spec, f"could not find {package} version in {PACKAGE_JSON}"
+    return spec
+
+
+def _prisma_command() -> list[str]:
+    prisma_bin = ROOT / "node_modules" / ".bin" / "prisma"
+    if prisma_bin.exists():
+        return [str(prisma_bin)]
+    return ["npx", "--yes", "--package", f"prisma@{_package_version('prisma')}", "prisma"]
 
 
 def test_migration_lock_present() -> None:
@@ -149,6 +173,87 @@ def test_migration_columns_use_enum_types() -> None:
                 re.IGNORECASE,
             )
             assert pattern.search(sql), f"{table}.{column} must use enum type {enum_name}"
+
+
+def test_migrations_add_client_search_indexes() -> None:
+    """Client list search must have compound indexes before large tenant rosters."""
+    sql = _all_migration_sql()
+    expected_indexes = {
+        "Client_tenantId_name_idx": '"Client"("tenantId", "name")',
+        "Client_tenantId_phone_idx": '"Client"("tenantId", "phone")',
+    }
+
+    for index_name, indexed_columns in expected_indexes.items():
+        assert (
+            f'CREATE INDEX "{index_name}" ON {indexed_columns}' in sql
+        ), f"migrations missing {index_name}"
+
+
+def test_client_search_returns_under_300ms_for_10k_clients() -> None:
+    """Acceptance check: tenant-scoped name/phone search stays fast at 10k clients."""
+    connection = sqlite3.connect(":memory:")
+    connection.executescript(_all_migration_sql())
+    now = "2026-07-30 00:00:00"
+
+    connection.execute(
+        """
+        INSERT INTO "Tenant" ("id", "name", "slug", "timezone", "currency", "createdAt", "updatedAt")
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        ("tenant-1", "Demo Salon", "demo", "Africa/Lagos", "NGN", now, now),
+    )
+    connection.executemany(
+        """
+        INSERT INTO "Client" ("id", "tenantId", "name", "phone", "createdAt", "updatedAt")
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        [
+            (
+                f"client-{index}",
+                "tenant-1",
+                "Target Client" if index == 9876 else f"Client {index:05d}",
+                "+2348001234567" if index == 9876 else f"+23480{index:06d}",
+                now,
+                now,
+            )
+            for index in range(10_000)
+        ],
+    )
+    connection.commit()
+
+    # Warm the in-memory SQLite connection before measuring the query budget.
+    search_pattern = "%Target%"
+    query_args = ("tenant-1", search_pattern, search_pattern)
+    connection.execute(
+        """
+        SELECT COUNT(*) FROM "Client"
+        WHERE "tenantId" = ? AND ("name" LIKE ? OR "phone" LIKE ?)
+        """,
+        query_args,
+    ).fetchone()
+
+    started = time.perf_counter()
+    total = connection.execute(
+        """
+        SELECT COUNT(*) FROM "Client"
+        WHERE "tenantId" = ? AND ("name" LIKE ? OR "phone" LIKE ?)
+        """,
+        query_args,
+    ).fetchone()[0]
+    rows = connection.execute(
+        """
+        SELECT "id", "name", "phone" FROM "Client"
+        WHERE "tenantId" = ? AND ("name" LIKE ? OR "phone" LIKE ?)
+        ORDER BY "name" ASC, "createdAt" DESC
+        LIMIT 25
+        """,
+        query_args,
+    ).fetchall()
+    elapsed_ms = (time.perf_counter() - started) * 1000
+
+    assert total == 1
+    assert rows == [("client-9876", "Target Client", "+2348001234567")]
+    assert elapsed_ms < 300, f"client search took {elapsed_ms:.2f}ms for 10k clients"
 
 
 def test_data_model_doc_exists_and_covers_every_model() -> None:
