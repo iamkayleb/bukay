@@ -10,6 +10,10 @@ export function normalizeClientSearch(value: string | string[] | undefined) {
   return firstParam(value)?.trim().replace(/\s+/g, " ") ?? "";
 }
 
+export function normalizeClientTag(value: string | string[] | undefined) {
+  return firstParam(value)?.trim().replace(/\s+/g, " ") ?? "";
+}
+
 export function normalizeClientPage(value: string | string[] | undefined) {
   const parsed = Number(firstParam(value));
   if (!Number.isInteger(parsed) || parsed < 1) {
@@ -19,20 +23,39 @@ export function normalizeClientPage(value: string | string[] | undefined) {
   return parsed;
 }
 
-export function buildClientWhere(tenantId: string, search: string): Prisma.ClientWhereInput {
+export function buildClientWhere(
+  tenantId: string,
+  search: string,
+  tag: string = ""
+): Prisma.ClientWhereInput {
   const where: Prisma.ClientWhereInput = { tenantId };
 
   if (search) {
     where.OR = [{ name: { contains: search } }, { phone: { contains: search } }];
   }
 
+  if (tag) {
+    where.clientTags = {
+      some: {
+        tenantId,
+        tag: {
+          tenantId,
+          name: tag,
+        },
+      },
+    };
+  }
+
   return where;
 }
 
-export function buildClientPageHref(page: number, search: string) {
+export function buildClientPageHref(page: number, search: string, tag: string = "") {
   const params = new URLSearchParams();
   if (search) {
     params.set("q", search);
+  }
+  if (tag) {
+    params.set("tag", tag);
   }
   if (page > 1) {
     params.set("page", String(page));

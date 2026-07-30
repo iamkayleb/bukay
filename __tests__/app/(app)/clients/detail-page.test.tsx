@@ -12,6 +12,11 @@ type ClientProfileRow = {
   tenant: {
     currency: string;
   };
+  clientTags: Array<{
+    tag: {
+      name: string;
+    };
+  }>;
   bookings: Array<{
     id: string;
     startsAt: Date;
@@ -75,6 +80,7 @@ function profile(overrides: Partial<ClientProfileRow> = {}): ClientProfileRow {
     notes: "Prefers morning appointments.",
     createdAt: new Date("2026-06-01T10:00:00.000Z"),
     tenant: { currency: "NGN" },
+    clientTags: [{ tag: { name: "regular" } }],
     bookings: [
       {
         id: "booking-1",
@@ -126,6 +132,10 @@ describe("/clients/[id] page", () => {
         notes: true,
         createdAt: true,
         tenant: { select: { currency: true } },
+        clientTags: {
+          orderBy: { tag: { name: "asc" } },
+          select: { tag: { select: { name: true } } },
+        },
         bookings: {
           orderBy: { startsAt: "desc" },
           select: {
@@ -157,6 +167,8 @@ describe("/clients/[id] page", () => {
     expect(html).toContain("Classic Haircut");
     expect(html).toContain("Beard Trim");
     expect(html).toContain("Prefers morning appointments.");
+    expect(html).toContain("regular");
+    expect(html).toContain("/clients?tag=regular");
   });
 
   it("resolves a tenant slug when no tenant id header is present", async () => {

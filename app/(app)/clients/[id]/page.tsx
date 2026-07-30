@@ -41,6 +41,11 @@ type ClientProfileRow = {
   tenant: {
     currency: string;
   };
+  clientTags: Array<{
+    tag: {
+      name: string;
+    };
+  }>;
   bookings: ClientBookingRow[];
 };
 
@@ -55,6 +60,10 @@ type ClientDelegate = {
       notes: true;
       createdAt: true;
       tenant: { select: { currency: true } };
+      clientTags: {
+        orderBy: { tag: { name: "asc" } };
+        select: { tag: { select: { name: true } } };
+      };
       bookings: {
         orderBy: { startsAt: "desc" };
         select: {
@@ -131,6 +140,10 @@ async function loadClientProfile(tenantId: string, clientId: string) {
         notes: true,
         createdAt: true,
         tenant: { select: { currency: true } },
+        clientTags: {
+          orderBy: { tag: { name: "asc" } },
+          select: { tag: { select: { name: true } } },
+        },
         bookings: {
           orderBy: { startsAt: "desc" },
           select: {
@@ -200,6 +213,19 @@ export default async function ClientProfilePage({ params }: { params: ClientProf
                 <span>{client.phone}</span>
                 <span>{client.email ?? "No email"}</span>
               </div>
+              {client.clientTags.length > 0 ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {client.clientTags.map(({ tag }) => (
+                    <Link
+                      className="rounded-md border border-slate-700 px-2 py-1 text-xs font-medium text-emerald-200 hover:border-emerald-400"
+                      href={`/clients?tag=${encodeURIComponent(tag.name)}`}
+                      key={tag.name}
+                    >
+                      {tag.name}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
             </div>
             <dl className="grid grid-cols-3 overflow-hidden rounded-lg border border-slate-800 bg-slate-900">
               <div className="border-r border-slate-800 px-4 py-3">

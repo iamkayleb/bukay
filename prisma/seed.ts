@@ -78,6 +78,8 @@ async function main() {
   await prisma.payment.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.booking.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.auditLog.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.clientTag.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.tag.deleteMany({ where: { tenantId: tenant.id } });
 
   // Wipe and reinsert demo services so the count stays at three on re-seed.
   await prisma.service.deleteMany({ where: { tenantId: tenant.id } });
@@ -130,6 +132,21 @@ async function main() {
     },
   });
   console.log(`Client ready: ${client.name} (${client.id})`);
+
+  const regularTag = await prisma.tag.create({
+    data: {
+      tenantId: tenant.id,
+      name: "regular",
+    },
+  });
+  await prisma.clientTag.create({
+    data: {
+      tenantId: tenant.id,
+      clientId: client.id,
+      tagId: regularTag.id,
+    },
+  });
+  console.log(`Client tag ready: ${regularTag.name}`);
 
   // Demo booking: the classic haircut, confirmed, with a matching paid payment.
   const haircut = services.find((s) => s.name === "Classic Haircut");

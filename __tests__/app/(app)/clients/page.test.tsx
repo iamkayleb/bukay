@@ -11,6 +11,11 @@ type ClientRow = {
   _count?: {
     bookings: number;
   };
+  clientTags: Array<{
+    tag: {
+      name: string;
+    };
+  }>;
 };
 
 const state = vi.hoisted(() => ({
@@ -45,6 +50,7 @@ import {
   buildClientWhere,
   normalizeClientPage,
   normalizeClientSearch,
+  normalizeClientTag,
 } from "@/app/(app)/clients/client-list";
 import ClientsPage from "@/app/(app)/clients/page";
 
@@ -57,6 +63,7 @@ function client(overrides: Partial<ClientRow> = {}): ClientRow {
     phone: "+2348012345678",
     createdAt: new Date("2026-06-01T10:00:00.000Z"),
     _count: { bookings: 3 },
+    clientTags: [{ tag: { name: "regular" } }],
     ...overrides,
   };
 }
@@ -70,6 +77,7 @@ beforeEach(() => {
       email: null,
       phone: "+2348099990000",
       _count: { bookings: 0 },
+      clientTags: [],
     }),
   ];
   state.headerMap = new Map([["x-tenant-id", "tenant-1"]]);
@@ -94,15 +102,25 @@ describe("client list helpers", () => {
   it("normalizes search and page parameters", () => {
     expect(normalizeClientSearch("  Ada   Okafor  ")).toBe("Ada Okafor");
     expect(normalizeClientSearch([" +23480 ", "ignored"])).toBe("+23480");
+    expect(normalizeClientTag(" regular  client ")).toBe("regular client");
     expect(normalizeClientPage("3")).toBe(3);
     expect(normalizeClientPage("0")).toBe(1);
     expect(normalizeClientPage("bad")).toBe(1);
   });
 
   it("builds tenant-scoped name and phone search filters", () => {
-    expect(buildClientWhere("tenant-1", "Ada")).toEqual({
+    expect(buildClientWhere("tenant-1", "Ada", "regular")).toEqual({
       tenantId: "tenant-1",
       OR: [{ name: { contains: "Ada" } }, { phone: { contains: "Ada" } }],
+      clientTags: {
+        some: {
+          tenantId: "tenant-1",
+          tag: {
+            tenantId: "tenant-1",
+            name: "regular",
+          },
+        },
+      },
     });
   });
 
@@ -110,6 +128,7 @@ describe("client list helpers", () => {
     expect(buildClientPageHref(1, "")).toBe("/clients");
     expect(buildClientPageHref(2, "")).toBe("/clients?page=2");
     expect(buildClientPageHref(3, "+23480")).toBe("/clients?q=%2B23480&page=3");
+    expect(buildClientPageHref(2, "Ada", "regular")).toBe("/clients?q=Ada&tag=regular&page=2");
   });
 });
 
@@ -137,6 +156,10 @@ describe("/clients page", () => {
         email: true,
         phone: true,
         createdAt: true,
+        clientTags: {
+          orderBy: { tag: { name: "asc" } },
+          select: { tag: { select: { name: true } } },
+        },
         _count: { select: { bookings: true } },
       },
     });
@@ -151,6 +174,31 @@ describe("/clients page", () => {
     expect(html).toContain("+2348012345678");
     expect(html).toContain("3 bookings");
     expect(html).toContain("Bola Musa");
+    expect(html).toContain("regular");
+    expect(html).toContain("/clients?tag=regular");
+  });
+
+  it("filters clients by reusable tags", async () => {
+    const element = await ClientsPage({
+      searchParams: { tag: " regular " },
+    });
+
+    renderToStaticMarkup(element);
+
+    expect(state.clientCount).toHaveBeenCalledWith({
+      where: {
+        tenantId: "tenant-1",
+        clientTags: {
+          some: {
+            tenantId: "tenant-1",
+            tag: {
+              tenantId: "tenant-1",
+              name: "regular",
+            },
+          },
+        },
+      },
+    });
   });
 
   it("resolves a tenant slug when no tenant id header is present", async () => {

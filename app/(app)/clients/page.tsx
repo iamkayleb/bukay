@@ -11,6 +11,7 @@ import {
   buildClientWhere,
   normalizeClientPage,
   normalizeClientSearch,
+  normalizeClientTag,
 } from "./client-list";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ export const dynamic = "force-dynamic";
 type ClientsSearchParams = {
   page?: string | string[];
   q?: string | string[];
+  tag?: string | string[];
 };
 
 type ClientRow = {
@@ -29,6 +31,11 @@ type ClientRow = {
   _count?: {
     bookings: number;
   };
+  clientTags: Array<{
+    tag: {
+      name: string;
+    };
+  }>;
 };
 
 type ClientDelegate = {
@@ -44,6 +51,10 @@ type ClientDelegate = {
       email: true;
       phone: true;
       createdAt: true;
+      clientTags: {
+        orderBy: { tag: { name: "asc" } };
+        select: { tag: { select: { name: true } } };
+      };
       _count: { select: { bookings: true } };
     };
   }): Promise<ClientRow[]>;
@@ -79,8 +90,8 @@ async function resolveTenantIdForClientsPage() {
   return null;
 }
 
-async function loadClients(tenantId: string, search: string, page: number) {
-  const where = buildClientWhere(tenantId, search);
+async function loadClients(tenantId: string, search: string, tag: string, page: number) {
+  const where = buildClientWhere(tenantId, search, tag);
   const skip = (page - 1) * CLIENTS_PAGE_SIZE;
   const clientDelegate = prisma.client as unknown as ClientDelegate;
 
@@ -98,6 +109,10 @@ async function loadClients(tenantId: string, search: string, page: number) {
           email: true,
           phone: true,
           createdAt: true,
+          clientTags: {
+            orderBy: { tag: { name: "asc" } },
+            select: { tag: { select: { name: true } } },
+          },
           _count: { select: { bookings: true } },
         },
       }),
@@ -137,6 +152,7 @@ export default async function ClientsPage({
 }) {
   const tenantId = await resolveTenantIdForClientsPage();
   const search = normalizeClientSearch(searchParams.q);
+  const tag = normalizeClientTag(searchParams.tag);
   const requestedPage = normalizeClientPage(searchParams.page);
 
   if (!tenantId) {
@@ -152,7 +168,7 @@ export default async function ClientsPage({
     );
   }
 
-  const { clients, totalClients } = await loadClients(tenantId, search, requestedPage);
+  const { clients, totalClients } = await loadClients(tenantId, search, tag, requestedPage);
   const totalPages = Math.max(1, Math.ceil(totalClients / CLIENTS_PAGE_SIZE));
   const page = Math.min(requestedPage, totalPages);
   const isPastLastPage = requestedPage > totalPages && totalClients > 0;
@@ -180,6 +196,17 @@ export default async function ClientsPage({
               placeholder="Search by name or phone"
               type="search"
             />
+            <label className="sr-only" htmlFor="client-tag-filter">
+              Filter by tag
+            </label>
+            <input
+              className="min-h-11 flex-1 rounded-md border border-slate-700 bg-slate-900 px-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-emerald-400"
+              defaultValue={tag}
+              id="client-tag-filter"
+              name="tag"
+              placeholder="Filter by tag"
+              type="search"
+            />
             <button
               className="min-h-11 rounded-md bg-emerald-400 px-5 text-sm font-semibold text-slate-950 hover:bg-emerald-300"
               type="submit"
@@ -194,12 +221,12 @@ export default async function ClientsPage({
             <p className="text-sm font-medium text-slate-200">
               {clientRange(page, totalClients, clients.length)}
             </p>
-            {search ? (
+            {search || tag ? (
               <Link
                 className="text-sm font-medium text-emerald-300 hover:text-emerald-200"
                 href="/clients"
               >
-                Clear search
+                Clear filters
               </Link>
             ) : null}
           </div>
@@ -210,7 +237,7 @@ export default async function ClientsPage({
             </p>
           ) : clients.length === 0 ? (
             <p className="px-4 py-6 text-sm text-slate-400">
-              {search ? "No clients match that search." : "No clients added yet."}
+              {search || tag ? "No clients match those filters." : "No clients added yet."}
             </p>
           ) : (
             <ul className="divide-y divide-slate-800">
@@ -227,6 +254,19 @@ export default async function ClientsPage({
                       {client.name}
                     </Link>
                     <p className="mt-1 truncate text-slate-500">{client.email ?? "No email"}</p>
+                    {client.clientTags.length > 0 ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {client.clientTags.map(({ tag: clientTag }) => (
+                          <Link
+                            className="rounded-md border border-slate-700 px-2 py-1 text-xs font-medium text-emerald-200 hover:border-emerald-400"
+                            href={buildClientPageHref(1, search, clientTag.name)}
+                            key={clientTag.name}
+                          >
+                            {clientTag.name}
+                          </Link>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                   <span className="text-slate-300">{client.phone}</span>
                   <span className="text-slate-300">{client._count?.bookings ?? 0} bookings</span>
@@ -245,7 +285,7 @@ export default async function ClientsPage({
                 ? "pointer-events-none border-slate-800 text-slate-600"
                 : "border-slate-700 text-slate-100 hover:border-emerald-400"
             }`}
-            href={buildClientPageHref(page - 1, search)}
+            href={buildClientPageHref(page - 1, search, tag)}
           >
             Previous
           </Link>
@@ -259,7 +299,7 @@ export default async function ClientsPage({
                 ? "pointer-events-none border-slate-800 text-slate-600"
                 : "border-slate-700 text-slate-100 hover:border-emerald-400"
             }`}
-            href={buildClientPageHref(page + 1, search)}
+            href={buildClientPageHref(page + 1, search, tag)}
           >
             Next
           </Link>
