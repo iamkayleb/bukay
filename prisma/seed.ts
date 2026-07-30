@@ -133,24 +133,6 @@ async function main() {
       reason: "Christmas Day",
     },
   });
-
-  await prisma.staffService.createMany({
-    data: services.map((s) => ({
-      tenantId: tenant.id,
-      staffId: staff.id,
-      serviceId: s.id,
-    })),
-  });
-  console.log(`Assigned ${services.length} services to staff ${staff.name}`);
-
-  // One-off closure so the blackout table is exercised end-to-end.
-  await prisma.blackout.create({
-    data: {
-      tenantId: tenant.id,
-      date: "2026-12-25",
-      reason: "Christmas Day",
-    },
-  });
   console.log("Blackout created: 2026-12-25 (Christmas Day)");
 
   // Demo client.
