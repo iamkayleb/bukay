@@ -10,8 +10,6 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "test:visual": "playwright test",
-    "lighthouse:mobile": "lhci autorun --config=lighthouserc.json",
     "prisma:generate": "prisma generate",
     "postinstall": "prisma generate",
     "migrate:dev": "prisma migrate dev",
