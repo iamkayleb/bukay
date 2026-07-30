@@ -24,6 +24,10 @@ function b64urlDecode(input: string): Buffer {
   return Buffer.from(input.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat(pad), "base64");
 }
 
+function isCanonicalB64url(input: string, decoded: Buffer): boolean {
+  return input === b64urlEncode(decoded);
+}
+
 function getSecret(secret?: string): string {
   const s = secret ?? process.env.SESSION_SECRET ?? "";
   if (!s || s.length < 16) {
@@ -61,6 +65,7 @@ export function verifySessionDetailed(
   } catch {
     return { ok: false, reason: "invalid" };
   }
+  if (!isCanonicalB64url(sigPart, provided)) return { ok: false, reason: "invalid" };
   if (expected.length !== provided.length) return { ok: false, reason: "invalid" };
   if (!timingSafeEqual(expected, provided)) return { ok: false, reason: "invalid" };
 
