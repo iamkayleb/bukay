@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import sqlite3
 import subprocess
 from pathlib import Path
 
@@ -119,6 +120,91 @@ def test_migration_indexes_tenant_id_on_scoped_tables() -> None:
             re.IGNORECASE,
         )
         assert pattern.search(sql), f"initial migration missing tenantId index for {model}"
+
+
+def test_migration_rejects_overlapping_staff_bookings_at_db_layer() -> None:
+    sql = (_initial_migration_dir() / "migration.sql").read_text()
+
+    assert 'CREATE TRIGGER "Booking_reject_staff_overlap_insert"' in sql
+    assert 'CREATE TRIGGER "Booking_reject_staff_overlap_update"' in sql
+    assert "booking_staff_overlap" in sql
+    assert 'existing."staffId" = NEW."staffId"' in sql
+    assert 'existing."startsAt" < NEW."endsAt"' in sql
+    assert 'existing."endsAt" > NEW."startsAt"' in sql
+
+
+def test_staff_booking_overlap_trigger_blocks_conflicting_insert(tmp_path: Path) -> None:
+    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    db_path = tmp_path / "booking-overlap.db"
+
+    with sqlite3.connect(db_path) as connection:
+        connection.executescript(sql)
+        connection.executescript("""
+            INSERT INTO "Tenant" ("id", "name", "slug", "updatedAt")
+            VALUES ('tenant-1', 'Demo', 'demo', '2026-07-27T09:00:00.000Z');
+            INSERT INTO "Service" (
+              "id", "tenantId", "name", "durationMinutes", "priceCents", "updatedAt"
+            )
+            VALUES ('service-1', 'tenant-1', 'Haircut', 30, 5000, '2026-07-27T09:00:00.000Z');
+            INSERT INTO "Client" ("id", "tenantId", "name", "phone", "updatedAt")
+            VALUES ('client-1', 'tenant-1', 'Ada', '+2348000000000', '2026-07-27T09:00:00.000Z');
+            INSERT INTO "Staff" ("id", "tenantId", "name", "updatedAt")
+            VALUES ('staff-1', 'tenant-1', 'Kay', '2026-07-27T09:00:00.000Z');
+            INSERT INTO "Booking" (
+              "id", "tenantId", "clientId", "serviceId", "staffId", "startsAt", "endsAt",
+              "updatedAt"
+            )
+            VALUES (
+              'booking-1', 'tenant-1', 'client-1', 'service-1', 'staff-1',
+              '2026-07-27T10:00:00.000Z', '2026-07-27T11:00:00.000Z',
+              '2026-07-27T09:00:00.000Z'
+            );
+            """)
+
+        connection.execute(
+            """
+            INSERT INTO "Booking" (
+              "id", "tenantId", "clientId", "serviceId", "staffId", "startsAt", "endsAt",
+              "updatedAt"
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "booking-2",
+                "tenant-1",
+                "client-1",
+                "service-1",
+                "staff-1",
+                "2026-07-27T11:00:00.000Z",
+                "2026-07-27T11:30:00.000Z",
+                "2026-07-27T09:00:00.000Z",
+            ),
+        )
+
+        try:
+            connection.execute(
+                """
+                INSERT INTO "Booking" (
+                  "id", "tenantId", "clientId", "serviceId", "staffId", "startsAt", "endsAt",
+                  "updatedAt"
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    "booking-3",
+                    "tenant-1",
+                    "client-1",
+                    "service-1",
+                    "staff-1",
+                    "2026-07-27T10:30:00.000Z",
+                    "2026-07-27T11:30:00.000Z",
+                    "2026-07-27T09:00:00.000Z",
+                ),
+            )
+        except sqlite3.IntegrityError as error:
+            assert "booking_staff_overlap" in str(error)
+        else:
+            raise AssertionError("overlapping same-staff booking insert should be rejected")
 
 
 def test_data_model_doc_exists_and_covers_every_model() -> None:

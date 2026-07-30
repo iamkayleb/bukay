@@ -186,3 +186,35 @@ CREATE INDEX "AuditLog_tenantId_idx" ON "AuditLog"("tenantId");
 
 -- CreateIndex
 CREATE INDEX "AuditLog_tenantId_entityType_entityId_idx" ON "AuditLog"("tenantId", "entityType", "entityId");
+
+-- Reject overlapping bookings for the same tenant and staff member at the database layer.
+CREATE TRIGGER "Booking_reject_staff_overlap_insert"
+BEFORE INSERT ON "Booking"
+WHEN NEW."staffId" IS NOT NULL
+BEGIN
+  SELECT RAISE(ABORT, 'booking_staff_overlap')
+  WHERE EXISTS (
+    SELECT 1
+    FROM "Booking" existing
+    WHERE existing."tenantId" = NEW."tenantId"
+      AND existing."staffId" = NEW."staffId"
+      AND existing."startsAt" < NEW."endsAt"
+      AND existing."endsAt" > NEW."startsAt"
+  );
+END;
+
+CREATE TRIGGER "Booking_reject_staff_overlap_update"
+BEFORE UPDATE OF "tenantId", "staffId", "startsAt", "endsAt" ON "Booking"
+WHEN NEW."staffId" IS NOT NULL
+BEGIN
+  SELECT RAISE(ABORT, 'booking_staff_overlap')
+  WHERE EXISTS (
+    SELECT 1
+    FROM "Booking" existing
+    WHERE existing."id" <> OLD."id"
+      AND existing."tenantId" = NEW."tenantId"
+      AND existing."staffId" = NEW."staffId"
+      AND existing."startsAt" < NEW."endsAt"
+      AND existing."endsAt" > NEW."startsAt"
+  );
+END;
