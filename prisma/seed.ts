@@ -7,7 +7,14 @@
 // Idempotent: re-running upserts the demo tenant and reinserts its child
 // rows so the seeded counts stay stable.
 
-import { PrismaClient } from "@prisma/client";
+import {
+  PrismaClient,
+  UserRole,
+  DayOfWeek,
+  BookingStatus,
+  PaymentMethod,
+  PaymentStatus,
+} from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -58,15 +65,15 @@ async function main() {
   console.log(`Tenant ready: ${tenant.slug} (${tenant.id})`);
 
   const owner = await prisma.user.upsert({
-    where: {
-      tenantId_email: { tenantId: tenant.id, email: "owner@demo.bukay.dev" },
-    },
-    update: { name: "Demo Owner", role: "owner" },
+    where: { tenantId_email: { tenantId: tenant.id, email: "owner@demo.bukay.dev" } },
+    update: { name: "Demo Owner", role: UserRole.OWNER },
     create: {
       tenantId: tenant.id,
       email: "owner@demo.bukay.dev",
+      // Placeholder bcrypt-shaped hash; replace before any real login is wired up.
+      passwordHash: "$2a$10$DEMOHASHDEMOHASHDEMOHASHDEMOHASHDEMOHASHDEMOHASHDEMO",
       name: "Demo Owner",
-      role: "owner",
+      role: UserRole.OWNER,
     },
   });
 
@@ -91,14 +98,21 @@ async function main() {
   console.log(`Inserted ${services.length} services for ${tenant.slug}`);
 
   // Default business hours: Mon–Sat, 09:00–18:00.
-  const weekdays = [1, 2, 3, 4, 5, 6];
-  await prisma.businessHour.deleteMany({ where: { tenantId: tenant.id } });
+  const weekdays: DayOfWeek[] = [
+    DayOfWeek.MONDAY,
+    DayOfWeek.TUESDAY,
+    DayOfWeek.WEDNESDAY,
+    DayOfWeek.THURSDAY,
+    DayOfWeek.FRIDAY,
+    DayOfWeek.SATURDAY,
+  ];
+  await prisma.businessHour.deleteMany({ where: { tenantId: tenant.id, staffId: null } });
   await prisma.businessHour.createMany({
     data: weekdays.map((day) => ({
       tenantId: tenant.id,
       dayOfWeek: day,
-      opensAt: "09:00",
-      closesAt: "18:00",
+      openMinute: 9 * 60,
+      closeMinute: 18 * 60,
     })),
   });
   console.log("Business hours set: Mon–Sat 09:00–18:00");
@@ -109,18 +123,18 @@ async function main() {
   const staff = await prisma.staff.create({
     data: {
       tenantId: tenant.id,
+      userId: owner.id,
       name: "Demo Owner",
       email: owner.email,
       phone: "+2348000000001",
+      services: { connect: services.map((s) => ({ id: s.id })) },
     },
   });
   console.log(`Staff ready: ${staff.name} (${staff.id})`);
 
   // Demo client.
   const client = await prisma.client.upsert({
-    where: {
-      tenantId_phone: { tenantId: tenant.id, phone: "+2348000000099" },
-    },
+    where: { tenantId_phone: { tenantId: tenant.id, phone: "+2348000000099" } },
     update: { name: "Demo Client", email: "client@demo.bukay.dev" },
     create: {
       tenantId: tenant.id,
@@ -146,7 +160,7 @@ async function main() {
       staffId: staff.id,
       startsAt,
       endsAt,
-      status: "confirmed",
+      status: BookingStatus.CONFIRMED,
       notes: "Seeded demo appointment.",
     },
   });
@@ -158,10 +172,9 @@ async function main() {
       bookingId: booking.id,
       amountCents: haircut.priceCents,
       currency: tenant.currency,
-      provider: "mobile_money",
-      providerRef: "demo-mm-0001",
-      status: "paid",
-      paidAt: startsAt,
+      method: PaymentMethod.MOBILE_MONEY,
+      status: PaymentStatus.PAID,
+      externalRef: "demo-mm-0001",
     },
   });
   console.log(`Payment ready: ${payment.id} (${payment.amountCents} ${payment.currency})`);
@@ -173,7 +186,7 @@ async function main() {
       action: "seed.bootstrap",
       entityType: "Tenant",
       entityId: tenant.id,
-      metadata: JSON.stringify({ services: services.length, bookings: 1, payments: 1 }),
+      metadata: { services: services.length, bookings: 1, payments: 1 },
     },
   });
   console.log("Audit log entry recorded for seed.bootstrap");
