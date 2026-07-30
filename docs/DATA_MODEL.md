@@ -35,8 +35,8 @@ The root of the multi-tenant tree.
 | `timezone` | `String` | IANA tz, defaults to `Africa/Lagos`    |
 | `currency` | `String` | ISO 4217, defaults to `NGN`            |
 
-Children: `users`, `services`, `staff`, `businessHours`, `clients`, `bookings`,
-`payments`, `auditLogs`.
+Children: `users`, `services`, `staff`, `businessHours`, `blackouts`, `clients`,
+`bookings`, `payments`, `auditLogs`.
 
 ### User
 
@@ -92,6 +92,19 @@ default hours; rows with a `staffId` override for that staff member.
 
 Composite index `@@index([tenantId, staffId, dayOfWeek])` supports the
 availability lookup path.
+
+### Blackout
+
+Tenant-local dates when availability should be suppressed.
+
+| Column     | Type      | Notes                              |
+|------------|-----------|------------------------------------|
+| `tenantId` | `String`  | FK -> `Tenant.id`, indexed         |
+| `date`     | `String`  | Local calendar date, `YYYY-MM-DD`  |
+| `reason`   | `String?` | Optional internal explanation      |
+
+`@@unique([tenantId, date])` prevents duplicate blackout entries for the same
+tenant-local day.
 
 ### Client
 
@@ -163,7 +176,8 @@ Every tenant-scoped table has at least `@@index([tenantId])`:
 | `User`         | ✓            | `@@unique([tenantId, email])`                     |
 | `Service`      | ✓            | —                                                 |
 | `Staff`        | ✓            | `@unique` on `userId`                             |
-| `BusinessHour` | ✓            | `@@index([tenantId, staffId, dayOfWeek])`         |
+| `BusinessHour` | ✓            | `@@index([tenantId, dayOfWeek])`, `…staffId…`     |
+| `Blackout`     | ✓            | `@@unique([tenantId, date])`                      |
 | `Client`       | ✓            | `@@unique([tenantId, phone])`, `…email]`          |
 | `Booking`      | ✓            | `…startsAt`, `…staffId, startsAt`                 |
 | `Payment`      | ✓            | `@@index([tenantId, bookingId])`                  |
@@ -192,6 +206,7 @@ After seeding, the demo tenant (`slug='demo'`) contains:
 - three services (`Classic Haircut`, `Beard Trim`, `Full Grooming Package`),
 - one staff member linked to the owner user and assigned every service,
 - Mon–Sat 09:00–18:00 business hours,
+- no blackout dates,
 - one demo client,
 - one `CONFIRMED` booking for the Classic Haircut on 2026-06-15 10:00 UTC,
 - one `PAID` mobile-money payment matching that booking,

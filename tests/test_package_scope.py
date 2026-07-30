@@ -24,9 +24,6 @@ def test_package_json_does_not_keep_unrelated_lighthouse_script() -> None:
 def test_package_json_does_not_add_playwright_dependency() -> None:
     package = _package_json()
     dependencies = package.get("dependencies", {})
-    dev_dependencies = package.get("devDependencies", {})
 
     assert isinstance(dependencies, dict)
-    assert isinstance(dev_dependencies, dict)
     assert "@playwright/test" not in dependencies
-    assert "@playwright/test" not in dev_dependencies

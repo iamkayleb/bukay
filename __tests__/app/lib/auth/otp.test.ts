@@ -6,6 +6,7 @@ import {
   OTP_TTL_MS,
   MemoryOtpStateStore,
   OtpStore,
+  getOtpSecret,
 } from "@/app/lib/auth/otp";
 
 class FakeClock {
@@ -151,21 +152,17 @@ describe("OtpStore", () => {
 });
 
 describe("OTP_SECRET configuration", () => {
-  it("fails module startup in production when OTP_SECRET is missing", async () => {
-    vi.resetModules();
+  it("fails secret access in production when OTP_SECRET is missing", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("OTP_SECRET", "");
 
-    await expect(import("@/app/lib/auth/otp")).rejects.toThrow(
-      "OTP_SECRET must be set in production to sign OTP codes"
-    );
+    expect(() => getOtpSecret()).toThrow("OTP_SECRET must be set in production to sign OTP codes");
   });
 
-  it("allows module startup in production when OTP_SECRET is set", async () => {
-    vi.resetModules();
+  it("returns OTP_SECRET in production when it is set", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("OTP_SECRET", "production-test-otp-secret");
 
-    await expect(import("@/app/lib/auth/otp")).resolves.toHaveProperty("OtpStore");
+    expect(getOtpSecret()).toBe("production-test-otp-secret");
   });
 });
