@@ -18,9 +18,9 @@ The tenant-owned models are:
 | `User` | Login or staff identity for a tenant | `@@unique([tenantId, email])`, `@@index([tenantId])` |
 | `Service` | Bookable service with duration and price | `@@unique([tenantId, name])`, `@@index([tenantId])` |
 | `Staff` | Staff member who can be assigned to bookings | `@@unique([tenantId, email])`, `@@index([tenantId])` |
-| `StaffService` | Explicit join between staff and services carrying `tenantId` | `@@unique([staffId, serviceId])`, `@@index([tenantId])`, `@@index([staffId])`, `@@index([serviceId])` |
+| `StaffService` | Explicit join between `Staff` and `Service`, scoped to a tenant | `@@unique([staffId, serviceId])`, `@@index([tenantId])`, `@@index([staffId])`, `@@index([serviceId])` |
 | `BusinessHour` | Weekly opening hours by day of week | `@@unique([tenantId, dayOfWeek])`, `@@index([tenantId])` |
-| `Blackout` | Date-specific override that closes a tenant for one day | `@@unique([tenantId, date])`, `@@index([tenantId])` |
+| `Blackout` | Date-specific override that closes the tenant for one day | `@@unique([tenantId, date])`, `@@index([tenantId])` |
 | `Client` | Customer profile scoped to a tenant | `@@unique([tenantId, phone])`, `@@index([tenantId])` |
 | `Booking` | Appointment linking client, service, and optional staff | `@@index([tenantId])`, `@@index([tenantId, startsAt])` |
 | `Payment` | Payment ledger row for a booking | `@@index([tenantId])`, `@@index([bookingId])`, `@@index([providerRef])` |
@@ -54,17 +54,9 @@ booking remains if staff is later deleted.
 
 ### StaffService
 
-`StaffService` is the explicit join table between `Staff` and `Service`. Prisma's implicit M2M
-tables cannot carry a `tenantId` column, so the join is modelled explicitly to preserve the
-multi-tenant scoping invariant. Deleting the parent staff or service cascades to the join row.
-
-| Column      | Type     | Notes                                          |
-|-------------|----------|------------------------------------------------|
-| `tenantId`  | `String` | FK → `Tenant.id`, indexed                      |
-| `staffId`   | `String` | FK → `Staff.id` (`Cascade` on delete)          |
-| `serviceId` | `String` | FK → `Service.id` (`Cascade` on delete)        |
-
-`@@unique([staffId, serviceId])` prevents duplicate assignments.
+`StaffService` is an explicit join table between `Staff` and `Service` that carries `tenantId` so the
+row is queryable within a tenant boundary. Prisma's implicit many-to-many join tables cannot hold a
+`tenantId` column, which would break the multi-tenant scoping invariant.
 
 ### BusinessHour
 
@@ -73,18 +65,9 @@ strings and an `isClosed` flag.
 
 ### Blackout
 
-`Blackout` stores date-specific overrides that suppress the weekly schedule for one day. A row
-for `(tenantId, date)` means the tenant is closed that day regardless of the `BusinessHour`
-rules (holidays, one-off closures). `date` is stored as an ISO `YYYY-MM-DD` wall-clock string
-in the tenant's timezone so the row is independent of DST or UTC offset.
-
-| Column     | Type       | Notes                                          |
-|------------|------------|------------------------------------------------|
-| `tenantId` | `String`   | FK → `Tenant.id`, indexed                      |
-| `date`     | `String`   | ISO `YYYY-MM-DD`, tenant's local calendar day  |
-| `reason`   | `String?`  | Optional human-readable label                  |
-
-`@@unique([tenantId, date])` prevents duplicate blackouts for the same day.
+`Blackout` stores date-specific overrides that suppress the weekly `BusinessHour` schedule for one
+day (holidays, one-off closures). `date` is stored as an ISO `YYYY-MM-DD` wall-clock string in the
+tenant's timezone so the row is independent of DST or UTC offset transitions.
 
 ### Client
 
@@ -130,12 +113,12 @@ and audit log.
 
 ## Migration History
 
-Migrations live under [`prisma/migrations`](../prisma/migrations). The current history contains one
-checked-in migration:
+Migrations live under [`prisma/migrations`](../prisma/migrations). The current history contains:
 
 | Migration | Description |
 |-----------|-------------|
 | `20260611112538_init` | Creates the initial SQLite schema for tenants, users, services, staff, business hours, clients, bookings, payments, and audit logs. It also creates all unique constraints and tenant indexes declared in `schema.prisma`. |
+| `20260729000000_staff_service_and_blackout` | Adds the `StaffService` join table and the `Blackout` table along with their tenant indexes and unique constraints. |
 
 [`prisma/migrations/migration_lock.toml`](../prisma/migrations/migration_lock.toml) records the
 database provider as `sqlite`. Do not edit generated migration files by hand after they have been

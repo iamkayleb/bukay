@@ -81,9 +81,10 @@ model Staff {
   @@index([tenantId])
 }
 
-// Explicit join table between Staff and Service. Carries `tenantId` so the row
-// is queryable within a tenant boundary (implicit Prisma M2M tables can't hold
-// a tenantId column, which would break the multi-tenant scoping invariant).
+// Explicit join table between Staff and Service. Carries `tenantId` so the
+// row is queryable within a tenant boundary — implicit Prisma M2M tables
+// cannot hold a tenantId column, which would break the multi-tenant scoping
+// invariant.
 model StaffService {
   id        String   @id @default(cuid())
   tenantId  String
@@ -101,10 +102,6 @@ model StaffService {
   @@index([serviceId])
 }
 
-// A tenant's weekly schedule. Each row is one open→close window on a specific
-// weekday; multiple rows per (tenantId, dayOfWeek) let owners define split
-// shifts (e.g. 09:00–13:00 and 14:00–18:00). opensAt/closesAt are wall-clock
-// "HH:mm" strings interpreted in the tenant's timezone.
 model BusinessHour {
   id        String   @id @default(cuid())
   tenantId  String
@@ -125,6 +122,23 @@ model BusinessHour {
 // regardless of BusinessHour rules (holidays, one-off closures). `date` is
 // stored as an ISO "YYYY-MM-DD" wall-clock in the tenant's timezone so the
 // row is independent of DST or UTC offset.
+model Blackout {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  date      String
+  reason    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, date])
+  @@index([tenantId])
+}
+
+// Date-specific overrides that suppress the weekly BusinessHour schedule for
+// a single day (holidays, one-off closures). `date` is stored as an ISO
+// "YYYY-MM-DD" wall-clock string in the tenant's timezone so the row is
+// independent of DST or UTC offset transitions.
 model Blackout {
   id        String   @id @default(cuid())
   tenantId  String
