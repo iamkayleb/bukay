@@ -4,6 +4,7 @@ import {
   computeLifetimeValueCents,
   countNoShows,
   formatMoneyFromCents,
+  normalizeClientOwnerNotes,
 } from "@/app/(app)/clients/client-profile";
 
 describe("client profile helpers", () => {
@@ -42,5 +43,13 @@ describe("client profile helpers", () => {
 
   it("formats cents in the tenant currency", () => {
     expect(formatMoneyFromCents(125_000, "NGN")).toContain("1,250.00");
+  });
+
+  it("normalizes owner notes from form input", () => {
+    expect(normalizeClientOwnerNotes("  Prefers quiet appointments.  ")).toBe(
+      "Prefers quiet appointments."
+    );
+    expect(normalizeClientOwnerNotes("   ")).toBeNull();
+    expect(normalizeClientOwnerNotes(null)).toBeNull();
   });
 });

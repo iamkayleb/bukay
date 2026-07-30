@@ -35,6 +35,15 @@ export function countNoShows(bookings: Array<{ status: string }>) {
   return bookings.filter((booking) => booking.status === NO_SHOW_BOOKING_STATUS).length;
 }
 
+export function normalizeClientOwnerNotes(value: FormDataEntryValue | null) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const notes = value.trim();
+  return notes || null;
+}
+
 export function formatMoneyFromCents(amountCents: number, currency: string) {
   return new Intl.NumberFormat("en", {
     style: "currency",

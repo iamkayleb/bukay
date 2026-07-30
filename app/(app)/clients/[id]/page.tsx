@@ -7,6 +7,7 @@ import { prisma } from "@/app/db/prisma";
 import { resolveTenant } from "@/app/lib/resolve-tenant";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 import { computeLifetimeValueCents, countNoShows, formatMoneyFromCents } from "../client-profile";
+import { currentSessionIsTenantOwner, updateClientOwnerNotes } from "../owner-notes-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,7 @@ type ClientProfileRow = {
   name: string;
   email: string | null;
   phone: string;
-  notes: string | null;
+  notes?: string | null;
   createdAt: Date | string;
   tenant: {
     currency: string;
@@ -57,7 +58,7 @@ type ClientDelegate = {
       name: true;
       email: true;
       phone: true;
-      notes: true;
+      notes: boolean;
       createdAt: true;
       tenant: { select: { currency: true } };
       clientTags: {
@@ -126,7 +127,7 @@ async function resolveTenantIdForClientProfile() {
   return null;
 }
 
-async function loadClientProfile(tenantId: string, clientId: string) {
+async function loadClientProfile(tenantId: string, clientId: string, includeOwnerNotes: boolean) {
   const clientDelegate = prisma.client as unknown as ClientDelegate;
 
   return runWithTenantContext({ tenantId }, () =>
@@ -137,7 +138,7 @@ async function loadClientProfile(tenantId: string, clientId: string) {
         name: true,
         email: true,
         phone: true,
-        notes: true,
+        notes: includeOwnerNotes,
         createdAt: true,
         tenant: { select: { currency: true } },
         clientTags: {
@@ -184,7 +185,8 @@ export default async function ClientProfilePage({ params }: { params: ClientProf
     );
   }
 
-  const client = await loadClientProfile(tenantId, params.id);
+  const isOwner = await currentSessionIsTenantOwner(tenantId);
+  const client = await loadClientProfile(tenantId, params.id, isOwner);
   if (!client) {
     notFound();
   }
@@ -192,6 +194,7 @@ export default async function ClientProfilePage({ params }: { params: ClientProf
   const currency = client.tenant.currency;
   const lifetimeValueCents = computeLifetimeValueCents(client.bookings);
   const noShowCount = countNoShows(client.bookings);
+  const updateNotes = updateClientOwnerNotes.bind(null, client.id);
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-100 sm:px-6 lg:px-8">
@@ -246,14 +249,31 @@ export default async function ClientProfilePage({ params }: { params: ClientProf
           </div>
         </section>
 
-        <section className="rounded-lg border border-slate-800 bg-slate-900 px-4 py-4">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">
-            Notes
-          </h2>
-          <p className="mt-3 whitespace-pre-wrap text-sm text-slate-200">
-            {client.notes?.trim() || "No notes recorded."}
-          </p>
-        </section>
+        {isOwner ? (
+          <section className="rounded-lg border border-slate-800 bg-slate-900 px-4 py-4">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">
+              Owner notes
+            </h2>
+            <form action={updateNotes} className="mt-3 space-y-3">
+              <label className="sr-only" htmlFor="owner-notes">
+                Owner notes
+              </label>
+              <textarea
+                className="min-h-32 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-emerald-400"
+                defaultValue={client.notes?.trim() ?? ""}
+                id="owner-notes"
+                name="notes"
+                placeholder="Add private context for this client"
+              />
+              <button
+                className="rounded-md bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-300"
+                type="submit"
+              >
+                Save notes
+              </button>
+            </form>
+          </section>
+        ) : null}
 
         <section className="overflow-hidden rounded-lg border border-slate-800">
           <div className="border-b border-slate-800 bg-slate-900 px-4 py-3">
