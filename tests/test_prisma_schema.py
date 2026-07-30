@@ -17,6 +17,7 @@ EXPECTED_TENANT_SCOPED_MODELS = {
     "Service",
     "Staff",
     "BusinessHour",
+    "Blackout",
     "Client",
     "Booking",
     "Payment",
@@ -26,6 +27,29 @@ EXPECTED_TENANT_SCOPED_MODELS = {
 # Models the scope requires to exist at all.
 REQUIRED_MODELS = EXPECTED_TENANT_SCOPED_MODELS | {"Tenant"}
 
+EXPECTED_ENUMS = {
+    "UserRole": {"OWNER", "ADMIN", "STAFF", "VIEWER"},
+    "BookingStatus": {"PENDING", "CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"},
+    "PaymentStatus": {"PENDING", "PAID", "REFUNDED", "FAILED"},
+    "PaymentMethod": {"CASH", "CARD", "MOBILE_MONEY", "BANK_TRANSFER", "OTHER"},
+    "DayOfWeek": {
+        "MONDAY",
+        "TUESDAY",
+        "WEDNESDAY",
+        "THURSDAY",
+        "FRIDAY",
+        "SATURDAY",
+        "SUNDAY",
+    },
+}
+
+EXPECTED_TYPED_FIELDS = {
+    "User": {"role": "UserRole"},
+    "BusinessHour": {"dayOfWeek": "DayOfWeek"},
+    "Booking": {"status": "BookingStatus"},
+    "Payment": {"method": "PaymentMethod", "status": "PaymentStatus"},
+}
+
 
 def _model_blocks(schema_text: str) -> dict[str, str]:
     """Return a {model_name: body_text} map from a Prisma schema."""
@@ -34,6 +58,20 @@ def _model_blocks(schema_text: str) -> dict[str, str]:
     for match in pattern.finditer(schema_text):
         blocks[match.group(1)] = match.group(2)
     return blocks
+
+
+def _enum_blocks(schema_text: str) -> dict[str, set[str]]:
+    """Return a {enum_name: values} map from a Prisma schema."""
+    enums: dict[str, set[str]] = {}
+    pattern = re.compile(r"^enum\s+(\w+)\s*\{([^}]*)\}", re.MULTILINE | re.DOTALL)
+    for match in pattern.finditer(schema_text):
+        values = {
+            line.strip()
+            for line in match.group(2).splitlines()
+            if line.strip() and not line.strip().startswith("//")
+        }
+        enums[match.group(1)] = values
+    return enums
 
 
 def _has_tenant_id_column(model_body: str) -> bool:
@@ -63,11 +101,36 @@ def test_all_required_models_present() -> None:
     assert not missing, f"prisma schema missing required models: {sorted(missing)}"
 
 
+def test_expected_enums_present() -> None:
+    enums = _enum_blocks(SCHEMA_PATH.read_text())
+    assert enums == EXPECTED_ENUMS
+
+
+def test_status_role_payment_and_day_fields_use_enums() -> None:
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    for model, fields in EXPECTED_TYPED_FIELDS.items():
+        body = blocks[model]
+        for field, enum_name in fields.items():
+            assert re.search(
+                rf"^\s*{field}\s+{enum_name}\b", body, re.MULTILINE
+            ), f"{model}.{field} must use {enum_name}, not String"
+
+
 def test_expected_tenant_scoped_models_have_tenant_id_column() -> None:
     blocks = _model_blocks(SCHEMA_PATH.read_text())
     for name in EXPECTED_TENANT_SCOPED_MODELS:
         body = blocks[name]
         assert _has_tenant_id_column(body), f"model {name} is missing a `tenantId String` column"
+
+
+def test_expected_tenant_scoped_model_list_matches_schema() -> None:
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    tenant_scoped_models = _tenant_scoped_models(blocks)
+    assert tenant_scoped_models == EXPECTED_TENANT_SCOPED_MODELS, (
+        "EXPECTED_TENANT_SCOPED_MODELS must match models with a tenantId column; "
+        f"missing from expected: {sorted(tenant_scoped_models - EXPECTED_TENANT_SCOPED_MODELS)}, "
+        f"stale expected entries: {sorted(EXPECTED_TENANT_SCOPED_MODELS - tenant_scoped_models)}"
+    )
 
 
 def test_every_tenant_scoped_model_has_tenant_index() -> None:
