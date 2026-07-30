@@ -251,12 +251,14 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         startsAt: updateData.startsAt,
         endsAt: updateData.endsAt,
       });
+      const candidateStaffId =
+        "staffId" in updateData ? (updateData.staffId ?? null) : existingBooking.staffId;
       const validationIssue = await validateBookingInterval(
         buildValidationStore(),
         existingBooking,
         {
           ...candidateInterval,
-          staffId: updateData.staffId ?? existingBooking.staffId,
+          staffId: candidateStaffId,
         }
       );
 
