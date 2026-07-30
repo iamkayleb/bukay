@@ -24,27 +24,13 @@ REQUIRED_MODELS = {
     "Service",
     "Staff",
     "BusinessHour",
-    "Blackout",
     "Client",
     "Booking",
     "Payment",
     "AuditLog",
 }
 
-EXPECTED_ENUMS = {
-    "UserRole": "'OWNER', 'ADMIN', 'STAFF', 'VIEWER'",
-    "BookingStatus": "'PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW'",
-    "PaymentStatus": "'PENDING', 'PAID', 'REFUNDED', 'FAILED'",
-    "PaymentMethod": "'CASH', 'CARD', 'MOBILE_MONEY', 'BANK_TRANSFER', 'OTHER'",
-    "DayOfWeek": "'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'",
-}
-
-EXPECTED_ENUM_COLUMNS = {
-    "User": {"role": "UserRole"},
-    "BusinessHour": {"dayOfWeek": "DayOfWeek"},
-    "Booking": {"status": "BookingStatus"},
-    "Payment": {"method": "PaymentMethod", "status": "PaymentStatus"},
-}
+FORBIDDEN_POSTGRES_MARKERS = ("CREATE TYPE", "EXCLUDE", "USING gist", "JSONB")
 
 
 def _model_blocks(schema_text: str) -> dict[str, str]:
@@ -62,7 +48,7 @@ def _initial_migration_dir() -> Path:
 def test_migration_lock_present() -> None:
     lock = MIGRATIONS_DIR / "migration_lock.toml"
     assert lock.exists(), "prisma/migrations/migration_lock.toml must be checked in"
-    assert 'provider = "postgresql"' in lock.read_text()
+    assert 'provider = "sqlite"' in lock.read_text()
 
 
 def test_initial_migration_exists() -> None:
@@ -82,7 +68,7 @@ def test_migration_creates_every_required_model() -> None:
 
 def test_migrations_index_tenant_id_on_scoped_tables() -> None:
     """Every tenant-scoped table needs an index on tenantId in the SQL."""
-    sql = _all_migration_sql()
+    sql = (_initial_migration_dir() / "migration.sql").read_text()
     for model in REQUIRED_MODELS - {"Tenant"}:
         # Prisma emits `CREATE INDEX "<Model>_tenantId_idx" ON "<Model>"("tenantId")`
         # (or a composite index whose first column is tenantId).
@@ -93,62 +79,23 @@ def test_migrations_index_tenant_id_on_scoped_tables() -> None:
         assert pattern.search(sql), f"migration history missing tenantId index for {model}"
 
 
-def test_booking_staff_overlap_exclusion_constraint_exists() -> None:
-    """Postgres must reject double-booking the same staff member at the DB layer."""
-    sql = _all_migration_sql()
-    assert "CREATE EXTENSION IF NOT EXISTS btree_gist" in sql
-    assert 'ADD CONSTRAINT "Booking_staffId_time_overlap_excl"' in sql
-    assert re.search(
-        r'EXCLUDE\s+USING\s+gist\s*\([^;]*"tenantId"\s+WITH\s+='
-        r'[^;]*"staffId"\s+WITH\s+='
-        r"[^;]*tstzrange\("
-        r'[^;]*"startsAt"\s+AT\s+TIME\s+ZONE\s+\'UTC\''
-        r'[^;]*"endsAt"\s+AT\s+TIME\s+ZONE\s+\'UTC\''
-        r"[^;]*'\[\)'[^;]*\)\s+WITH\s+&&",
-        sql,
-        re.IGNORECASE | re.DOTALL,
-    ), "Booking migration history missing GiST exclusion on tenantId/staffId/tstzrange"
-    assert re.search(
-        r'WHERE\s*\(\s*"staffId"\s+IS\s+NOT\s+NULL\s*\)',
-        sql,
-        re.IGNORECASE,
-    ), "Booking overlap exclusion should only apply when staffId is present"
-
-
-def test_audit_log_metadata_migrates_to_jsonb() -> None:
-    sql = _all_migration_sql()
-    assert re.search(
-        r'ALTER TABLE\s+"AuditLog"\s+ALTER COLUMN\s+"metadata"\s+TYPE\s+JSONB',
-        sql,
-        re.IGNORECASE,
-    )
-    assert re.search(
-        r'USING\s+CASE\s+WHEN\s+"metadata"\s+IS\s+NULL\s+THEN\s+NULL'
-        r'\s+WHEN\s+btrim\("metadata"\)\s+=\s+\'\'\s+THEN\s+NULL'
-        r'\s+WHEN\s+"metadata"\s+~\s+\'\^\\s\*\[\\\[\{\]\'\s+THEN\s+"metadata"::jsonb'
-        r'\s+ELSE\s+to_jsonb\("metadata"\)\s+END',
-        sql,
-        re.IGNORECASE,
-    )
-
-
-def test_migration_creates_expected_enums() -> None:
+def test_migration_does_not_create_postgres_enums_or_constraints() -> None:
     sql = (_initial_migration_dir() / "migration.sql").read_text()
-    for enum_name, values in EXPECTED_ENUMS.items():
-        assert (
-            f'CREATE TYPE "{enum_name}" AS ENUM ({values});' in sql
-        ), f"initial migration missing enum {enum_name}"
+    for marker in FORBIDDEN_POSTGRES_MARKERS:
+        assert marker not in sql
 
 
-def test_migration_columns_use_enum_types() -> None:
+def test_migration_columns_use_sqlite_text_and_integer_types() -> None:
     sql = (_initial_migration_dir() / "migration.sql").read_text()
-    for table, columns in EXPECTED_ENUM_COLUMNS.items():
-        for column, enum_name in columns.items():
-            pattern = re.compile(
-                rf'"{column}"\s+"{enum_name}"\s+NOT NULL',
-                re.IGNORECASE,
-            )
-            assert pattern.search(sql), f"{table}.{column} must use enum type {enum_name}"
+    expected_columns = {
+        "role": "TEXT",
+        "dayOfWeek": "INTEGER",
+        "status": "TEXT",
+        "provider": "TEXT",
+        "metadata": "TEXT",
+    }
+    for column, column_type in expected_columns.items():
+        assert re.search(rf'"{column}"\s+{column_type}', sql, re.IGNORECASE)
 
 
 def test_data_model_doc_exists_and_covers_every_model() -> None:

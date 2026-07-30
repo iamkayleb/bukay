@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SEED_PATH = ROOT / "prisma" / "seed.ts"
 PACKAGE_JSON = ROOT / "package.json"
 
-EXPECTED_ENUM_IMPORTS = {
+FORBIDDEN_ENUM_IMPORTS = {
     "UserRole",
     "DayOfWeek",
     "BookingStatus",
@@ -23,22 +23,42 @@ EXPECTED_ENUM_IMPORTS = {
     "PaymentStatus",
 }
 
-EXPECTED_ENUM_USAGES = {
-    "UserRole.OWNER",
-    "DayOfWeek.MONDAY",
-    "DayOfWeek.TUESDAY",
-    "DayOfWeek.WEDNESDAY",
-    "DayOfWeek.THURSDAY",
-    "DayOfWeek.FRIDAY",
-    "DayOfWeek.SATURDAY",
-    "BookingStatus.CONFIRMED",
-    "PaymentMethod.MOBILE_MONEY",
-    "PaymentStatus.PAID",
+EXPECTED_STRING_USAGES = {
+    'role: "owner"',
+    "const weekdays = [1, 2, 3, 4, 5, 6];",
+    'status: "confirmed"',
+    'provider: "mobile_money"',
+    'status: "paid"',
+    "metadata: JSON.stringify({ services: services.length, bookings: 1, payments: 1 })",
 }
 
 
 def _seed_text() -> str:
     return SEED_PATH.read_text()
+
+
+def _extract_balanced_block(text: str, start: int) -> str:
+    depth = 0
+    for index, char in enumerate(text[start:], start=start):
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : index + 1]
+    raise AssertionError("unbalanced seed object block")
+
+
+def _find_seed_upsert_where_clauses() -> dict[str, str]:
+    text = _seed_text()
+    clauses: dict[str, str] = {}
+    for match in re.finditer(r"prisma\.(\w+)\.upsert\(\{", text):
+        model = match.group(1)
+        upsert_block = _extract_balanced_block(text, match.end() - 1)
+        where_match = re.search(r"\bwhere:\s*\{", upsert_block)
+        assert where_match, f"prisma.{model}.upsert must declare a where clause"
+        clauses[model] = _extract_balanced_block(upsert_block, where_match.end() - 1)
+    return clauses
 
 
 def test_seed_file_exists() -> None:
@@ -139,24 +159,24 @@ def test_package_json_wires_seed_script() -> None:
     )
 
 
-def test_seed_imports_prisma_enums() -> None:
+def test_seed_imports_only_prisma_client() -> None:
     text = _seed_text()
-    for enum_name in EXPECTED_ENUM_IMPORTS:
-        assert enum_name in text, f"seed.ts must import {enum_name} from @prisma/client"
+    assert 'import { PrismaClient } from "@prisma/client";' in text
+    for enum_name in FORBIDDEN_ENUM_IMPORTS:
+        assert enum_name not in text, f"seed.ts must not import {enum_name} from @prisma/client"
 
 
-def test_seed_uses_enum_values_for_typed_fields() -> None:
+def test_seed_uses_string_values_for_restored_fields() -> None:
     text = _seed_text()
-    for enum_usage in EXPECTED_ENUM_USAGES:
-        assert enum_usage in text, f"seed.ts must use {enum_usage}"
+    for value in EXPECTED_STRING_USAGES:
+        assert value in text, f"seed.ts must use {value}"
 
-    forbidden_string_values = [
-        'role: "owner"',
-        'status: "confirmed"',
-        'status: "paid"',
-        'provider: "mobile_money"',
-        'providerRef: "demo-mm-0001"',
-        "JSON.stringify({ services:",
+    forbidden_enum_values = [
+        "UserRole.",
+        "DayOfWeek.",
+        "BookingStatus.",
+        "PaymentMethod.",
+        "PaymentStatus.",
     ]
-    for value in forbidden_string_values:
-        assert value not in text, f"seed.ts still contains flattened field value {value}"
+    for value in forbidden_enum_values:
+        assert value not in text, f"seed.ts still contains enum usage {value}"

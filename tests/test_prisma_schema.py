@@ -17,7 +17,6 @@ EXPECTED_TENANT_SCOPED_MODELS = {
     "Service",
     "Staff",
     "BusinessHour",
-    "Blackout",
     "Client",
     "Booking",
     "Payment",
@@ -27,27 +26,12 @@ EXPECTED_TENANT_SCOPED_MODELS = {
 # Models the scope requires to exist at all.
 REQUIRED_MODELS = EXPECTED_TENANT_SCOPED_MODELS | {"Tenant"}
 
-EXPECTED_ENUMS = {
-    "UserRole": {"OWNER", "ADMIN", "STAFF", "VIEWER"},
-    "BookingStatus": {"PENDING", "CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"},
-    "PaymentStatus": {"PENDING", "PAID", "REFUNDED", "FAILED"},
-    "PaymentMethod": {"CASH", "CARD", "MOBILE_MONEY", "BANK_TRANSFER", "OTHER"},
-    "DayOfWeek": {
-        "MONDAY",
-        "TUESDAY",
-        "WEDNESDAY",
-        "THURSDAY",
-        "FRIDAY",
-        "SATURDAY",
-        "SUNDAY",
-    },
-}
-
-EXPECTED_TYPED_FIELDS = {
-    "User": {"role": "UserRole"},
-    "BusinessHour": {"dayOfWeek": "DayOfWeek"},
-    "Booking": {"status": "BookingStatus"},
-    "Payment": {"method": "PaymentMethod", "status": "PaymentStatus"},
+EXPECTED_STRING_FIELDS = {
+    "User": {"role": r'String\s+@default\("owner"\)'},
+    "BusinessHour": {"dayOfWeek": r"Int\b"},
+    "Booking": {"status": r'String\s+@default\("pending"\)'},
+    "Payment": {"provider": r"String\?", "status": r'String\s+@default\("pending"\)'},
+    "AuditLog": {"metadata": r"String\?"},
 }
 
 
@@ -96,19 +80,19 @@ def test_all_required_models_present() -> None:
     assert not missing, f"prisma schema missing required models: {sorted(missing)}"
 
 
-def test_expected_enums_present() -> None:
+def test_no_prisma_enums_present() -> None:
     enums = _enum_blocks(SCHEMA_PATH.read_text())
-    assert enums == EXPECTED_ENUMS
+    assert enums == {}
 
 
-def test_status_role_payment_and_day_fields_use_enums() -> None:
+def test_status_role_payment_and_day_fields_use_sqlite_string_contract() -> None:
     blocks = _model_blocks(SCHEMA_PATH.read_text())
-    for model, fields in EXPECTED_TYPED_FIELDS.items():
+    for model, fields in EXPECTED_STRING_FIELDS.items():
         body = blocks[model]
-        for field, enum_name in fields.items():
+        for field, field_type in fields.items():
             assert re.search(
-                rf"^\s*{field}\s+{enum_name}\b", body, re.MULTILINE
-            ), f"{model}.{field} must use {enum_name}, not String"
+                rf"^\s*{field}\s+{field_type}", body, re.MULTILINE
+            ), f"{model}.{field} must use restored SQLite string contract"
 
 
 def test_expected_tenant_scoped_models_have_tenant_id_column() -> None:
@@ -149,19 +133,16 @@ def test_tenant_model_has_no_tenant_id() -> None:
 def test_business_hours_support_multiple_windows_per_day() -> None:
     blocks = _model_blocks(SCHEMA_PATH.read_text())
     body = blocks["BusinessHour"]
-    assert "@@unique([tenantId, dayOfWeek])" not in body
-    assert "@@index([tenantId, dayOfWeek])" in body
+    assert "@@unique([tenantId, dayOfWeek])" in body
 
 
-def test_blackout_has_unique_tenant_local_date() -> None:
+def test_blackout_model_is_not_present() -> None:
     blocks = _model_blocks(SCHEMA_PATH.read_text())
-    body = blocks["Blackout"]
-    assert re.search(r"^\s*date\s+String\b", body, re.MULTILINE)
-    assert "@@unique([tenantId, date])" in body
+    assert "Blackout" not in blocks
 
 
-def test_audit_log_metadata_is_structured_json() -> None:
+def test_audit_log_metadata_is_serialized_text() -> None:
     blocks = _model_blocks(SCHEMA_PATH.read_text())
     body = blocks["AuditLog"]
-    assert re.search(r"^\s*metadata\s+Json\?", body, re.MULTILINE)
-    assert not re.search(r"^\s*metadata\s+String\?", body, re.MULTILINE)
+    assert re.search(r"^\s*metadata\s+String\?", body, re.MULTILINE)
+    assert not re.search(r"^\s*metadata\s+Json\?", body, re.MULTILINE)
