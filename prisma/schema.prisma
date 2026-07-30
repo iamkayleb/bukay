@@ -109,6 +109,8 @@ model Client {
 
   @@unique([tenantId, phone])
   @@index([tenantId])
+  @@index([tenantId, name])
+  @@index([tenantId, phone])
 }
 
 model Tag {

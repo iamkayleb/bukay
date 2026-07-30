@@ -48,6 +48,11 @@ def _has_tenant_id_index(model_body: str) -> bool:
     return re.search(r"@@index\(\[\s*tenantId\s*(?:,|\])", model_body) is not None
 
 
+def _has_index(model_body: str, fields: list[str]) -> bool:
+    field_pattern = r"\s*,\s*".join(re.escape(field) for field in fields)
+    return re.search(rf"@@index\(\[\s*{field_pattern}\s*\]\)", model_body) is not None
+
+
 def test_schema_file_exists() -> None:
     assert SCHEMA_PATH.exists(), f"missing prisma schema at {SCHEMA_PATH}"
 
@@ -81,3 +86,12 @@ def test_tenant_model_has_no_tenant_id() -> None:
     assert not re.search(
         r"^\s*tenantId\s+", body, re.MULTILINE
     ), "Tenant model must not carry its own tenantId column"
+
+
+def test_client_search_fields_have_compound_tenant_indexes() -> None:
+    """Client list search must stay indexed for large tenant rosters."""
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    body = blocks["Client"]
+
+    assert _has_index(body, ["tenantId", "name"]), "Client search needs @@index([tenantId, name])"
+    assert _has_index(body, ["tenantId", "phone"]), "Client search needs @@index([tenantId, phone])"
