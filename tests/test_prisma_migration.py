@@ -59,6 +59,12 @@ def _initial_migration_dir() -> Path:
     return sorted(candidates)[0]
 
 
+def _all_migration_sql() -> str:
+    migration_files = sorted(MIGRATIONS_DIR.glob("*/migration.sql"))
+    assert migration_files, f"no migration files found under {MIGRATIONS_DIR}"
+    return "\n".join(path.read_text() for path in migration_files)
+
+
 def test_migration_lock_present() -> None:
     lock = MIGRATIONS_DIR / "migration_lock.toml"
     assert lock.exists(), "prisma/migrations/migration_lock.toml must be checked in"
@@ -72,8 +78,8 @@ def test_initial_migration_exists() -> None:
 
 
 def test_migration_creates_every_required_model() -> None:
-    """Every model in the schema must have a CREATE TABLE in the initial migration."""
-    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    """Every model in the schema must have a CREATE TABLE in migration history."""
+    sql = _all_migration_sql()
     for model in REQUIRED_MODELS:
         assert (
             f'CREATE TABLE "{model}"' in sql
