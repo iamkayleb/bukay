@@ -35,8 +35,8 @@ The root of the multi-tenant tree.
 | `timezone` | `String` | IANA tz, defaults to `Africa/Lagos`    |
 | `currency` | `String` | ISO 4217, defaults to `NGN`            |
 
-Children: `users`, `services`, `staff`, `businessHours`, `clients`, `bookings`,
-`payments`, `auditLogs`.
+Children: `users`, `services`, `staff`, `businessHours`, `blackouts`,
+`clients`, `bookings`, `payments`, `auditLogs`.
 
 ### User
 
@@ -92,6 +92,16 @@ default hours; rows with a `staffId` override for that staff member.
 
 Composite index `@@index([tenantId, staffId, dayOfWeek])` supports the
 availability lookup path.
+
+### Blackout
+
+Tenant-wide unavailable local dates.
+
+| Column     | Type      | Notes                             |
+|------------|-----------|-----------------------------------|
+| `tenantId` | `String`  | FK -> `Tenant.id`, indexed        |
+| `date`     | `String`  | Local date, unique within tenant  |
+| `reason`   | `String?` | Optional display reason           |
 
 ### Client
 
@@ -163,7 +173,8 @@ Every tenant-scoped table has at least `@@index([tenantId])`:
 | `User`         | ✓            | `@@unique([tenantId, email])`                     |
 | `Service`      | ✓            | —                                                 |
 | `Staff`        | ✓            | `@unique` on `userId`                             |
-| `BusinessHour` | ✓            | `@@index([tenantId, staffId, dayOfWeek])`         |
+| `BusinessHour` | ✓            | `@@index([tenantId, dayOfWeek])`, `…staffId…`     |
+| `Blackout`     | ✓            | `@@unique([tenantId, date])`                      |
 | `Client`       | ✓            | `@@unique([tenantId, phone])`, `…email]`          |
 | `Booking`      | ✓            | `…startsAt`, `…staffId, startsAt`                 |
 | `Payment`      | ✓            | `@@index([tenantId, bookingId])`                  |

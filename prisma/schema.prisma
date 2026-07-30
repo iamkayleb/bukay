@@ -167,6 +167,7 @@ model BusinessHour {
   staff  Staff? @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
+  @@index([tenantId, dayOfWeek])
   @@index([tenantId, staffId, dayOfWeek])
 }
 

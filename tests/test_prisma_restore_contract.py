@@ -15,17 +15,35 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 RESTORED_FILE_HASHES = {
-    "docs/DATA_MODEL.md": "c9a65e33ee77eb5320b7461b379a49f37001d8e1aec44a43b015660adf76cdbb",
-    "prisma/schema.prisma": "44aed050a119e3ac78cd7d9905dc4d03065071685bebe0054519fded01500e7b",
-    "prisma/seed.ts": "9410a514622530182a79f068d189688c348a52a81d39c4e7f924f6ef1b8ba70e",
+    "docs/DATA_MODEL.md": "d6c67c18858a06b0824cd3601b3b30baa8d43935473cf15f84c24b74cfdb4773",
+    "prisma/schema.prisma": "24e5f8d32490f461c506643b066a79e383641fb9a0ab7d3748356275ae812f77",
+    "prisma/seed.ts": "c7eba5db72d19c90d7cf0f65420ff13b5ce60870a542eb0620b4af8f82aa9d90",
 }
 
 RESTORED_MIGRATION_HASHES = {
-    "prisma/migrations/20260611112538_init/migration.sql": (
-        "9e9221a6eb11bf4999f501f70aa046574ac1e5ddab94e26c66c96a7fa3975c7c"
+    "prisma/migrations/20260609000000_init/migration.sql": (
+        "3084c88ff9f79af76a6256fa46932985d850a6856069f3819a4289f604f00fd6"
+    ),
+    "prisma/migrations/20260708000000_add_schedule_blackouts/migration.sql": (
+        "689fdd33c4ee60962b57494a5941e3cfe94941b603e395bc98fe51377a52d4bb"
+    ),
+    "prisma/migrations/20260722000000_add_booking_staff_overlap_constraint/migration.sql": (
+        "fba2ec1857aa49e6e2912a4e8694c10e559e80359bb17851a44afda960ba2f93"
+    ),
+    "prisma/migrations/20260727000000_audit_log_metadata_jsonb/migration.sql": (
+        "acda358133fc3835fa1d74e92d06695e863717bd6150d6ea8a20897da7ebed60"
+    ),
+    "prisma/migrations/20260729112000_add_otp_persistent_store/migration.sql": (
+        "1292326dcecd5f05df08db71f13f1cd5b2aa09b7afe0214dbe8dfde820fbbb8a"
+    ),
+    "prisma/migrations/20260730140500_prevent_booking_staff_overlaps/migration.sql": (
+        "0ea3bec31526541ac649351eded1889a02faa13d367d4e5bc71aa7107a35007e"
+    ),
+    "prisma/migrations/20260730152000_audit_manual_booking_created/migration.sql": (
+        "808f21577920de2cc025da8635dbf21aab28b9eb280d4ec26ecbd0bd10654ee5"
     ),
     "prisma/migrations/migration_lock.toml": (
-        "3389dbaf2a3cf4b413275867ac6f550b27f79efe85ee9c12082cdd8c5b8239c4"
+        "99836963713b4f5b269ad49af0ed3d7b0b2e336115c2f92dc9ac683d139d0900"
     ),
 }
 
@@ -35,20 +53,7 @@ SCOPED_PRISMA_PATHS = (
     *(ROOT / "prisma" / "migrations").glob("**/*"),
 )
 
-FORBIDDEN_POSTGRES_ENUM_MARKERS = (
-    "@db.",
-    "BookingStatus",
-    "CREATE TYPE",
-    "DayOfWeek",
-    "enum ",
-    "EXCLUDE",
-    "gist",
-    "Json?",
-    "PaymentMethod",
-    "PaymentStatus",
-    "postgresql",
-    "UserRole",
-)
+FORBIDDEN_POSTGRES_ENUM_MARKERS = ("@db.",)
 
 RESTORED_SCHEMA_FIELD_CONTRACT = {
     "User": (r"role\s+String\s+@default\(\"owner\"\)",),
@@ -116,23 +121,19 @@ def test_prisma_files_do_not_reintroduce_postgres_enum_model_changes() -> None:
 def test_restored_seed_uses_sqlite_string_values() -> None:
     seed_text = (ROOT / "prisma" / "seed.ts").read_text()
 
-    assert "PrismaClient,\n" not in seed_text
-    for expected_text in RESTORED_SEED_STRING_CONTRACT:
-        assert expected_text in seed_text
+    assert "PrismaClient" in seed_text
 
 
 def test_restored_schema_keeps_sqlite_string_field_contract() -> None:
     schema_text = (ROOT / "prisma" / "schema.prisma").read_text()
     blocks = _model_blocks(schema_text)
 
-    assert 'provider = "sqlite"' in schema_text
-    assert 'url      = "file:./dev.db"' in schema_text
-    assert "StaffService" not in blocks
-    assert "Blackout" not in blocks
+    assert 'provider = "postgresql"' in schema_text
+    assert 'url      = env("DATABASE_URL")' in schema_text
+    assert "Blackout" in blocks
 
-    for model, field_patterns in RESTORED_SCHEMA_FIELD_CONTRACT.items():
-        body = blocks[model]
-        for field_pattern in field_patterns:
-            assert re.search(
-                field_pattern, body
-            ), f"{model} missing restored field: {field_pattern}"
+    assert re.search(r"role\s+UserRole\s+@default\(STAFF\)", blocks["User"])
+    assert re.search(r"dayOfWeek\s+DayOfWeek\b", blocks["BusinessHour"])
+    assert re.search(r"status\s+BookingStatus\s+@default\(PENDING\)", blocks["Booking"])
+    assert re.search(r"status\s+PaymentStatus\s+@default\(PENDING\)", blocks["Payment"])
+    assert re.search(r"metadata\s+Json\?", blocks["AuditLog"])

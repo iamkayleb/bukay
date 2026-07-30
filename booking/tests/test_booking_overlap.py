@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import sqlite3
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Barrier
 
 ROOT = Path(__file__).resolve().parents[2]
-MIGRATIONS_DIR = ROOT / "prisma" / "migrations"
+sys.path.insert(0, str(ROOT))
+
+from tests.sqlite_migrations import apply_sqlite_migrations  # noqa: E402
 
 
 def _connect(db_path: Path) -> sqlite3.Connection:
@@ -17,8 +20,7 @@ def _connect(db_path: Path) -> sqlite3.Connection:
 
 
 def _apply_migrations(connection: sqlite3.Connection) -> None:
-    for migration in sorted(MIGRATIONS_DIR.glob("*/migration.sql")):
-        connection.executescript(migration.read_text())
+    apply_sqlite_migrations(connection)
 
 
 def _seed_booking_dependencies(connection: sqlite3.Connection) -> None:
