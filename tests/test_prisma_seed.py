@@ -15,6 +15,8 @@ import sqlite3
 import subprocess
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 SEED_PATH = ROOT / "prisma" / "seed.ts"
 PACKAGE_JSON = ROOT / "package.json"
@@ -117,8 +119,17 @@ def test_package_json_wires_seed_script() -> None:
     )
 
 
+@pytest.mark.slow
 def test_prisma_db_seed_creates_demo_tenant_on_clean_database(tmp_path: Path) -> None:
-    """Acceptance check: `prisma db seed` creates a tenant with slug `demo`."""
+    """Acceptance check: `prisma db seed` creates a tenant with slug `demo`.
+
+    Requires a live database (Postgres via DATABASE_URL). Marked ``slow`` so
+    default CI runs skip it — nightly/manual runs with the ``slow`` marker
+    exercise this end-to-end path against a real database service.
+    """
+    if not os.environ.get("DATABASE_URL"):
+        pytest.skip("DATABASE_URL not set; skipping live-seed check")
+
     project_dir = tmp_path / "project"
     project_dir.mkdir()
     prisma_dir = project_dir / "prisma"

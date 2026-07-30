@@ -152,10 +152,111 @@ describe("withTenantGuard (proxy wrapper)", () => {
 });
 
 describe("tenantGuardExtension shape", () => {
-  it("builds a Prisma extension definition for every scoped model", () => {
+  it("hooks lowercase delegate properties, not capitalized model names", () => {
     const ext = tenantGuardExtension({ models: ["Booking", "Client"] });
     expect(ext.name).toBe("tenant-guard");
-    expect(Object.keys(ext.query).sort()).toEqual(["Booking", "Client"]);
-    expect(typeof ext.query.Booking.$allOperations).toBe("function");
+    expect(Object.keys(ext.query).sort()).toEqual(["booking", "client"]);
+    expect(typeof ext.query.booking.$allOperations).toBe("function");
+    expect(ext.query.Booking).toBeUndefined();
+  });
+});
+
+describe("nested tenantId detection", () => {
+  it("accepts tenantId nested inside AND", () => {
+    expect(() =>
+      assertTenantScope({
+        model: "Booking",
+        operation: "findMany",
+        args: { where: { AND: [{ tenantId: "t-acme" }, { status: "confirmed" }] } },
+        tenantId: "t-acme",
+      })
+    ).not.toThrow();
+  });
+
+  it("rejects OR clause with a branch that lacks tenantId (bypass attempt)", () => {
+    expect(() =>
+      assertTenantScope({
+        model: "Booking",
+        operation: "findMany",
+        args: { where: { OR: [{ tenantId: "t-acme" }, { status: "confirmed" }] } },
+        tenantId: "t-acme",
+      })
+    ).toThrow(TenantScopeError);
+  });
+
+  it("rejects OR clause with mismatched tenantIds across branches", () => {
+    expect(() =>
+      assertTenantScope({
+        model: "Booking",
+        operation: "findMany",
+        args: { where: { OR: [{ tenantId: "t-acme" }, { tenantId: "t-globex" }] } },
+        tenantId: "t-acme",
+      })
+    ).toThrow(TenantScopeError);
+  });
+
+  it("accepts OR clause when every branch pins the same tenantId", () => {
+    expect(() =>
+      assertTenantScope({
+        model: "Booking",
+        operation: "findMany",
+        args: {
+          where: {
+            OR: [
+              { tenantId: "t-acme", status: "confirmed" },
+              { tenantId: "t-acme", status: "pending" },
+            ],
+          },
+        },
+        tenantId: "t-acme",
+      })
+    ).not.toThrow();
+  });
+});
+
+describe("upsert data validation", () => {
+  it("rejects upsert when create payload lacks tenantId", () => {
+    expect(() =>
+      assertTenantScope({
+        model: "Booking",
+        operation: "upsert",
+        args: {
+          where: { tenantId: "t-acme", id: "b1" },
+          create: { name: "new" },
+          update: { tenantId: "t-acme", name: "renamed" },
+        },
+        tenantId: "t-acme",
+      })
+    ).toThrow(TenantScopeError);
+  });
+
+  it("rejects upsert when update payload carries a foreign tenantId", () => {
+    expect(() =>
+      assertTenantScope({
+        model: "Booking",
+        operation: "upsert",
+        args: {
+          where: { tenantId: "t-acme", id: "b1" },
+          create: { tenantId: "t-acme", name: "new" },
+          update: { tenantId: "t-globex", name: "renamed" },
+        },
+        tenantId: "t-acme",
+      })
+    ).toThrow(TenantScopeError);
+  });
+
+  it("accepts upsert when create carries tenantId and update omits it", () => {
+    expect(() =>
+      assertTenantScope({
+        model: "Booking",
+        operation: "upsert",
+        args: {
+          where: { tenantId: "t-acme", id: "b1" },
+          create: { tenantId: "t-acme", name: "new" },
+          update: { name: "renamed" },
+        },
+        tenantId: "t-acme",
+      })
+    ).not.toThrow();
   });
 });
