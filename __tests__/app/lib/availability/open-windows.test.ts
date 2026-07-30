@@ -1,93 +1,76 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-const state = vi.hoisted(() => ({
-  businessHours: [] as Array<{
-    tenantId: string;
-    dayOfWeek: number;
-    opensAt: string;
-    closesAt: string;
-  }>,
-  blackouts: [] as Array<{ id: string; tenantId: string; date: string }>,
-  businessHourFindMany: vi.fn(),
-  blackoutFindFirst: vi.fn(),
-}));
+import { getOpenWindows, type OpenWindowsConfig } from "@/app/lib/availability/open-windows";
 
-vi.mock("@/app/db/prisma", () => ({
-  prisma: {
-    businessHour: {
-      findMany: state.businessHourFindMany,
-    },
-    blackout: {
-      findFirst: state.blackoutFindFirst,
-    },
+const config: OpenWindowsConfig = {
+  weekdayHours: {
+    monday: [
+      { start: "09:00", end: "12:00" },
+      { start: "13:00", end: "17:00" },
+    ],
+    tuesday: [{ start: "10:30", end: "15:00" }],
+    wednesday: [{ start: "08:00", end: "11:30" }],
   },
-}));
+  blackoutDates: ["2026-07-28"],
+};
 
-import {
-  dayOfWeekForLocalDate,
-  getOpenWindows,
-  toTenantLocalDate,
-} from "@/app/lib/availability/open-windows";
-
-beforeEach(() => {
-  state.businessHours = [];
-  state.blackouts = [];
-  state.businessHourFindMany.mockReset();
-  state.blackoutFindFirst.mockReset();
-
-  state.blackoutFindFirst.mockImplementation(
-    async (args: { where: { tenantId: string; date: string } }) =>
-      state.blackouts.find(
-        (blackout) => blackout.tenantId === args.where.tenantId && blackout.date === args.where.date
-      ) ?? null
-  );
-  state.businessHourFindMany.mockImplementation(
-    async (args: { where: { tenantId: string; dayOfWeek: number } }) =>
-      state.businessHours
-        .filter(
-          (hour) => hour.tenantId === args.where.tenantId && hour.dayOfWeek === args.where.dayOfWeek
-        )
-        .sort((left, right) => left.opensAt.localeCompare(right.opensAt))
-  );
-});
-
-describe("getOpenWindows", () => {
-  it("returns multiple sorted windows for the tenant weekday", async () => {
-    state.businessHours = [
-      { tenantId: "tenant-1", dayOfWeek: 1, opensAt: "14:00", closesAt: "18:00" },
-      { tenantId: "tenant-1", dayOfWeek: 1, opensAt: "09:00", closesAt: "12:00" },
-      { tenantId: "tenant-2", dayOfWeek: 1, opensAt: "08:00", closesAt: "16:00" },
-      { tenantId: "tenant-1", dayOfWeek: 2, opensAt: "10:00", closesAt: "15:00" },
-    ];
-
-    await expect(getOpenWindows("tenant-1", "2026-07-06")).resolves.toEqual([
-      { opensAt: "09:00", closesAt: "12:00" },
-      { opensAt: "14:00", closesAt: "18:00" },
+describe("open windows", () => {
+  it("returns windows for the requested weekday configuration", () => {
+    expect(getOpenWindows("2026-07-27", config)).toEqual([
+      {
+        date: "2026-07-27",
+        weekday: "monday",
+        start: "09:00",
+        end: "12:00",
+        startsAt: "2026-07-27T09:00:00.000Z",
+        endsAt: "2026-07-27T12:00:00.000Z",
+      },
+      {
+        date: "2026-07-27",
+        weekday: "monday",
+        start: "13:00",
+        end: "17:00",
+        startsAt: "2026-07-27T13:00:00.000Z",
+        endsAt: "2026-07-27T17:00:00.000Z",
+      },
     ]);
-    expect(state.businessHourFindMany).toHaveBeenCalledWith({
-      where: { tenantId: "tenant-1", dayOfWeek: 1 },
-      orderBy: [{ opensAt: "asc" }, { closesAt: "asc" }],
-      select: { opensAt: true, closesAt: true },
-    });
+
+    expect(getOpenWindows("2026-07-29", config)).toEqual([
+      {
+        date: "2026-07-29",
+        weekday: "wednesday",
+        start: "08:00",
+        end: "11:30",
+        startsAt: "2026-07-29T08:00:00.000Z",
+        endsAt: "2026-07-29T11:30:00.000Z",
+      },
+    ]);
   });
 
-  it("returns no windows when the date is blacked out", async () => {
-    state.businessHours = [
-      { tenantId: "tenant-1", dayOfWeek: 5, opensAt: "09:00", closesAt: "18:00" },
-    ];
-    state.blackouts = [{ id: "blackout-1", tenantId: "tenant-1", date: "2026-07-10" }];
-
-    await expect(getOpenWindows("tenant-1", "2026-07-10")).resolves.toEqual([]);
-    expect(state.businessHourFindMany).not.toHaveBeenCalled();
+  it("returns no windows when the requested weekday has no configured hours", () => {
+    expect(getOpenWindows("2026-07-30", config)).toEqual([]);
   });
 
-  it("normalizes dates without timezone drift for DST-free local dates", () => {
-    expect(toTenantLocalDate("2026-12-25")).toBe("2026-12-25");
-    expect(dayOfWeekForLocalDate("2026-12-25")).toBe(5);
+  it("returns no windows on configured blackout dates", () => {
+    expect(getOpenWindows("2026-07-28", config)).toEqual([]);
   });
 
-  it("rejects malformed dates and blank tenant ids", async () => {
-    expect(() => toTenantLocalDate("25-12-2026")).toThrow("YYYY-MM-DD");
-    await expect(getOpenWindows(" ", "2026-07-06")).rejects.toThrow("tenantId is required");
+  it("accepts Date instances and normalizes them to a UTC date key", () => {
+    expect(getOpenWindows(new Date("2026-07-28T23:59:59.000Z"), config)).toEqual([]);
+  });
+
+  it("rejects malformed dates and open window times", () => {
+    expect(() => getOpenWindows("07/27/2026", config)).toThrow("YYYY-MM-DD");
+    expect(() => getOpenWindows("2026-02-31", config)).toThrow("valid calendar date");
+    expect(() =>
+      getOpenWindows("2026-07-27", {
+        weekdayHours: { monday: [{ start: "9:00", end: "17:00" }] },
+      })
+    ).toThrow("HH:mm");
+    expect(() =>
+      getOpenWindows("2026-07-27", {
+        weekdayHours: { monday: [{ start: "17:00", end: "09:00" }] },
+      })
+    ).toThrow("after start");
   });
 });
