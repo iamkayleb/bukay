@@ -118,3 +118,22 @@ checked-in migration:
 [`prisma/migrations/migration_lock.toml`](../prisma/migrations/migration_lock.toml) records the
 database provider as `sqlite`. Do not edit generated migration files by hand after they have been
 applied; create a new migration from schema changes instead.
+
+### Schema/Migration Consistency
+
+An earlier iteration of the schema included a `StaffService` join model and a
+`staffAssignments StaffService[]` relation on `Service`; both were removed before the initial
+migration was authored, so **neither the schema nor any migration references `StaffService`**.
+This invariant is enforced by tests so a reintroduction cannot slip in silently:
+
+- `tests/test_prisma_schema.py::test_no_model_relation_references_missing_model` fails if any model
+  declares a relation to a type that isn't a declared model.
+- `tests/test_prisma_schema.py::test_removed_staff_service_model_stays_removed` fails if the
+  `StaffService` model or a `staffAssignments` field reappears in the schema.
+- `tests/test_prisma_migration.py::test_migration_tables_are_declared_in_schema` fails if a
+  migration ever creates a table that the schema does not declare a model for.
+- `tests/test_prisma_migration.py::test_no_migration_creates_staff_service_table` fails if any
+  migration creates a `StaffService` table or references `staffAssignments`.
+
+If `StaffService` ever needs to come back, reintroduce the model in `schema.prisma`, add a
+migration that creates the table plus its foreign keys, and update these guard tests together.
