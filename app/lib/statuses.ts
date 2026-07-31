@@ -42,7 +42,7 @@ const PAYMENT_STATUS_ALIASES: Readonly<Record<string, PaymentStatus>> = {
   refunded: PAYMENT_STATUS.refunded,
 };
 
-function normalizePersistedStatus(status: string | null | undefined): string {
+export function normalizePersistedStatus(status: string | null | undefined): string {
   return (status ?? "")
     .trim()
     .toLowerCase()
