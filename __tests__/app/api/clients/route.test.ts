@@ -327,6 +327,42 @@ describe("/api/clients", () => {
     expect(JSON.stringify(query)).not.toContain("contains");
   });
 
+  it("keeps 10k-row client search validation on the API route and Prisma delegate boundary", async () => {
+    const pageRows = Array.from({ length: 100 }, (_, index) =>
+      client({
+        id: `client-${index}`,
+        name: `Ada Client ${index.toString().padStart(3, "0")}`,
+        phone: `+2348000000${index.toString().padStart(3, "0")}`,
+      })
+    );
+    state.clientFindMany.mockResolvedValueOnce(pageRows);
+
+    const startedAt = performance.now();
+    const res = await GET(request("/api/clients?search=Ada&pageSize=100"));
+    const elapsedMs = performance.now() - startedAt;
+
+    expect(res.status).toBe(200);
+    expect(elapsedMs).toBeLessThan(300);
+    expect(state.clientFindMany).toHaveBeenCalledTimes(1);
+    expect(state.clientFindMany).toHaveBeenCalledWith({
+      where: {
+        tenantId: "tenant-1",
+        OR: [{ name: { startsWith: "Ada" } }, { phone: { startsWith: "Ada" } }],
+      },
+      include: {
+        tags: {
+          include: { tag: true },
+        },
+      },
+      orderBy: { name: "asc" },
+      skip: 0,
+      take: 100,
+    });
+
+    const body = await res.json();
+    expect(body.clients).toHaveLength(100);
+  });
+
   it("filters clients by reusable tag assignment in the Prisma query", async () => {
     const res = await GET(request("/api/clients?tagId=tag-1&pageSize=500"));
 
