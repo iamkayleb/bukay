@@ -22,9 +22,19 @@ import { describe, expect, it } from "vitest";
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 
-const HANDLER_DIRS = [
+// Directories where any file named `route.ts`/`route.tsx` is a Next.js
+// route module and MUST be tenant-wired.
+const APP_ROUTE_DIRS = [
   path.join(REPO_ROOT, "app", "api"),
   path.join(REPO_ROOT, "src", "routes"),
+];
+
+// Directories where ANY `.ts` file that exports an HTTP handler (or
+// re-exports one) MUST be tenant-wired. These are flat-ish API modules
+// that don't follow the `route.ts` naming convention but are still
+// reachable from the Next.js route tree.
+const FLAT_ROUTE_DIRS = [
+  path.join(REPO_ROOT, "api"),
   path.join(REPO_ROOT, "src", "api"),
 ];
 
@@ -36,7 +46,7 @@ const HANDLER_METHOD_RE =
 const REEXPORT_RE =
   /export\s*\{[^}]*(GET|POST|PATCH|PUT|DELETE|OPTIONS|HEAD)[^}]*\}\s*from\s*["']([^"']+)["']/g;
 
-function listRouteFiles(dir: string): string[] {
+function listAppRouteFiles(dir: string): string[] {
   if (!existsSync(dir)) return [];
   const out: string[] = [];
   const walk = (current: string) => {
@@ -47,6 +57,35 @@ function listRouteFiles(dir: string): string[] {
         walk(full);
       } else if (entry === "route.ts" || entry === "route.tsx") {
         out.push(full);
+      }
+    }
+  };
+  walk(dir);
+  return out;
+}
+
+// Non-global copies for one-shot boolean checks — using `.test()` on the
+// module-level global regexes would leak `lastIndex` between calls and
+// silently skip matches on the next invocation.
+const HANDLER_METHOD_ONESHOT =
+  /export\s+(?:async\s+)?(?:const|function)\s+(?:GET|POST|PATCH|PUT|DELETE|OPTIONS|HEAD)\b/;
+const REEXPORT_ONESHOT =
+  /export\s*\{[^}]*(?:GET|POST|PATCH|PUT|DELETE|OPTIONS|HEAD)[^}]*\}\s*from\s*["'][^"']+["']/;
+
+function listFlatRouteFiles(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  const out: string[] = [];
+  const walk = (current: string) => {
+    for (const entry of readdirSync(current)) {
+      const full = path.join(current, entry);
+      const stat = statSync(full);
+      if (stat.isDirectory()) {
+        walk(full);
+      } else if (entry.endsWith(".ts") || entry.endsWith(".tsx")) {
+        const source = readFileSync(full, "utf8");
+        if (HANDLER_METHOD_ONESHOT.test(source) || REEXPORT_ONESHOT.test(source)) {
+          out.push(full);
+        }
       }
     }
   };
@@ -112,13 +151,33 @@ function extractHandlerMethods(source: string): string[] {
   return methods;
 }
 
-describe("app/api & src/{routes,api} route handlers", () => {
-  const routeFiles = HANDLER_DIRS.flatMap(listRouteFiles);
+describe("app/api & src/{routes,api} & api/ route handlers", () => {
+  const routeFiles = [
+    ...APP_ROUTE_DIRS.flatMap(listAppRouteFiles),
+    ...FLAT_ROUTE_DIRS.flatMap(listFlatRouteFiles),
+  ];
 
   it("finds at least one route file to audit", () => {
     // If this ever hits zero, the test is passing vacuously and we've
     // silently lost coverage — fail loudly instead.
     expect(routeFiles.length).toBeGreaterThan(0);
+  });
+
+  it("directly audits the top-level api/ modules that ship handlers", () => {
+    // Regression guard: `api/bookings.ts` at the repo root is a route
+    // module reached via a shim in `app/api/bookings/[id]/route.ts`.
+    // Historically the audit only followed the shim; if the shim were
+    // deleted or the file renamed the handler could go unaudited. This
+    // check makes the direct scan load-bearing so removing the shim can
+    // never silently drop audit coverage.
+    const flatFiles = FLAT_ROUTE_DIRS.flatMap(listFlatRouteFiles);
+    const bookings = path.join(REPO_ROOT, "api", "bookings.ts");
+    if (existsSync(bookings)) {
+      expect(
+        flatFiles,
+        "api/bookings.ts must be picked up by the flat-route scanner"
+      ).toContain(bookings);
+    }
   });
 
   it.each(routeFiles.map((f) => [path.relative(REPO_ROOT, f), f]))(
