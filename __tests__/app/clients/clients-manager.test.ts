@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  clientTagAssignPath,
   clientListPath,
   clientTagPayload,
+  clientTagRemovePath,
   validateClientTagForm,
 } from "@/app/(app)/clients/clients-manager";
 
@@ -30,5 +32,15 @@ describe("clients manager tag helpers", () => {
         selectedTagId: "tag-1",
       })
     ).toBe("/api/clients?pageSize=25&search=Ada+%2B234&tagId=tag-1");
+  });
+
+  it("builds the reusable tag assignment endpoint used by the client UI", () => {
+    expect(clientTagAssignPath("client-1")).toBe("/api/clients/client-1/tags");
+  });
+
+  it("builds the tag removal endpoint with encoded client and tag ids", () => {
+    expect(clientTagRemovePath("client 1", "tag/follow-up")).toBe(
+      "/api/clients/client%201/tags/tag%2Ffollow-up"
+    );
   });
 });

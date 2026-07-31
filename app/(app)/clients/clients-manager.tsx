@@ -71,6 +71,14 @@ export function clientListPath({
   return `/api/clients?${params.toString()}`;
 }
 
+export function clientTagAssignPath(clientId: string) {
+  return `/api/clients/${encodeURIComponent(clientId)}/tags`;
+}
+
+export function clientTagRemovePath(clientId: string, tagId: string) {
+  return `/api/clients/${encodeURIComponent(clientId)}/tags/${encodeURIComponent(tagId)}`;
+}
+
 function hasErrors(errors: ClientTagFieldErrors) {
   return Object.keys(errors).length > 0;
 }
@@ -182,7 +190,7 @@ export function ClientsManager() {
     setErrors({});
 
     try {
-      const response = await fetch(`/api/clients/${selectedClient.id}/tags`, {
+      const response = await fetch(clientTagAssignPath(selectedClient.id), {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify(clientTagPayload(form)),
@@ -210,7 +218,7 @@ export function ClientsManager() {
 
   async function removeTag(client: ClientProfile, tag: ClientTag) {
     setNotice(null);
-    const response = await fetch(`/api/clients/${client.id}/tags/${tag.id}`, {
+    const response = await fetch(clientTagRemovePath(client.id, tag.id), {
       method: "DELETE",
       headers: { Accept: "application/json" },
     });
