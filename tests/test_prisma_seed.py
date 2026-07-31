@@ -115,10 +115,12 @@ def test_tenant_scoped_upserts_use_only_compound_unique_key_in_where() -> None:
             where_clause,
             re.DOTALL,
         ), f"prisma.{model}.upsert must use the {compound_key} compound unique key"
+        compound_key_match = re.search(rf"{compound_key}:\s*\{{.*?\}}", where_clause, re.DOTALL)
+        assert compound_key_match
         assert not re.search(
             r"(?:^|[,{]\s*)tenantId:\s*tenant\.id\s*,?\s*(?:$|[},])",
             where_clause.replace(
-                re.search(rf"{compound_key}:\s*\{{.*?\}}", where_clause, re.DOTALL).group(0),
+                compound_key_match.group(0),
                 "",
             ),
             re.DOTALL,

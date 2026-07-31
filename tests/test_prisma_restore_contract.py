@@ -62,7 +62,7 @@ def test_schema_keeps_postgresql_enum_field_contract() -> None:
 
     assert 'provider = "postgresql"' in schema_text
     assert 'url      = env("DATABASE_URL")' in schema_text
-    assert REQUIRED_MODELS <= blocks.keys()
+    assert blocks.keys() >= REQUIRED_MODELS
 
     for model, field_patterns in EXPECTED_SCHEMA_CONTRACT.items():
         body = blocks[model]
