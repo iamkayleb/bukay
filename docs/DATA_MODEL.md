@@ -48,8 +48,11 @@ an `active` flag.
 Archiving is implemented as a soft-delete: `DELETE /api/services/:id` flips `active` to `false`
 rather than removing the row, so historical bookings continue to resolve. Booking surfaces
 (client-facing booking form, staff calendar picker, any future public schedule) **must** pass
-`?active=true` to `GET /api/services` so archived rows are hidden. The admin services manager
-intentionally omits the filter so operators can see and restore archived entries.
+`?active=true` to `GET /api/services` so archived rows are hidden. To keep the contract from
+drifting, booking surfaces should call `fetchBookableServices()` in
+[`app/lib/services/bookable.ts`](../app/lib/services/bookable.ts), which hardcodes the filter and
+strips any archived rows a misconfigured backend might still return. The admin services manager
+intentionally fetches without the filter so operators can see and restore archived entries.
 
 ### Staff
 

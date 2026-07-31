@@ -25,7 +25,10 @@ const serviceDelegate = prisma.service as unknown as {
 //
 // Contract for callers: every consumer that surfaces services to end users
 // booking an appointment (client-facing form, staff calendar picker, public
-// schedule) MUST include `?active=true`. See docs/DATA_MODEL.md → Service.
+// schedule) MUST include `?active=true`. The shared client helper
+// `fetchBookableServices()` in app/lib/services/bookable.ts hardcodes the
+// filter — booking surfaces should call it instead of fetching directly.
+// See docs/DATA_MODEL.md → Service for the full rationale.
 function parseActiveFilter(value: string | null): boolean | undefined {
   if (value === null) {
     return undefined;
