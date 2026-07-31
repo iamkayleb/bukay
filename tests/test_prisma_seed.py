@@ -108,6 +108,34 @@ def test_seed_services_have_required_fields() -> None:
         assert re.search(rf"\b{field}:", body), f"DEMO_SERVICES entries must declare {field}"
 
 
+def test_seed_payment_amount_field_matches_service_price_field() -> None:
+    """Payment.amountCents must be sourced from a matching *Cents field.
+
+    Prevents the naming drift called out in PR #195's verification concerns:
+    if the Service uses priceKobo but Payment still uses amountCents, the
+    kobo/cents mismatch is silent at runtime. Either both are cents or the
+    Payment field name must move with the Service field.
+    """
+    text = _seed_text()
+    payment_match = re.search(
+        r"prisma\.payment\.create\(\s*\{\s*data:\s*\{(?P<body>.*?)\}\s*,\s*\}",
+        text,
+        re.DOTALL,
+    )
+    assert payment_match, "seed.ts must call prisma.payment.create with a data literal"
+    body = payment_match.group("body")
+
+    amount_assign = re.search(
+        r"amount(?P<unit>Cents|Kobo):\s*[\w.]+\.price(?P<src>Cents|Kobo)", body
+    )
+    assert amount_assign, "Payment data must set amountCents/amountKobo from a service price field"
+    assert amount_assign.group("unit") == amount_assign.group("src"), (
+        "Payment amount unit ("
+        f"{amount_assign.group('unit')}) must match the sourced Service price unit ("
+        f"{amount_assign.group('src')})"
+    )
+
+
 def test_package_json_wires_seed_script() -> None:
     """`prisma db seed` only works if package.json points at seed.ts."""
     pkg = json.loads(PACKAGE_JSON.read_text())

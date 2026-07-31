@@ -19,10 +19,29 @@ const serviceDelegate = prisma.service as unknown as {
   create(args: unknown): Promise<ServiceRecord>;
 };
 
+// Booking surfaces pass `?active=true` to hide archived services; admin views
+// can pass `?active=false` to see only archived. Anything else (missing or
+// unrecognized) returns every service scoped to the tenant.
+function parseActiveFilter(value: string | null): boolean | undefined {
+  if (value === null) {
+    return undefined;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true" || normalized === "1") {
+    return true;
+  }
+  if (normalized === "false" || normalized === "0") {
+    return false;
+  }
+  return undefined;
+}
+
 export async function GET(req: NextRequest) {
+  const activeFilter = parseActiveFilter(req.nextUrl.searchParams.get("active"));
+
   return runForTenant(req, async (tenantId) => {
     const services = await serviceDelegate.findMany({
-      where: { tenantId },
+      where: { tenantId, ...(activeFilter === undefined ? {} : { active: activeFilter }) },
       orderBy: [{ active: "desc" }, { name: "asc" }],
     });
 

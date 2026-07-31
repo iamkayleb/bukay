@@ -81,3 +81,32 @@ def test_tenant_model_has_no_tenant_id() -> None:
     assert not re.search(
         r"^\s*tenantId\s+", body, re.MULTILINE
     ), "Tenant model must not carry its own tenantId column"
+
+
+def test_service_relations_do_not_reference_missing_models() -> None:
+    """Guard the PR #195 concern: relation targets on Service must actually exist.
+
+    A prior iteration removed the `staffAssignments StaffService[]` relation
+    without also removing the StaffService model; a symmetric mistake in
+    reverse would leave a dangling relation. This test fails loudly if the
+    Service block ever references a model type that isn't declared.
+    """
+    schema_text = SCHEMA_PATH.read_text()
+    blocks = _model_blocks(schema_text)
+    declared = set(blocks.keys())
+
+    service_body = blocks["Service"]
+    relation_types = re.findall(
+        r"^\s*\w+\s+(\w+)(?:\?|\[\])?\s+@relation",
+        service_body,
+        re.MULTILINE,
+    )
+    # Include list-typed relations without @relation attribute (implicit m-m).
+    list_types = re.findall(r"^\s*\w+\s+(\w+)\[\]\s*$", service_body, re.MULTILINE)
+    for referenced in {*relation_types, *list_types}:
+        if referenced in {"String", "Int", "DateTime", "Boolean"}:
+            continue
+        assert referenced in declared, (
+            f"Service references undefined model {referenced!r} — either add "
+            "the model back or remove the relation."
+        )
