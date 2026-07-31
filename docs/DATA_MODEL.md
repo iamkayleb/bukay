@@ -19,7 +19,9 @@ The tenant-owned models are:
 | `Service` | Bookable service with duration and price | `@@unique([tenantId, name])`, `@@index([tenantId])` |
 | `Staff` | Staff member who can be assigned to bookings | `@@unique([tenantId, email])`, `@@index([tenantId])` |
 | `BusinessHour` | Weekly opening hours by day of week | `@@unique([tenantId, dayOfWeek])`, `@@index([tenantId])` |
-| `Client` | Customer profile scoped to a tenant | `@@unique([tenantId, phone])`, `@@index([tenantId])` |
+| `Client` | Customer profile scoped to a tenant | `@@unique([tenantId, phone])`, `@@unique([tenantId, id])`, `@@index([tenantId])` |
+| `Tag` | Reusable free-text client labels | `@@unique([tenantId, name])`, `@@unique([tenantId, id])`, `@@index([tenantId])` |
+| `ClientTag` | Tenant-scoped client/tag assignment | `@@unique([tenantId, clientId, tagId])`, `@@index([tenantId])` |
 | `Booking` | Appointment linking client, service, and optional staff | `@@index([tenantId])`, `@@index([tenantId, startsAt])` |
 | `Payment` | Payment ledger row for a booking | `@@index([tenantId])`, `@@index([bookingId])`, `@@index([providerRef])` |
 | `AuditLog` | Append-only tenant activity record | `@@index([tenantId])`, `@@index([tenantId, entityType, entityId])` |
@@ -58,7 +60,18 @@ strings and an `isClosed` flag.
 ### Client
 
 `Client` stores customer name, optional email, required phone number, optional notes, and booking
-relations.
+and tag relations.
+
+### Tag
+
+`Tag` stores tenant-scoped reusable free-text labels. The `(tenantId, name)` unique constraint keeps
+tag names reusable without duplicating the same label within one tenant.
+
+### ClientTag
+
+`ClientTag` links clients to reusable tags. Its composite foreign keys reference `(tenantId, id)` on
+both `Client` and `Tag`, so the database rejects assignments where the client and tag do not belong
+to the same tenant.
 
 ### Booking
 
@@ -94,8 +107,8 @@ npm run db:seed -- --schema prisma/schema.prisma
 
 The seed script is configured in `package.json` as `tsx prisma/seed.ts`. It is idempotent: it upserts
 the demo tenant with slug `demo`, removes dependent demo rows in foreign-key order, and recreates a
-stable sample dataset with an owner user, services, business hours, staff, client, booking, payment,
-and audit log.
+stable sample dataset with an owner user, services, business hours, staff, client, reusable tags,
+client tag assignment, booking, payment, and audit log.
 
 ## Migration History
 
@@ -104,7 +117,8 @@ checked-in migration:
 
 | Migration | Description |
 |-----------|-------------|
-| `20260611112538_init` | Creates the initial SQLite schema for tenants, users, services, staff, business hours, clients, bookings, payments, and audit logs. It also creates all unique constraints and tenant indexes declared in `schema.prisma`. |
+| `20260611112538_init` | Creates the initial SQLite schema for tenants, users, services, staff, business hours, clients, bookings, payments, and audit logs. It also creates all unique constraints and tenant indexes declared in `schema.prisma` at initialization time. |
+| `20260731120000_add_client_tags` | Adds reusable client tags and tenant-safe client/tag assignments. |
 
 [`prisma/migrations/migration_lock.toml`](../prisma/migrations/migration_lock.toml) records the
 database provider as `sqlite`. Do not edit generated migration files by hand after they have been

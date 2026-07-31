@@ -34,6 +34,8 @@ const DEMO_SERVICES = [
   },
 ];
 
+const DEMO_TAGS = ["VIP", "Prefers mornings", "Follow-up"];
+
 // Pin the demo booking to a fixed wall-clock so re-seeding stays deterministic.
 const DEMO_BOOKING_START_ISO = "2026-06-15T10:00:00.000Z";
 
@@ -78,6 +80,8 @@ async function main() {
   await prisma.payment.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.booking.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.auditLog.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.clientTag.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.tag.deleteMany({ where: { tenantId: tenant.id } });
 
   // Wipe and reinsert demo services so the count stays at three on re-seed.
   await prisma.service.deleteMany({ where: { tenantId: tenant.id } });
@@ -130,6 +134,24 @@ async function main() {
     },
   });
   console.log(`Client ready: ${client.name} (${client.id})`);
+
+  await prisma.tag.createMany({
+    data: DEMO_TAGS.map((name) => ({ tenantId: tenant.id, name })),
+  });
+  const tags = await prisma.tag.findMany({
+    where: { tenantId: tenant.id },
+    orderBy: { name: "asc" },
+  });
+  const vipTag = tags.find((tag) => tag.name === "VIP");
+  if (!vipTag) throw new Error("seed: VIP tag missing");
+  await prisma.clientTag.create({
+    data: {
+      tenantId: tenant.id,
+      clientId: client.id,
+      tagId: vipTag.id,
+    },
+  });
+  console.log(`Inserted ${tags.length} reusable client tags for ${tenant.slug}`);
 
   // Demo booking: the classic haircut, confirmed, with a matching paid payment.
   const haircut = services.find((s) => s.name === "Classic Haircut");
