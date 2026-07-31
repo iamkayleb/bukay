@@ -65,10 +65,21 @@ relations.
 `Booking` links a client, service, optional staff member, start and end timestamps, status string, and
 optional notes. The tenant/start index supports calendar views.
 
+Booking status values are stored as strings for now, but application metric code should use
+[`app/lib/statuses.ts`](../app/lib/statuses.ts) instead of raw string comparisons. That helper
+normalizes persisted casing, whitespace, underscore, and hyphen variants before matching canonical
+values such as `confirmed` and `no-show`, reducing the risk that booking analytics silently
+undercount legacy or manually imported rows.
+
 ### Payment
 
 `Payment` links to a booking and stores amount, currency, provider metadata, status string, optional
 paid timestamp, and audit timestamps.
+
+Payment status values follow the same string-backed pattern. Lifetime value calculations should use
+`calculateLifetimeValueCents` or `isPaidPaymentStatus` from
+[`app/lib/statuses.ts`](../app/lib/statuses.ts), which treat normalized `paid` values as revenue and
+exclude pending, failed, or refunded payments.
 
 ### AuditLog
 

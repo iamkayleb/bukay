@@ -12,6 +12,8 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 const DEMO_TENANT_SLUG = "demo";
+const DEMO_BOOKING_STATUS_CONFIRMED = "confirmed";
+const DEMO_PAYMENT_STATUS_PAID = "paid";
 
 const DEMO_SERVICES = [
   {
@@ -146,7 +148,7 @@ async function main() {
       staffId: staff.id,
       startsAt,
       endsAt,
-      status: "confirmed",
+      status: DEMO_BOOKING_STATUS_CONFIRMED,
       notes: "Seeded demo appointment.",
     },
   });
@@ -160,7 +162,7 @@ async function main() {
       currency: tenant.currency,
       provider: "mobile_money",
       providerRef: "demo-mm-0001",
-      status: "paid",
+      status: DEMO_PAYMENT_STATUS_PAID,
       paidAt: startsAt,
     },
   });
