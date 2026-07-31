@@ -40,6 +40,10 @@ tenant-owned records. The defaults are `Africa/Lagos` for timezone and `NGN` for
 `User` stores email, display name, and role. Roles are currently stored as strings with a default of
 `owner`.
 
+Owner identity is resolved from `User.role = "owner"` within the tenant. A matching `Staff` record
+may reuse the owner user's email so the owner can be assigned to bookings, but owner lookup should
+not infer ownership from staff contact fields alone.
+
 ### Service
 
 `Service` stores name, optional description, duration in minutes, price in minor units, currency, and
@@ -48,7 +52,9 @@ an `active` flag.
 ### Staff
 
 `Staff` stores contact information and an `active` flag. Bookings may reference staff, but the
-booking remains if staff is later deleted.
+booking remains if staff is later deleted. Staff records are assignable resources, not login or
+authorization records; when a staff row represents the owner, keep its email aligned with the
+tenant's owner `User` row.
 
 ### BusinessHour
 

@@ -188,5 +188,18 @@ def test_prisma_db_seed_creates_demo_tenant_on_clean_database(tmp_path: Path) ->
             'SELECT COUNT(*) FROM "Tenant" WHERE "slug" = ?',
             ("demo",),
         ).fetchone()[0]
+        owner_staff_alignment = conn.execute(
+            """
+            SELECT u.email, u.role, s.email
+            FROM "Tenant" t
+            JOIN "User" u ON u."tenantId" = t.id
+            JOIN "Staff" s ON s."tenantId" = t.id AND s.email = u.email
+            WHERE t.slug = ? AND u.role = ?
+            """,
+            ("demo", "owner"),
+        ).fetchall()
 
     assert demo_tenant_count == 1, "prisma db seed did not create Tenant.slug = 'demo'"
+    assert owner_staff_alignment == [
+        ("owner@demo.bukay.dev", "owner", "owner@demo.bukay.dev")
+    ], "demo owner User must have a matching Staff row by email for booking assignment"
