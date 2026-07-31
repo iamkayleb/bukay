@@ -391,6 +391,31 @@ describe("/api/clients", () => {
     });
   });
 
+  it("combines search and reusable tag filters without falling back to contains queries", async () => {
+    const res = await GET(request("/api/clients?search=Demo&tagId=tag-1"));
+
+    expect(res.status).toBe(200);
+    expect(state.clientFindMany).toHaveBeenCalledTimes(1);
+
+    const query = state.clientFindMany.mock.calls[0][0];
+    expect(query).toMatchObject({
+      where: {
+        tenantId: "tenant-1",
+        OR: [{ name: { startsWith: "Demo" } }, { phone: { startsWith: "Demo" } }],
+        tags: {
+          some: {
+            tenantId: "tenant-1",
+            tagId: "tag-1",
+          },
+        },
+      },
+      orderBy: { name: "asc" },
+      skip: 0,
+      take: 25,
+    });
+    expect(JSON.stringify(query)).not.toContain("contains");
+  });
+
   it("creates a reusable free-text tag and assigns it to a tenant client", async () => {
     const res = await POST(jsonRequest("/api/clients/client-1/tags", { name: "  Follow   up  " }), {
       params: { id: "client-1" },
