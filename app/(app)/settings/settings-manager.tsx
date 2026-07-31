@@ -30,6 +30,8 @@ type ApiValidationError = {
   formErrors?: string[];
 };
 
+type SlugAvailability = "idle" | "checking" | "available" | "unavailable";
+
 const defaultForm: SettingsFormState = {
   name: "",
   slug: "",
@@ -128,10 +130,15 @@ function publicUrlForSlug(slug: string) {
   return normalized ? `https://${normalized}.bukay.app` : "https://your-slug.bukay.app";
 }
 
+export function buildSlugAvailabilityPath(slug: string) {
+  return `/api/settings?slug=${encodeURIComponent(slug.trim().toLowerCase())}`;
+}
+
 export function SettingsManager() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [form, setForm] = useState<SettingsFormState>(defaultForm);
   const [errors, setErrors] = useState<SettingsFieldErrors>({});
+  const [slugAvailability, setSlugAvailability] = useState<SlugAvailability>("idle");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -151,6 +158,7 @@ export function SettingsManager() {
 
       setSettings(data.settings);
       setForm(settingsToForm(data.settings));
+      setSlugAvailability("idle");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Unable to load settings");
     } finally {
@@ -161,6 +169,49 @@ export function SettingsManager() {
   useEffect(() => {
     void loadSettings();
   }, []);
+
+  async function checkSlugAvailability(slug: string) {
+    const slugError = validateSettingsForm({ ...form, slug }).slug;
+    if (slugError) {
+      setErrors((current) => ({ ...current, slug: slugError }));
+      setSlugAvailability("idle");
+      return;
+    }
+
+    setSlugAvailability("checking");
+    setErrors((current) => ({ ...current, slug: undefined }));
+
+    try {
+      const response = await fetch(buildSlugAvailabilityPath(slug), {
+        headers: { Accept: "application/json" },
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        if (data.error === "validation_failed") {
+          setErrors(mapApiErrors(data));
+          setSlugAvailability("idle");
+          return;
+        }
+
+        throw new Error(data.error ?? "Unable to check slug");
+      }
+
+      if (data.available) {
+        setSlugAvailability("available");
+        return;
+      }
+
+      setSlugAvailability("unavailable");
+      setErrors((current) => ({ ...current, slug: "That public URL is already taken" }));
+    } catch (error) {
+      setSlugAvailability("idle");
+      setErrors((current) => ({
+        ...current,
+        slug: error instanceof Error ? error.message : "Unable to check slug",
+      }));
+    }
+  }
 
   async function saveSettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -249,6 +300,7 @@ export function SettingsManager() {
                     name,
                     slug: form.slug ? form.slug : slugifyBusinessName(name),
                   });
+                  setSlugAvailability("idle");
                 }}
               />
               {errors.name ? (
@@ -262,11 +314,19 @@ export function SettingsManager() {
                 className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
                 disabled={isLoading}
                 value={form.slug}
-                onChange={(event) =>
-                  setForm({ ...form, slug: slugifyBusinessName(event.target.value) })
-                }
+                onBlur={() => void checkSlugAvailability(form.slug)}
+                onChange={(event) => {
+                  setForm({ ...form, slug: slugifyBusinessName(event.target.value) });
+                  setSlugAvailability("idle");
+                }}
               />
               <span className="mt-1 block text-xs text-slate-400">{publicUrl}</span>
+              {slugAvailability === "checking" ? (
+                <span className="mt-1 block text-xs text-slate-400">Checking availability...</span>
+              ) : null}
+              {slugAvailability === "available" && !errors.slug ? (
+                <span className="mt-1 block text-xs text-emerald-300">Public URL is available</span>
+              ) : null}
               {errors.slug ? (
                 <span className="mt-1 block text-xs text-red-300">{errors.slug}</span>
               ) : null}
@@ -336,7 +396,12 @@ export function SettingsManager() {
               className="rounded-md border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isLoading || !settings}
               type="button"
-              onClick={() => settings && setForm(settingsToForm(settings))}
+              onClick={() => {
+                if (settings) {
+                  setForm(settingsToForm(settings));
+                  setSlugAvailability("idle");
+                }
+              }}
             >
               Reset
             </button>

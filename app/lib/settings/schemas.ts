@@ -36,3 +36,9 @@ export const settingsSchema = z.object({
 });
 
 export type SettingsInput = z.infer<typeof settingsSchema>;
+
+export const slugAvailabilitySchema = z.object({
+  slug: settingsSchema.shape.slug,
+});
+
+export type SlugAvailabilityInput = z.infer<typeof slugAvailabilitySchema>;

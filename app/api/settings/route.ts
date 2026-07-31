@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/app/db/prisma";
-import { settingsSchema } from "@/app/lib/settings/schemas";
+import { settingsSchema, slugAvailabilitySchema } from "@/app/lib/settings/schemas";
 import {
   isMissingRecordError,
   isUniqueConstraintError,
@@ -25,6 +25,11 @@ type TenantSettingsRecord = {
   updatedAt: Date | string;
 };
 
+type TenantSlugRecord = {
+  id: string;
+  slug: string;
+};
+
 const tenantSettingsSelect = {
   id: true,
   name: true,
@@ -40,6 +45,10 @@ const tenantSettingsSelect = {
 const tenantDelegate = prisma.tenant as unknown as {
   findUnique(args: unknown): Promise<TenantSettingsRecord | null>;
   update(args: unknown): Promise<TenantSettingsRecord>;
+};
+
+const tenantSlugDelegate = prisma.tenant as unknown as {
+  findUnique(args: unknown): Promise<TenantSlugRecord | null>;
 };
 
 function serializeSettings(settings: TenantSettingsRecord) {
@@ -58,6 +67,28 @@ function serializeSettings(settings: TenantSettingsRecord) {
 }
 
 export async function GET(req: NextRequest) {
+  const requestedSlug = req.nextUrl.searchParams.get("slug");
+
+  if (requestedSlug !== null) {
+    const parsed = slugAvailabilitySchema.safeParse({ slug: requestedSlug });
+    if (!parsed.success) {
+      return validationError(parsed.error);
+    }
+
+    return runForTenant(req, async (tenantId) => {
+      const existingTenant = await tenantSlugDelegate.findUnique({
+        where: { slug: parsed.data.slug },
+        select: { id: true, slug: true },
+      });
+
+      return NextResponse.json({
+        ok: true,
+        slug: parsed.data.slug,
+        available: !existingTenant || existingTenant.id === tenantId,
+      });
+    });
+  }
+
   return runForTenant(req, async (tenantId) => {
     const settings = await tenantDelegate.findUnique({
       where: { id: tenantId },
@@ -84,6 +115,15 @@ export async function PATCH(req: NextRequest) {
   }
 
   return runForTenant(req, async (tenantId) => {
+    const existingTenant = await tenantSlugDelegate.findUnique({
+      where: { slug: parsed.data.slug },
+      select: { id: true, slug: true },
+    });
+
+    if (existingTenant && existingTenant.id !== tenantId) {
+      return jsonError("slug_unavailable", 409);
+    }
+
     try {
       const settings = await tenantDelegate.update({
         where: { id: tenantId },

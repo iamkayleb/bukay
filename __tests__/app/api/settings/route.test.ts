@@ -203,6 +203,56 @@ describe("/api/settings", () => {
     expect(res.status).toBe(409);
     const body = await res.json();
     expect(body.error).toBe("slug_unavailable");
+    expect(state.update).not.toHaveBeenCalled();
+  });
+
+  it("reports an unused slug as available", async () => {
+    const res = await GET(request("/api/settings?slug=kay-salon"));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({
+      ok: true,
+      slug: "kay-salon",
+      available: true,
+    });
+    expect(state.findUnique).toHaveBeenCalledWith({
+      where: { slug: "kay-salon" },
+      select: { id: true, slug: true },
+    });
+  });
+
+  it("reports another tenant slug as unavailable", async () => {
+    const res = await GET(request("/api/settings?slug=booked-spa"));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({
+      ok: true,
+      slug: "booked-spa",
+      available: false,
+    });
+  });
+
+  it("allows the current tenant to keep its slug", async () => {
+    const res = await GET(request("/api/settings?slug=demo"));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({
+      ok: true,
+      slug: "demo",
+      available: true,
+    });
+  });
+
+  it("rejects reserved slugs before checking availability", async () => {
+    const res = await GET(request("/api/settings?slug=admin"));
+
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.error).toBe("validation_failed");
+    expect(body.fieldErrors.slug).toContain("This slug is reserved");
   });
 
   it("resolves a tenant slug before reading settings", async () => {

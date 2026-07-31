@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildSlugAvailabilityPath,
   buildSettingsPayload,
   settingsToForm,
   slugifyBusinessName,
@@ -76,5 +77,9 @@ describe("settings manager form helpers", () => {
       brandColor: "#10b981",
       cancellationPolicy: "Cancel at least 24 hours before the appointment.",
     });
+  });
+
+  it("builds the slug availability check path", () => {
+    expect(buildSlugAvailabilityPath(" Kay Salon ")).toBe("/api/settings?slug=kay%20salon");
   });
 });
