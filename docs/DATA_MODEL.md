@@ -20,6 +20,7 @@ that:
 | `Service` | Bookable service with duration and price | `@@unique([tenantId, name])`, `@@index([tenantId])` |
 | `Staff` | Staff member who can be assigned to bookings | `@@unique([tenantId, email])`, `@@index([tenantId])` |
 | `BusinessHour` | Weekly opening hours by day of week | `@@unique([tenantId, dayOfWeek])`, `@@index([tenantId])` |
+| `Blackout` | Tenant-level closed date | `@@unique([tenantId, date])`, `@@index([tenantId])` |
 | `Client` | Customer profile scoped to a tenant | `@@unique([tenantId, phone])`, `@@unique([tenantId, id])`, `@@index([tenantId])` |
 | `Tag` | Reusable free-text client labels | `@@unique([tenantId, name])`, `@@unique([tenantId, id])`, `@@index([tenantId])` |
 | `ClientTag` | Tenant-scoped client/tag assignment | `@@unique([tenantId, clientId, tagId])`, `@@index([tenantId])` |
@@ -101,6 +102,19 @@ default hours; rows with a `staffId` override for that staff member.
 
 Composite index `@@index([tenantId, staffId, dayOfWeek])` supports the
 availability lookup path.
+
+### Blackout
+
+Tenant-level closed dates where normal availability should not produce bookable
+slots.
+
+| Column     | Type      | Notes                             |
+|------------|-----------|-----------------------------------|
+| `tenantId` | `String`  | FK -> `Tenant.id`, indexed        |
+| `date`     | `String`  | Closed local calendar date        |
+| `reason`   | `String?` | Optional internal explanation     |
+
+`@@unique([tenantId, date])` keeps one blackout row per tenant date.
 
 ### Client
 

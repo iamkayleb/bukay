@@ -151,14 +151,13 @@ describe("OtpStore", () => {
 });
 
 describe("OTP_SECRET configuration", () => {
-  it("fails module startup in production when OTP_SECRET is missing", async () => {
+  it("fails secret access in production when OTP_SECRET is missing", async () => {
     vi.resetModules();
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("OTP_SECRET", "");
 
-    await expect(import("@/app/lib/auth/otp")).rejects.toThrow(
-      "OTP_SECRET must be set in production to sign OTP codes"
-    );
+    const { getOtpSecret } = await import("@/app/lib/auth/otp");
+    expect(() => getOtpSecret()).toThrow("OTP_SECRET must be set in production to sign OTP codes");
   });
 
   it("allows module startup in production when OTP_SECRET is set", async () => {

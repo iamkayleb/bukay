@@ -41,6 +41,48 @@ def _seed_text() -> str:
     return SEED_PATH.read_text()
 
 
+def _extract_balanced_block(text: str, opening_brace_index: int) -> str:
+    depth = 0
+    in_string: str | None = None
+    escaped = False
+
+    for index in range(opening_brace_index, len(text)):
+        char = text[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == in_string:
+                in_string = None
+            continue
+
+        if char in {'"', "'", "`"}:
+            in_string = char
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[opening_brace_index : index + 1]
+
+    raise AssertionError("unterminated object literal in seed.ts")
+
+
+def _find_seed_upsert_where_clauses() -> dict[str, str]:
+    text = _seed_text()
+    clauses: dict[str, str] = {}
+
+    for match in re.finditer(r"prisma\.(\w+)\.upsert\(\s*\{", text):
+        model = match.group(1)
+        upsert_body = _extract_balanced_block(text, match.end() - 1)
+        where_match = re.search(r"\bwhere:\s*\{", upsert_body)
+        assert where_match, f"prisma.{model}.upsert must declare a where clause"
+        clauses[model] = _extract_balanced_block(upsert_body, where_match.end() - 1)
+
+    return clauses
+
+
 def test_seed_file_exists() -> None:
     assert SEED_PATH.exists(), f"missing prisma seed at {SEED_PATH}"
 
