@@ -135,6 +135,32 @@ def test_admin_surface_allowlist_stays_grounded_in_the_repo() -> None:
         )
 
 
+def test_admin_surface_allowlist_entries_actually_need_the_exemption() -> None:
+    """Allow-listed files must fetch services *without* `?active=true`.
+
+    The whole point of being on the allow-list is that the surface intentionally
+    needs the unfiltered services list (e.g., to let an admin restore archived
+    rows). If an allow-listed file only ever fetches with `?active=true`, the
+    exemption is unnecessary and hides drift — the entry should move to the
+    shared helper instead. Fail loudly so the allow-list can't accumulate
+    rubber-stamp entries.
+    """
+    for rel in _ADMIN_SURFACES:
+        path = ROOT / rel
+        source = path.read_text()
+        literals = _find_services_url_literals(source)
+        assert literals, (
+            f"admin allow-list entry {rel!r} does not fetch /api/services at "
+            "all. The exemption is not needed — remove it from _ADMIN_SURFACES."
+        )
+        needs_unfiltered = any(not _ACTIVE_PARAM_RE.search(literal) for literal in literals)
+        assert needs_unfiltered, (
+            f"admin allow-list entry {rel!r} only fetches with an ?active= "
+            "filter, so it does not need the exemption. Either remove it from "
+            "_ADMIN_SURFACES or route it through fetchBookableServices()."
+        )
+
+
 def test_url_regex_matches_collection_endpoint_only() -> None:
     """The regex must catch listing URLs but skip per-item URLs.
 
