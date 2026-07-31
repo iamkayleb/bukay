@@ -89,8 +89,17 @@ beforeEach(() => {
   state.update.mockReset();
   state.tenantFindUnique.mockReset();
 
-  state.findMany.mockImplementation(async (args: { where: { tenantId: string } }) =>
-    state.services.filter((row) => row.tenantId === args.where.tenantId)
+  state.findMany.mockImplementation(
+    async (args: { where: { tenantId: string; active?: boolean } }) =>
+      state.services.filter((row) => {
+        if (row.tenantId !== args.where.tenantId) {
+          return false;
+        }
+        if (args.where.active !== undefined && row.active !== args.where.active) {
+          return false;
+        }
+        return true;
+      })
   );
   state.create.mockImplementation(async (args: { data: CreateServiceData }) => {
     if (
@@ -160,6 +169,52 @@ describe("/api/services", () => {
       tenantId: "tenant-1",
       priceKobo: 750000,
     });
+    expect(state.findMany).toHaveBeenCalledWith({
+      where: { tenantId: "tenant-1" },
+      orderBy: [{ active: "desc" }, { name: "asc" }],
+    });
+  });
+
+  it("filters archived services when active=true is requested (booking surfaces)", async () => {
+    state.services.push(
+      service({ id: "service-3", tenantId: "tenant-1", name: "Retired", active: false })
+    );
+
+    const res = await GET(request("/api/services?active=true"));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.services).toHaveLength(1);
+    expect(body.services[0]).toMatchObject({ id: "service-1", active: true });
+    expect(state.findMany).toHaveBeenCalledWith({
+      where: { tenantId: "tenant-1", active: true },
+      orderBy: [{ active: "desc" }, { name: "asc" }],
+    });
+  });
+
+  it("returns only archived services when active=false is requested", async () => {
+    state.services.push(
+      service({ id: "service-3", tenantId: "tenant-1", name: "Retired", active: false })
+    );
+
+    const res = await GET(request("/api/services?active=false"));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.services).toHaveLength(1);
+    expect(body.services[0]).toMatchObject({ id: "service-3", active: false });
+  });
+
+  it("ignores unknown values for the active filter and returns every tenant service", async () => {
+    state.services.push(
+      service({ id: "service-3", tenantId: "tenant-1", name: "Retired", active: false })
+    );
+
+    const res = await GET(request("/api/services?active=maybe"));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.services).toHaveLength(2);
     expect(state.findMany).toHaveBeenCalledWith({
       where: { tenantId: "tenant-1" },
       orderBy: [{ active: "desc" }, { name: "asc" }],
