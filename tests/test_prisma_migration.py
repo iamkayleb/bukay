@@ -54,6 +54,14 @@ def _package_version(package: str) -> str:
     return spec
 
 
+def _all_migration_sql() -> str:
+    return "\n".join(
+        (path / "migration.sql").read_text()
+        for path in sorted(MIGRATIONS_DIR.iterdir())
+        if (path / "migration.sql").exists()
+    )
+
+
 def _prisma_command() -> list[str]:
     prisma_bin = ROOT / "node_modules" / ".bin" / "prisma"
     if prisma_bin.exists():
@@ -119,6 +127,18 @@ def test_migration_indexes_tenant_id_on_scoped_tables() -> None:
             re.IGNORECASE,
         )
         assert pattern.search(sql), f"initial migration missing tenantId index for {model}"
+
+
+def test_client_search_indexes_exist_in_migrations() -> None:
+    """The client API search path relies on tenant-prefixed name and phone indexes."""
+    sql = _all_migration_sql()
+    for field in ("name", "phone"):
+        pattern = re.compile(
+            rf"CREATE\s+(?:UNIQUE\s+)?INDEX\s+\"Client_[^\"]*\"\s+ON\s+\"Client\"\s*"
+            rf"\(\s*\"tenantId\"\s*,\s*\"{field}\"\s*\)",
+            re.IGNORECASE,
+        )
+        assert pattern.search(sql), f"migrations missing tenant-prefixed Client.{field} index"
 
 
 def test_data_model_doc_exists_and_covers_every_model() -> None:
