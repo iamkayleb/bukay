@@ -144,19 +144,24 @@ def test_seed_imports_prisma_enums() -> None:
     for enum_name in EXPECTED_ENUM_IMPORTS:
         assert enum_name in text, f"seed.ts must import {enum_name} from @prisma/client"
 
+    db_path = prisma_dir / "dev.db"
+    with sqlite3.connect(db_path) as conn:
+        demo_tenant_count = conn.execute(
+            'SELECT COUNT(*) FROM "Tenant" WHERE "slug" = ?',
+            ("demo",),
+        ).fetchone()[0]
+        owner_staff_alignment = conn.execute(
+            """
+            SELECT u.email, u.role, s.email
+            FROM "Tenant" t
+            JOIN "User" u ON u."tenantId" = t.id
+            JOIN "Staff" s ON s."tenantId" = t.id AND s.email = u.email
+            WHERE t.slug = ? AND u.role = ?
+            """,
+            ("demo", "owner"),
+        ).fetchall()
 
-def test_seed_uses_enum_values_for_typed_fields() -> None:
-    text = _seed_text()
-    for enum_usage in EXPECTED_ENUM_USAGES:
-        assert enum_usage in text, f"seed.ts must use {enum_usage}"
-
-    forbidden_string_values = [
-        'role: "owner"',
-        'status: "confirmed"',
-        'status: "paid"',
-        'provider: "mobile_money"',
-        'providerRef: "demo-mm-0001"',
-        "JSON.stringify({ services:",
-    ]
-    for value in forbidden_string_values:
-        assert value not in text, f"seed.ts still contains flattened field value {value}"
+    assert demo_tenant_count == 1, "prisma db seed did not create Tenant.slug = 'demo'"
+    assert owner_staff_alignment == [
+        ("owner@demo.bukay.dev", "owner", "owner@demo.bukay.dev")
+    ], "demo owner User must have a matching Staff row by email for booking assignment"

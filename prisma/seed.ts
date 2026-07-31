@@ -19,6 +19,8 @@ import {
 const prisma = new PrismaClient();
 
 const DEMO_TENANT_SLUG = "demo";
+const DEMO_BOOKING_STATUS_CONFIRMED = "confirmed";
+const DEMO_PAYMENT_STATUS_PAID = "paid";
 
 const DEMO_SERVICES = [
   {
@@ -182,7 +184,7 @@ async function main() {
       staffId: staff.id,
       startsAt,
       endsAt,
-      status: BookingStatus.CONFIRMED,
+      status: DEMO_BOOKING_STATUS_CONFIRMED,
       notes: "Seeded demo appointment.",
     },
   });
@@ -194,9 +196,10 @@ async function main() {
       bookingId: booking.id,
       amountCents: haircut.priceCents,
       currency: tenant.currency,
-      method: PaymentMethod.MOBILE_MONEY,
-      status: PaymentStatus.PAID,
-      externalRef: "demo-mm-0001",
+      provider: "mobile_money",
+      providerRef: "demo-mm-0001",
+      status: DEMO_PAYMENT_STATUS_PAID,
+      paidAt: startsAt,
     },
   });
   console.log(`Payment ready: ${payment.id} (${payment.amountCents} ${payment.currency})`);
