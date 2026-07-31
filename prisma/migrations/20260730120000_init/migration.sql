@@ -55,6 +55,18 @@ CREATE TABLE "Staff" (
 );
 
 -- CreateTable
+CREATE TABLE "StaffService" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "staffId" TEXT NOT NULL,
+    "serviceId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "StaffService_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "BusinessHour" (
     "id" TEXT NOT NULL,
     "tenantId" TEXT NOT NULL,
@@ -66,6 +78,18 @@ CREATE TABLE "BusinessHour" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "BusinessHour_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Blackout" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "date" TEXT NOT NULL,
+    "reason" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Blackout_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -152,10 +176,28 @@ CREATE INDEX "Staff_tenantId_idx" ON "Staff"("tenantId");
 CREATE UNIQUE INDEX "Staff_tenantId_email_key" ON "Staff"("tenantId", "email");
 
 -- CreateIndex
+CREATE INDEX "StaffService_tenantId_idx" ON "StaffService"("tenantId");
+
+-- CreateIndex
+CREATE INDEX "StaffService_staffId_idx" ON "StaffService"("staffId");
+
+-- CreateIndex
+CREATE INDEX "StaffService_serviceId_idx" ON "StaffService"("serviceId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "StaffService_staffId_serviceId_key" ON "StaffService"("staffId", "serviceId");
+
+-- CreateIndex
 CREATE INDEX "BusinessHour_tenantId_idx" ON "BusinessHour"("tenantId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "BusinessHour_tenantId_dayOfWeek_key" ON "BusinessHour"("tenantId", "dayOfWeek");
+CREATE INDEX "BusinessHour_tenantId_dayOfWeek_idx" ON "BusinessHour"("tenantId", "dayOfWeek");
+
+-- CreateIndex
+CREATE INDEX "Blackout_tenantId_idx" ON "Blackout"("tenantId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Blackout_tenantId_date_key" ON "Blackout"("tenantId", "date");
 
 -- CreateIndex
 CREATE INDEX "Client_tenantId_idx" ON "Client"("tenantId");
@@ -203,7 +245,19 @@ ALTER TABLE "Service" ADD CONSTRAINT "Service_tenantId_fkey" FOREIGN KEY ("tenan
 ALTER TABLE "Staff" ADD CONSTRAINT "Staff_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "StaffService" ADD CONSTRAINT "StaffService_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StaffService" ADD CONSTRAINT "StaffService_staffId_fkey" FOREIGN KEY ("staffId") REFERENCES "Staff"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StaffService" ADD CONSTRAINT "StaffService_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "Service"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "BusinessHour" ADD CONSTRAINT "BusinessHour_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Blackout" ADD CONSTRAINT "Blackout_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Client" ADD CONSTRAINT "Client_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -228,3 +282,4 @@ ALTER TABLE "Payment" ADD CONSTRAINT "Payment_bookingId_fkey" FOREIGN KEY ("book
 
 -- AddForeignKey
 ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
