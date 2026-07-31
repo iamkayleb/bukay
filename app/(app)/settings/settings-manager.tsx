@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 
 export type Settings = {
   id: string;
@@ -18,6 +18,7 @@ export type SettingsFormState = {
   slug: string;
   timezone: string;
   currency: string;
+  logoUrl: string;
   cancellationPolicy: string;
 };
 
@@ -37,6 +38,7 @@ const defaultForm: SettingsFormState = {
   slug: "",
   timezone: "Africa/Lagos",
   currency: "NGN",
+  logoUrl: "",
   cancellationPolicy: "",
 };
 
@@ -88,6 +90,7 @@ export function settingsToForm(settings: Settings): SettingsFormState {
     slug: settings.slug,
     timezone: settings.timezone || "Africa/Lagos",
     currency: settings.currency || "NGN",
+    logoUrl: settings.logoUrl ?? "",
     cancellationPolicy: settings.cancellationPolicy ?? "",
   };
 }
@@ -98,7 +101,7 @@ export function buildSettingsPayload(form: SettingsFormState, settings: Settings
     slug: form.slug.trim().toLowerCase(),
     timezone: form.timezone.trim() || "Africa/Lagos",
     currency: form.currency.trim().toUpperCase() || "NGN",
-    logoUrl: settings?.logoUrl ?? "",
+    logoUrl: form.logoUrl.trim(),
     brandColor: settings?.brandColor ?? "#10b981",
     cancellationPolicy: form.cancellationPolicy.trim(),
   };
@@ -141,6 +144,7 @@ export function SettingsManager() {
   const [slugAvailability, setSlugAvailability] = useState<SlugAvailability>("idle");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const publicUrl = useMemo(() => publicUrlForSlug(form.slug), [form.slug]);
 
@@ -260,6 +264,60 @@ export function SettingsManager() {
     }
   }
 
+  async function uploadLogo(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    setNotice(null);
+    setErrors({});
+    setIsUploadingLogo(true);
+
+    try {
+      const response = await fetch("/api/settings/logo-upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          fileName: file.name,
+          contentType: file.type,
+          size: file.size,
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        if (data.error === "validation_failed") {
+          setErrors({ _form: "Upload a PNG, JPG, WebP, or GIF logo under 2 MB." });
+          return;
+        }
+
+        throw new Error(data.error ?? "Unable to prepare logo upload");
+      }
+
+      const uploadResponse = await fetch(data.upload.uploadUrl, {
+        method: data.upload.method,
+        headers: data.upload.headers,
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error("Unable to upload logo");
+      }
+
+      setForm((current) => ({ ...current, logoUrl: data.upload.publicUrl }));
+      setNotice("Logo uploaded. Save settings to publish it.");
+    } catch (error) {
+      setErrors({
+        _form: error instanceof Error ? error.message : "Unable to upload logo",
+      });
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-100 sm:px-6 lg:px-8">
       <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -295,11 +353,11 @@ export function SettingsManager() {
                 value={form.name}
                 onChange={(event) => {
                   const name = event.target.value;
-                  setForm({
-                    ...form,
+                  setForm((current) => ({
+                    ...current,
                     name,
-                    slug: form.slug ? form.slug : slugifyBusinessName(name),
-                  });
+                    slug: current.slug ? current.slug : slugifyBusinessName(name),
+                  }));
                   setSlugAvailability("idle");
                 }}
               />
@@ -371,6 +429,35 @@ export function SettingsManager() {
             </label>
 
             <label className="block sm:col-span-2">
+              <span className="text-sm font-medium text-slate-200">Logo</span>
+              <div className="mt-2 flex items-center gap-4">
+                {form.logoUrl ? (
+                  <img
+                    alt=""
+                    className="h-16 w-16 rounded-md border border-slate-800 object-cover"
+                    src={form.logoUrl}
+                  />
+                ) : (
+                  <div className="flex h-16 w-16 items-center justify-center rounded-md bg-emerald-500 text-xl font-semibold text-slate-950">
+                    {(form.name.trim()[0] ?? "B").toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <input
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    className="block w-full text-sm text-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-slate-800 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-100 hover:file:bg-slate-700"
+                    disabled={isLoading || isUploadingLogo}
+                    type="file"
+                    onChange={(event) => void uploadLogo(event)}
+                  />
+                  <span className="mt-1 block text-xs text-slate-400">
+                    PNG, JPG, WebP, or GIF under 2 MB.
+                  </span>
+                </div>
+              </div>
+            </label>
+
+            <label className="block sm:col-span-2">
               <span className="text-sm font-medium text-slate-200">Cancellation policy</span>
               <textarea
                 className="mt-1 min-h-32 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
@@ -411,12 +498,8 @@ export function SettingsManager() {
         <aside className="h-fit rounded-lg border border-slate-800 bg-slate-900 p-5">
           <h2 className="text-lg font-semibold text-white">Public preview</h2>
           <div className="mt-5 rounded-md border border-slate-800 bg-slate-950 p-4">
-            {settings?.logoUrl ? (
-              <img
-                alt=""
-                className="mb-4 h-12 w-12 rounded-md object-cover"
-                src={settings.logoUrl}
-              />
+            {form.logoUrl ? (
+              <img alt="" className="mb-4 h-12 w-12 rounded-md object-cover" src={form.logoUrl} />
             ) : (
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-emerald-500 text-lg font-semibold text-slate-950">
                 {(form.name.trim()[0] ?? "B").toUpperCase()}

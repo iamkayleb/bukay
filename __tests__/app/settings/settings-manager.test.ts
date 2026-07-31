@@ -15,6 +15,7 @@ const validForm: SettingsFormState = {
   slug: "kay-salon",
   timezone: "Africa/Lagos",
   currency: "NGN",
+  logoUrl: "https://cdn.example.com/new-logo.png",
   cancellationPolicy: "Cancel at least 24 hours before the appointment.",
 };
 
@@ -41,6 +42,7 @@ describe("settings manager form helpers", () => {
       slug: "UPPER CASE",
       timezone: "",
       currency: "naira",
+      logoUrl: "",
       cancellationPolicy: "x".repeat(2001),
     });
 
@@ -63,6 +65,7 @@ describe("settings manager form helpers", () => {
       slug: "demo",
       timezone: "Africa/Lagos",
       currency: "NGN",
+      logoUrl: "https://cdn.example.com/logo.png",
       cancellationPolicy: "",
     });
   });
@@ -73,7 +76,7 @@ describe("settings manager form helpers", () => {
       slug: "kay-salon",
       timezone: "Africa/Lagos",
       currency: "NGN",
-      logoUrl: "https://cdn.example.com/logo.png",
+      logoUrl: "https://cdn.example.com/new-logo.png",
       brandColor: "#10b981",
       cancellationPolicy: "Cancel at least 24 hours before the appointment.",
     });
