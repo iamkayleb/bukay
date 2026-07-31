@@ -61,10 +61,6 @@ tenants — `@@unique([tenantId, email])` enforces uniqueness within a tenant.
 
 A `User` may be linked 1:1 to a `Staff` row (the human who fulfils bookings).
 
-Owner identity is resolved from `User.role = "owner"` within the tenant. A matching `Staff` record
-may reuse the owner user's email so the owner can be assigned to bookings, but owner lookup should
-not infer ownership from staff contact fields alone.
-
 ### Service
 
 A bookable offering.
@@ -81,10 +77,14 @@ Services can be assigned to multiple staff via the `StaffServices` join.
 
 ### Staff
 
-`Staff` stores contact information and an `active` flag. Bookings may reference staff, but the
-booking remains if staff is later deleted. Staff records are assignable resources, not login or
-authorization records; when a staff row represents the owner, keep its email aligned with the
-tenant's owner `User` row.
+People who fulfil bookings. May optionally link to a `User` if the staff
+member also logs in.
+
+| Column     | Type      | Notes                                          |
+|------------|-----------|------------------------------------------------|
+| `tenantId` | `String`  | FK → `Tenant.id`, indexed                      |
+| `userId`   | `String?` | Optional FK → `User.id` (`SetNull` on delete)  |
+| `name`     | `String`  | Display name                                   |
 
 ### BusinessHour
 
@@ -136,12 +136,6 @@ Indexes target the common query shapes:
 - `@@index([tenantId, startsAt])` — tenant calendar views.
 - `@@index([tenantId, staffId, startsAt])` — per-staff schedule lookups.
 
-Booking status values are stored as strings for now, but application metric code should use
-[`app/lib/statuses.ts`](../app/lib/statuses.ts) instead of raw string comparisons. That helper
-normalizes persisted casing, whitespace, underscore, and hyphen variants before matching canonical
-values such as `confirmed` and `no-show`, reducing the risk that booking analytics silently
-undercount legacy or manually imported rows.
-
 ### Payment
 
 Money received against a booking. `Payment` carries its own `tenantId` (rather
@@ -156,11 +150,6 @@ without a join.
 | `currency`    | `String`        | ISO 4217                             |
 | `method`      | `PaymentMethod` | Enum incl. `MOBILE_MONEY`            |
 | `status`      | `PaymentStatus` | Enum                                 |
-
-Payment status values follow the same string-backed pattern. Lifetime value calculations should use
-`calculateLifetimeValueCents` or `isPaidPaymentStatus` from
-[`app/lib/statuses.ts`](../app/lib/statuses.ts), which treat normalized `paid` values as revenue and
-exclude pending, failed, or refunded payments.
 
 ### AuditLog
 
