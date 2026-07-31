@@ -29,11 +29,13 @@ export async function POST(req: NextRequest) {
     throw err;
   }
 
-  const result = getOtpStore().issue(phone);
+  const result = await getOtpStore().issue(phone);
   if (!result.ok) {
     const retryAfter = Math.max(1, Math.ceil(result.retryAfterMs / 1000));
+    const message =
+      result.reason === "rate_limited" ? "rate limit exceeded" : "OTP cooldown active";
     return NextResponse.json(
-      { ok: false, error: result.reason, retryAfterSeconds: retryAfter },
+      { ok: false, error: result.reason, message, retryAfterSeconds: retryAfter },
       { status: 429, headers: { "Retry-After": String(retryAfter) } }
     );
   }
