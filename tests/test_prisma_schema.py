@@ -86,9 +86,11 @@ def _has_tenant_id_index(model_body: str) -> bool:
     return re.search(r"@@index\(\[\s*tenantId\s*(?:,|\])", model_body) is not None
 
 
-def _has_index(model_body: str, fields: list[str]) -> bool:
-    field_pattern = r"\s*,\s*".join(re.escape(field) for field in fields)
-    return re.search(rf"@@index\(\[\s*{field_pattern}\s*\]\)", model_body) is not None
+def _has_tenant_prefixed_index(model_body: str, field: str) -> bool:
+    return (
+        re.search(rf"@@index\(\[\s*tenantId\s*,\s*{field}\s*\]", model_body) is not None
+        or re.search(rf"@@unique\(\[\s*tenantId\s*,\s*{field}\s*\]", model_body) is not None
+    )
 
 
 def test_schema_file_exists() -> None:
@@ -151,10 +153,12 @@ def test_tenant_model_has_no_tenant_id() -> None:
     ), "Tenant model must not carry its own tenantId column"
 
 
-def test_client_search_fields_have_compound_tenant_indexes() -> None:
-    """Client list search must stay indexed for large tenant rosters."""
+def test_client_search_fields_have_tenant_prefixed_indexes() -> None:
+    """Client search uses tenant-scoped startsWith filters, so both fields need tenant prefixes."""
     blocks = _model_blocks(SCHEMA_PATH.read_text())
     body = blocks["Client"]
 
-    assert _has_index(body, ["tenantId", "name"]), "Client search needs @@index([tenantId, name])"
-    assert _has_index(body, ["tenantId", "phone"]), "Client search needs @@index([tenantId, phone])"
+    for field in ("name", "phone"):
+        assert _has_tenant_prefixed_index(
+            body, field
+        ), f"Client search field `{field}` needs a tenant-prefixed index or unique constraint"

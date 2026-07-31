@@ -20,9 +20,9 @@ that:
 | `Service` | Bookable service with duration and price | `@@unique([tenantId, name])`, `@@index([tenantId])` |
 | `Staff` | Staff member who can be assigned to bookings | `@@unique([tenantId, email])`, `@@index([tenantId])` |
 | `BusinessHour` | Weekly opening hours by day of week | `@@unique([tenantId, dayOfWeek])`, `@@index([tenantId])` |
-| `Client` | Customer profile scoped to a tenant | `@@unique([tenantId, phone])`, `@@index([tenantId])` |
-| `Tag` | Reusable client label scoped to a tenant | `@@unique([tenantId, name])`, `@@index([tenantId])` |
-| `ClientTag` | Client-to-tag assignment | `@@unique([clientId, tagId])`, `@@index([tenantId])`, `@@index([tenantId, clientId])`, `@@index([tenantId, tagId])` |
+| `Client` | Customer profile scoped to a tenant | `@@unique([tenantId, phone])`, `@@unique([tenantId, id])`, `@@index([tenantId])` |
+| `Tag` | Reusable free-text client labels | `@@unique([tenantId, name])`, `@@unique([tenantId, id])`, `@@index([tenantId])` |
+| `ClientTag` | Tenant-scoped client/tag assignment | `@@unique([tenantId, clientId, tagId])`, `@@index([tenantId])` |
 | `Booking` | Appointment linking client, service, and optional staff | `@@index([tenantId])`, `@@index([tenantId, startsAt])` |
 | `Payment` | Payment ledger row for a booking | `@@index([tenantId])`, `@@index([bookingId])`, `@@index([providerRef])` |
 | `AuditLog` | Append-only tenant activity record | `@@index([tenantId])`, `@@index([tenantId, entityType, entityId])` |
@@ -105,18 +105,18 @@ availability lookup path.
 ### Client
 
 `Client` stores customer name, optional email, required phone number, optional notes, and booking
-relations. Client tags are stored through `ClientTag` so the same free-text tag can be reused across
-many clients.
+and tag relations.
 
 ### Tag
 
-`Tag` stores a reusable free-text client label for a tenant. Tag names are unique within a tenant and
-can be assigned to many clients.
+`Tag` stores tenant-scoped reusable free-text labels. The `(tenantId, name)` unique constraint keeps
+tag names reusable without duplicating the same label within one tenant.
 
 ### ClientTag
 
-`ClientTag` links clients to tags. The unique client/tag pair prevents duplicate assignments, while
-tenant, client, and tag indexes support filtered client-list reads.
+`ClientTag` links clients to reusable tags. Its composite foreign keys reference `(tenantId, id)` on
+both `Client` and `Tag`, so the database rejects assignments where the client and tag do not belong
+to the same tenant.
 
 ### Booking
 
@@ -206,12 +206,20 @@ npm run prisma:migrate:dev
 npm run db:seed
 ```
 
-After seeding, the demo tenant (`slug='demo'`) contains:
+The seed script is configured in `package.json` as `tsx prisma/seed.ts`. It is idempotent: it upserts
+the demo tenant with slug `demo`, removes dependent demo rows in foreign-key order, and recreates a
+stable sample dataset with an owner user, services, business hours, staff, client, reusable tags,
+client tag assignment, booking, payment, and audit log.
+
+## Migration History
+
+Migrations live under [`prisma/migrations`](../prisma/migrations). The current history contains one
+checked-in migration:
 
 | Migration | Description |
 |-----------|-------------|
-| `20260611112538_init` | Creates the initial SQLite schema for tenants, users, services, staff, business hours, clients, bookings, payments, and audit logs. It also creates all unique constraints and tenant indexes declared in `schema.prisma`. |
-| `20260730000000_client_tags` | Adds reusable tenant-scoped tags and client/tag assignments with indexes for client-list filtering. |
+| `20260611112538_init` | Creates the initial SQLite schema for tenants, users, services, staff, business hours, clients, bookings, payments, and audit logs. It also creates all unique constraints and tenant indexes declared in `schema.prisma` at initialization time. |
+| `20260731120000_add_client_tags` | Adds reusable client tags and tenant-safe client/tag assignments. |
 
 The seed is idempotent: re-running it tears down the dependent rows in FK
 order (payments → bookings → audit logs → services → staff → business hours)

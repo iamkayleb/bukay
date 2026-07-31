@@ -7,9 +7,11 @@ export const TENANT_SCOPED_MODELS = [
   "Booking",
   "BusinessHour",
   "Client",
+  "ClientTag",
   "Payment",
   "Service",
   "Staff",
+  "Tag",
   "User",
 ] as const;
 
