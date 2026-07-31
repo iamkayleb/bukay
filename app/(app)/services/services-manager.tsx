@@ -227,6 +227,24 @@ export function ServicesManager() {
     }
   }
 
+  async function restoreService(service: Service) {
+    setNotice(null);
+    const response = await fetch(`/api/services/${service.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ active: true }),
+    });
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      setNotice(data.error ?? "Unable to restore service");
+      return;
+    }
+
+    await loadServices();
+    setNotice("Service restored.");
+  }
+
   function editService(service: Service) {
     setEditingId(service.id);
     setForm(serviceToForm(service));
@@ -324,7 +342,7 @@ export function ServicesManager() {
                     <button
                       className="rounded-md border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-100 hover:border-emerald-400"
                       type="button"
-                      onClick={() => editService(service)}
+                      onClick={() => void restoreService(service)}
                     >
                       Restore
                     </button>
