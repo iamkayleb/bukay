@@ -83,6 +83,29 @@ def test_tenant_model_has_no_tenant_id() -> None:
     ), "Tenant model must not carry its own tenantId column"
 
 
+SCALAR_TYPES = {
+    "String",
+    "Int",
+    "DateTime",
+    "Boolean",
+    "Float",
+    "Decimal",
+    "BigInt",
+    "Bytes",
+    "Json",
+}
+
+
+def _referenced_model_types(model_body: str) -> set[str]:
+    relation_types = re.findall(
+        r"^\s*\w+\s+(\w+)(?:\?|\[\])?\s+@relation",
+        model_body,
+        re.MULTILINE,
+    )
+    list_types = re.findall(r"^\s*\w+\s+(\w+)\[\]\s*$", model_body, re.MULTILINE)
+    return {t for t in {*relation_types, *list_types} if t not in SCALAR_TYPES}
+
+
 def test_service_relations_do_not_reference_missing_models() -> None:
     """Guard the PR #195 concern: relation targets on Service must actually exist.
 
@@ -95,18 +118,50 @@ def test_service_relations_do_not_reference_missing_models() -> None:
     blocks = _model_blocks(schema_text)
     declared = set(blocks.keys())
 
-    service_body = blocks["Service"]
-    relation_types = re.findall(
-        r"^\s*\w+\s+(\w+)(?:\?|\[\])?\s+@relation",
-        service_body,
-        re.MULTILINE,
-    )
-    # Include list-typed relations without @relation attribute (implicit m-m).
-    list_types = re.findall(r"^\s*\w+\s+(\w+)\[\]\s*$", service_body, re.MULTILINE)
-    for referenced in {*relation_types, *list_types}:
-        if referenced in {"String", "Int", "DateTime", "Boolean"}:
-            continue
+    for referenced in _referenced_model_types(blocks["Service"]):
         assert referenced in declared, (
             f"Service references undefined model {referenced!r} — either add "
             "the model back or remove the relation."
+        )
+
+
+def test_no_model_relation_references_missing_model() -> None:
+    """Every relation across the entire schema must point at a declared model.
+
+    Symmetric to the Service guard: if any model still references StaffService
+    (or any other undeclared type) — either as a direct relation or as an
+    implicit list relation — the schema is invalid and Prisma client
+    generation would fail. This catches the removed-StaffService concern in
+    both directions (Service → StaffService AND StaffService → Service).
+    """
+    schema_text = SCHEMA_PATH.read_text()
+    blocks = _model_blocks(schema_text)
+    declared = set(blocks.keys())
+
+    for model_name, body in blocks.items():
+        for referenced in _referenced_model_types(body):
+            assert referenced in declared, (
+                f"Model {model_name!r} references undefined model "
+                f"{referenced!r} — either declare the model or drop the relation."
+            )
+
+
+def test_removed_staff_service_model_stays_removed() -> None:
+    """StaffService was removed in PR #195; regressing it silently would
+    revive the multi-tenant staff-assignment path we intentionally deferred.
+    Fail loudly if it (or a stray `staffAssignments` relation) reappears
+    without a companion migration reintroducing the table.
+    """
+    schema_text = SCHEMA_PATH.read_text()
+    blocks = _model_blocks(schema_text)
+
+    assert "StaffService" not in blocks, (
+        "StaffService model reappeared in schema.prisma — this was intentionally "
+        "removed in PR #195. If reintroducing, also add a migration and update tests."
+    )
+
+    for model_name, body in blocks.items():
+        assert not re.search(r"^\s*staffAssignments\s+", body, re.MULTILINE), (
+            f"Model {model_name!r} declares a `staffAssignments` relation but "
+            "StaffService is not defined — remove the relation or add the model back."
         )

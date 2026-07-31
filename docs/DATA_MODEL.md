@@ -45,6 +45,12 @@ tenant-owned records. The defaults are `Africa/Lagos` for timezone and `NGN` for
 `Service` stores name, optional description, duration in minutes, price in minor units, currency, and
 an `active` flag.
 
+Archiving is implemented as a soft-delete: `DELETE /api/services/:id` flips `active` to `false`
+rather than removing the row, so historical bookings continue to resolve. Booking surfaces
+(client-facing booking form, staff calendar picker, any future public schedule) **must** pass
+`?active=true` to `GET /api/services` so archived rows are hidden. The admin services manager
+intentionally omits the filter so operators can see and restore archived entries.
+
 ### Staff
 
 `Staff` stores contact information and an `active` flag. Bookings may reference staff, but the
