@@ -19,6 +19,8 @@ EXPECTED_TENANT_SCOPED_MODELS = {
     "BusinessHour",
     "Blackout",
     "Client",
+    "Tag",
+    "ClientTag",
     "Booking",
     "Payment",
     "AuditLog",
