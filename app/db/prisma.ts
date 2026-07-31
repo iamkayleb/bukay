@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { tenantGuardExtension } from "@/app/db/tenant-guard";
+import { tenantGuardExtension } from "@/prisma/extension";
 
 const createPrismaClient = () => new PrismaClient().$extends(tenantGuardExtension);
 

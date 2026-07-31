@@ -1,4 +1,3 @@
-import { Prisma } from "@prisma/client";
 import { tenantContext } from "@/app/tenancy/tenant-context";
 
 const TENANT_SCOPED_MODELS = new Set([
@@ -155,14 +154,4 @@ export function assertTenantWhere(model: string, operation: string, args: unknow
   }
 }
 
-export const tenantGuardExtension = Prisma.defineExtension({
-  name: "tenant-guard",
-  query: {
-    $allModels: {
-      $allOperations({ model, operation, args, query }) {
-        assertTenantWhere(model, operation, args);
-        return query(args);
-      },
-    },
-  },
-});
+export { tenantGuardExtension } from "@/prisma/extension";
