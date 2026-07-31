@@ -1,5 +1,5 @@
-import { ScheduleSettings } from "./schedule-settings";
+import { SettingsManager } from "./settings-manager";
 
 export default function SettingsPage() {
-  return <ScheduleSettings />;
+  return <SettingsManager />;
 }
