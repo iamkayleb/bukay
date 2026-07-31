@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { clientTagPayload, validateClientTagForm } from "@/app/(app)/clients/clients-manager";
+import {
+  clientListPath,
+  clientTagPayload,
+  validateClientTagForm,
+} from "@/app/(app)/clients/clients-manager";
 
 describe("clients manager tag helpers", () => {
   it("normalizes free-text tag names before sending them to the API", () => {
@@ -17,5 +21,14 @@ describe("clients manager tag helpers", () => {
 
   it("accepts valid reusable tag names", () => {
     expect(validateClientTagForm({ name: "Prefers mornings" })).toEqual({});
+  });
+
+  it("builds a normalized client list search URL", () => {
+    expect(
+      clientListPath({
+        search: "  Ada   +234  ",
+        selectedTagId: "tag-1",
+      })
+    ).toBe("/api/clients?pageSize=25&search=Ada+%2B234&tagId=tag-1");
   });
 });

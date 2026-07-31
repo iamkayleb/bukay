@@ -149,8 +149,52 @@ beforeEach(() => {
   state.clientTagDeleteMany.mockReset();
   state.tenantFindUnique.mockReset();
 
-  state.clientFindMany.mockImplementation(async (args: { where: { tenantId: string } }) =>
-    state.clients.filter((row) => row.tenantId === args.where.tenantId)
+  state.clientFindMany.mockImplementation(
+    async (args: {
+      where: {
+        tenantId: string;
+        OR?: Array<{ name?: { startsWith: string }; phone?: { startsWith: string } }>;
+        tags?: { some: { tenantId: string; tagId: string } };
+      };
+      skip?: number;
+      take?: number;
+    }) => {
+      const filtered = state.clients.filter((row) => {
+        if (row.tenantId !== args.where.tenantId) {
+          return false;
+        }
+
+        if (args.where.OR) {
+          const matchesSearch = args.where.OR.some((condition) => {
+            if (condition.name) {
+              return row.name.startsWith(condition.name.startsWith);
+            }
+
+            if (condition.phone) {
+              return row.phone.startsWith(condition.phone.startsWith);
+            }
+
+            return false;
+          });
+
+          if (!matchesSearch) {
+            return false;
+          }
+        }
+
+        if (args.where.tags) {
+          return row.tags.some(
+            (clientTag) =>
+              clientTag.tenantId === args.where.tags?.some.tenantId &&
+              clientTag.tagId === args.where.tags.some.tagId
+          );
+        }
+
+        return true;
+      });
+
+      return filtered.slice(args.skip ?? 0, (args.skip ?? 0) + (args.take ?? filtered.length));
+    }
   );
   state.clientFindFirst.mockImplementation(
     async (args: { where: { tenantId: string; id: string } }) =>
@@ -237,6 +281,58 @@ describe("/api/clients", () => {
         },
       },
       orderBy: { name: "asc" },
+      skip: 0,
+      take: 25,
+    });
+  });
+
+  it("searches clients through the tenant-scoped Prisma query path with pagination", async () => {
+    const res = await GET(request("/api/clients?search=Demo%20%20Client&page=2&pageSize=10"));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.pagination).toEqual({ page: 2, pageSize: 10 });
+    expect(state.clientFindMany).toHaveBeenCalledWith({
+      where: {
+        tenantId: "tenant-1",
+        OR: [{ name: { startsWith: "Demo Client" } }, { phone: { startsWith: "DemoClient" } }],
+      },
+      include: {
+        tags: {
+          include: { tag: true },
+        },
+      },
+      orderBy: { name: "asc" },
+      skip: 10,
+      take: 10,
+    });
+  });
+
+  it("filters clients by reusable tag assignment in the Prisma query", async () => {
+    const res = await GET(request("/api/clients?tagId=tag-1&pageSize=500"));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.clients).toHaveLength(1);
+    expect(body.pagination).toEqual({ page: 1, pageSize: 100 });
+    expect(state.clientFindMany).toHaveBeenCalledWith({
+      where: {
+        tenantId: "tenant-1",
+        tags: {
+          some: {
+            tenantId: "tenant-1",
+            tagId: "tag-1",
+          },
+        },
+      },
+      include: {
+        tags: {
+          include: { tag: true },
+        },
+      },
+      orderBy: { name: "asc" },
+      skip: 0,
+      take: 100,
     });
   });
 

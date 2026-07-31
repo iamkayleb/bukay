@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { TAG_NAME_MAX_LENGTH, normalizeTagName } from "@/app/lib/clients/tags";
 
@@ -48,6 +48,29 @@ export function clientTagPayload(form: ClientTagFormState) {
   return { name: normalizeTagName(form.name) };
 }
 
+export function clientListPath({
+  search,
+  selectedTagId,
+  pageSize = 25,
+}: {
+  search: string;
+  selectedTagId: string | null;
+  pageSize?: number;
+}) {
+  const params = new URLSearchParams({ pageSize: String(pageSize) });
+  const normalizedSearch = normalizeTagName(search);
+
+  if (normalizedSearch) {
+    params.set("search", normalizedSearch);
+  }
+
+  if (selectedTagId) {
+    params.set("tagId", selectedTagId);
+  }
+
+  return `/api/clients?${params.toString()}`;
+}
+
 function hasErrors(errors: ClientTagFieldErrors) {
   return Object.keys(errors).length > 0;
 }
@@ -85,17 +108,22 @@ export function ClientsManager() {
   const [clients, setClients] = useState<ClientProfile[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [form, setForm] = useState<ClientTagFormState>({ name: "" });
+  const [search, setSearch] = useState("");
+  const [submittedSearch, setSubmittedSearch] = useState("");
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
   const [errors, setErrors] = useState<ClientTagFieldErrors>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  async function loadClients() {
+  const loadClients = useCallback(async () => {
     setIsLoading(true);
     setNotice(null);
 
     try {
-      const response = await fetch("/api/clients", { headers: { Accept: "application/json" } });
+      const response = await fetch(clientListPath({ search: submittedSearch, selectedTagId }), {
+        headers: { Accept: "application/json" },
+      });
       const data = await response.json();
 
       if (!response.ok || !data.ok) {
@@ -109,16 +137,31 @@ export function ClientsManager() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [selectedTagId, submittedSearch]);
 
   useEffect(() => {
     void loadClients();
-  }, []);
+  }, [loadClients]);
 
   const selectedClient = useMemo(
     () => clients.find((client) => client.id === selectedClientId) ?? clients[0] ?? null,
     [clients, selectedClientId]
   );
+
+  const availableTags = useMemo(() => {
+    const tags = new Map<string, ClientTag>();
+
+    clients.forEach((client) => {
+      client.tags.forEach((tag) => tags.set(tag.id, tag));
+    });
+
+    return Array.from(tags.values()).sort((left, right) => left.name.localeCompare(right.name));
+  }, [clients]);
+
+  function applySearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmittedSearch(search);
+  }
 
   async function assignTag(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -192,6 +235,54 @@ export function ClientsManager() {
             </p>
             <h1 className="mt-2 text-3xl font-semibold text-white">Client profiles</h1>
           </div>
+
+          <form className="flex flex-col gap-3 sm:flex-row" onSubmit={applySearch}>
+            <label className="min-w-0 flex-1">
+              <span className="sr-only">Search clients</span>
+              <input
+                className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
+                placeholder="Search by name or phone"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
+            <button
+              className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-400"
+              type="submit"
+            >
+              Search
+            </button>
+          </form>
+
+          {availableTags.length > 0 || selectedTagId ? (
+            <div className="flex flex-wrap gap-2">
+              <button
+                className={`rounded-md border px-3 py-1.5 text-xs font-medium ${
+                  selectedTagId === null
+                    ? "border-emerald-400 bg-emerald-400 text-slate-950"
+                    : "border-slate-700 bg-slate-950 text-slate-300"
+                }`}
+                type="button"
+                onClick={() => setSelectedTagId(null)}
+              >
+                All tags
+              </button>
+              {availableTags.map((tag) => (
+                <button
+                  className={`rounded-md border px-3 py-1.5 text-xs font-medium ${
+                    selectedTagId === tag.id
+                      ? "border-emerald-400 bg-emerald-400 text-slate-950"
+                      : "border-slate-700 bg-slate-950 text-slate-300"
+                  }`}
+                  key={tag.id}
+                  type="button"
+                  onClick={() => setSelectedTagId(tag.id)}
+                >
+                  {tag.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
           {notice ? (
             <p className="rounded-md border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-200">
