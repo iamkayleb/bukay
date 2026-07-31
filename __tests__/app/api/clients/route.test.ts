@@ -308,6 +308,25 @@ describe("/api/clients", () => {
     });
   });
 
+  it("keeps client search bounded and index-friendly at the API query boundary", async () => {
+    const res = await GET(request("/api/clients?search=%20%20%2B234%20800%20%20&pageSize=1000"));
+
+    expect(res.status).toBe(200);
+    expect(state.clientFindMany).toHaveBeenCalledTimes(1);
+
+    const query = state.clientFindMany.mock.calls[0][0];
+    expect(query).toMatchObject({
+      where: {
+        tenantId: "tenant-1",
+        OR: [{ name: { startsWith: "+234 800" } }, { phone: { startsWith: "+234800" } }],
+      },
+      orderBy: { name: "asc" },
+      skip: 0,
+      take: 100,
+    });
+    expect(JSON.stringify(query)).not.toContain("contains");
+  });
+
   it("filters clients by reusable tag assignment in the Prisma query", async () => {
     const res = await GET(request("/api/clients?tagId=tag-1&pageSize=500"));
 
