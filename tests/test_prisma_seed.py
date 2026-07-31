@@ -149,9 +149,11 @@ def test_prisma_db_seed_creates_demo_tenant_on_clean_database(tmp_path: Path) ->
         )
     )
     prisma_bin = _prepare_node_modules(project_dir)
+    db_path = prisma_dir / "dev.db"
     env = {
         **os.environ,
         "PATH": f"{project_dir / 'node_modules' / '.bin'}{os.pathsep}{os.environ['PATH']}",
+        "DATABASE_URL": f"file:{db_path}",
     }
 
     deploy = subprocess.run(

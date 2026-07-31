@@ -29,7 +29,9 @@ REQUIRED_MODELS = {
     "User",
     "Service",
     "Staff",
+    "StaffService",
     "BusinessHour",
+    "Blackout",
     "Client",
     "Booking",
     "Payment",
@@ -47,6 +49,17 @@ def _initial_migration_dir() -> Path:
     assert candidates, f"no migration directories found under {MIGRATIONS_DIR}"
     # The init migration sorts first by timestamp prefix.
     return sorted(candidates)[0]
+
+
+def _all_migrations_sql() -> str:
+    """Concatenated SQL of every checked-in migration, in timestamp order.
+
+    Some models are introduced in follow-up migrations rather than the init
+    one, so create-table / index assertions must look across the whole
+    migration history, not just the first migration.
+    """
+    dirs = sorted(p for p in MIGRATIONS_DIR.iterdir() if (p / "migration.sql").exists())
+    return "\n".join((d / "migration.sql").read_text() for d in dirs)
 
 
 def _package_version(package: str) -> str:
@@ -197,25 +210,33 @@ def test_migration_declares_foreign_key_constraints() -> None:
 
 
 def test_migration_creates_every_required_model() -> None:
-    """Every model in the schema must have a CREATE TABLE in the initial migration."""
-    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    """Every model in the schema must have a CREATE TABLE somewhere in the migration history."""
+    sql = _all_migrations_sql()
     for model in REQUIRED_MODELS:
         assert (
             f'CREATE TABLE "{model}"' in sql
-        ), f"initial migration is missing CREATE TABLE for {model}"
+        ), f"migration history is missing CREATE TABLE for {model}"
 
 
 def test_migration_indexes_tenant_id_on_scoped_tables() -> None:
-    """Every tenant-scoped table needs an index on tenantId in the SQL."""
-    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    """AC1 at the migration SQL level: every tenant-scoped table needs the
+    explicit single-column tenantId index `<Model>_tenantId_idx` — a composite
+    index like `Booking_tenantId_startsAt_idx` does NOT satisfy the acceptance
+    criterion because it is not the single-column form the schema declares.
+    """
+    sql = _all_migrations_sql()
     for model in REQUIRED_MODELS - {"Tenant"}:
         # Prisma emits `CREATE INDEX "<Model>_tenantId_idx" ON "<Model>"("tenantId")`
-        # (or a composite index whose first column is tenantId).
+        # for the single-column `@@index([tenantId])` directive.
         pattern = re.compile(
-            rf'CREATE INDEX\s+"{model}_tenantId[^"]*_idx"\s+ON\s+"{model}"\s*\(\s*"tenantId"',
+            rf'CREATE INDEX\s+"{model}_tenantId_idx"\s+ON\s+"{model}"\s*\(\s*"tenantId"\s*\)',
             re.IGNORECASE,
         )
-        assert pattern.search(sql), f"initial migration missing tenantId index for {model}"
+        assert pattern.search(sql), (
+            f"migration history missing explicit single-column tenantId index "
+            f"'{model}_tenantId_idx' for {model} (composite tenantId indexes do "
+            f"not satisfy AC1)"
+        )
 
 
 def test_data_model_doc_exists_and_covers_every_model() -> None:

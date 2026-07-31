@@ -16,7 +16,9 @@ EXPECTED_TENANT_SCOPED_MODELS = {
     "User",
     "Service",
     "Staff",
+    "StaffService",
     "BusinessHour",
+    "Blackout",
     "Client",
     "Booking",
     "Payment",
@@ -48,6 +50,16 @@ def _has_tenant_id_index(model_body: str) -> bool:
     return re.search(r"@@index\(\[\s*tenantId\s*(?:,|\])", model_body) is not None
 
 
+def _has_single_column_tenant_id_index(model_body: str) -> bool:
+    """Strict form of acceptance criterion #1: the exact `@@index([tenantId])`
+    single-column directive must be present. A composite `@@index([tenantId, x])`
+    alone does not satisfy this — the explicit single-column index must exist
+    in the model body regardless of any composite indexes that also start
+    with tenantId.
+    """
+    return re.search(r"@@index\(\[\s*tenantId\s*\]\)", model_body) is not None
+
+
 def test_schema_file_exists() -> None:
     assert SCHEMA_PATH.exists(), f"missing prisma schema at {SCHEMA_PATH}"
 
@@ -75,9 +87,80 @@ def test_every_tenant_scoped_model_has_tenant_index() -> None:
         assert _has_tenant_id_index(body), f"model {name} is missing `@@index([tenantId])`"
 
 
+def test_every_tenant_scoped_model_has_explicit_single_column_tenant_index() -> None:
+    """Acceptance criterion #1: every tenant-scoped model must carry the
+    explicit single-column `@@index([tenantId])` directive. A composite
+    `@@index([tenantId, x])` on its own is not enough — the single-column
+    form must be visible in the schema diff for every model in the scope.
+    """
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    for name in EXPECTED_TENANT_SCOPED_MODELS:
+        body = blocks[name]
+        assert _has_single_column_tenant_id_index(body), (
+            f"model {name} is missing the explicit single-column "
+            f"`@@index([tenantId])` directive required by acceptance criterion #1"
+        )
+
+
 def test_tenant_model_has_no_tenant_id() -> None:
     blocks = _model_blocks(SCHEMA_PATH.read_text())
     body = blocks["Tenant"]
     assert not re.search(
         r"^\s*tenantId\s+", body, re.MULTILINE
     ), "Tenant model must not carry its own tenantId column"
+
+
+# Payment field names the seed script writes to. If the schema drifts from
+# these names, `prisma db seed` fails at runtime — this test catches the
+# rename regression statically. Mirrors acceptance criterion #3 (c).
+PAYMENT_REQUIRED_FIELDS = {
+    "tenantId": "String",
+    "bookingId": "String",
+    "amountCents": "Int",
+    "currency": "String",
+    "provider": "String?",
+    "providerRef": "String?",
+    "status": "String",
+    "paidAt": "DateTime?",
+}
+
+
+def test_payment_model_has_expected_field_names_and_types() -> None:
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    body = blocks["Payment"]
+    for field, ptype in PAYMENT_REQUIRED_FIELDS.items():
+        # Field declarations look like `name  Type` at start of a line.
+        # Type may carry `?` (optional) or `[]` (list) modifiers.
+        pattern = re.compile(
+            rf"^\s*{re.escape(field)}\s+{re.escape(ptype)}(\s|$)",
+            re.MULTILINE,
+        )
+        assert pattern.search(
+            body
+        ), f"Payment.{field} must be declared as `{field} {ptype}`; body:\n{body}"
+
+
+def test_schema_declares_no_prisma_enums() -> None:
+    """Acceptance criterion #3 (d): enum fields converted to string/integer.
+
+    Prisma enum blocks are declared with `enum Name { ... }`. The seed script
+    writes string literals for status columns, so the schema must not carry
+    any `enum` block that would break at insert-time.
+    """
+    text = SCHEMA_PATH.read_text()
+    enum_blocks = re.findall(r"^enum\s+\w+\s*\{", text, re.MULTILINE)
+    assert not enum_blocks, (
+        f"schema.prisma must not declare Prisma enum blocks (found: {enum_blocks}); "
+        "status/type columns must be String or Int columns instead"
+    )
+
+
+def test_status_columns_are_string_typed() -> None:
+    """Status-shaped columns exercised by the seed must be `String`, not enums."""
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    for model in ("Booking", "Payment"):
+        body = blocks[model]
+        pattern = re.compile(r"^\s*status\s+String(\s|$)", re.MULTILINE)
+        assert pattern.search(
+            body
+        ), f"{model}.status must be a `String` column (not an enum reference)"
