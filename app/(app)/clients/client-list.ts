@@ -35,7 +35,7 @@ export function buildClientWhere(
   }
 
   if (tag) {
-    where.clientTags = {
+    where.tags = {
       some: {
         tenantId,
         tag: {

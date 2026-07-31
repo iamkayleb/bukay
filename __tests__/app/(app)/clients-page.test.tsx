@@ -7,18 +7,19 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ClientsPage from "@/app/(app)/clients/page";
 
 describe("Clients page", () => {
-  it("renders as a server placeholder until tenant-aware client data loading exists", () => {
+  it("renders the client manager shell", () => {
     const html = renderToStaticMarkup(<ClientsPage />);
 
     expect(html).toContain("Clients");
-    expect(html).toContain("Your client roster, notes, and history will be available");
-    expect(html).toContain("No clients added yet.");
+    expect(html).toContain("Client profiles");
+    expect(html).toContain("Loading clients...");
+    expect(html).toContain("Manage tags");
   });
 
-  it("does not fetch clients from the browser without explicit tenant handling", () => {
+  it("does not pass tenant context explicitly from the browser fetch", () => {
     const source = readFileSync(path.join(process.cwd(), "app/(app)/clients/page.tsx"), "utf8");
 
-    expect(source).not.toMatch(/^["']use client["'];?/m);
     expect(source).not.toContain("/api/clients");
+    expect(source).not.toContain("x-tenant-id");
   });
 });

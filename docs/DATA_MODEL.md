@@ -20,6 +20,7 @@ that:
 | `Service` | Bookable service with duration and price | `@@unique([tenantId, name])`, `@@index([tenantId])` |
 | `Staff` | Staff member who can be assigned to bookings | `@@unique([tenantId, email])`, `@@index([tenantId])` |
 | `BusinessHour` | Weekly opening hours by day of week | `@@unique([tenantId, dayOfWeek])`, `@@index([tenantId])` |
+| `Blackout` | Tenant-level unavailable date | `@@unique([tenantId, date])`, `@@index([tenantId])` |
 | `Client` | Customer profile scoped to a tenant | `@@unique([tenantId, phone])`, `@@unique([tenantId, id])`, `@@index([tenantId])` |
 | `Tag` | Reusable free-text client labels | `@@unique([tenantId, name])`, `@@unique([tenantId, id])`, `@@index([tenantId])` |
 | `ClientTag` | Tenant-scoped client/tag assignment | `@@unique([tenantId, clientId, tagId])`, `@@index([tenantId])` |
@@ -101,6 +102,11 @@ default hours; rows with a `staffId` override for that staff member.
 
 Composite index `@@index([tenantId, staffId, dayOfWeek])` supports the
 availability lookup path.
+
+### Blackout
+
+Tenant-level unavailable dates. A unique `(tenantId, date)` constraint prevents duplicate blackout
+rows for the same tenant and date.
 
 ### Client
 

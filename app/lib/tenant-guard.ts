@@ -7,9 +7,11 @@ export const TENANT_SCOPED_MODELS = [
   "BusinessHour",
   "Blackout",
   "Client",
+  "ClientTag",
   "Booking",
   "Payment",
   "AuditLog",
+  "Tag",
 ] as const;
 
 export type TenantScopedModel = (typeof TENANT_SCOPED_MODELS)[number];

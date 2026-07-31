@@ -1,100 +1,28 @@
-import { PrismaClient } from "@prisma/client";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { rm } from "node:fs/promises";
-import path from "node:path";
-import { tenantGuardExtension } from "@/app/db/tenant-guard";
+import { describe, expect, it } from "vitest";
+
+import { assertTenantWhere } from "@/app/db/tenant-guard";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 
-const dbPath = path.join(process.cwd(), "prisma", "tenant-scoping.test.db");
-const databaseUrl = `file:${dbPath}`;
-
-const basePrisma = new PrismaClient({ datasourceUrl: databaseUrl });
-const prisma = basePrisma.$extends(tenantGuardExtension);
-
-async function resetDatabase() {
-  await basePrisma.$executeRawUnsafe(`
-    CREATE TABLE "Tenant" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "name" TEXT NOT NULL,
-      "slug" TEXT NOT NULL,
-      "timezone" TEXT NOT NULL DEFAULT 'Africa/Lagos',
-      "currency" TEXT NOT NULL DEFAULT 'NGN',
-      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  await basePrisma.$executeRawUnsafe(`CREATE UNIQUE INDEX "Tenant_slug_key" ON "Tenant"("slug")`);
-  await basePrisma.$executeRawUnsafe(`
-    CREATE TABLE "Service" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "tenantId" TEXT NOT NULL,
-      "name" TEXT NOT NULL,
-      "description" TEXT,
-      "durationMinutes" INTEGER NOT NULL,
-      "priceCents" INTEGER NOT NULL,
-      "currency" TEXT NOT NULL DEFAULT 'NGN',
-      "active" BOOLEAN NOT NULL DEFAULT true,
-      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT "Service_tenantId_fkey"
-        FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-    )
-  `);
-  await basePrisma.$executeRawUnsafe(
-    `CREATE UNIQUE INDEX "Service_tenantId_name_key" ON "Service"("tenantId", "name")`
-  );
-  await basePrisma.$executeRawUnsafe(`CREATE INDEX "Service_tenantId_idx" ON "Service"("tenantId")`);
-}
-
 describe("tenant-scoped Prisma queries", () => {
-  beforeAll(async () => {
-    await rm(dbPath, { force: true });
-    await resetDatabase();
+  it("accepts only queries matching the active tenant context", () => {
+    runWithTenantContext({ tenantId: "tenant-current" }, () => {
+      expect(() =>
+        assertTenantWhere("Service", "findMany", {
+          where: { tenantId: "tenant-current", name: "Braids" },
+        })
+      ).not.toThrow();
 
-    await basePrisma.tenant.createMany({
-      data: [
-        { id: "tenant-current", name: "Current Tenant", slug: "current" },
-        { id: "tenant-other", name: "Other Tenant", slug: "other" },
-      ],
-    });
-    await basePrisma.service.createMany({
-      data: [
-        {
-          id: "service-current",
-          tenantId: "tenant-current",
-          name: "Braids",
-          durationMinutes: 90,
-          priceCents: 15000,
-        },
-        {
-          id: "service-other",
-          tenantId: "tenant-other",
-          name: "Braids",
-          durationMinutes: 90,
-          priceCents: 15000,
-        },
-      ],
-    });
-  });
+      expect(() =>
+        assertTenantWhere("Service", "findMany", {
+          where: { tenantId: "tenant-other", name: "Braids" },
+        })
+      ).toThrowError("Service.findMany tenantId does not match the active tenant context");
 
-  afterAll(async () => {
-    await prisma.$disconnect();
-    await rm(dbPath, { force: true });
-  });
-
-  it("returns only the row matching the active tenant context", async () => {
-    const services = await runWithTenantContext({ tenantId: "tenant-current" }, () =>
-      prisma.service.findMany({
-        where: { tenantId: "tenant-current", name: "Braids" },
-        orderBy: { id: "asc" },
-      })
-    );
-
-    expect(services).toHaveLength(1);
-    expect(services[0]).toMatchObject({
-      id: "service-current",
-      tenantId: "tenant-current",
-      name: "Braids",
+      expect(() =>
+        assertTenantWhere("Service", "findMany", {
+          where: { name: "Braids" },
+        })
+      ).toThrowError("Service.findMany requires a top-level tenantId in where");
     });
   });
 });

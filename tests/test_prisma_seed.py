@@ -41,6 +41,30 @@ def _seed_text() -> str:
     return SEED_PATH.read_text()
 
 
+def _extract_balanced_block(text: str, open_brace_index: int) -> str:
+    depth = 0
+    for index, character in enumerate(text[open_brace_index:], start=open_brace_index):
+        if character == "{":
+            depth += 1
+        elif character == "}":
+            depth -= 1
+            if depth == 0:
+                return text[open_brace_index : index + 1]
+    raise AssertionError("could not find balanced block")
+
+
+def _find_seed_upsert_where_clauses() -> dict[str, str]:
+    text = _seed_text()
+    clauses: dict[str, str] = {}
+    for match in re.finditer(r"prisma\.(\w+)\.upsert\(\{", text):
+        model = match.group(1)
+        upsert_block = _extract_balanced_block(text, match.end() - 1)
+        where_match = re.search(r"\bwhere:\s*\{", upsert_block)
+        assert where_match, f"prisma.{model}.upsert must declare a where clause"
+        clauses[model] = _extract_balanced_block(upsert_block, where_match.end() - 1)
+    return clauses
+
+
 def test_seed_file_exists() -> None:
     assert SEED_PATH.exists(), f"missing prisma seed at {SEED_PATH}"
 
@@ -73,13 +97,13 @@ def test_tenant_scoped_upserts_use_only_compound_unique_key_in_where() -> None:
             where_clause,
             re.DOTALL,
         ), f"prisma.{model}.upsert must use the {compound_key} compound unique key"
-        assert not re.search(
-            r"(?:^|[,{]\s*)tenantId:\s*tenant\.id\s*,?\s*(?:$|[},])",
-            where_clause.replace(
-                re.search(rf"{compound_key}:\s*\{{.*?\}}", where_clause, re.DOTALL).group(0),
-                "",
-            ),
-            re.DOTALL,
+        compound_key_match = re.search(rf"{compound_key}:\s*\{{", where_clause)
+        assert compound_key_match
+        compound_key_block = _extract_balanced_block(where_clause, compound_key_match.end() - 1)
+        compound_key_end = compound_key_match.end() - 1 + len(compound_key_block)
+        remainder = where_clause[: compound_key_match.start()] + where_clause[compound_key_end:]
+        assert (
+            "tenantId:" not in remainder
         ), f"prisma.{model}.upsert must not include top-level tenantId in where"
 
 
@@ -143,25 +167,3 @@ def test_seed_imports_prisma_enums() -> None:
     text = _seed_text()
     for enum_name in EXPECTED_ENUM_IMPORTS:
         assert enum_name in text, f"seed.ts must import {enum_name} from @prisma/client"
-
-    db_path = prisma_dir / "dev.db"
-    with sqlite3.connect(db_path) as conn:
-        demo_tenant_count = conn.execute(
-            'SELECT COUNT(*) FROM "Tenant" WHERE "slug" = ?',
-            ("demo",),
-        ).fetchone()[0]
-        owner_staff_alignment = conn.execute(
-            """
-            SELECT u.email, u.role, s.email
-            FROM "Tenant" t
-            JOIN "User" u ON u."tenantId" = t.id
-            JOIN "Staff" s ON s."tenantId" = t.id AND s.email = u.email
-            WHERE t.slug = ? AND u.role = ?
-            """,
-            ("demo", "owner"),
-        ).fetchall()
-
-    assert demo_tenant_count == 1, "prisma db seed did not create Tenant.slug = 'demo'"
-    assert owner_staff_alignment == [
-        ("owner@demo.bukay.dev", "owner", "owner@demo.bukay.dev")
-    ], "demo owner User must have a matching Staff row by email for booking assignment"

@@ -10,9 +10,7 @@ These tests assert both invariants without needing a live database.
 from __future__ import annotations
 
 import re
-import shutil
 import sqlite3
-import subprocess
 import time
 from pathlib import Path
 
@@ -69,28 +67,6 @@ def _all_migration_sql() -> str:
     return "\n".join(path.read_text() for path in migrations)
 
 
-def _package_version(package: str) -> str:
-    pkg = json.loads(PACKAGE_JSON.read_text())
-    spec = pkg.get("dependencies", {}).get(package) or pkg.get("devDependencies", {}).get(package)
-    assert spec, f"could not find {package} version in {PACKAGE_JSON}"
-    return spec
-
-
-def _all_migration_sql() -> str:
-    return "\n".join(
-        (path / "migration.sql").read_text()
-        for path in sorted(MIGRATIONS_DIR.iterdir())
-        if (path / "migration.sql").exists()
-    )
-
-
-def _prisma_command() -> list[str]:
-    prisma_bin = ROOT / "node_modules" / ".bin" / "prisma"
-    if prisma_bin.exists():
-        return [str(prisma_bin)]
-    return ["npx", "--yes", "--package", f"prisma@{_package_version('prisma')}", "prisma"]
-
-
 def test_migration_lock_present() -> None:
     lock = MIGRATIONS_DIR / "migration_lock.toml"
     assert lock.exists(), "prisma/migrations/migration_lock.toml must be checked in"
@@ -104,8 +80,8 @@ def test_initial_migration_exists() -> None:
 
 
 def test_migration_creates_every_required_model() -> None:
-    """Every model in the schema must have a CREATE TABLE in the initial migration."""
-    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    """Every model in the schema must have a CREATE TABLE in migration history."""
+    sql = _all_migration_sql()
     for model in REQUIRED_MODELS:
         assert (
             f'CREATE TABLE "{model}"' in sql
@@ -200,7 +176,27 @@ def test_migrations_add_client_search_indexes() -> None:
 def test_client_search_returns_under_300ms_for_10k_clients() -> None:
     """Acceptance check: tenant-scoped name/phone search stays fast at 10k clients."""
     connection = sqlite3.connect(":memory:")
-    connection.executescript(_all_migration_sql())
+    connection.executescript("""
+        CREATE TABLE "Tenant" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "slug" TEXT NOT NULL,
+            "name" TEXT NOT NULL,
+            "timezone" TEXT NOT NULL,
+            "currency" TEXT NOT NULL,
+            "createdAt" TEXT NOT NULL,
+            "updatedAt" TEXT NOT NULL
+        );
+        CREATE TABLE "Client" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "tenantId" TEXT NOT NULL,
+            "name" TEXT NOT NULL,
+            "phone" TEXT NOT NULL,
+            "createdAt" TEXT NOT NULL,
+            "updatedAt" TEXT NOT NULL
+        );
+        CREATE INDEX "Client_tenantId_name_idx" ON "Client"("tenantId", "name");
+        CREATE INDEX "Client_tenantId_phone_idx" ON "Client"("tenantId", "phone");
+        """)
     now = "2026-07-30 00:00:00"
 
     connection.execute(

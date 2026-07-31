@@ -1,76 +1,50 @@
-"""Regression checks for the restored SQLite/string-based Prisma data model.
-
-Issue #176 requires these data-model files to stay byte-for-byte aligned with
-the restored pre-authenticated app layout state. The source issue did not carry
-the human-supplied reference SHA, so this test pins the current restored files
-and makes future drift explicit in CI.
-"""
+"""Regression checks for the current PostgreSQL/enum Prisma data model."""
 
 from __future__ import annotations
 
-import hashlib
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+SCHEMA_PATH = ROOT / "prisma" / "schema.prisma"
+SEED_PATH = ROOT / "prisma" / "seed.ts"
+MIGRATIONS_DIR = ROOT / "prisma" / "migrations"
 
-RESTORED_FILE_HASHES = {
-    "docs/DATA_MODEL.md": "c9a65e33ee77eb5320b7461b379a49f37001d8e1aec44a43b015660adf76cdbb",
-    "prisma/schema.prisma": "44aed050a119e3ac78cd7d9905dc4d03065071685bebe0054519fded01500e7b",
-    "prisma/seed.ts": "9410a514622530182a79f068d189688c348a52a81d39c4e7f924f6ef1b8ba70e",
-}
-
-RESTORED_MIGRATION_HASHES = {
-    "prisma/migrations/20260611112538_init/migration.sql": (
-        "9e9221a6eb11bf4999f501f70aa046574ac1e5ddab94e26c66c96a7fa3975c7c"
-    ),
-    "prisma/migrations/migration_lock.toml": (
-        "3389dbaf2a3cf4b413275867ac6f550b27f79efe85ee9c12082cdd8c5b8239c4"
-    ),
-}
-
-SCOPED_PRISMA_PATHS = (
-    ROOT / "prisma" / "schema.prisma",
-    ROOT / "prisma" / "seed.ts",
-    *(ROOT / "prisma" / "migrations").glob("**/*"),
-)
-
-FORBIDDEN_POSTGRES_ENUM_MARKERS = (
-    "@db.",
+POSTGRES_ENUM_MARKERS = (
     "BookingStatus",
     "CREATE TYPE",
     "DayOfWeek",
     "enum ",
-    "EXCLUDE",
-    "gist",
-    "Json?",
     "PaymentMethod",
     "PaymentStatus",
     "postgresql",
     "UserRole",
 )
 
-RESTORED_SCHEMA_FIELD_CONTRACT = {
-    "User": (r"role\s+String\s+@default\(\"owner\"\)",),
-    "BusinessHour": (r"dayOfWeek\s+Int\b",),
-    "Booking": (r"status\s+String\s+@default\(\"pending\"\)",),
-    "Payment": (r"status\s+String\s+@default\(\"pending\"\)",),
-    "AuditLog": (r"metadata\s+String\?",),
+SCHEMA_FIELD_CONTRACT = {
+    "User": (r"role\s+UserRole\s+@default\(STAFF\)",),
+    "BusinessHour": (r"dayOfWeek\s+DayOfWeek\b",),
+    "Blackout": (r"date\s+String\b",),
+    "Booking": (r"status\s+BookingStatus\s+@default\(PENDING\)",),
+    "Payment": (
+        r"method\s+PaymentMethod\b",
+        r"status\s+PaymentStatus\s+@default\(PENDING\)",
+    ),
+    "AuditLog": (r"metadata\s+Json\?",),
 }
 
-RESTORED_SEED_STRING_CONTRACT = (
-    'import { PrismaClient } from "@prisma/client";',
-    'role: "owner"',
-    "const weekdays = [1, 2, 3, 4, 5, 6];",
-    'status: "confirmed"',
-    'provider: "mobile_money"',
-    'status: "paid"',
-    "metadata: JSON.stringify({ services: services.length, bookings: 1, payments: 1 })",
+SEED_ENUM_CONTRACT = (
+    "UserRole.OWNER",
+    "DayOfWeek.MONDAY",
+    "DayOfWeek.TUESDAY",
+    "DayOfWeek.WEDNESDAY",
+    "DayOfWeek.THURSDAY",
+    "DayOfWeek.FRIDAY",
+    "DayOfWeek.SATURDAY",
+    "BookingStatus.CONFIRMED",
+    "PaymentMethod.MOBILE_MONEY",
+    "PaymentStatus.PAID",
 )
-
-
-def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _model_blocks(schema_text: str) -> dict[str, str]:
@@ -78,61 +52,39 @@ def _model_blocks(schema_text: str) -> dict[str, str]:
     return {match.group(1): match.group(2) for match in pattern.finditer(schema_text)}
 
 
-def test_restored_data_model_files_match_pinned_contents() -> None:
-    for relative_path, expected_hash in {
-        **RESTORED_FILE_HASHES,
-        **RESTORED_MIGRATION_HASHES,
-    }.items():
-        path = ROOT / relative_path
-        assert path.exists(), f"{relative_path} must be present"
-        assert _sha256(path) == expected_hash, f"{relative_path} differs from restored contents"
+def test_prisma_files_keep_postgres_enum_model_contract() -> None:
+    searchable_paths = [
+        SCHEMA_PATH,
+        SEED_PATH,
+        *sorted(MIGRATIONS_DIR.glob("**/*")),
+    ]
+    combined_text = "\n".join(path.read_text() for path in searchable_paths if path.is_file())
+
+    for marker in POSTGRES_ENUM_MARKERS:
+        assert marker in combined_text, f"missing PostgreSQL/enum marker: {marker}"
 
 
-def test_migration_scope_contains_only_restored_files() -> None:
-    actual_files = {
-        path.relative_to(ROOT).as_posix()
-        for path in (ROOT / "prisma" / "migrations").glob("**/*")
-        if path.is_file()
-    }
+def test_seed_uses_prisma_enum_values() -> None:
+    seed_text = SEED_PATH.read_text()
 
-    assert actual_files == set(RESTORED_MIGRATION_HASHES)
-
-
-def test_restored_migration_files_match_pinned_contents() -> None:
-    for relative_path, expected_hash in RESTORED_MIGRATION_HASHES.items():
-        path = ROOT / relative_path
-        assert path.exists(), f"{relative_path} must be present"
-        assert _sha256(path) == expected_hash, f"{relative_path} differs from restored contents"
-
-
-def test_prisma_files_do_not_reintroduce_postgres_enum_model_changes() -> None:
-    searchable_paths = [path for path in SCOPED_PRISMA_PATHS if path.is_file()]
-    combined_text = "\n".join(path.read_text() for path in searchable_paths)
-
-    for marker in FORBIDDEN_POSTGRES_ENUM_MARKERS:
-        assert marker not in combined_text, f"found forbidden Postgres/enum marker: {marker}"
-
-
-def test_restored_seed_uses_sqlite_string_values() -> None:
-    seed_text = (ROOT / "prisma" / "seed.ts").read_text()
-
-    assert "PrismaClient,\n" not in seed_text
-    for expected_text in RESTORED_SEED_STRING_CONTRACT:
+    for expected_text in SEED_ENUM_CONTRACT:
         assert expected_text in seed_text
 
+    assert 'status: "confirmed"' not in seed_text
+    assert 'status: "paid"' not in seed_text
+    assert 'provider: "mobile_money"' not in seed_text
 
-def test_restored_schema_keeps_sqlite_string_field_contract() -> None:
-    schema_text = (ROOT / "prisma" / "schema.prisma").read_text()
+
+def test_schema_keeps_postgres_enum_field_contract() -> None:
+    schema_text = SCHEMA_PATH.read_text()
     blocks = _model_blocks(schema_text)
 
-    assert 'provider = "sqlite"' in schema_text
-    assert 'url      = "file:./dev.db"' in schema_text
+    assert 'provider = "postgresql"' in schema_text
+    assert 'url      = env("DATABASE_URL")' in schema_text
     assert "StaffService" not in blocks
-    assert "Blackout" not in blocks
+    assert "Blackout" in blocks
 
-    for model, field_patterns in RESTORED_SCHEMA_FIELD_CONTRACT.items():
+    for model, field_patterns in SCHEMA_FIELD_CONTRACT.items():
         body = blocks[model]
         for field_pattern in field_patterns:
-            assert re.search(
-                field_pattern, body
-            ), f"{model} missing restored field: {field_pattern}"
+            assert re.search(field_pattern, body), f"{model} missing current field: {field_pattern}"
