@@ -35,20 +35,56 @@ export class TenantScopeError extends Error {
   }
 }
 
-function whereHasTenant(where: unknown, tenantId: string | undefined): boolean {
-  if (!where || typeof where !== "object") return false;
-  const w = where as Record<string, unknown>;
-  const tid = w.tenantId;
-  if (typeof tid === "string") {
-    return tenantId === undefined || tid === tenantId;
+function normalizedTenantIdValue(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const eq = (value as Record<string, unknown>).equals;
+    if (typeof eq === "string") return eq;
   }
-  if (tid && typeof tid === "object") {
-    const eq = (tid as Record<string, unknown>).equals;
-    if (typeof eq === "string") {
-      return tenantId === undefined || eq === tenantId;
+  return undefined;
+}
+
+/**
+ * Walk `where` (including nested AND/OR) and return the tenantId if — and only
+ * if — the clause provably restricts results to a single tenant. Returns
+ * undefined when the clause could match another tenant's rows.
+ *
+ * AND: any branch that supplies the tenantId narrows the whole conjunction.
+ * OR: every branch must independently pin the same tenantId, otherwise a
+ *     branch without a tenantId filter would leak cross-tenant data.
+ */
+function tenantIdInWhere(where: unknown): string | undefined {
+  if (!where || typeof where !== "object" || Array.isArray(where)) return undefined;
+  const w = where as Record<string, unknown>;
+
+  const direct = normalizedTenantIdValue(w.tenantId);
+  if (direct !== undefined) return direct;
+
+  if (Array.isArray(w.AND)) {
+    for (const branch of w.AND) {
+      const found = tenantIdInWhere(branch);
+      if (found !== undefined) return found;
     }
   }
-  return false;
+
+  if (Array.isArray(w.OR) && w.OR.length > 0) {
+    let candidate: string | undefined;
+    for (const branch of w.OR) {
+      const found = tenantIdInWhere(branch);
+      if (found === undefined) return undefined;
+      if (candidate === undefined) candidate = found;
+      else if (candidate !== found) return undefined;
+    }
+    return candidate;
+  }
+
+  return undefined;
+}
+
+function whereHasTenant(where: unknown, tenantId: string | undefined): boolean {
+  const found = tenantIdInWhere(where);
+  if (found === undefined) return false;
+  return tenantId === undefined || found === tenantId;
 }
 
 function dataHasTenant(data: unknown, tenantId: string | undefined): boolean {
@@ -59,6 +95,17 @@ function dataHasTenant(data: unknown, tenantId: string | undefined): boolean {
   if (typeof data !== "object") return false;
   const d = data as Record<string, unknown>;
   const tid = d.tenantId;
+  if (typeof tid === "string") {
+    return tenantId === undefined || tid === tenantId;
+  }
+  return false;
+}
+
+function dataTenantOkOrAbsent(data: unknown, tenantId: string | undefined): boolean {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return true;
+  const d = data as Record<string, unknown>;
+  const tid = d.tenantId;
+  if (tid === undefined) return true;
   if (typeof tid === "string") {
     return tenantId === undefined || tid === tenantId;
   }
@@ -86,8 +133,18 @@ export function assertTenantScope({ model, operation, args, tenantId }: AssertOp
   }
 
   if (WRITE_OPS_WITH_DATA.has(operation)) {
-    const payload = operation === "upsert" ? ((a.create ?? a.update) as unknown) : a.data;
-    if (!dataHasTenant(payload, tenantId)) {
+    if (operation === "upsert") {
+      if (!dataHasTenant(a.create, tenantId)) {
+        throw new TenantScopeError(
+          `Refusing ${model}.upsert: create payload must include tenantId${tenantId ? ` === "${tenantId}"` : ""}.`
+        );
+      }
+      if (!dataTenantOkOrAbsent(a.update, tenantId)) {
+        throw new TenantScopeError(
+          `Refusing ${model}.upsert: update payload tenantId${tenantId ? ` must equal "${tenantId}"` : ""} does not match context.`
+        );
+      }
+    } else if (!dataHasTenant(a.data, tenantId)) {
       throw new TenantScopeError(
         `Refusing ${model}.${operation}: data must include tenantId${tenantId ? ` === "${tenantId}"` : ""}.`
       );
@@ -100,13 +157,22 @@ export type TenantGuardConfig = {
   getTenantId?: () => string | undefined;
 };
 
+function delegateKey(modelName: string): string {
+  return modelName.charAt(0).toLowerCase() + modelName.slice(1);
+}
+
+/**
+ * Build a Prisma extension whose `query` block hooks lowercase model delegate
+ * properties (e.g. `user`, `booking`) — Prisma resolves extensions by the
+ * delegate name, not the PascalCase model name.
+ */
 export function tenantGuardExtension(config: TenantGuardConfig = {}) {
-  const models = new Set(config.models ?? TENANT_SCOPED_MODELS);
+  const models = Array.from(new Set(config.models ?? TENANT_SCOPED_MODELS));
   const readTenant = config.getTenantId ?? getTenantId;
 
   const query: Record<string, Record<string, (params: any) => any>> = {};
-  for (const model of models) {
-    query[model] = {
+  for (const modelName of models) {
+    query[delegateKey(modelName)] = {
       async $allOperations({
         operation,
         args,
@@ -116,7 +182,7 @@ export function tenantGuardExtension(config: TenantGuardConfig = {}) {
         args: unknown;
         query: (args: unknown) => Promise<unknown>;
       }) {
-        assertTenantScope({ model, operation, args, tenantId: readTenant() });
+        assertTenantScope({ model: modelName, operation, args, tenantId: readTenant() });
         return run(args);
       },
     };

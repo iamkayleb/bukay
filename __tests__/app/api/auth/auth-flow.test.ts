@@ -132,7 +132,7 @@ describe("end-to-end auth flow", () => {
   });
 
   it("logout clears the session cookie", async () => {
-    const res = await logout();
+    const res = await logout(new NextRequest("http://test/api/auth/logout", { method: "POST" }));
     expect(res.status).toBe(200);
     const sc = extractSetCookie(res);
     expect(sc).toContain(`${SESSION_COOKIE_NAME}=`);

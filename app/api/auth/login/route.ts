@@ -3,10 +3,11 @@ import { InvalidPhoneNumberError, normalizeNigerianPhone } from "@/app/lib/auth/
 import { getOtpStore } from "@/app/lib/auth/otp";
 import { getSmsProvider } from "@/app/lib/auth/sms";
 import { SmsProviderError } from "@/app/lib/sms";
+import { withTenantScope } from "@/app/lib/tenant-scope";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(req: NextRequest) {
+async function handler(req: NextRequest) {
   let body: unknown;
   try {
     body = await req.json();
@@ -50,3 +51,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true, phone, expiresAt: result.expiresAt });
 }
+
+export const POST = withTenantScope(handler);

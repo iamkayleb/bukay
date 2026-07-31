@@ -71,6 +71,7 @@ markers = [
     "cosmetic: marks tests for cosmetic/formatting changes",
     "slow: marks tests as slow",
     "serial: marks tests that must run serially",
+    "xdist_group: pin tests to the same xdist worker (from pytest-xdist)",
 ]
 
 [tool.coverage.run]

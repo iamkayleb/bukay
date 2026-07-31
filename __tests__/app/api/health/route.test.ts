@@ -3,7 +3,7 @@ import { GET } from "@/app/api/health/route";
 
 describe("GET /api/health", () => {
   it("returns 200 with ok: true and version", async () => {
-    const response = GET();
+    const response = await GET(new Request("http://test/api/health") as never);
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.ok).toBe(true);
