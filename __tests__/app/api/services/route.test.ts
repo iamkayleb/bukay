@@ -354,6 +354,21 @@ describe("/api/services", () => {
     });
   });
 
+  it("hides an archived service from booking surfaces (active=true filter)", async () => {
+    const archiveRes = await DELETE(request("/api/services/service-1", { method: "DELETE" }), {
+      params: { id: "service-1" },
+    });
+    expect(archiveRes.status).toBe(200);
+    expect((await archiveRes.json()).service.active).toBe(false);
+
+    const listRes = await GET(request("/api/services?active=true"));
+    expect(listRes.status).toBe(200);
+    const listBody = await listRes.json();
+
+    expect(listBody.services).toHaveLength(0);
+    expect(listBody.services).not.toContainEqual(expect.objectContaining({ id: "service-1" }));
+  });
+
   it("returns not found instead of deleting a service outside the request tenant", async () => {
     const res = await DELETE(request("/api/services/service-2", { method: "DELETE" }), {
       params: { id: "service-2" },
