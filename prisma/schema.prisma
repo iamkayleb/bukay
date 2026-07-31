@@ -57,6 +57,7 @@ model Service {
   currency        String    @default("NGN")
   active          Boolean   @default(true)
   bookings        Booking[]
+  staffLinks      StaffService[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
