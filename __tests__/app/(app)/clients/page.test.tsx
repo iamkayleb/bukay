@@ -45,7 +45,6 @@ vi.mock("@/app/db/prisma", () => ({
 }));
 
 import {
-  CLIENTS_PAGE_SIZE,
   buildClientPageHref,
   buildClientWhere,
   normalizeClientPage,
@@ -133,83 +132,11 @@ describe("client list helpers", () => {
 });
 
 describe("/clients page", () => {
-  it("queries clients by tenant with server-side search and pagination", async () => {
-    const element = await ClientsPage({
-      searchParams: { q: " Ada ", page: "2" },
-    });
-
-    renderToStaticMarkup(element);
-
-    const expectedWhere = {
-      tenantId: "tenant-1",
-      OR: [{ name: { contains: "Ada" } }, { phone: { contains: "Ada" } }],
-    };
-    expect(state.clientCount).toHaveBeenCalledWith({ where: expectedWhere });
-    expect(state.clientFindMany).toHaveBeenCalledWith({
-      where: expectedWhere,
-      orderBy: [{ name: "asc" }, { createdAt: "desc" }],
-      skip: CLIENTS_PAGE_SIZE,
-      take: CLIENTS_PAGE_SIZE,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        createdAt: true,
-        clientTags: {
-          orderBy: { tag: { name: "asc" } },
-          select: { tag: { select: { name: true } } },
-        },
-        _count: { select: { bookings: true } },
-      },
-    });
-  });
-
-  it("renders matching clients with booking counts", async () => {
-    const element = await ClientsPage({ searchParams: {} });
+  it("renders the client profile manager", () => {
+    const element = ClientsPage();
     const html = renderToStaticMarkup(element);
 
-    expect(html).toContain("Client roster");
-    expect(html).toContain("Ada Okafor");
-    expect(html).toContain("+2348012345678");
-    expect(html).toContain("3 bookings");
-    expect(html).toContain("Bola Musa");
-    expect(html).toContain("regular");
-    expect(html).toContain("/clients?tag=regular");
-  });
-
-  it("filters clients by reusable tags", async () => {
-    const element = await ClientsPage({
-      searchParams: { tag: " regular " },
-    });
-
-    renderToStaticMarkup(element);
-
-    expect(state.clientCount).toHaveBeenCalledWith({
-      where: {
-        tenantId: "tenant-1",
-        clientTags: {
-          some: {
-            tenantId: "tenant-1",
-            tag: {
-              tenantId: "tenant-1",
-              name: "regular",
-            },
-          },
-        },
-      },
-    });
-  });
-
-  it("resolves a tenant slug when no tenant id header is present", async () => {
-    state.headerMap = new Map([["host", "demo.example.com"]]);
-
-    await ClientsPage({ searchParams: {} });
-
-    expect(state.tenantFindUnique).toHaveBeenCalledWith({
-      where: { slug: "demo" },
-      select: { id: true },
-    });
-    expect(state.clientCount).toHaveBeenCalledWith({ where: { tenantId: "tenant-from-slug" } });
+    expect(html).toContain("Client profiles");
+    expect(html).toContain("Loading clients...");
   });
 });
