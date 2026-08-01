@@ -16,6 +16,7 @@ Any check failing means the documented dependency has drifted.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -71,3 +72,68 @@ def test_bookable_helper_hardcodes_active_true_filter() -> None:
     assert (
         "fetchBookableServices" in text
     ), "bookable.ts must export a fetchBookableServices function callers can use."
+
+
+def test_services_route_actually_reads_and_applies_the_active_filter() -> None:
+    """The GET handler in route.ts must actually read `active` and pass it to prisma.
+
+    The doc/comment guards above prove intent; this guard proves behavior. A
+    regression that dropped the query-string parsing or the `where.active`
+    clause would still leave the comment intact but silently return archived
+    rows to booking surfaces. That would break the PR #195 acceptance
+    criterion in a way none of the string-scanning tests would notice.
+    """
+    text = SERVICES_ROUTE.read_text()
+
+    # The handler must pull `active` off the URL's search params — either
+    # form is acceptable (`searchParams.get("active")` on the request URL).
+    reads_param = re.search(
+        r"searchParams\.get\(\s*[\"']active[\"']\s*\)",
+        text,
+    )
+    assert reads_param, (
+        'GET /api/services must call searchParams.get("active") — the '
+        "?active=true contract cannot work without reading the query parameter."
+    )
+
+    # The handler must forward that value into the prisma where clause. We
+    # look for a `where:` object and then an `active:` key appearing before
+    # `orderBy` (or the closing paren of findMany). This tolerates both the
+    # inline literal `{ ...active: filter }` and spread-based conditionals
+    # like `...(activeFilter === undefined ? {} : { active: activeFilter })`.
+    where_to_orderby = re.search(
+        r"findMany\s*\(\s*\{(?P<body>.*?)(?:orderBy\s*:|\}\s*\))",
+        text,
+        re.DOTALL,
+    )
+    assert where_to_orderby, "GET /api/services must call findMany with an options object"
+    body = where_to_orderby.group("body")
+    assert re.search(r"\bwhere\s*:", body), "findMany options must include a `where` clause"
+    assert re.search(r"\bactive\s*:", body), (
+        "GET /api/services must apply `active` inside its prisma `where` "
+        "clause. Without this, `?active=true` is parsed but ignored and "
+        "archived services still reach booking surfaces."
+    )
+
+
+def test_admin_services_manager_can_load_archived_rows() -> None:
+    """The staff-facing services page must NOT adopt the ?active=true filter.
+
+    The booking-surface contract only makes sense if the admin surface is
+    deliberately unfiltered — that's how operators restore archived services.
+    If a well-meaning refactor changed this page to use the bookable helper,
+    archived rows would disappear from the admin UI and the archive/restore
+    flow would silently break. Fail loudly if that happens.
+    """
+    manager = ROOT / "app" / "(app)" / "services" / "services-manager.tsx"
+    assert manager.exists(), (
+        f"admin services manager missing at {manager}. The admin exemption in "
+        "the booking-surface allow-list assumes this file exists."
+    )
+    text = manager.read_text()
+    assert 'fetch("/api/services"' in text or "fetch('/api/services'" in text, (
+        "services-manager.tsx must load /api/services without the ?active= "
+        "filter so admins can see and restore archived services. If this "
+        "surface intentionally moved to fetchBookableServices(), remove it "
+        "from the admin allow-list in test_booking_surface_adoption.py."
+    )
