@@ -18,7 +18,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
   const headerList = headers();
   const tenant = resolveTenant({
     headers: { get: (name) => headerList.get(name) },
-    session: null,
+    session,
   });
 
   const tenantName = tenant.tenantSlug ?? tenant.tenantId ?? "Bukay";
