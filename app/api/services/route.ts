@@ -19,11 +19,20 @@ const serviceDelegate = prisma.service as unknown as {
   create(args: unknown): Promise<ServiceRecord>;
 };
 
+// Booking surfaces pass `?active=true` to hide archived services; admin views
+// can pass `?active=false` to see only archived. Anything else (missing or
+// unrecognized) returns every service scoped to the tenant.
+//
+// Contract for callers: every consumer that surfaces services to end users
+// booking an appointment (client-facing form, staff calendar picker, public
+// schedule) MUST include `?active=true`. The shared client helper
+// `fetchBookableServices()` in app/lib/services/bookable.ts hardcodes the
+// filter — booking surfaces should call it instead of fetching directly.
+// See docs/DATA_MODEL.md → Service for the full rationale.
 function parseActiveFilter(value: string | null): boolean | undefined {
   if (value === null) {
     return undefined;
   }
-
   const normalized = value.trim().toLowerCase();
   if (normalized === "true" || normalized === "1") {
     return true;

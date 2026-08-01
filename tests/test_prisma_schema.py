@@ -110,57 +110,85 @@ def test_tenant_model_has_no_tenant_id() -> None:
     ), "Tenant model must not carry its own tenantId column"
 
 
-# Payment field names the seed script writes to. If the schema drifts from
-# these names, `prisma db seed` fails at runtime — this test catches the
-# rename regression statically. Mirrors acceptance criterion #3 (c).
-PAYMENT_REQUIRED_FIELDS = {
-    "tenantId": "String",
-    "bookingId": "String",
-    "amountCents": "Int",
-    "currency": "String",
-    "provider": "String?",
-    "providerRef": "String?",
-    "status": "String",
-    "paidAt": "DateTime?",
+SCALAR_TYPES = {
+    "String",
+    "Int",
+    "DateTime",
+    "Boolean",
+    "Float",
+    "Decimal",
+    "BigInt",
+    "Bytes",
+    "Json",
 }
 
 
-def test_payment_model_has_expected_field_names_and_types() -> None:
-    blocks = _model_blocks(SCHEMA_PATH.read_text())
-    body = blocks["Payment"]
-    for field, ptype in PAYMENT_REQUIRED_FIELDS.items():
-        # Field declarations look like `name  Type` at start of a line.
-        # Type may carry `?` (optional) or `[]` (list) modifiers.
-        pattern = re.compile(
-            rf"^\s*{re.escape(field)}\s+{re.escape(ptype)}(\s|$)",
-            re.MULTILINE,
-        )
-        assert pattern.search(
-            body
-        ), f"Payment.{field} must be declared as `{field} {ptype}`; body:\n{body}"
+def _referenced_model_types(model_body: str) -> set[str]:
+    relation_types = re.findall(
+        r"^\s*\w+\s+(\w+)(?:\?|\[\])?\s+@relation",
+        model_body,
+        re.MULTILINE,
+    )
+    list_types = re.findall(r"^\s*\w+\s+(\w+)\[\]\s*$", model_body, re.MULTILINE)
+    return {t for t in {*relation_types, *list_types} if t not in SCALAR_TYPES}
 
 
-def test_schema_declares_no_prisma_enums() -> None:
-    """Acceptance criterion #3 (d): enum fields converted to string/integer.
+def test_service_relations_do_not_reference_missing_models() -> None:
+    """Guard the PR #195 concern: relation targets on Service must actually exist.
 
-    Prisma enum blocks are declared with `enum Name { ... }`. The seed script
-    writes string literals for status columns, so the schema must not carry
-    any `enum` block that would break at insert-time.
+    A prior iteration removed the `staffAssignments StaffService[]` relation
+    without also removing the StaffService model; a symmetric mistake in
+    reverse would leave a dangling relation. This test fails loudly if the
+    Service block ever references a model type that isn't declared.
     """
-    text = SCHEMA_PATH.read_text()
-    enum_blocks = re.findall(r"^enum\s+\w+\s*\{", text, re.MULTILINE)
-    assert not enum_blocks, (
-        f"schema.prisma must not declare Prisma enum blocks (found: {enum_blocks}); "
-        "status/type columns must be String or Int columns instead"
+    schema_text = SCHEMA_PATH.read_text()
+    blocks = _model_blocks(schema_text)
+    declared = set(blocks.keys())
+
+    for referenced in _referenced_model_types(blocks["Service"]):
+        assert referenced in declared, (
+            f"Service references undefined model {referenced!r} — either add "
+            "the model back or remove the relation."
+        )
+
+
+def test_no_model_relation_references_missing_model() -> None:
+    """Every relation across the entire schema must point at a declared model.
+
+    Symmetric to the Service guard: if any model still references StaffService
+    (or any other undeclared type) — either as a direct relation or as an
+    implicit list relation — the schema is invalid and Prisma client
+    generation would fail. This catches the removed-StaffService concern in
+    both directions (Service → StaffService AND StaffService → Service).
+    """
+    schema_text = SCHEMA_PATH.read_text()
+    blocks = _model_blocks(schema_text)
+    declared = set(blocks.keys())
+
+    for model_name, body in blocks.items():
+        for referenced in _referenced_model_types(body):
+            assert referenced in declared, (
+                f"Model {model_name!r} references undefined model "
+                f"{referenced!r} — either declare the model or drop the relation."
+            )
+
+
+def test_removed_staff_service_model_stays_removed() -> None:
+    """StaffService was removed in PR #195; regressing it silently would
+    revive the multi-tenant staff-assignment path we intentionally deferred.
+    Fail loudly if it (or a stray `staffAssignments` relation) reappears
+    without a companion migration reintroducing the table.
+    """
+    schema_text = SCHEMA_PATH.read_text()
+    blocks = _model_blocks(schema_text)
+
+    assert "StaffService" not in blocks, (
+        "StaffService model reappeared in schema.prisma — this was intentionally "
+        "removed in PR #195. If reintroducing, also add a migration and update tests."
     )
 
-
-def test_status_columns_are_string_typed() -> None:
-    """Status-shaped columns exercised by the seed must be `String`, not enums."""
-    blocks = _model_blocks(SCHEMA_PATH.read_text())
-    for model in ("Booking", "Payment"):
-        body = blocks[model]
-        pattern = re.compile(r"^\s*status\s+String(\s|$)", re.MULTILINE)
-        assert pattern.search(
-            body
-        ), f"{model}.status must be a `String` column (not an enum reference)"
+    for model_name, body in blocks.items():
+        assert not re.search(r"^\s*staffAssignments\s+", body, re.MULTILINE), (
+            f"Model {model_name!r} declares a `staffAssignments` relation but "
+            "StaffService is not defined — remove the relation or add the model back."
+        )

@@ -47,6 +47,15 @@ tenant-owned records. The defaults are `Africa/Lagos` for timezone and `NGN` for
 `Service` stores name, optional description, duration in minutes, price in minor units, currency, and
 an `active` flag.
 
+Archiving is implemented as a soft-delete: `DELETE /api/services/:id` flips `active` to `false`
+rather than removing the row, so historical bookings continue to resolve. Booking surfaces
+(client-facing booking form, staff calendar picker, any future public schedule) **must** pass
+`?active=true` to `GET /api/services` so archived rows are hidden. To keep the contract from
+drifting, booking surfaces should call `fetchBookableServices()` in
+[`app/lib/services/bookable.ts`](../app/lib/services/bookable.ts), which hardcodes the filter and
+strips any archived rows a misconfigured backend might still return. The admin services manager
+intentionally fetches without the filter so operators can see and restore archived entries.
+
 ### Staff
 
 `Staff` stores contact information and an `active` flag. Bookings may reference staff, but the
@@ -123,3 +132,22 @@ Migrations live under [`prisma/migrations`](../prisma/migrations). The current h
 [`prisma/migrations/migration_lock.toml`](../prisma/migrations/migration_lock.toml) records the
 database provider as `sqlite`. Do not edit generated migration files by hand after they have been
 applied; create a new migration from schema changes instead.
+
+### Schema/Migration Consistency
+
+An earlier iteration of the schema included a `StaffService` join model and a
+`staffAssignments StaffService[]` relation on `Service`; both were removed before the initial
+migration was authored, so **neither the schema nor any migration references `StaffService`**.
+This invariant is enforced by tests so a reintroduction cannot slip in silently:
+
+- `tests/test_prisma_schema.py::test_no_model_relation_references_missing_model` fails if any model
+  declares a relation to a type that isn't a declared model.
+- `tests/test_prisma_schema.py::test_removed_staff_service_model_stays_removed` fails if the
+  `StaffService` model or a `staffAssignments` field reappears in the schema.
+- `tests/test_prisma_migration.py::test_migration_tables_are_declared_in_schema` fails if a
+  migration ever creates a table that the schema does not declare a model for.
+- `tests/test_prisma_migration.py::test_no_migration_creates_staff_service_table` fails if any
+  migration creates a `StaffService` table or references `staffAssignments`.
+
+If `StaffService` ever needs to come back, reintroduce the model in `schema.prisma`, add a
+migration that creates the table plus its foreign keys, and update these guard tests together.
