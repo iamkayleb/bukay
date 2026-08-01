@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { InvalidPhoneNumberError, normalizeNigerianPhone } from "@/app/lib/auth/phone";
 import { getOtpStore } from "@/app/lib/auth/otp";
 import { SESSION_TTL_MS, buildSessionCookie, signSession } from "@/app/lib/auth/session";
+import { withTenantScope } from "@/app/lib/tenant-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,7 @@ function userIdFor(phone: string): string {
   return `user:${phone}`;
 }
 
-export async function POST(req: NextRequest) {
+async function handler(req: NextRequest) {
   let body: unknown;
   try {
     body = await req.json();
@@ -53,3 +54,5 @@ export async function POST(req: NextRequest) {
   res.headers.append("Set-Cookie", cookie);
   return res;
 }
+
+export const POST = withTenantScope(handler);

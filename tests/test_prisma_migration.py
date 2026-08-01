@@ -10,10 +10,12 @@ These tests assert both invariants without needing a live database.
 from __future__ import annotations
 
 import json
+import os
 import re
-import shutil
 import subprocess
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_PATH = ROOT / "prisma" / "schema.prisma"
@@ -27,7 +29,9 @@ REQUIRED_MODELS = {
     "User",
     "Service",
     "Staff",
+    "StaffService",
     "BusinessHour",
+    "Blackout",
     "Client",
     "Booking",
     "Payment",
@@ -45,6 +49,17 @@ def _initial_migration_dir() -> Path:
     assert candidates, f"no migration directories found under {MIGRATIONS_DIR}"
     # The init migration sorts first by timestamp prefix.
     return sorted(candidates)[0]
+
+
+def _all_migrations_sql() -> str:
+    """Concatenated SQL of every checked-in migration, in timestamp order.
+
+    Some models are introduced in follow-up migrations rather than the init
+    one, so create-table / index assertions must look across the whole
+    migration history, not just the first migration.
+    """
+    dirs = sorted(p for p in MIGRATIONS_DIR.iterdir() if (p / "migration.sql").exists())
+    return "\n".join((d / "migration.sql").read_text() for d in dirs)
 
 
 def _package_version(package: str) -> str:
@@ -72,53 +87,156 @@ def test_initial_migration_exists() -> None:
     assert sql_file.exists(), f"missing migration.sql in {init_dir}"
 
 
-def test_prisma_migrate_dev_runs_on_clean_database(tmp_path: Path) -> None:
-    """Acceptance check: `prisma migrate dev` must succeed on a clean database."""
-    prisma_dir = tmp_path / "prisma"
-    shutil.copytree(ROOT / "prisma", prisma_dir)
+@pytest.mark.xdist_group("prisma-cli")
+def test_prisma_schema_validates_offline() -> None:
+    """Acceptance check: `prisma validate` accepts the current schema.
 
+    Runs offline (no DB required). Prisma still needs a DATABASE_URL to
+    resolve the datasource block; we set a syntactically-valid postgres URL
+    so validation focuses on the schema itself.
+    """
     result = subprocess.run(
         [
             *_prisma_command(),
-            "migrate",
-            "dev",
+            "validate",
             "--schema",
-            str(prisma_dir / "schema.prisma"),
-            "--skip-seed",
-            "--skip-generate",
+            str(SCHEMA_PATH),
         ],
         cwd=ROOT,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         timeout=60,
+        env={**os.environ, "DATABASE_URL": "postgresql://user:pass@localhost:5432/bukay"},
         check=False,
     )
 
-    assert result.returncode == 0, result.stdout
-    assert (prisma_dir / "dev.db").exists(), "prisma migrate dev did not create a clean db"
+    assert result.returncode == 0, f"prisma validate failed:\n{result.stdout}"
+
+
+@pytest.mark.xdist_group("prisma-cli")
+def test_initial_migration_matches_prisma_diff_output() -> None:
+    """The checked-in initial migration must match Prisma's generated Postgres SQL.
+
+    Uses `prisma migrate diff --from-empty --to-schema-datamodel --script`
+    which runs offline (no DB needed). Guards against hand-edited migrations
+    drifting from the schema.
+    """
+    result = subprocess.run(
+        [
+            *_prisma_command(),
+            "migrate",
+            "diff",
+            "--from-empty",
+            "--to-schema-datamodel",
+            str(SCHEMA_PATH),
+            "--script",
+        ],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=60,
+        env={**os.environ, "DATABASE_URL": "postgresql://user:pass@localhost:5432/bukay"},
+        check=False,
+    )
+
+    assert result.returncode == 0, f"prisma migrate diff failed:\n{result.stdout}"
+
+    generated = result.stdout
+    # Prisma's CLI sometimes prints an upgrade banner after the SQL; strip
+    # anything past the last "AddForeignKey" block if present.
+    marker = "-- CreateTable"
+    assert marker in generated, f"expected CREATE TABLE marker in prisma output:\n{generated}"
+
+    checked_in = (_initial_migration_dir() / "migration.sql").read_text()
+    # Compare the salient DDL — every CREATE TABLE / CREATE INDEX / ADD CONSTRAINT
+    # emitted by Prisma must be present in the checked-in migration.
+    ddl_pattern = re.compile(
+        r"^\s*(CREATE (?:UNIQUE )?INDEX|CREATE TABLE|ALTER TABLE .* ADD CONSTRAINT).*?;",
+        re.MULTILINE | re.DOTALL,
+    )
+    for match in ddl_pattern.finditer(generated):
+        stmt = re.sub(r"\s+", " ", match.group(0)).strip()
+        checked_in_normalized = re.sub(r"\s+", " ", checked_in)
+        assert (
+            stmt in checked_in_normalized
+        ), f"checked-in migration missing DDL statement produced by prisma diff:\n{stmt}"
+
+
+def test_migration_lock_provider_is_postgres() -> None:
+    lock_text = (MIGRATIONS_DIR / "migration_lock.toml").read_text()
+    assert (
+        'provider = "postgresql"' in lock_text
+    ), 'prisma/migrations/migration_lock.toml must pin provider = "postgresql"'
+
+
+def test_schema_uses_postgres_datasource() -> None:
+    schema_text = SCHEMA_PATH.read_text()
+    assert re.search(
+        r'provider\s*=\s*"postgresql"', schema_text
+    ), "prisma/schema.prisma datasource must use postgresql provider"
+
+
+def test_migration_declares_foreign_key_constraints() -> None:
+    """All FK relations in the schema must be present in the migration SQL."""
+    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    required_fks = {
+        # Tenant fan-out (Cascade)
+        ("User", "tenantId", "Tenant"),
+        ("Service", "tenantId", "Tenant"),
+        ("Staff", "tenantId", "Tenant"),
+        ("BusinessHour", "tenantId", "Tenant"),
+        ("Client", "tenantId", "Tenant"),
+        ("Booking", "tenantId", "Tenant"),
+        ("Payment", "tenantId", "Tenant"),
+        ("AuditLog", "tenantId", "Tenant"),
+        # Booking relations
+        ("Booking", "clientId", "Client"),
+        ("Booking", "serviceId", "Service"),
+        ("Booking", "staffId", "Staff"),
+        # Payment -> Booking
+        ("Payment", "bookingId", "Booking"),
+    }
+    for table, column, ref_table in required_fks:
+        pattern = re.compile(
+            rf'ALTER TABLE\s+"{table}"\s+ADD\s+CONSTRAINT\s+"{table}_{column}_fkey"\s+'
+            rf'FOREIGN KEY\s*\(\s*"{column}"\s*\)\s+REFERENCES\s+"{ref_table}"',
+            re.IGNORECASE | re.DOTALL,
+        )
+        assert pattern.search(
+            sql
+        ), f"initial migration missing FK constraint {table}.{column} -> {ref_table}"
 
 
 def test_migration_creates_every_required_model() -> None:
-    """Every model in the schema must have a CREATE TABLE in the initial migration."""
-    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    """Every model in the schema must have a CREATE TABLE somewhere in the migration history."""
+    sql = _all_migrations_sql()
     for model in REQUIRED_MODELS:
         assert (
             f'CREATE TABLE "{model}"' in sql
-        ), f"initial migration is missing CREATE TABLE for {model}"
+        ), f"migration history is missing CREATE TABLE for {model}"
 
 
 def test_migration_indexes_tenant_id_on_scoped_tables() -> None:
-    """Every tenant-scoped table needs an index on tenantId in the SQL."""
-    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    """AC1 at the migration SQL level: every tenant-scoped table needs the
+    explicit single-column tenantId index `<Model>_tenantId_idx` — a composite
+    index like `Booking_tenantId_startsAt_idx` does NOT satisfy the acceptance
+    criterion because it is not the single-column form the schema declares.
+    """
+    sql = _all_migrations_sql()
     for model in REQUIRED_MODELS - {"Tenant"}:
         # Prisma emits `CREATE INDEX "<Model>_tenantId_idx" ON "<Model>"("tenantId")`
-        # (or a composite index whose first column is tenantId).
+        # for the single-column `@@index([tenantId])` directive.
         pattern = re.compile(
-            rf'CREATE INDEX\s+"{model}_tenantId[^"]*_idx"\s+ON\s+"{model}"\s*\(\s*"tenantId"',
+            rf'CREATE INDEX\s+"{model}_tenantId_idx"\s+ON\s+"{model}"\s*\(\s*"tenantId"\s*\)',
             re.IGNORECASE,
         )
-        assert pattern.search(sql), f"initial migration missing tenantId index for {model}"
+        assert pattern.search(sql), (
+            f"migration history missing explicit single-column tenantId index "
+            f"'{model}_tenantId_idx' for {model} (composite tenantId indexes do "
+            f"not satisfy AC1)"
+        )
 
 
 def test_data_model_doc_exists_and_covers_every_model() -> None:

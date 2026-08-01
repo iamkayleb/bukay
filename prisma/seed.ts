@@ -18,19 +18,22 @@ const DEMO_SERVICES = [
     name: "Classic Haircut",
     description: "Traditional cut and style, includes wash.",
     durationMinutes: 30,
-    priceCents: 5000,
+    priceKobo: 500000,
+    bufferMinutes: 10,
   },
   {
     name: "Beard Trim",
     description: "Shape and tidy beard with hot-towel finish.",
     durationMinutes: 20,
-    priceCents: 3000,
+    priceKobo: 300000,
+    bufferMinutes: 5,
   },
   {
     name: "Full Grooming Package",
     description: "Haircut, beard trim, and facial treatment.",
     durationMinutes: 75,
-    priceCents: 12000,
+    priceKobo: 1200000,
+    bufferMinutes: 15,
   },
 ];
 
@@ -78,6 +81,8 @@ async function main() {
   await prisma.payment.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.booking.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.auditLog.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.staffService.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.blackout.deleteMany({ where: { tenantId: tenant.id } });
 
   // Wipe and reinsert demo services so the count stays at three on re-seed.
   await prisma.service.deleteMany({ where: { tenantId: tenant.id } });
@@ -104,7 +109,7 @@ async function main() {
   console.log("Business hours set: Mon–Sat 09:00–18:00");
 
   // Re-create the demo staff member (linked to the owner user) and assign
-  // every service to them.
+  // every service to them via StaffService rows.
   await prisma.staff.deleteMany({ where: { tenantId: tenant.id } });
   const staff = await prisma.staff.create({
     data: {
@@ -114,7 +119,42 @@ async function main() {
       phone: "+2348000000001",
     },
   });
-  console.log(`Staff ready: ${staff.name} (${staff.id})`);
+  await prisma.staffService.createMany({
+    data: services.map((s) => ({
+      tenantId: tenant.id,
+      staffId: staff.id,
+      serviceId: s.id,
+    })),
+  });
+  console.log(`Staff ready: ${staff.name} (${staff.id}) with ${services.length} services`);
+
+  // One demo blackout so the schema's holiday-override path is exercised end-to-end.
+  await prisma.blackout.create({
+    data: {
+      tenantId: tenant.id,
+      date: "2026-12-25",
+      reason: "Christmas Day",
+    },
+  });
+
+  await prisma.staffService.createMany({
+    data: services.map((s) => ({
+      tenantId: tenant.id,
+      staffId: staff.id,
+      serviceId: s.id,
+    })),
+  });
+  console.log(`Assigned ${services.length} services to staff ${staff.name}`);
+
+  // One-off closure so the blackout table is exercised end-to-end.
+  await prisma.blackout.create({
+    data: {
+      tenantId: tenant.id,
+      date: "2026-12-25",
+      reason: "Christmas Day",
+    },
+  });
+  console.log("Blackout created: 2026-12-25 (Christmas Day)");
 
   // Demo client.
   const client = await prisma.client.upsert({
@@ -156,7 +196,7 @@ async function main() {
     data: {
       tenantId: tenant.id,
       bookingId: booking.id,
-      amountCents: haircut.priceCents,
+      amountCents: haircut.priceKobo,
       currency: tenant.currency,
       provider: "mobile_money",
       providerRef: "demo-mm-0001",

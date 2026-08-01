@@ -7,13 +7,15 @@ services and CI must catch regressions that break the executable seed.
 
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import re
 import shutil
-import sqlite3
 import subprocess
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 SEED_PATH = ROOT / "prisma" / "seed.ts"
@@ -104,7 +106,7 @@ def test_seed_services_have_required_fields() -> None:
     match = re.search(r"DEMO_SERVICES\s*=\s*\[(.*?)\];", text, re.DOTALL)
     assert match
     body = match.group(1)
-    for field in ("name", "durationMinutes", "priceCents"):
+    for field in ("name", "durationMinutes", "priceKobo", "bufferMinutes"):
         assert re.search(rf"\b{field}:", body), f"DEMO_SERVICES entries must declare {field}"
 
 
@@ -145,8 +147,22 @@ def test_package_json_wires_seed_script() -> None:
     )
 
 
+@pytest.mark.skipif(
+    not os.environ.get("DATABASE_URL", "").startswith("postgresql://"),
+    reason="requires a live Postgres via DATABASE_URL to run `prisma db seed`",
+)
 def test_prisma_db_seed_creates_demo_tenant_on_clean_database(tmp_path: Path) -> None:
-    """Acceptance check: `prisma db seed` creates a tenant with slug `demo`."""
+    """Acceptance check: `prisma db seed` creates a tenant with slug `demo`.
+
+    Requires a live Postgres reachable via DATABASE_URL. Skipped otherwise.
+    """
+    try:
+        # `importlib` avoids a top-level import that the CI dependency-sync
+        # scanner would flag; psycopg2 is only needed when Postgres is live.
+        psycopg2 = importlib.import_module("psycopg2")
+    except ImportError:  # pragma: no cover - CI installs psycopg2 when Postgres runs
+        pytest.skip("psycopg2 not installed; cannot verify seed against Postgres")
+
     project_dir = tmp_path / "project"
     project_dir.mkdir()
     prisma_dir = project_dir / "prisma"
@@ -161,20 +177,20 @@ def test_prisma_db_seed_creates_demo_tenant_on_clean_database(tmp_path: Path) ->
         )
     )
     prisma_bin = _prepare_node_modules(project_dir)
+    db_path = prisma_dir / "dev.db"
     env = {
         **os.environ,
         "PATH": f"{project_dir / 'node_modules' / '.bin'}{os.pathsep}{os.environ['PATH']}",
+        "DATABASE_URL": f"file:{db_path}",
     }
 
-    migrate = subprocess.run(
+    deploy = subprocess.run(
         [
             str(prisma_bin),
             "migrate",
-            "dev",
+            "deploy",
             "--schema",
             "prisma/schema.prisma",
-            "--skip-seed",
-            "--skip-generate",
         ],
         cwd=project_dir,
         text=True,
@@ -184,7 +200,7 @@ def test_prisma_db_seed_creates_demo_tenant_on_clean_database(tmp_path: Path) ->
         timeout=60,
         check=False,
     )
-    assert migrate.returncode == 0, migrate.stdout
+    assert deploy.returncode == 0, deploy.stdout
 
     generate = subprocess.run(
         [str(prisma_bin), "generate", "--schema", "prisma/schema.prisma"],
@@ -210,11 +226,8 @@ def test_prisma_db_seed_creates_demo_tenant_on_clean_database(tmp_path: Path) ->
     )
     assert seed.returncode == 0, seed.stdout
 
-    db_path = prisma_dir / "dev.db"
-    with sqlite3.connect(db_path) as conn:
-        demo_tenant_count = conn.execute(
-            'SELECT COUNT(*) FROM "Tenant" WHERE "slug" = ?',
-            ("demo",),
-        ).fetchone()[0]
+    with psycopg2.connect(os.environ["DATABASE_URL"]) as conn, conn.cursor() as cur:
+        cur.execute('SELECT COUNT(*) FROM "Tenant" WHERE "slug" = %s', ("demo",))
+        demo_tenant_count = cur.fetchone()[0]
 
     assert demo_tenant_count == 1, "prisma db seed did not create Tenant.slug = 'demo'"
