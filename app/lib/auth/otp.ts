@@ -39,8 +39,6 @@ export function getOtpSecret(): string {
   return DEVELOPMENT_OTP_SECRET;
 }
 
-getOtpSecret();
-
 function hashCode(phone: string, code: string): string {
   return createHmac("sha256", getOtpSecret()).update(`${phone}:${code}`).digest("hex");
 }

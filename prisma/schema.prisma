@@ -74,7 +74,9 @@ model Tenant {
   services           Service[]
   staff              Staff[]
   businessHours      BusinessHour[]
+  blackouts          Blackout[]
   clients            Client[]
+  tags               Tag[]
   bookings           Booking[]
   payments           Payment[]
   auditLogs          AuditLog[]
@@ -169,22 +171,36 @@ model BusinessHour {
   @@index([tenantId, staffId, dayOfWeek])
 }
 
+model Blackout {
+  id        String   @id @default(cuid())
+  tenantId  String
+  date      String
+  reason    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, date])
+  @@index([tenantId])
+}
+
 // -----------------------------------------------------------------------------
 // Client — end customers who book services
 // -----------------------------------------------------------------------------
 
 model Client {
-  id        String    @id @default(cuid())
-  tenantId  String
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name      String
-  email     String?
-  phone     String
-  notes     String?
-  bookings  Booking[]
-  tags      ClientTag[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id         String      @id @default(cuid())
+  tenantId   String
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name       String
+  email      String?
+  phone      String
+  notes      String?
+  bookings   Booking[]
+  clientTags ClientTag[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 
   @@unique([tenantId, phone])
   @@unique([tenantId, id])

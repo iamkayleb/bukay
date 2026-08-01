@@ -1,5 +1,5 @@
-import { SettingsManager } from "./settings-manager";
+import { SettingsForm } from "./settings-form";
 
 export default function SettingsPage() {
-  return <SettingsManager />;
+  return <SettingsForm />;
 }
