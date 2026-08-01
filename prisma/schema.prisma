@@ -75,6 +75,7 @@ model Tenant {
   staff              Staff[]
   businessHours      BusinessHour[]
   clients            Client[]
+  tags               Tag[]
   bookings           Booking[]
   payments           Payment[]
   auditLogs          AuditLog[]

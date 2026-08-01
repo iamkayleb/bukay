@@ -41,6 +41,49 @@ def _seed_text() -> str:
     return SEED_PATH.read_text()
 
 
+def _extract_balanced_block(text: str, start: int) -> str:
+    assert text[start] == "{"
+    depth = 0
+    in_string: str | None = None
+    escaped = False
+
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == in_string:
+                in_string = None
+            continue
+
+        if char in {'"', "'", "`"}:
+            in_string = char
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : index + 1]
+
+    raise AssertionError("unterminated object block in prisma/seed.ts")
+
+
+def _find_seed_upsert_where_clauses() -> dict[str, str]:
+    text = _seed_text()
+    clauses: dict[str, str] = {}
+
+    for match in re.finditer(r"prisma\.(\w+)\.upsert\(\s*\{", text):
+        model = match.group(1)
+        upsert_block = _extract_balanced_block(text, match.end() - 1)
+        where_match = re.search(r"\bwhere:\s*\{", upsert_block)
+        assert where_match, f"prisma.{model}.upsert must declare a where clause"
+        clauses[model] = _extract_balanced_block(upsert_block, where_match.end() - 1)
+
+    return clauses
+
+
 def test_seed_file_exists() -> None:
     assert SEED_PATH.exists(), f"missing prisma seed at {SEED_PATH}"
 
@@ -73,12 +116,11 @@ def test_tenant_scoped_upserts_use_only_compound_unique_key_in_where() -> None:
             where_clause,
             re.DOTALL,
         ), f"prisma.{model}.upsert must use the {compound_key} compound unique key"
+        compound_key_clause = re.search(rf"{compound_key}:\s*\{{.*?\}}", where_clause, re.DOTALL)
+        assert compound_key_clause
         assert not re.search(
             r"(?:^|[,{]\s*)tenantId:\s*tenant\.id\s*,?\s*(?:$|[},])",
-            where_clause.replace(
-                re.search(rf"{compound_key}:\s*\{{.*?\}}", where_clause, re.DOTALL).group(0),
-                "",
-            ),
+            where_clause.replace(compound_key_clause.group(0), ""),
             re.DOTALL,
         ), f"prisma.{model}.upsert must not include top-level tenantId in where"
 
