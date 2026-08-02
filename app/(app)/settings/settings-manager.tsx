@@ -28,6 +28,16 @@ export type SettingsFormState = {
 
 export type SettingsFieldErrors = Partial<Record<keyof SettingsFormState | "_form", string>>;
 
+export type SettingsPreview = {
+  brandColor: string;
+  businessName: string;
+  cancellationPolicy: string | null;
+  logoAlt: string;
+  logoInitial: string;
+  logoUrl: string | null;
+  publicUrl: string;
+};
+
 type ApiValidationError = {
   ok: false;
   error?: string;
@@ -104,6 +114,32 @@ function buildPayload(form: SettingsFormState) {
   };
 }
 
+function getPublicUrl(slug: string) {
+  const normalizedSlug = slug.trim() || "your-business";
+  return `https://${normalizedSlug}.bukay.app`;
+}
+
+function getPreviewBrandColor(brandColor: string) {
+  return /^#[0-9a-fA-F]{6}$/.test(brandColor) && hasBrandColorContrast(brandColor)
+    ? brandColor
+    : DEFAULT_BRAND_COLOR;
+}
+
+export function getSettingsPreview(form: SettingsFormState): SettingsPreview {
+  const businessName = form.name.trim() || "Business name";
+  const logoUrl = form.logoUrl.trim() || null;
+
+  return {
+    brandColor: getPreviewBrandColor(form.brandColor),
+    businessName,
+    cancellationPolicy: form.cancellationPolicy.trim() || null,
+    logoAlt: `${businessName} logo`,
+    logoInitial: (businessName[0] ?? "B").toUpperCase(),
+    logoUrl,
+    publicUrl: getPublicUrl(form.slug),
+  };
+}
+
 export function getBrandContrastMessage(ratio: number | null) {
   if (ratio === null) {
     return "White text contrast: enter a 6-digit hex color";
@@ -124,8 +160,7 @@ export function SettingsManager() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const publicUrl = useMemo(() => {
-    const slug = form.slug.trim() || "your-business";
-    return `https://${slug}.bukay.app`;
+    return getPublicUrl(form.slug);
   }, [form.slug]);
   const brandContrastRatio = useMemo(
     () => getBrandColorContrastRatio(form.brandColor),
@@ -133,10 +168,7 @@ export function SettingsManager() {
   );
   const brandContrastPasses =
     brandContrastRatio !== null && brandContrastRatio >= BRAND_COLOR_CONTRAST_TARGET;
-  const previewBrandColor =
-    /^#[0-9a-fA-F]{6}$/.test(form.brandColor) && brandContrastPasses
-      ? form.brandColor
-      : DEFAULT_BRAND_COLOR;
+  const settingsPreview = useMemo(() => getSettingsPreview(form), [form]);
 
   async function loadSettings() {
     setIsLoading(true);
@@ -330,32 +362,32 @@ export function SettingsManager() {
         <aside className="h-fit rounded-lg border border-slate-800 bg-slate-900 p-5">
           <h2 className="text-lg font-semibold text-white">Booking page preview</h2>
           <div className="mt-5 overflow-hidden rounded-lg border border-slate-800 bg-white text-slate-950">
-            <div className="p-5" style={{ backgroundColor: previewBrandColor }}>
-              {form.logoUrl ? (
+            <div className="p-5" style={{ backgroundColor: settingsPreview.brandColor }}>
+              {settingsPreview.logoUrl ? (
                 <img
-                  alt={`${form.name || "Business"} logo`}
+                  alt={settingsPreview.logoAlt}
                   className="h-12 max-w-44 rounded bg-white object-contain p-1"
-                  src={form.logoUrl}
+                  src={settingsPreview.logoUrl}
                 />
               ) : (
                 <div className="flex h-12 w-12 items-center justify-center rounded bg-white text-lg font-semibold">
-                  {(form.name.trim()[0] ?? "B").toUpperCase()}
+                  {settingsPreview.logoInitial}
                 </div>
               )}
             </div>
             <div className="space-y-3 p-5">
-              <p className="text-xl font-semibold">{form.name || "Business name"}</p>
-              <p className="break-all text-sm text-slate-600">{publicUrl}</p>
+              <p className="text-xl font-semibold">{settingsPreview.businessName}</p>
+              <p className="break-all text-sm text-slate-600">{settingsPreview.publicUrl}</p>
               <button
                 className="rounded-md px-4 py-2 text-sm font-semibold text-white"
-                style={{ backgroundColor: previewBrandColor }}
+                style={{ backgroundColor: settingsPreview.brandColor }}
                 type="button"
               >
                 Book appointment
               </button>
-              {form.cancellationPolicy.trim() ? (
+              {settingsPreview.cancellationPolicy ? (
                 <p className="border-t border-slate-200 pt-3 text-sm text-slate-700">
-                  {form.cancellationPolicy}
+                  {settingsPreview.cancellationPolicy}
                 </p>
               ) : null}
             </div>

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getBrandContrastMessage,
+  getSettingsPreview,
   settingsToForm,
   validateSettingsForm,
   type SettingsFormState,
@@ -57,5 +58,45 @@ describe("settings manager helpers", () => {
     expect(getBrandContrastMessage(getBrandColorContrastRatio("#047857"))).toContain("passes");
     expect(getBrandContrastMessage(getBrandColorContrastRatio("#10b981"))).toContain("needs 4.5:1");
     expect(getBrandContrastMessage(null)).toBe("White text contrast: enter a 6-digit hex color");
+  });
+
+  it("builds a booking page preview from editable branding settings", () => {
+    expect(
+      getSettingsPreview({
+        ...validForm,
+        name: "  Fresh Cuts  ",
+        logoUrl: "  https://cdn.example.com/fresh-cuts.svg  ",
+        cancellationPolicy: "  Cancel before noon.  ",
+      })
+    ).toEqual({
+      brandColor: "#047857",
+      businessName: "Fresh Cuts",
+      cancellationPolicy: "Cancel before noon.",
+      logoAlt: "Fresh Cuts logo",
+      logoInitial: "F",
+      logoUrl: "https://cdn.example.com/fresh-cuts.svg",
+      publicUrl: "https://bukay-demo.bukay.app",
+    });
+  });
+
+  it("falls back to placeholder preview values when branding fields are blank or invalid", () => {
+    expect(
+      getSettingsPreview({
+        ...validForm,
+        name: " ",
+        slug: " ",
+        brandColor: "#10b981",
+        logoUrl: " ",
+        cancellationPolicy: " ",
+      })
+    ).toEqual({
+      brandColor: "#047857",
+      businessName: "Business name",
+      cancellationPolicy: null,
+      logoAlt: "Business name logo",
+      logoInitial: "B",
+      logoUrl: null,
+      publicUrl: "https://your-business.bukay.app",
+    });
   });
 });
