@@ -2,7 +2,12 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
-import { DEFAULT_BRAND_COLOR } from "@/app/lib/settings/schemas";
+import {
+  BRAND_COLOR_CONTRAST_TARGET,
+  DEFAULT_BRAND_COLOR,
+  getBrandColorContrastRatio,
+  hasBrandColorContrast,
+} from "@/app/lib/settings/schemas";
 
 type Settings = {
   name: string;
@@ -61,6 +66,8 @@ export function validateSettingsForm(form: SettingsFormState): SettingsFieldErro
 
   if (!/^#[0-9a-fA-F]{6}$/.test(form.brandColor.trim())) {
     errors.brandColor = "Brand color must be a 6-digit hex color";
+  } else if (!hasBrandColorContrast(form.brandColor)) {
+    errors.brandColor = `Brand color must have at least ${BRAND_COLOR_CONTRAST_TARGET}:1 contrast with white text`;
   }
 
   return errors;
@@ -97,6 +104,18 @@ function buildPayload(form: SettingsFormState) {
   };
 }
 
+export function getBrandContrastMessage(ratio: number | null) {
+  if (ratio === null) {
+    return "White text contrast: enter a 6-digit hex color";
+  }
+
+  const formattedRatio = ratio.toFixed(2);
+
+  return `White text contrast: ${formattedRatio}:1 ${
+    ratio >= BRAND_COLOR_CONTRAST_TARGET ? "passes" : "needs 4.5:1"
+  }`;
+}
+
 export function SettingsManager() {
   const [form, setForm] = useState<SettingsFormState>(emptyForm);
   const [errors, setErrors] = useState<SettingsFieldErrors>({});
@@ -108,6 +127,16 @@ export function SettingsManager() {
     const slug = form.slug.trim() || "your-business";
     return `https://${slug}.bukay.app`;
   }, [form.slug]);
+  const brandContrastRatio = useMemo(
+    () => getBrandColorContrastRatio(form.brandColor),
+    [form.brandColor]
+  );
+  const brandContrastPasses =
+    brandContrastRatio !== null && brandContrastRatio >= BRAND_COLOR_CONTRAST_TARGET;
+  const previewBrandColor =
+    /^#[0-9a-fA-F]{6}$/.test(form.brandColor) && brandContrastPasses
+      ? form.brandColor
+      : DEFAULT_BRAND_COLOR;
 
   async function loadSettings() {
     setIsLoading(true);
@@ -254,6 +283,13 @@ export function SettingsManager() {
               {errors.brandColor ? (
                 <span className="mt-1 block text-xs text-red-300">{errors.brandColor}</span>
               ) : null}
+              <span
+                className={`mt-1 block text-xs ${
+                  brandContrastPasses ? "text-emerald-300" : "text-amber-300"
+                }`}
+              >
+                {getBrandContrastMessage(brandContrastRatio)}
+              </span>
             </label>
 
             <label className="block">
@@ -294,7 +330,7 @@ export function SettingsManager() {
         <aside className="h-fit rounded-lg border border-slate-800 bg-slate-900 p-5">
           <h2 className="text-lg font-semibold text-white">Booking page preview</h2>
           <div className="mt-5 overflow-hidden rounded-lg border border-slate-800 bg-white text-slate-950">
-            <div className="p-5" style={{ backgroundColor: form.brandColor }}>
+            <div className="p-5" style={{ backgroundColor: previewBrandColor }}>
               {form.logoUrl ? (
                 <img
                   alt={`${form.name || "Business"} logo`}
@@ -312,7 +348,7 @@ export function SettingsManager() {
               <p className="break-all text-sm text-slate-600">{publicUrl}</p>
               <button
                 className="rounded-md px-4 py-2 text-sm font-semibold text-white"
-                style={{ backgroundColor: form.brandColor }}
+                style={{ backgroundColor: previewBrandColor }}
                 type="button"
               >
                 Book appointment

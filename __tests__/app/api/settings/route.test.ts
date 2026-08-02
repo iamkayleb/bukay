@@ -39,7 +39,7 @@ function tenant(overrides: Partial<TenantRow> = {}): TenantRow {
     slug: "demo",
     timezone: "Africa/Lagos",
     currency: "NGN",
-    brandColor: "#10b981",
+    brandColor: "#047857",
     logoUrl: "https://example.com/logo.png",
     cancellationPolicy: "Cancel with 24 hours notice.",
     updatedAt: new Date("2026-06-01T10:00:00.000Z"),
@@ -117,7 +117,7 @@ describe("/api/settings", () => {
       id: "tenant-1",
       name: "Bukay Demo Salon",
       slug: "demo",
-      brandColor: "#10b981",
+      brandColor: "#047857",
       logoUrl: "https://example.com/logo.png",
       cancellationPolicy: "Cancel with 24 hours notice.",
       publicUrl: "https://demo.bukay.app",
@@ -177,6 +177,22 @@ describe("/api/settings", () => {
     const body = await res.json();
     expect(body.error).toBe("validation_failed");
     expect(body.fieldErrors.brandColor).toContain("Brand color must be a 6-digit hex color");
+    expect(state.tenantUpdate).not.toHaveBeenCalled();
+  });
+
+  it("rejects brand colors without enough contrast before persisting", async () => {
+    const res = await PATCH(
+      jsonRequest("/api/settings", {
+        brandColor: "#10b981",
+      })
+    );
+
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.error).toBe("validation_failed");
+    expect(body.fieldErrors.brandColor).toContain(
+      "Brand color must have at least 4.5:1 contrast with white text"
+    );
     expect(state.tenantUpdate).not.toHaveBeenCalled();
   });
 

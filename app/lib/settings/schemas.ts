@@ -1,6 +1,70 @@
 import { z } from "zod";
 
-export const DEFAULT_BRAND_COLOR = "#10b981";
+export const BRAND_COLOR_CONTRAST_TARGET = 4.5;
+export const DEFAULT_BRAND_COLOR = "#047857";
+
+type RgbColor = {
+  red: number;
+  green: number;
+  blue: number;
+};
+
+function hexChannelToLinear(channel: number) {
+  const normalized = channel / 255;
+
+  return normalized <= 0.03928 ? normalized / 12.92 : Math.pow((normalized + 0.055) / 1.055, 2.4);
+}
+
+function parseHexColor(color: string): RgbColor | null {
+  const match = /^#([0-9a-fA-F]{6})$/.exec(color.trim());
+  if (!match) {
+    return null;
+  }
+
+  const value = match[1];
+  return {
+    red: Number.parseInt(value.slice(0, 2), 16),
+    green: Number.parseInt(value.slice(2, 4), 16),
+    blue: Number.parseInt(value.slice(4, 6), 16),
+  };
+}
+
+export function getRelativeLuminance(color: string) {
+  const rgb = parseHexColor(color);
+  if (!rgb) {
+    return null;
+  }
+
+  return (
+    0.2126 * hexChannelToLinear(rgb.red) +
+    0.7152 * hexChannelToLinear(rgb.green) +
+    0.0722 * hexChannelToLinear(rgb.blue)
+  );
+}
+
+export function getContrastRatio(foreground: string, background: string) {
+  const foregroundLuminance = getRelativeLuminance(foreground);
+  const backgroundLuminance = getRelativeLuminance(background);
+
+  if (foregroundLuminance === null || backgroundLuminance === null) {
+    return null;
+  }
+
+  const lighter = Math.max(foregroundLuminance, backgroundLuminance);
+  const darker = Math.min(foregroundLuminance, backgroundLuminance);
+
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+export function getBrandColorContrastRatio(color: string) {
+  return getContrastRatio("#ffffff", color);
+}
+
+export function hasBrandColorContrast(color: string) {
+  const ratio = getBrandColorContrastRatio(color);
+
+  return ratio !== null && ratio >= BRAND_COLOR_CONTRAST_TARGET;
+}
 
 export const brandColorSchema = z
   .string({
@@ -8,7 +72,10 @@ export const brandColorSchema = z
     invalid_type_error: "Brand color must be a hex color",
   })
   .trim()
-  .regex(/^#[0-9a-fA-F]{6}$/, "Brand color must be a 6-digit hex color");
+  .regex(/^#[0-9a-fA-F]{6}$/, "Brand color must be a 6-digit hex color")
+  .refine(hasBrandColorContrast, {
+    message: `Brand color must have at least ${BRAND_COLOR_CONTRAST_TARGET}:1 contrast with white text`,
+  });
 
 const optionalTrimmedString = (maxLength: number, message: string) =>
   z.preprocess(
