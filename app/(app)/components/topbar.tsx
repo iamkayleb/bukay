@@ -15,16 +15,40 @@ export function TopBar({ tenantName, userPhone, onOpenDrawer }: TopBarProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuOpen) {
+      if (wasOpenRef.current) {
+        triggerRef.current?.focus();
+        wasOpenRef.current = false;
+      }
+      return;
+    }
+    wasOpenRef.current = true;
+    const items = menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]');
+    items?.[0]?.focus();
+
     function onDocClick(event: MouseEvent) {
       if (!menuRef.current) return;
       if (menuRef.current.contains(event.target as Node)) return;
       setMenuOpen(false);
     }
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setMenuOpen(false);
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        return;
+      }
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+      const list = menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]');
+      if (!list || list.length === 0) return;
+      event.preventDefault();
+      const active = document.activeElement as HTMLElement | null;
+      const currentIndex = Array.from(list).indexOf(active as HTMLElement);
+      const delta = event.key === "ArrowDown" ? 1 : -1;
+      const nextIndex = (currentIndex + delta + list.length) % list.length;
+      list[nextIndex].focus();
     }
     document.addEventListener("mousedown", onDocClick);
     document.addEventListener("keydown", onKey);
@@ -87,6 +111,7 @@ export function TopBar({ tenantName, userPhone, onOpenDrawer }: TopBarProps) {
           className="flex items-center gap-2 rounded-md border border-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-100 hover:border-emerald-400"
           data-testid="user-menu-trigger"
           onClick={() => setMenuOpen((v) => !v)}
+          ref={triggerRef}
           type="button"
         >
           <span
@@ -125,8 +150,15 @@ export function TopBar({ tenantName, userPhone, onOpenDrawer }: TopBarProps) {
             role="menu"
           >
             <div className="border-b border-slate-800 px-3 py-2 text-xs text-slate-400">
-              <p className="font-medium text-slate-200">{tenantName}</p>
-              {userPhone ? <p className="mt-0.5 truncate">{userPhone}</p> : null}
+              <p className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Signed in as</p>
+              <p className="mt-0.5 font-medium text-slate-200" data-testid="user-menu-tenant">
+                {tenantName}
+              </p>
+              {userPhone ? (
+                <p className="mt-0.5 truncate" data-testid="user-menu-phone">
+                  {userPhone}
+                </p>
+              ) : null}
             </div>
             <Link
               className="block px-3 py-2 text-xs text-slate-100 hover:bg-slate-900"

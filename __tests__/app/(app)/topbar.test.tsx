@@ -114,4 +114,52 @@ describe("TopBar user menu", () => {
     fireEvent.click(screen.getByLabelText("Open navigation menu"));
     expect(onOpenDrawer).toHaveBeenCalledTimes(1);
   });
+
+  it("shows a 'Signed in as' section with tenant + phone when the menu opens", () => {
+    render(<TopBar onOpenDrawer={() => undefined} tenantName="Acme" userPhone="+2348011112222" />);
+
+    fireEvent.click(screen.getByTestId("user-menu-trigger"));
+
+    expect(screen.getByTestId("user-menu-tenant").textContent).toBe("Acme");
+    expect(screen.getByTestId("user-menu-phone").textContent).toBe("+2348011112222");
+    expect(screen.getByText("Signed in as")).toBeTruthy();
+  });
+
+  it("focuses the first menuitem when the menu opens", () => {
+    render(<TopBar onOpenDrawer={() => undefined} tenantName="Acme" />);
+    fireEvent.click(screen.getByTestId("user-menu-trigger"));
+
+    const settings = screen.getByRole("menuitem", { name: "Settings" });
+    expect(document.activeElement).toBe(settings);
+  });
+
+  it("restores focus to the trigger when the menu closes via Escape", () => {
+    render(<TopBar onOpenDrawer={() => undefined} tenantName="Acme" />);
+    const trigger = screen.getByTestId("user-menu-trigger");
+    fireEvent.click(trigger);
+    expect(screen.getByTestId("user-menu")).toBeTruthy();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(screen.queryByTestId("user-menu")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("moves focus between menu items with ArrowDown / ArrowUp", () => {
+    render(<TopBar onOpenDrawer={() => undefined} tenantName="Acme" />);
+    fireEvent.click(screen.getByTestId("user-menu-trigger"));
+
+    const settings = screen.getByRole("menuitem", { name: "Settings" });
+    const logout = screen.getByTestId("user-menu-logout");
+    expect(document.activeElement).toBe(settings);
+
+    fireEvent.keyDown(document, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(logout);
+
+    fireEvent.keyDown(document, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(settings);
+
+    fireEvent.keyDown(document, { key: "ArrowUp" });
+    expect(document.activeElement).toBe(logout);
+  });
 });
