@@ -6,7 +6,8 @@
       "url": [
         "http://localhost:3000/",
         "http://localhost:3000/login",
-        "http://localhost:3000/demo"
+        "http://localhost:3000/demo",
+        "http://localhost:3000/today"
       ],
       "numberOfRuns": 3,
       "settings": {
@@ -37,7 +38,9 @@
       }
     },
     "upload": {
-      "target": "temporary-public-storage"
+      "target": "filesystem",
+      "outputDir": "./lighthouse-reports",
+      "reportFilenamePattern": "app-mobile-report.%%EXTENSION%%"
     }
   }
 }

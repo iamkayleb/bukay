@@ -17,6 +17,7 @@ export type ResolvedTenant = {
 };
 
 const RESERVED_SUBDOMAINS = new Set(["www", "app", "api", "admin", "static", "assets", "cdn"]);
+export const PUBLIC_TENANT_SLUG_HEADER = "x-bukay-public-tenant-slug";
 
 const ROOT_HOST = (process.env.ROOT_HOST ?? "").trim().toLowerCase();
 
@@ -52,6 +53,11 @@ export function resolveTenant(req: ResolveTenantRequest): ResolvedTenant {
   const headerTenantId = req.headers.get("x-tenant-id");
   if (headerTenantId) {
     return { tenantId: headerTenantId, source: "header" };
+  }
+
+  const routedTenantSlug = req.headers.get(PUBLIC_TENANT_SLUG_HEADER);
+  if (routedTenantSlug) {
+    return { tenantSlug: routedTenantSlug, source: "subdomain" };
   }
 
   const slug = extractSubdomain(req.headers.get("host"));

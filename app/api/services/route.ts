@@ -22,7 +22,7 @@ const serviceDelegate = prisma.service as unknown as {
 export async function GET(req: NextRequest) {
   return runForTenant(req, async (tenantId) => {
     const services = await serviceDelegate.findMany({
-      where: { tenantId },
+      where: { tenantId, active: true },
       orderBy: [{ active: "desc" }, { name: "asc" }],
     });
 

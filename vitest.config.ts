@@ -6,7 +6,13 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "node",
-    include: ["__tests__/**/*.test.ts", "__tests__/**/*.test.tsx", "test/**/*.test.ts"],
+    include: [
+      "__tests__/**/*.test.ts",
+      "__tests__/**/*.test.tsx",
+      "test/**/*.test.ts",
+      "tests/**/*.test.ts",
+      "tests/**/*.e2e.test.ts",
+    ],
     testTimeout: 120_000,
   },
   resolve: {
