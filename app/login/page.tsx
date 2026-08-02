@@ -1,3 +1,5 @@
+import { LoginForm } from "./login-form";
+
 export const metadata = {
   title: "Sign in to Bukay",
 };
@@ -16,10 +18,7 @@ export default function LoginPage() {
         aria-label="Login form"
         className="rounded-lg border border-slate-800 bg-slate-900/60 p-6"
       >
-        <p className="text-sm text-slate-300">
-          The login flow is wired through <code className="text-emerald-300">/api/auth/login</code>{" "}
-          and <code className="text-emerald-300">/api/auth/verify</code>.
-        </p>
+        <LoginForm />
       </section>
     </main>
   );
