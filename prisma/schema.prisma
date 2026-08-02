@@ -60,24 +60,25 @@ enum DayOfWeek {
 // -----------------------------------------------------------------------------
 
 model Tenant {
-  id                 String         @id @default(cuid())
-  name               String
-  slug               String         @unique
-  timezone           String         @default("Africa/Lagos")
-  currency           String         @default("NGN")
-  brandColor         String         @default("#047857")
-  logoUrl            String?
+  id            String         @id @default(cuid())
+  name          String
+  slug          String         @unique
+  active        Boolean        @default(true)
+  timezone      String         @default("Africa/Lagos")
+  currency      String         @default("NGN")
+  brandColor    String         @default("#047857")
+  logoUrl       String?
   cancellationPolicy String?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
-  users              User[]
-  services           Service[]
-  staff              Staff[]
-  businessHours      BusinessHour[]
-  clients            Client[]
-  bookings           Booking[]
-  payments           Payment[]
-  auditLogs          AuditLog[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  users         User[]
+  services      Service[]
+  staff         Staff[]
+  businessHours BusinessHour[]
+  clients       Client[]
+  bookings      Booking[]
+  payments      Payment[]
+  auditLogs     AuditLog[]
 }
 
 // -----------------------------------------------------------------------------
