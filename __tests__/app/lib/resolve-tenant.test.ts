@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { extractSubdomain, resolveTenant } from "@/app/lib/resolve-tenant";
+import {
+  extractSubdomain,
+  PUBLIC_TENANT_SLUG_HEADER,
+  resolveTenant,
+} from "@/app/lib/resolve-tenant";
 
 function makeReq(opts: {
   headers?: Record<string, string>;
@@ -53,6 +57,18 @@ describe("resolveTenant", () => {
   it("falls back to subdomain slug when there is no session", () => {
     const result = resolveTenant(makeReq({ headers: { host: "acme.example.com" } }));
     expect(result).toEqual({ tenantSlug: "acme", source: "subdomain" });
+  });
+
+  it("uses the routed public tenant slug from middleware before parsing host", () => {
+    const result = resolveTenant(
+      makeReq({
+        headers: {
+          host: "www.example.com",
+          [PUBLIC_TENANT_SLUG_HEADER]: "renamed-salon",
+        },
+      })
+    );
+    expect(result).toEqual({ tenantSlug: "renamed-salon", source: "subdomain" });
   });
 
   it("honours x-tenant-id header before subdomain", () => {

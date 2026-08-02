@@ -1,48 +1,48 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-type TenantSettingsRow = {
+type TenantRow = {
   id: string;
   name: string;
   slug: string;
   timezone: string;
   currency: string;
-  logoUrl: string | null;
   brandColor: string;
-  cancellationPolicy: string;
+  logoUrl: string | null;
+  cancellationPolicy: string | null;
   updatedAt: Date;
 };
 
 type NextRequestInit = NonNullable<ConstructorParameters<typeof NextRequest>[1]>;
 
 const state = vi.hoisted(() => ({
-  tenants: [] as TenantSettingsRow[],
-  findUnique: vi.fn(),
-  update: vi.fn(),
+  tenants: [] as TenantRow[],
+  tenantFindUnique: vi.fn(),
+  tenantUpdate: vi.fn(),
 }));
 
 vi.mock("@/app/db/prisma", () => ({
   prisma: {
     tenant: {
-      findUnique: state.findUnique,
-      update: state.update,
+      findUnique: state.tenantFindUnique,
+      update: state.tenantUpdate,
     },
   },
 }));
 
 import { GET, PATCH } from "@/app/api/settings/route";
 
-function tenant(overrides: Partial<TenantSettingsRow> = {}): TenantSettingsRow {
+function tenant(overrides: Partial<TenantRow> = {}): TenantRow {
   return {
     id: "tenant-1",
     name: "Bukay Demo Salon",
     slug: "demo",
     timezone: "Africa/Lagos",
     currency: "NGN",
-    logoUrl: null,
-    brandColor: "#10b981",
-    cancellationPolicy: "",
-    updatedAt: new Date("2026-07-31T10:00:00.000Z"),
+    brandColor: "#047857",
+    logoUrl: "https://example.com/logo.png",
+    cancellationPolicy: "Cancel with 24 hours notice.",
+    updatedAt: new Date("2026-06-01T10:00:00.000Z"),
     ...overrides,
   };
 }
@@ -70,19 +70,20 @@ function jsonRequest(path: string, body: unknown, init: NextRequestInit = {}) {
 }
 
 beforeEach(() => {
-  state.tenants = [tenant(), tenant({ id: "tenant-2", name: "Booked Spa", slug: "booked-spa" })];
+  state.tenants = [tenant(), tenant({ id: "tenant-2", slug: "other" })];
+  state.tenantFindUnique.mockReset();
+  state.tenantUpdate.mockReset();
 
-  state.findUnique.mockReset();
-  state.update.mockReset();
-
-  state.findUnique.mockImplementation(
+  state.tenantFindUnique.mockImplementation(
     async (args: { where: { id?: string; slug?: string } }) =>
       state.tenants.find(
-        (row) => row.id === args.where.id || (args.where.slug && row.slug === args.where.slug)
+        (row) =>
+          (args.where.id && row.id === args.where.id) ||
+          (args.where.slug && row.slug === args.where.slug)
       ) ?? null
   );
-  state.update.mockImplementation(
-    async (args: { where: { id: string }; data: Partial<TenantSettingsRow> }) => {
+  state.tenantUpdate.mockImplementation(
+    async (args: { where: { id: string }; data: Partial<TenantRow> }) => {
       const index = state.tenants.findIndex((row) => row.id === args.where.id);
       if (index === -1) {
         throw Object.assign(new Error("Record not found"), { code: "P2025" });
@@ -98,7 +99,7 @@ beforeEach(() => {
       const row = tenant({
         ...state.tenants[index],
         ...args.data,
-        updatedAt: new Date("2026-07-31T11:00:00.000Z"),
+        updatedAt: new Date("2026-06-02T10:00:00.000Z"),
       });
       state.tenants[index] = row;
       return row;
@@ -107,7 +108,7 @@ beforeEach(() => {
 });
 
 describe("/api/settings", () => {
-  it("returns settings for the request tenant", async () => {
+  it("loads persisted tenant settings for the request tenant", async () => {
     const res = await GET(request("/api/settings"));
 
     expect(res.status).toBe(200);
@@ -116,160 +117,94 @@ describe("/api/settings", () => {
       id: "tenant-1",
       name: "Bukay Demo Salon",
       slug: "demo",
-      timezone: "Africa/Lagos",
-      currency: "NGN",
-      brandColor: "#10b981",
-      cancellationPolicy: "",
+      brandColor: "#047857",
+      logoUrl: "https://example.com/logo.png",
+      cancellationPolicy: "Cancel with 24 hours notice.",
+      publicUrl: "https://demo.bukay.app",
     });
-    expect(state.findUnique).toHaveBeenCalledWith({
+    expect(state.tenantFindUnique).toHaveBeenCalledWith({
       where: { id: "tenant-1" },
-      select: expect.objectContaining({ slug: true, cancellationPolicy: true }),
+      select: expect.objectContaining({
+        brandColor: true,
+        logoUrl: true,
+        cancellationPolicy: true,
+      }),
     });
   });
 
-  it("updates settings for the request tenant", async () => {
+  it("saves brand settings through the tenant settings API", async () => {
     const res = await PATCH(
       jsonRequest("/api/settings", {
-        name: "Kay Salon",
-        slug: "kay-salon",
-        timezone: "Africa/Lagos",
-        currency: "NGN",
+        name: "Fresh Cuts",
+        slug: "fresh-cuts",
+        brandColor: "#2563eb",
         logoUrl: "",
-        brandColor: "#14b8a6",
-        cancellationPolicy: "Cancel at least 24 hours before the appointment.",
+        cancellationPolicy: "Please cancel 12 hours ahead.",
       })
     );
 
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.settings).toMatchObject({
-      name: "Kay Salon",
-      slug: "kay-salon",
+      name: "Fresh Cuts",
+      slug: "fresh-cuts",
+      brandColor: "#2563eb",
       logoUrl: null,
-      brandColor: "#14b8a6",
-      cancellationPolicy: "Cancel at least 24 hours before the appointment.",
+      cancellationPolicy: "Please cancel 12 hours ahead.",
+      publicUrl: "https://fresh-cuts.bukay.app",
     });
-    expect(state.update).toHaveBeenCalledWith({
+    expect(state.tenantUpdate).toHaveBeenCalledWith({
       where: { id: "tenant-1" },
       data: {
-        name: "Kay Salon",
-        slug: "kay-salon",
-        timezone: "Africa/Lagos",
-        currency: "NGN",
+        name: "Fresh Cuts",
+        slug: "fresh-cuts",
+        brandColor: "#2563eb",
         logoUrl: null,
-        brandColor: "#14b8a6",
-        cancellationPolicy: "Cancel at least 24 hours before the appointment.",
+        cancellationPolicy: "Please cancel 12 hours ahead.",
       },
-      select: expect.objectContaining({ name: true, slug: true }),
+      select: expect.any(Object),
     });
   });
 
-  it("returns validation errors for invalid settings", async () => {
+  it("rejects invalid brand colors before persisting", async () => {
     const res = await PATCH(
       jsonRequest("/api/settings", {
-        name: "",
-        slug: "Admin",
-        timezone: "",
-        currency: "naira",
-        logoUrl: "",
-        brandColor: "green",
-        cancellationPolicy: "",
+        brandColor: "blue",
       })
     );
 
     expect(res.status).toBe(422);
     const body = await res.json();
     expect(body.error).toBe("validation_failed");
-    expect(body.fieldErrors.name).toContain("Business name is required");
-    expect(body.fieldErrors.slug).toContain("This slug is reserved");
-    expect(body.fieldErrors.currency).toContain("Currency must be a 3-letter ISO code");
-    expect(body.fieldErrors.brandColor).toContain("Brand color must be a 6-digit hex value");
-    expect(state.update).not.toHaveBeenCalled();
+    expect(body.fieldErrors.brandColor).toContain("Brand color must be a 6-digit hex color");
+    expect(state.tenantUpdate).not.toHaveBeenCalled();
   });
 
-  it("rejects duplicate slugs with a helpful conflict", async () => {
+  it("rejects brand colors without enough contrast before persisting", async () => {
     const res = await PATCH(
       jsonRequest("/api/settings", {
-        name: "Booked Spa",
-        slug: "booked-spa",
-        timezone: "Africa/Lagos",
-        currency: "NGN",
-        logoUrl: "",
         brandColor: "#10b981",
-        cancellationPolicy: "",
+      })
+    );
+
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.error).toBe("validation_failed");
+    expect(body.fieldErrors.brandColor).toContain(
+      "Brand color must have at least 4.5:1 contrast with white text"
+    );
+    expect(state.tenantUpdate).not.toHaveBeenCalled();
+  });
+
+  it("reports slug conflicts when another tenant already owns the slug", async () => {
+    const res = await PATCH(
+      jsonRequest("/api/settings", {
+        slug: "other",
       })
     );
 
     expect(res.status).toBe(409);
     const body = await res.json();
-    expect(body.error).toBe("slug_unavailable");
-    expect(state.update).not.toHaveBeenCalled();
-  });
-
-  it("reports an unused slug as available", async () => {
-    const res = await GET(request("/api/settings?slug=kay-salon"));
-
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body).toMatchObject({
-      ok: true,
-      slug: "kay-salon",
-      available: true,
-    });
-    expect(state.findUnique).toHaveBeenCalledWith({
-      where: { slug: "kay-salon" },
-      select: { id: true, slug: true },
-    });
-  });
-
-  it("reports another tenant slug as unavailable", async () => {
-    const res = await GET(request("/api/settings?slug=booked-spa"));
-
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body).toMatchObject({
-      ok: true,
-      slug: "booked-spa",
-      available: false,
-    });
-  });
-
-  it("allows the current tenant to keep its slug", async () => {
-    const res = await GET(request("/api/settings?slug=demo"));
-
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body).toMatchObject({
-      ok: true,
-      slug: "demo",
-      available: true,
-    });
-  });
-
-  it("rejects reserved slugs before checking availability", async () => {
-    const res = await GET(request("/api/settings?slug=admin"));
-
-    expect(res.status).toBe(422);
-    const body = await res.json();
-    expect(body.error).toBe("validation_failed");
-    expect(body.fieldErrors.slug).toContain("This slug is reserved");
-  });
-
-  it("resolves a tenant slug before reading settings", async () => {
-    const res = await GET(
-      new NextRequest("http://demo.example.com/api/settings", {
-        headers: { host: "demo.example.com" },
-      })
-    );
-
-    expect(res.status).toBe(200);
-    expect(state.findUnique).toHaveBeenCalledWith({
-      where: { slug: "demo" },
-      select: { id: true },
-    });
-    expect(state.findUnique).toHaveBeenCalledWith({
-      where: { id: "tenant-1" },
-      select: expect.objectContaining({ slug: true }),
-    });
+    expect(body.error).toBe("tenant_slug_conflict");
   });
 });

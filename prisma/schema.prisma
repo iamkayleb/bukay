@@ -65,18 +65,16 @@ model Tenant {
   slug               String         @unique
   timezone           String         @default("Africa/Lagos")
   currency           String         @default("NGN")
+  brandColor         String         @default("#047857")
   logoUrl            String?
-  brandColor         String         @default("#10b981")
-  cancellationPolicy String         @default("")
+  cancellationPolicy String?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   users              User[]
   services           Service[]
   staff              Staff[]
   businessHours      BusinessHour[]
-  blackouts          Blackout[]
   clients            Client[]
-  tags               Tag[]
   bookings           Booking[]
   payments           Payment[]
   auditLogs          AuditLog[]

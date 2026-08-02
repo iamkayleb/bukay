@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/app/db/prisma";
-import { settingsSchema, slugAvailabilitySchema } from "@/app/lib/settings/schemas";
+import { updateSettingsSchema } from "@/app/lib/settings/schemas";
 import {
-  isMissingRecordError,
   isUniqueConstraintError,
   jsonError,
   readJson,
@@ -19,25 +18,20 @@ type TenantSettingsRecord = {
   slug: string;
   timezone: string;
   currency: string;
-  logoUrl: string | null;
   brandColor: string;
-  cancellationPolicy: string;
+  logoUrl: string | null;
+  cancellationPolicy: string | null;
   updatedAt: Date | string;
 };
 
-type TenantSlugRecord = {
-  id: string;
-  slug: string;
-};
-
-const tenantSettingsSelect = {
+const settingsSelect = {
   id: true,
   name: true,
   slug: true,
   timezone: true,
   currency: true,
-  logoUrl: true,
   brandColor: true,
+  logoUrl: true,
   cancellationPolicy: true,
   updatedAt: true,
 };
@@ -47,10 +41,6 @@ const tenantDelegate = prisma.tenant as unknown as {
   update(args: unknown): Promise<TenantSettingsRecord>;
 };
 
-const tenantSlugDelegate = prisma.tenant as unknown as {
-  findUnique(args: unknown): Promise<TenantSlugRecord | null>;
-};
-
 function serializeSettings(settings: TenantSettingsRecord) {
   return {
     id: settings.id,
@@ -58,41 +48,20 @@ function serializeSettings(settings: TenantSettingsRecord) {
     slug: settings.slug,
     timezone: settings.timezone,
     currency: settings.currency,
-    logoUrl: settings.logoUrl,
     brandColor: settings.brandColor,
+    logoUrl: settings.logoUrl,
     cancellationPolicy: settings.cancellationPolicy,
+    publicUrl: `https://${settings.slug}.bukay.app`,
     updatedAt:
       settings.updatedAt instanceof Date ? settings.updatedAt.toISOString() : settings.updatedAt,
   };
 }
 
 export async function GET(req: NextRequest) {
-  const requestedSlug = req.nextUrl.searchParams.get("slug");
-
-  if (requestedSlug !== null) {
-    const parsed = slugAvailabilitySchema.safeParse({ slug: requestedSlug });
-    if (!parsed.success) {
-      return validationError(parsed.error);
-    }
-
-    return runForTenant(req, async (tenantId) => {
-      const existingTenant = await tenantSlugDelegate.findUnique({
-        where: { slug: parsed.data.slug },
-        select: { id: true, slug: true },
-      });
-
-      return NextResponse.json({
-        ok: true,
-        slug: parsed.data.slug,
-        available: !existingTenant || existingTenant.id === tenantId,
-      });
-    });
-  }
-
   return runForTenant(req, async (tenantId) => {
     const settings = await tenantDelegate.findUnique({
       where: { id: tenantId },
-      select: tenantSettingsSelect,
+      select: settingsSelect,
     });
 
     if (!settings) {
@@ -109,44 +78,23 @@ export async function PATCH(req: NextRequest) {
     return body;
   }
 
-  const parsed = settingsSchema.safeParse(body);
+  const parsed = updateSettingsSchema.safeParse(body);
   if (!parsed.success) {
     return validationError(parsed.error);
   }
 
   return runForTenant(req, async (tenantId) => {
-    const existingTenant = await tenantSlugDelegate.findUnique({
-      where: { slug: parsed.data.slug },
-      select: { id: true, slug: true },
-    });
-
-    if (existingTenant && existingTenant.id !== tenantId) {
-      return jsonError("slug_unavailable", 409);
-    }
-
     try {
       const settings = await tenantDelegate.update({
         where: { id: tenantId },
-        data: {
-          name: parsed.data.name,
-          slug: parsed.data.slug,
-          timezone: parsed.data.timezone,
-          currency: parsed.data.currency,
-          logoUrl: parsed.data.logoUrl || null,
-          brandColor: parsed.data.brandColor.toLowerCase(),
-          cancellationPolicy: parsed.data.cancellationPolicy,
-        },
-        select: tenantSettingsSelect,
+        data: parsed.data,
+        select: settingsSelect,
       });
 
       return NextResponse.json({ ok: true, settings: serializeSettings(settings) });
     } catch (error) {
       if (isUniqueConstraintError(error)) {
-        return jsonError("slug_unavailable", 409);
-      }
-
-      if (isMissingRecordError(error)) {
-        return jsonError("tenant_not_found", 404);
+        return jsonError("tenant_slug_conflict", 409);
       }
 
       throw error;

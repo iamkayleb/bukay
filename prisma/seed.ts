@@ -55,12 +55,18 @@ async function main() {
       name: "Bukay Demo Salon",
       timezone: "Africa/Lagos",
       currency: "NGN",
+      brandColor: "#047857",
+      logoUrl: "https://placehold.co/240x120?text=Bukay",
+      cancellationPolicy: "Cancellations are accepted up to 24 hours before an appointment.",
     },
     create: {
       slug: DEMO_TENANT_SLUG,
       name: "Bukay Demo Salon",
       timezone: "Africa/Lagos",
       currency: "NGN",
+      brandColor: "#047857",
+      logoUrl: "https://placehold.co/240x120?text=Bukay",
+      cancellationPolicy: "Cancellations are accepted up to 24 hours before an appointment.",
     },
   });
 

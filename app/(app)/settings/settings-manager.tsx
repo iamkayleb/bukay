@@ -1,28 +1,42 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
-export type Settings = {
-  id: string;
+import {
+  BRAND_COLOR_CONTRAST_TARGET,
+  DEFAULT_BRAND_COLOR,
+  getBrandColorContrastRatio,
+  hasBrandColorContrast,
+} from "@/app/lib/settings/schemas";
+
+type Settings = {
   name: string;
   slug: string;
-  timezone: string;
-  currency: string;
-  logoUrl: string | null;
   brandColor: string;
-  cancellationPolicy: string;
+  logoUrl: string | null;
+  cancellationPolicy: string | null;
+  publicUrl: string;
 };
 
 export type SettingsFormState = {
   name: string;
   slug: string;
-  timezone: string;
-  currency: string;
+  brandColor: string;
   logoUrl: string;
   cancellationPolicy: string;
 };
 
 export type SettingsFieldErrors = Partial<Record<keyof SettingsFormState | "_form", string>>;
+
+export type SettingsPreview = {
+  brandColor: string;
+  businessName: string;
+  cancellationPolicy: string | null;
+  logoAlt: string;
+  logoInitial: string;
+  logoUrl: string | null;
+  publicUrl: string;
+};
 
 type ApiValidationError = {
   ok: false;
@@ -31,80 +45,42 @@ type ApiValidationError = {
   formErrors?: string[];
 };
 
-type SlugAvailability = "idle" | "checking" | "available" | "unavailable";
-
-const defaultForm: SettingsFormState = {
+const emptyForm: SettingsFormState = {
   name: "",
   slug: "",
-  timezone: "Africa/Lagos",
-  currency: "NGN",
+  brandColor: DEFAULT_BRAND_COLOR,
   logoUrl: "",
   cancellationPolicy: "",
 };
-
-const timezoneOptions = ["Africa/Lagos", "UTC", "Europe/London", "America/New_York"];
-const currencyOptions = ["NGN", "USD", "GBP", "EUR"];
-
-export function slugifyBusinessName(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-")
-    .slice(0, 63);
-}
-
-export function validateSettingsForm(form: SettingsFormState): SettingsFieldErrors {
-  const errors: SettingsFieldErrors = {};
-  const name = form.name.trim();
-  const slug = form.slug.trim();
-  const currency = form.currency.trim();
-
-  if (!name) {
-    errors.name = "Business name is required";
-  }
-
-  if (!/^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$/.test(slug)) {
-    errors.slug = "Use 3-63 lowercase letters, numbers, and hyphens";
-  }
-
-  if (!form.timezone.trim()) {
-    errors.timezone = "Timezone is required";
-  }
-
-  if (!/^[A-Z]{3}$/.test(currency)) {
-    errors.currency = "Use a 3-letter currency code";
-  }
-
-  if (form.cancellationPolicy.length > 2000) {
-    errors.cancellationPolicy = "Cancellation policy must be 2,000 characters or fewer";
-  }
-
-  return errors;
-}
 
 export function settingsToForm(settings: Settings): SettingsFormState {
   return {
     name: settings.name,
     slug: settings.slug,
-    timezone: settings.timezone || "Africa/Lagos",
-    currency: settings.currency || "NGN",
+    brandColor: settings.brandColor,
     logoUrl: settings.logoUrl ?? "",
     cancellationPolicy: settings.cancellationPolicy ?? "",
   };
 }
 
-export function buildSettingsPayload(form: SettingsFormState, settings: Settings | null) {
-  return {
-    name: form.name.trim(),
-    slug: form.slug.trim().toLowerCase(),
-    timezone: form.timezone.trim() || "Africa/Lagos",
-    currency: form.currency.trim().toUpperCase() || "NGN",
-    logoUrl: form.logoUrl.trim(),
-    brandColor: settings?.brandColor ?? "#10b981",
-    cancellationPolicy: form.cancellationPolicy.trim(),
-  };
+export function validateSettingsForm(form: SettingsFormState): SettingsFieldErrors {
+  const errors: SettingsFieldErrors = {};
+
+  if (!form.name.trim()) {
+    errors.name = "Business name is required";
+  }
+
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(form.slug.trim())) {
+    errors.slug = "Slug can use lowercase letters, numbers, and hyphens";
+  }
+
+  if (!/^#[0-9a-fA-F]{6}$/.test(form.brandColor.trim())) {
+    errors.brandColor = "Brand color must be a 6-digit hex color";
+  } else if (!hasBrandColorContrast(form.brandColor)) {
+    errors.brandColor = `Brand color must have at least ${BRAND_COLOR_CONTRAST_TARGET}:1 contrast with white text`;
+  }
+
+  return errors;
 }
 
 function hasErrors(errors: SettingsFieldErrors) {
@@ -121,32 +97,78 @@ function mapApiErrors(error: ApiValidationError): SettingsFieldErrors {
   return {
     name: firstError(fieldErrors.name),
     slug: firstError(fieldErrors.slug),
-    timezone: firstError(fieldErrors.timezone),
-    currency: firstError(fieldErrors.currency),
+    brandColor: firstError(fieldErrors.brandColor),
+    logoUrl: firstError(fieldErrors.logoUrl),
     cancellationPolicy: firstError(fieldErrors.cancellationPolicy),
     _form: firstError(error.formErrors) ?? error.error,
   };
 }
 
-function publicUrlForSlug(slug: string) {
-  const normalized = slug.trim().toLowerCase();
-  return normalized ? `https://${normalized}.bukay.app` : "https://your-slug.bukay.app";
+function buildPayload(form: SettingsFormState) {
+  return {
+    name: form.name.trim(),
+    slug: form.slug.trim(),
+    brandColor: form.brandColor.trim(),
+    logoUrl: form.logoUrl.trim() || null,
+    cancellationPolicy: form.cancellationPolicy.trim() || null,
+  };
 }
 
-export function buildSlugAvailabilityPath(slug: string) {
-  return `/api/settings?slug=${encodeURIComponent(slug.trim().toLowerCase())}`;
+function getPublicUrl(slug: string) {
+  const normalizedSlug = slug.trim() || "your-business";
+  return `https://${normalizedSlug}.bukay.app`;
+}
+
+function getPreviewBrandColor(brandColor: string) {
+  return /^#[0-9a-fA-F]{6}$/.test(brandColor) && hasBrandColorContrast(brandColor)
+    ? brandColor
+    : DEFAULT_BRAND_COLOR;
+}
+
+export function getSettingsPreview(form: SettingsFormState): SettingsPreview {
+  const businessName = form.name.trim() || "Business name";
+  const logoUrl = form.logoUrl.trim() || null;
+
+  return {
+    brandColor: getPreviewBrandColor(form.brandColor),
+    businessName,
+    cancellationPolicy: form.cancellationPolicy.trim() || null,
+    logoAlt: `${businessName} logo`,
+    logoInitial: (businessName[0] ?? "B").toUpperCase(),
+    logoUrl,
+    publicUrl: getPublicUrl(form.slug),
+  };
+}
+
+export function getBrandContrastMessage(ratio: number | null) {
+  if (ratio === null) {
+    return "White text contrast: enter a 6-digit hex color";
+  }
+
+  const formattedRatio = ratio.toFixed(2);
+
+  return `White text contrast: ${formattedRatio}:1 ${
+    ratio >= BRAND_COLOR_CONTRAST_TARGET ? "passes" : "needs 4.5:1"
+  }`;
 }
 
 export function SettingsManager() {
-  const [settings, setSettings] = useState<Settings | null>(null);
-  const [form, setForm] = useState<SettingsFormState>(defaultForm);
+  const [form, setForm] = useState<SettingsFormState>(emptyForm);
   const [errors, setErrors] = useState<SettingsFieldErrors>({});
-  const [slugAvailability, setSlugAvailability] = useState<SlugAvailability>("idle");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const publicUrl = useMemo(() => publicUrlForSlug(form.slug), [form.slug]);
+
+  const publicUrl = useMemo(() => {
+    return getPublicUrl(form.slug);
+  }, [form.slug]);
+  const brandContrastRatio = useMemo(
+    () => getBrandColorContrastRatio(form.brandColor),
+    [form.brandColor]
+  );
+  const brandContrastPasses =
+    brandContrastRatio !== null && brandContrastRatio >= BRAND_COLOR_CONTRAST_TARGET;
+  const settingsPreview = useMemo(() => getSettingsPreview(form), [form]);
 
   async function loadSettings() {
     setIsLoading(true);
@@ -160,9 +182,7 @@ export function SettingsManager() {
         throw new Error(data.error ?? "Unable to load settings");
       }
 
-      setSettings(data.settings);
       setForm(settingsToForm(data.settings));
-      setSlugAvailability("idle");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Unable to load settings");
     } finally {
@@ -174,47 +194,9 @@ export function SettingsManager() {
     void loadSettings();
   }, []);
 
-  async function checkSlugAvailability(slug: string) {
-    const slugError = validateSettingsForm({ ...form, slug }).slug;
-    if (slugError) {
-      setErrors((current) => ({ ...current, slug: slugError }));
-      setSlugAvailability("idle");
-      return;
-    }
-
-    setSlugAvailability("checking");
-    setErrors((current) => ({ ...current, slug: undefined }));
-
-    try {
-      const response = await fetch(buildSlugAvailabilityPath(slug), {
-        headers: { Accept: "application/json" },
-      });
-      const data = await response.json();
-
-      if (!response.ok || !data.ok) {
-        if (data.error === "validation_failed") {
-          setErrors(mapApiErrors(data));
-          setSlugAvailability("idle");
-          return;
-        }
-
-        throw new Error(data.error ?? "Unable to check slug");
-      }
-
-      if (data.available) {
-        setSlugAvailability("available");
-        return;
-      }
-
-      setSlugAvailability("unavailable");
-      setErrors((current) => ({ ...current, slug: "That public URL is already taken" }));
-    } catch (error) {
-      setSlugAvailability("idle");
-      setErrors((current) => ({
-        ...current,
-        slug: error instanceof Error ? error.message : "Unable to check slug",
-      }));
-    }
+  function updateField(field: keyof SettingsFormState, value: string) {
+    setForm((current) => ({ ...current, [field]: value }));
+    setErrors((current) => ({ ...current, [field]: undefined, _form: undefined }));
   }
 
   async function saveSettings(event: FormEvent<HTMLFormElement>) {
@@ -234,7 +216,7 @@ export function SettingsManager() {
       const response = await fetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(buildSettingsPayload(form, settings)),
+        body: JSON.stringify(buildPayload(form)),
       });
       const data = await response.json();
 
@@ -244,15 +226,9 @@ export function SettingsManager() {
           return;
         }
 
-        if (data.error === "slug_unavailable") {
-          setErrors({ slug: "That public URL is already taken" });
-          return;
-        }
-
         throw new Error(data.error ?? "Unable to save settings");
       }
 
-      setSettings(data.settings);
       setForm(settingsToForm(data.settings));
       setNotice("Settings saved.");
     } catch (error) {
@@ -264,67 +240,10 @@ export function SettingsManager() {
     }
   }
 
-  async function uploadLogo(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-
-    if (!file) {
-      return;
-    }
-
-    setNotice(null);
-    setErrors({});
-    setIsUploadingLogo(true);
-
-    try {
-      const response = await fetch("/api/settings/logo-upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({
-          fileName: file.name,
-          contentType: file.type,
-          size: file.size,
-        }),
-      });
-      const data = await response.json();
-
-      if (!response.ok || !data.ok) {
-        if (data.error === "validation_failed") {
-          setErrors({ _form: "Upload a PNG, JPG, WebP, or GIF logo under 2 MB." });
-          return;
-        }
-
-        throw new Error(data.error ?? "Unable to prepare logo upload");
-      }
-
-      const uploadResponse = await fetch(data.upload.uploadUrl, {
-        method: data.upload.method,
-        headers: data.upload.headers,
-        body: file,
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error("Unable to upload logo");
-      }
-
-      setForm((current) => ({ ...current, logoUrl: data.upload.publicUrl }));
-      setNotice("Logo uploaded. Save settings to publish it.");
-    } catch (error) {
-      setErrors({
-        _form: error instanceof Error ? error.message : "Unable to upload logo",
-      });
-    } finally {
-      setIsUploadingLogo(false);
-    }
-  }
-
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-100 sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <form
-          className="rounded-lg border border-slate-800 bg-slate-900 p-5"
-          onSubmit={(event) => void saveSettings(event)}
-        >
+      <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <form className="space-y-6" onSubmit={(event) => void saveSettings(event)}>
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.18em] text-emerald-300">
               Settings
@@ -333,192 +252,145 @@ export function SettingsManager() {
           </div>
 
           {notice ? (
-            <p className="mt-5 rounded-md border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-200">
+            <p className="rounded-md border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-200">
               {notice}
             </p>
           ) : null}
 
           {errors._form ? (
-            <p className="mt-5 rounded-md border border-red-900/70 bg-red-950/50 px-3 py-2 text-sm text-red-200">
+            <p className="rounded-md border border-red-900/70 bg-red-950/50 px-4 py-3 text-sm text-red-200">
               {errors._form}
             </p>
           ) : null}
 
-          <div className="mt-6 grid gap-5 sm:grid-cols-2">
-            <label className="block sm:col-span-2">
+          <fieldset
+            className="space-y-4 rounded-lg border border-slate-800 bg-slate-900 p-5 disabled:opacity-70"
+            disabled={isLoading || isSaving}
+          >
+            <label className="block">
               <span className="text-sm font-medium text-slate-200">Business name</span>
               <input
                 className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
-                disabled={isLoading}
                 value={form.name}
-                onChange={(event) => {
-                  const name = event.target.value;
-                  setForm((current) => ({
-                    ...current,
-                    name,
-                    slug: current.slug ? current.slug : slugifyBusinessName(name),
-                  }));
-                  setSlugAvailability("idle");
-                }}
+                onChange={(event) => updateField("name", event.target.value)}
               />
               {errors.name ? (
                 <span className="mt-1 block text-xs text-red-300">{errors.name}</span>
               ) : null}
             </label>
 
-            <label className="block sm:col-span-2">
-              <span className="text-sm font-medium text-slate-200">Public URL slug</span>
+            <label className="block">
+              <span className="text-sm font-medium text-slate-200">Public slug</span>
               <input
                 className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
-                disabled={isLoading}
                 value={form.slug}
-                onBlur={() => void checkSlugAvailability(form.slug)}
-                onChange={(event) => {
-                  setForm({ ...form, slug: slugifyBusinessName(event.target.value) });
-                  setSlugAvailability("idle");
-                }}
+                onChange={(event) => updateField("slug", event.target.value)}
               />
-              <span className="mt-1 block text-xs text-slate-400">{publicUrl}</span>
-              {slugAvailability === "checking" ? (
-                <span className="mt-1 block text-xs text-slate-400">Checking availability...</span>
-              ) : null}
-              {slugAvailability === "available" && !errors.slug ? (
-                <span className="mt-1 block text-xs text-emerald-300">Public URL is available</span>
-              ) : null}
+              <span className="mt-1 block break-all text-xs text-slate-400">{publicUrl}</span>
               {errors.slug ? (
                 <span className="mt-1 block text-xs text-red-300">{errors.slug}</span>
               ) : null}
             </label>
 
             <label className="block">
-              <span className="text-sm font-medium text-slate-200">Timezone</span>
-              <select
-                className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
-                disabled={isLoading}
-                value={form.timezone}
-                onChange={(event) => setForm({ ...form, timezone: event.target.value })}
+              <span className="text-sm font-medium text-slate-200">Brand color</span>
+              <div className="mt-1 flex items-center gap-3">
+                <input
+                  aria-label="Brand color picker"
+                  className="h-10 w-12 shrink-0 cursor-pointer rounded-md border border-slate-700 bg-slate-950 p-1"
+                  type="color"
+                  value={
+                    /^#[0-9a-fA-F]{6}$/.test(form.brandColor)
+                      ? form.brandColor
+                      : DEFAULT_BRAND_COLOR
+                  }
+                  onChange={(event) => updateField("brandColor", event.target.value)}
+                />
+                <input
+                  className="min-w-0 flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
+                  value={form.brandColor}
+                  onChange={(event) => updateField("brandColor", event.target.value)}
+                />
+              </div>
+              {errors.brandColor ? (
+                <span className="mt-1 block text-xs text-red-300">{errors.brandColor}</span>
+              ) : null}
+              <span
+                className={`mt-1 block text-xs ${
+                  brandContrastPasses ? "text-emerald-300" : "text-amber-300"
+                }`}
               >
-                {timezoneOptions.map((timezone) => (
-                  <option key={timezone} value={timezone}>
-                    {timezone}
-                  </option>
-                ))}
-              </select>
-              {errors.timezone ? (
-                <span className="mt-1 block text-xs text-red-300">{errors.timezone}</span>
+                {getBrandContrastMessage(brandContrastRatio)}
+              </span>
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-slate-200">Logo URL</span>
+              <input
+                className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
+                placeholder="https://example.com/logo.png"
+                value={form.logoUrl}
+                onChange={(event) => updateField("logoUrl", event.target.value)}
+              />
+              {errors.logoUrl ? (
+                <span className="mt-1 block text-xs text-red-300">{errors.logoUrl}</span>
               ) : null}
             </label>
 
             <label className="block">
-              <span className="text-sm font-medium text-slate-200">Currency</span>
-              <select
-                className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
-                disabled={isLoading}
-                value={form.currency}
-                onChange={(event) => setForm({ ...form, currency: event.target.value })}
-              >
-                {currencyOptions.map((currency) => (
-                  <option key={currency} value={currency}>
-                    {currency}
-                  </option>
-                ))}
-              </select>
-              {errors.currency ? (
-                <span className="mt-1 block text-xs text-red-300">{errors.currency}</span>
-              ) : null}
-            </label>
-
-            <label className="block sm:col-span-2">
-              <span className="text-sm font-medium text-slate-200">Logo</span>
-              <div className="mt-2 flex items-center gap-4">
-                {form.logoUrl ? (
-                  <img
-                    alt=""
-                    className="h-16 w-16 rounded-md border border-slate-800 object-cover"
-                    src={form.logoUrl}
-                  />
-                ) : (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-md bg-emerald-500 text-xl font-semibold text-slate-950">
-                    {(form.name.trim()[0] ?? "B").toUpperCase()}
-                  </div>
-                )}
-                <div>
-                  <input
-                    accept="image/png,image/jpeg,image/webp,image/gif"
-                    className="block w-full text-sm text-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-slate-800 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-100 hover:file:bg-slate-700"
-                    disabled={isLoading || isUploadingLogo}
-                    type="file"
-                    onChange={(event) => void uploadLogo(event)}
-                  />
-                  <span className="mt-1 block text-xs text-slate-400">
-                    PNG, JPG, WebP, or GIF under 2 MB.
-                  </span>
-                </div>
-              </div>
-            </label>
-
-            <label className="block sm:col-span-2">
               <span className="text-sm font-medium text-slate-200">Cancellation policy</span>
               <textarea
-                className="mt-1 min-h-32 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
-                disabled={isLoading}
+                className="mt-1 min-h-28 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
                 value={form.cancellationPolicy}
-                onChange={(event) => setForm({ ...form, cancellationPolicy: event.target.value })}
+                onChange={(event) => updateField("cancellationPolicy", event.target.value)}
               />
               {errors.cancellationPolicy ? (
                 <span className="mt-1 block text-xs text-red-300">{errors.cancellationPolicy}</span>
               ) : null}
             </label>
-          </div>
+          </fieldset>
 
-          <div className="mt-6 flex gap-3">
-            <button
-              className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isLoading || isSaving}
-              type="submit"
-            >
-              {isSaving ? "Saving..." : "Save settings"}
-            </button>
-            <button
-              className="rounded-md border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isLoading || !settings}
-              type="button"
-              onClick={() => {
-                if (settings) {
-                  setForm(settingsToForm(settings));
-                  setSlugAvailability("idle");
-                }
-              }}
-            >
-              Reset
-            </button>
-          </div>
+          <button
+            className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isLoading || isSaving}
+            type="submit"
+          >
+            {isSaving ? "Saving..." : "Save settings"}
+          </button>
         </form>
 
         <aside className="h-fit rounded-lg border border-slate-800 bg-slate-900 p-5">
-          <h2 className="text-lg font-semibold text-white">Public preview</h2>
-          <div className="mt-5 rounded-md border border-slate-800 bg-slate-950 p-4">
-            {form.logoUrl ? (
-              <img alt="" className="mb-4 h-12 w-12 rounded-md object-cover" src={form.logoUrl} />
-            ) : (
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-emerald-500 text-lg font-semibold text-slate-950">
-                {(form.name.trim()[0] ?? "B").toUpperCase()}
-              </div>
-            )}
-            <p className="text-base font-semibold text-white">
-              {form.name.trim() || "Business name"}
-            </p>
-            <p className="mt-1 break-all text-sm text-slate-400">{publicUrl}</p>
-            <dl className="mt-4 grid gap-3 text-sm">
-              <div>
-                <dt className="text-slate-500">Timezone</dt>
-                <dd className="text-slate-200">{form.timezone || "Africa/Lagos"}</dd>
-              </div>
-              <div>
-                <dt className="text-slate-500">Currency</dt>
-                <dd className="text-slate-200">{form.currency || "NGN"}</dd>
-              </div>
-            </dl>
+          <h2 className="text-lg font-semibold text-white">Booking page preview</h2>
+          <div className="mt-5 overflow-hidden rounded-lg border border-slate-800 bg-white text-slate-950">
+            <div className="p-5" style={{ backgroundColor: settingsPreview.brandColor }}>
+              {settingsPreview.logoUrl ? (
+                <img
+                  alt={settingsPreview.logoAlt}
+                  className="h-12 max-w-44 rounded bg-white object-contain p-1"
+                  src={settingsPreview.logoUrl}
+                />
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded bg-white text-lg font-semibold">
+                  {settingsPreview.logoInitial}
+                </div>
+              )}
+            </div>
+            <div className="space-y-3 p-5">
+              <p className="text-xl font-semibold">{settingsPreview.businessName}</p>
+              <p className="break-all text-sm text-slate-600">{settingsPreview.publicUrl}</p>
+              <button
+                className="rounded-md px-4 py-2 text-sm font-semibold text-white"
+                style={{ backgroundColor: settingsPreview.brandColor }}
+                type="button"
+              >
+                Book appointment
+              </button>
+              {settingsPreview.cancellationPolicy ? (
+                <p className="border-t border-slate-200 pt-3 text-sm text-slate-700">
+                  {settingsPreview.cancellationPolicy}
+                </p>
+              ) : null}
+            </div>
           </div>
         </aside>
       </div>

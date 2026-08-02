@@ -1,57 +1,39 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  buildSlugAvailabilityPath,
-  buildSettingsPayload,
+  getBrandContrastMessage,
+  getSettingsPreview,
   settingsToForm,
-  slugifyBusinessName,
   validateSettingsForm,
-  type Settings,
   type SettingsFormState,
 } from "@/app/(app)/settings/settings-manager";
+import { getBrandColorContrastRatio } from "@/app/lib/settings/schemas";
 
 const validForm: SettingsFormState = {
-  name: "Kay Salon",
-  slug: "kay-salon",
-  timezone: "Africa/Lagos",
-  currency: "NGN",
-  logoUrl: "https://cdn.example.com/new-logo.png",
-  cancellationPolicy: "Cancel at least 24 hours before the appointment.",
-};
-
-const settings: Settings = {
-  id: "tenant-1",
   name: "Bukay Demo Salon",
-  slug: "demo",
-  timezone: "Africa/Lagos",
-  currency: "NGN",
-  logoUrl: "https://cdn.example.com/logo.png",
-  brandColor: "#10b981",
-  cancellationPolicy: "",
+  slug: "bukay-demo",
+  brandColor: "#047857",
+  logoUrl: "https://example.com/logo.png",
+  cancellationPolicy: "Cancel with 24 hours notice.",
 };
 
-describe("settings manager form helpers", () => {
-  it("generates URL-safe slugs from business names", () => {
-    expect(slugifyBusinessName(" Kay's Salon & Spa ")).toBe("kay-s-salon-spa");
-    expect(slugifyBusinessName("Bukay---Demo")).toBe("bukay-demo");
-  });
-
-  it("returns inline errors for invalid settings values", () => {
-    const errors = validateSettingsForm({
-      name: " ",
-      slug: "UPPER CASE",
-      timezone: "",
-      currency: "naira",
+describe("settings manager helpers", () => {
+  it("maps persisted tenant settings into editable form state", () => {
+    expect(
+      settingsToForm({
+        name: "Fresh Cuts",
+        slug: "fresh-cuts",
+        brandColor: "#2563eb",
+        logoUrl: null,
+        cancellationPolicy: null,
+        publicUrl: "https://fresh-cuts.bukay.app",
+      })
+    ).toEqual({
+      name: "Fresh Cuts",
+      slug: "fresh-cuts",
+      brandColor: "#2563eb",
       logoUrl: "",
-      cancellationPolicy: "x".repeat(2001),
-    });
-
-    expect(errors).toEqual({
-      name: "Business name is required",
-      slug: "Use 3-63 lowercase letters, numbers, and hyphens",
-      timezone: "Timezone is required",
-      currency: "Use a 3-letter currency code",
-      cancellationPolicy: "Cancellation policy must be 2,000 characters or fewer",
+      cancellationPolicy: "",
     });
   });
 
@@ -59,30 +41,62 @@ describe("settings manager form helpers", () => {
     expect(validateSettingsForm(validForm)).toEqual({});
   });
 
-  it("maps loaded settings into editable form values", () => {
-    expect(settingsToForm(settings)).toEqual({
-      name: "Bukay Demo Salon",
-      slug: "demo",
-      timezone: "Africa/Lagos",
-      currency: "NGN",
-      logoUrl: "https://cdn.example.com/logo.png",
-      cancellationPolicy: "",
+  it("validates brand color independently from the browser color input", () => {
+    expect(validateSettingsForm({ ...validForm, brandColor: "#12345" })).toEqual({
+      brandColor: "Brand color must be a 6-digit hex color",
     });
   });
 
-  it("builds the API payload while preserving branding fields", () => {
-    expect(buildSettingsPayload(validForm, settings)).toEqual({
-      name: "Kay Salon",
-      slug: "kay-salon",
-      timezone: "Africa/Lagos",
-      currency: "NGN",
-      logoUrl: "https://cdn.example.com/new-logo.png",
-      brandColor: "#10b981",
-      cancellationPolicy: "Cancel at least 24 hours before the appointment.",
+  it("rejects brand colors that fail white text contrast", () => {
+    expect(validateSettingsForm({ ...validForm, brandColor: "#10b981" })).toEqual({
+      brandColor: "Brand color must have at least 4.5:1 contrast with white text",
     });
   });
 
-  it("builds the slug availability check path", () => {
-    expect(buildSlugAvailabilityPath(" Kay Salon ")).toBe("/api/settings?slug=kay%20salon");
+  it("computes and formats the displayed brand color contrast result", () => {
+    expect(getBrandColorContrastRatio("#047857")).toBeGreaterThanOrEqual(4.5);
+    expect(getBrandContrastMessage(getBrandColorContrastRatio("#047857"))).toContain("passes");
+    expect(getBrandContrastMessage(getBrandColorContrastRatio("#10b981"))).toContain("needs 4.5:1");
+    expect(getBrandContrastMessage(null)).toBe("White text contrast: enter a 6-digit hex color");
+  });
+
+  it("builds a booking page preview from editable branding settings", () => {
+    expect(
+      getSettingsPreview({
+        ...validForm,
+        name: "  Fresh Cuts  ",
+        logoUrl: "  https://cdn.example.com/fresh-cuts.svg  ",
+        cancellationPolicy: "  Cancel before noon.  ",
+      })
+    ).toEqual({
+      brandColor: "#047857",
+      businessName: "Fresh Cuts",
+      cancellationPolicy: "Cancel before noon.",
+      logoAlt: "Fresh Cuts logo",
+      logoInitial: "F",
+      logoUrl: "https://cdn.example.com/fresh-cuts.svg",
+      publicUrl: "https://bukay-demo.bukay.app",
+    });
+  });
+
+  it("falls back to placeholder preview values when branding fields are blank or invalid", () => {
+    expect(
+      getSettingsPreview({
+        ...validForm,
+        name: " ",
+        slug: " ",
+        brandColor: "#10b981",
+        logoUrl: " ",
+        cancellationPolicy: " ",
+      })
+    ).toEqual({
+      brandColor: "#047857",
+      businessName: "Business name",
+      cancellationPolicy: null,
+      logoAlt: "Business name logo",
+      logoInitial: "B",
+      logoUrl: null,
+      publicUrl: "https://your-business.bukay.app",
+    });
   });
 });
