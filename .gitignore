@@ -228,3 +228,8 @@ tsconfig.tsbuildinfo
 
 # Patch files (e.g. verifier diffs)
 *.patch
+
+# Claude Code keepalive scratch artifacts (prompts/outputs/session logs)
+claude-prompt-*.md
+claude-output-*.md
+claude-session-*.log

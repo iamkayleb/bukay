@@ -40,9 +40,23 @@ export function TopBar({ tenantName, userPhone, onOpenDrawer }: TopBarProps) {
         setMenuOpen(false);
         return;
       }
-      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+      if (event.key === "Tab") {
+        setMenuOpen(false);
+        return;
+      }
       const list = menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]');
       if (!list || list.length === 0) return;
+      if (event.key === "Home") {
+        event.preventDefault();
+        list[0].focus();
+        return;
+      }
+      if (event.key === "End") {
+        event.preventDefault();
+        list[list.length - 1].focus();
+        return;
+      }
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
       event.preventDefault();
       const active = document.activeElement as HTMLElement | null;
       const currentIndex = Array.from(list).indexOf(active as HTMLElement);
@@ -111,6 +125,13 @@ export function TopBar({ tenantName, userPhone, onOpenDrawer }: TopBarProps) {
           className="flex items-center gap-2 rounded-md border border-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-100 hover:border-emerald-400"
           data-testid="user-menu-trigger"
           onClick={() => setMenuOpen((v) => !v)}
+          onKeyDown={(event) => {
+            if (menuOpen) return;
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+              event.preventDefault();
+              setMenuOpen(true);
+            }
+          }}
           ref={triggerRef}
           type="button"
         >

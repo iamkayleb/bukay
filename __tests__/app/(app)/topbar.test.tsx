@@ -162,4 +162,39 @@ describe("TopBar user menu", () => {
     fireEvent.keyDown(document, { key: "ArrowUp" });
     expect(document.activeElement).toBe(logout);
   });
+
+  it("jumps to first/last menu items with Home / End keys", () => {
+    render(<TopBar onOpenDrawer={() => undefined} tenantName="Acme" />);
+    fireEvent.click(screen.getByTestId("user-menu-trigger"));
+
+    const settings = screen.getByRole("menuitem", { name: "Settings" });
+    const logout = screen.getByTestId("user-menu-logout");
+
+    fireEvent.keyDown(document, { key: "End" });
+    expect(document.activeElement).toBe(logout);
+
+    fireEvent.keyDown(document, { key: "Home" });
+    expect(document.activeElement).toBe(settings);
+  });
+
+  it("closes the menu when Tab is pressed so focus moves out naturally", () => {
+    render(<TopBar onOpenDrawer={() => undefined} tenantName="Acme" />);
+    fireEvent.click(screen.getByTestId("user-menu-trigger"));
+    expect(screen.getByTestId("user-menu")).toBeTruthy();
+
+    fireEvent.keyDown(document, { key: "Tab" });
+
+    expect(screen.queryByTestId("user-menu")).toBeNull();
+  });
+
+  it("opens the menu when ArrowDown is pressed on the closed trigger", () => {
+    render(<TopBar onOpenDrawer={() => undefined} tenantName="Acme" />);
+    const trigger = screen.getByTestId("user-menu-trigger");
+    expect(screen.queryByTestId("user-menu")).toBeNull();
+
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+
+    expect(screen.getByTestId("user-menu")).toBeTruthy();
+    expect(screen.getByTestId("user-menu-trigger").getAttribute("aria-expanded")).toBe("true");
+  });
 });
