@@ -296,7 +296,7 @@ export function SettingsManager() {
               <span className="text-sm font-medium text-slate-200">Brand color</span>
               <div className="mt-1 flex items-center gap-3">
                 <input
-                  aria-label="Brand color picker"
+                  aria-label="Brand color"
                   className="h-10 w-12 shrink-0 cursor-pointer rounded-md border border-slate-700 bg-slate-950 p-1"
                   type="color"
                   value={
@@ -307,6 +307,7 @@ export function SettingsManager() {
                   onChange={(event) => updateField("brandColor", event.target.value)}
                 />
                 <input
+                  aria-label="Brand color hex"
                   className="min-w-0 flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-400"
                   value={form.brandColor}
                   onChange={(event) => updateField("brandColor", event.target.value)}

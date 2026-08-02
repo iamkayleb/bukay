@@ -77,6 +77,8 @@ model Tenant {
   clients            Client[]
   bookings           Booking[]
   payments           Payment[]
+  blackouts          Blackout[]
+  tags               Tag[]
   auditLogs          AuditLog[]
 }
 

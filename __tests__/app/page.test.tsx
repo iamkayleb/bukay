@@ -37,9 +37,7 @@ vi.mock("next/headers", () => ({
       if (name.toLowerCase() === "host") return state.host;
       if (name.toLowerCase() === "x-bukay-public-tenant-slug") {
         const subdomain = state.host.split(".")[0] ?? null;
-        return subdomain && !["www", "app", "api", "admin"].includes(subdomain)
-          ? subdomain
-          : null;
+        return subdomain && !["www", "app", "api", "admin"].includes(subdomain) ? subdomain : null;
       }
       return null;
     },

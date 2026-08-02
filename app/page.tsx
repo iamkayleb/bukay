@@ -103,7 +103,7 @@ export default async function HomePage() {
         <p className="text-sm font-semibold uppercase text-emerald-400">Bukay</p>
         <h1 className="mt-4 text-4xl font-semibold">Booking page unavailable</h1>
         <p className="mt-3 text-base text-slate-300">
-          Use your salon's public Bukay URL to book an appointment.
+          Use your salon&apos;s public Bukay URL to book an appointment.
         </p>
       </main>
     );
@@ -179,9 +179,7 @@ export default async function HomePage() {
                         {formatPrice(service, tenant.currency)}
                       </p>
                     </div>
-                    <p className="mt-3 text-sm text-slate-400">
-                      {service.durationMinutes} minutes
-                    </p>
+                    <p className="mt-3 text-sm text-slate-400">{service.durationMinutes} minutes</p>
                   </article>
                 ))
               ) : (
