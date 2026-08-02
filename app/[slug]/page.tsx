@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { prisma } from "@/app/db/prisma";
@@ -18,6 +19,32 @@ const weekdayLabels = [
   "Saturday",
 ];
 
+const defaultSiteUrl = "http://localhost:3000";
+
+function getSiteUrl() {
+  const configuredUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (!configuredUrl) return defaultSiteUrl;
+
+  try {
+    return new URL(configuredUrl).origin;
+  } catch {
+    return defaultSiteUrl;
+  }
+}
+
+function buildSeoDescription(tenantName: string, services: Array<{ name: string }>) {
+  const serviceNames = services
+    .slice(0, 3)
+    .map((service) => service.name)
+    .join(", ");
+
+  if (!serviceNames) {
+    return `Book appointments with ${tenantName}. View hours, services, and reserve your visit online with Bukay.`;
+  }
+
+  return `Book ${serviceNames} and more with ${tenantName}. View hours, services, and reserve your visit online with Bukay.`;
+}
+
 function formatPrice(priceCents: number, currency: string) {
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
@@ -34,6 +61,67 @@ function formatBusinessHour(
 ) {
   const day = weekdayLabels[dayOfWeek] ?? "Day";
   return isClosed ? `${day}: Closed` : `${day}: ${opensAt}-${closesAt}`;
+}
+
+export async function generateMetadata({ params }: TenantLandingPageProps): Promise<Metadata> {
+  const tenant = await prisma.tenant.findFirst({
+    where: {
+      slug: params.slug,
+      active: true,
+    },
+    select: {
+      name: true,
+      services: {
+        where: {
+          active: true,
+        },
+        orderBy: {
+          name: "asc",
+        },
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+
+  if (!tenant) {
+    return {
+      title: "Business not found | Bukay",
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
+  }
+
+  const title = `${tenant.name} | Book appointments with Bukay`;
+  const description = buildSeoDescription(tenant.name, tenant.services);
+  const canonicalUrl = new URL(`/${params.slug}`, getSiteUrl()).toString();
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title,
+      description,
+      url: canonicalUrl,
+      siteName: "Bukay",
+      type: "website",
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
+  };
 }
 
 export default async function TenantLandingPage({ params }: TenantLandingPageProps) {

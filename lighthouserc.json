@@ -1,9 +1,13 @@
 {
   "ci": {
     "collect": {
-      "startServerCommand": "pnpm start -p 3000",
+      "startServerCommand": "npm run start -- -p 3000",
       "startServerReadyPattern": "Ready in",
-      "url": ["http://localhost:3000/", "http://localhost:3000/login"],
+      "url": [
+        "http://localhost:3000/",
+        "http://localhost:3000/login",
+        "http://localhost:3000/demo"
+      ],
       "numberOfRuns": 3,
       "settings": {
         "formFactor": "mobile",
@@ -29,7 +33,7 @@
         "categories:performance": ["error", { "minScore": 0.9 }],
         "categories:accessibility": ["error", { "minScore": 0.9 }],
         "categories:best-practices": ["warn", { "minScore": 0.9 }],
-        "categories:seo": ["warn", { "minScore": 0.9 }]
+        "categories:seo": ["error", { "minScore": 0.95 }]
       }
     },
     "upload": {
