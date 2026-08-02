@@ -35,6 +35,12 @@ vi.mock("next/headers", () => ({
     get: (name: string) => {
       if (name.toLowerCase() === "x-tenant-id") return state.tenantIdHeader;
       if (name.toLowerCase() === "host") return state.host;
+      if (name.toLowerCase() === "x-bukay-public-tenant-slug") {
+        const subdomain = state.host.split(".")[0] ?? null;
+        return subdomain && !["www", "app", "api", "admin"].includes(subdomain)
+          ? subdomain
+          : null;
+      }
       return null;
     },
   }),
@@ -157,6 +163,45 @@ describe("Home page", () => {
 
     expect(state.tenantFindUnique).toHaveBeenCalledWith({
       where: { id: "tenant-1" },
+      select: expect.any(Object),
+    });
+  });
+
+  it("resolves a changed public slug to that tenant's booking page", async () => {
+    state.host = "fresh-cuts.bukay.app";
+    state.tenants = [
+      tenant({
+        id: "tenant-renamed",
+        name: "Fresh Cuts Renamed",
+        slug: "fresh-cuts",
+        logoUrl: null,
+      }),
+      tenant({ id: "tenant-old", name: "Old Demo", slug: "demo" }),
+    ];
+    state.services = [
+      service({
+        tenantId: "tenant-renamed",
+        name: "Slug Routed Trim",
+      }),
+      service({
+        tenantId: "tenant-old",
+        name: "Old Demo Cut",
+      }),
+    ];
+
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("Fresh Cuts Renamed");
+    expect(html).toContain("Slug Routed Trim");
+    expect(html).not.toContain("Old Demo");
+    expect(html).not.toContain("Old Demo Cut");
+    expect(state.tenantFindUnique).toHaveBeenCalledWith({
+      where: { slug: "fresh-cuts" },
+      select: expect.any(Object),
+    });
+    expect(state.serviceFindMany).toHaveBeenCalledWith({
+      where: { tenantId: "tenant-renamed", active: true },
+      orderBy: { name: "asc" },
       select: expect.any(Object),
     });
   });
