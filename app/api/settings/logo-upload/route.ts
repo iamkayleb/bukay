@@ -22,11 +22,7 @@ export async function POST(req: NextRequest) {
 
   return runForTenant(req, async (tenantId) => {
     try {
-      const upload = createS3LogoUpload(
-        tenantId,
-        parsed.data,
-        loadS3LogoUploadConfig(process.env)
-      );
+      const upload = createS3LogoUpload(tenantId, parsed.data, loadS3LogoUploadConfig(process.env));
 
       return NextResponse.json({ ok: true, upload });
     } catch (error) {

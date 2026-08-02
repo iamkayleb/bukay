@@ -14,7 +14,7 @@ export const defaultSettingsForm: SettingsFormState = {
   businessName: "Bukay Studio",
   slug: "demo",
   logoUrl: "",
-  brandColor: "#10b981",
+  brandColor: "#047857",
   cancellationPolicy: "Clients can cancel or reschedule up to 24 hours before their appointment.",
 };
 

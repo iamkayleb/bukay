@@ -24,6 +24,7 @@ EXPECTED_MIGRATIONS = {
     "20260731000000_add_tenant_settings",
     "20260731120000_add_client_tags",
     "20260731123000_add_client_search_name_index",
+    "20260802000000_add_tenant_branding_settings",
 }
 
 EXPECTED_SCHEMA_FIELD_CONTRACT = {

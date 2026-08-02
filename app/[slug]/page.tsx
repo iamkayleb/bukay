@@ -9,7 +9,17 @@ type TenantLandingPageProps = {
   };
 };
 
-const weekdayLabels = [
+const weekdayLabels: Record<string, string> = {
+  SUNDAY: "Sunday",
+  MONDAY: "Monday",
+  TUESDAY: "Tuesday",
+  WEDNESDAY: "Wednesday",
+  THURSDAY: "Thursday",
+  FRIDAY: "Friday",
+  SATURDAY: "Saturday",
+};
+
+const numericWeekdayLabels = [
   "Sunday",
   "Monday",
   "Tuesday",
@@ -53,14 +63,18 @@ function formatPrice(priceCents: number, currency: string) {
   }).format(priceCents / 100);
 }
 
-function formatBusinessHour(
-  dayOfWeek: number,
-  opensAt: string,
-  closesAt: string,
-  isClosed: boolean
-) {
-  const day = weekdayLabels[dayOfWeek] ?? "Day";
-  return isClosed ? `${day}: Closed` : `${day}: ${opensAt}-${closesAt}`;
+function formatBusinessHour(dayOfWeek: string | number, openMinute: number, closeMinute: number) {
+  const day =
+    typeof dayOfWeek === "number"
+      ? numericWeekdayLabels[dayOfWeek]
+      : (weekdayLabels[dayOfWeek] ?? "Day");
+  return `${day ?? "Day"}: ${formatMinute(openMinute)}-${formatMinute(closeMinute)}`;
+}
+
+function formatMinute(minute: number) {
+  const hour = Math.floor(minute / 60);
+  const minutes = minute % 60;
+  return `${String(hour).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
 export async function generateMetadata({ params }: TenantLandingPageProps): Promise<Metadata> {
@@ -156,9 +170,8 @@ export default async function TenantLandingPage({ params }: TenantLandingPagePro
         select: {
           id: true,
           dayOfWeek: true,
-          opensAt: true,
-          closesAt: true,
-          isClosed: true,
+          openMinute: true,
+          closeMinute: true,
         },
       },
     },
@@ -234,7 +247,7 @@ export default async function TenantLandingPage({ params }: TenantLandingPagePro
               {tenant.businessHours.length > 0 ? (
                 tenant.businessHours.map((hour) => (
                   <li key={hour.id}>
-                    {formatBusinessHour(hour.dayOfWeek, hour.opensAt, hour.closesAt, hour.isClosed)}
+                    {formatBusinessHour(hour.dayOfWeek, hour.openMinute, hour.closeMinute)}
                   </li>
                 ))
               ) : (
