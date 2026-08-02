@@ -6,9 +6,14 @@ export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export type SessionPayload = {
   sub: string;
   phone: string;
+  tenantId?: string;
+  tenantSlug?: string;
   iat: number;
   exp: number;
 };
+
+export type SessionVerificationResult =
+  { ok: true; payload: SessionPayload } | { ok: false; reason: "missing" | "invalid" | "expired" };
 
 function b64urlEncode(buf: Buffer): string {
   return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -34,9 +39,17 @@ export function signSession(payload: SessionPayload, secret?: string): string {
 }
 
 export function verifySession(token: string, secret?: string): SessionPayload | null {
-  if (!token || typeof token !== "string") return null;
+  const result = verifySessionDetailed(token, secret);
+  return result.ok ? result.payload : null;
+}
+
+export function verifySessionDetailed(
+  token: string | null | undefined,
+  secret?: string
+): SessionVerificationResult {
+  if (!token || typeof token !== "string") return { ok: false, reason: "missing" };
   const dot = token.indexOf(".");
-  if (dot <= 0) return null;
+  if (dot <= 0) return { ok: false, reason: "invalid" };
   const body = token.slice(0, dot);
   const sigPart = token.slice(dot + 1);
 
@@ -46,20 +59,22 @@ export function verifySession(token: string, secret?: string): SessionPayload | 
     expected = createHmac("sha256", getSecret(secret)).update(body).digest();
     provided = b64urlDecode(sigPart);
   } catch {
-    return null;
+    return { ok: false, reason: "invalid" };
   }
-  if (expected.length !== provided.length) return null;
-  if (!timingSafeEqual(expected, provided)) return null;
+  if (expected.length !== provided.length) return { ok: false, reason: "invalid" };
+  if (!timingSafeEqual(expected, provided)) return { ok: false, reason: "invalid" };
 
   let payload: SessionPayload;
   try {
     payload = JSON.parse(b64urlDecode(body).toString("utf8")) as SessionPayload;
   } catch {
-    return null;
+    return { ok: false, reason: "invalid" };
   }
-  if (!payload || typeof payload.sub !== "string" || typeof payload.exp !== "number") return null;
-  if (Date.now() >= payload.exp) return null;
-  return payload;
+  if (!payload || typeof payload.sub !== "string" || typeof payload.exp !== "number") {
+    return { ok: false, reason: "invalid" };
+  }
+  if (Date.now() >= payload.exp) return { ok: false, reason: "expired" };
+  return { ok: true, payload };
 }
 
 export type CookieAttrs = {
