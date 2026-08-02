@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type TopBarProps = {
   tenantName: string;
@@ -12,10 +13,31 @@ type TopBarProps = {
 export function TopBar({ tenantName, userPhone, onOpenDrawer }: TopBarProps) {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDocClick(event: MouseEvent) {
+      if (!menuRef.current) return;
+      if (menuRef.current.contains(event.target as Node)) return;
+      setMenuOpen(false);
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   async function handleLogout() {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
+    setMenuOpen(false);
     try {
       await fetch("/api/auth/logout", { method: "POST", headers: { Accept: "application/json" } });
     } catch {
@@ -57,20 +79,75 @@ export function TopBar({ tenantName, userPhone, onOpenDrawer }: TopBarProps) {
           </h1>
         </div>
       </div>
-      <div className="flex items-center gap-3">
-        {userPhone ? (
-          <span className="hidden text-xs text-slate-400 sm:inline" data-testid="user-phone">
-            {userPhone}
-          </span>
-        ) : null}
+      <div className="relative" ref={menuRef}>
         <button
-          className="rounded-md border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-100 hover:border-red-400 disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={isLoggingOut}
-          onClick={() => void handleLogout()}
+          aria-expanded={menuOpen}
+          aria-haspopup="menu"
+          aria-label="Open user menu"
+          className="flex items-center gap-2 rounded-md border border-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-100 hover:border-emerald-400"
+          data-testid="user-menu-trigger"
+          onClick={() => setMenuOpen((v) => !v)}
           type="button"
         >
-          {isLoggingOut ? "Signing out..." : "Sign out"}
+          <span
+            aria-hidden="true"
+            className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-semibold uppercase text-emerald-200"
+          >
+            {tenantName.slice(0, 2)}
+          </span>
+          {userPhone ? (
+            <span className="hidden text-xs text-slate-300 sm:inline" data-testid="user-phone">
+              {userPhone}
+            </span>
+          ) : (
+            <span className="hidden text-xs text-slate-300 sm:inline">Account</span>
+          )}
+          <svg
+            aria-hidden="true"
+            className={`transition-transform ${menuOpen ? "rotate-180" : ""}`}
+            fill="none"
+            height="12"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+            width="12"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </button>
+        {menuOpen ? (
+          <div
+            aria-label="User menu"
+            className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-md border border-slate-800 bg-slate-950 shadow-xl"
+            data-testid="user-menu"
+            role="menu"
+          >
+            <div className="border-b border-slate-800 px-3 py-2 text-xs text-slate-400">
+              <p className="font-medium text-slate-200">{tenantName}</p>
+              {userPhone ? <p className="mt-0.5 truncate">{userPhone}</p> : null}
+            </div>
+            <Link
+              className="block px-3 py-2 text-xs text-slate-100 hover:bg-slate-900"
+              href="/settings"
+              onClick={() => setMenuOpen(false)}
+              role="menuitem"
+            >
+              Settings
+            </Link>
+            <button
+              className="block w-full px-3 py-2 text-left text-xs text-slate-100 hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+              data-testid="user-menu-logout"
+              disabled={isLoggingOut}
+              onClick={() => void handleLogout()}
+              role="menuitem"
+              type="button"
+            >
+              {isLoggingOut ? "Signing out..." : "Sign out"}
+            </button>
+          </div>
+        ) : null}
       </div>
     </header>
   );
