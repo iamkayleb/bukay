@@ -14,9 +14,14 @@ export function TopBar({ tenantName, userPhone, onOpenDrawer }: TopBarProps) {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const wasOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (!menuOpen) setCopyState("idle");
+  }, [menuOpen]);
 
   useEffect(() => {
     if (!menuOpen) {
@@ -71,6 +76,20 @@ export function TopBar({ tenantName, userPhone, onOpenDrawer }: TopBarProps) {
       document.removeEventListener("keydown", onKey);
     };
   }, [menuOpen]);
+
+  async function handleCopyPhone() {
+    if (!userPhone) return;
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(userPhone);
+        setCopyState("copied");
+      } else {
+        setCopyState("failed");
+      }
+    } catch {
+      setCopyState("failed");
+    }
+  }
 
   async function handleLogout() {
     if (isLoggingOut) return;
@@ -170,7 +189,11 @@ export function TopBar({ tenantName, userPhone, onOpenDrawer }: TopBarProps) {
             data-testid="user-menu"
             role="menu"
           >
-            <div className="border-b border-slate-800 px-3 py-2 text-xs text-slate-400">
+            <div
+              className="px-3 py-2 text-xs text-slate-400"
+              data-testid="user-menu-account"
+              role="none"
+            >
               <p className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Signed in as</p>
               <p className="mt-0.5 font-medium text-slate-200" data-testid="user-menu-tenant">
                 {tenantName}
@@ -181,6 +204,12 @@ export function TopBar({ tenantName, userPhone, onOpenDrawer }: TopBarProps) {
                 </p>
               ) : null}
             </div>
+            <div
+              aria-orientation="horizontal"
+              className="h-px bg-slate-800"
+              data-testid="user-menu-separator"
+              role="separator"
+            />
             <Link
               className="block px-3 py-2 text-xs text-slate-100 hover:bg-slate-900"
               href="/settings"
@@ -189,6 +218,26 @@ export function TopBar({ tenantName, userPhone, onOpenDrawer }: TopBarProps) {
             >
               Settings
             </Link>
+            {userPhone ? (
+              <button
+                className="block w-full px-3 py-2 text-left text-xs text-slate-100 hover:bg-slate-900"
+                data-testid="user-menu-copy-phone"
+                onClick={() => void handleCopyPhone()}
+                role="menuitem"
+                type="button"
+              >
+                {copyState === "copied"
+                  ? "Copied phone ✓"
+                  : copyState === "failed"
+                    ? "Copy failed"
+                    : "Copy phone number"}
+              </button>
+            ) : null}
+            <div
+              aria-orientation="horizontal"
+              className="h-px bg-slate-800"
+              role="separator"
+            />
             <button
               className="block w-full px-3 py-2 text-left text-xs text-slate-100 hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
               data-testid="user-menu-logout"

@@ -197,4 +197,79 @@ describe("TopBar user menu", () => {
     expect(screen.getByTestId("user-menu")).toBeTruthy();
     expect(screen.getByTestId("user-menu-trigger").getAttribute("aria-expanded")).toBe("true");
   });
+
+  it("renders a WAI-ARIA separator between the account block and the menuitems", () => {
+    render(<TopBar onOpenDrawer={() => undefined} tenantName="Acme" userPhone="+2348011112222" />);
+    fireEvent.click(screen.getByTestId("user-menu-trigger"));
+
+    const separator = screen.getByTestId("user-menu-separator");
+    expect(separator.getAttribute("role")).toBe("separator");
+    expect(separator.getAttribute("aria-orientation")).toBe("horizontal");
+  });
+
+  it("shows a Copy phone number menuitem only when a phone number is present", () => {
+    const { rerender } = render(<TopBar onOpenDrawer={() => undefined} tenantName="Acme" />);
+    fireEvent.click(screen.getByTestId("user-menu-trigger"));
+    expect(screen.queryByTestId("user-menu-copy-phone")).toBeNull();
+
+    // close, rerender with phone, reopen
+    fireEvent.keyDown(document, { key: "Escape" });
+    rerender(<TopBar onOpenDrawer={() => undefined} tenantName="Acme" userPhone="+2348011112222" />);
+    fireEvent.click(screen.getByTestId("user-menu-trigger"));
+    const copyBtn = screen.getByTestId("user-menu-copy-phone");
+    expect(copyBtn.getAttribute("role")).toBe("menuitem");
+    expect(copyBtn.textContent).toBe("Copy phone number");
+  });
+
+  it("copies the phone number to the clipboard and confirms in the label", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+
+    render(<TopBar onOpenDrawer={() => undefined} tenantName="Acme" userPhone="+2348011112222" />);
+    fireEvent.click(screen.getByTestId("user-menu-trigger"));
+    fireEvent.click(screen.getByTestId("user-menu-copy-phone"));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(writeText).toHaveBeenCalledWith("+2348011112222");
+    expect(screen.getByTestId("user-menu-copy-phone").textContent).toBe("Copied phone ✓");
+  });
+
+  it("shows a Copy failed label when the clipboard API rejects", async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error("blocked"));
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+
+    render(<TopBar onOpenDrawer={() => undefined} tenantName="Acme" userPhone="+2348011112222" />);
+    fireEvent.click(screen.getByTestId("user-menu-trigger"));
+    fireEvent.click(screen.getByTestId("user-menu-copy-phone"));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(screen.getByTestId("user-menu-copy-phone").textContent).toBe("Copy failed");
+  });
+
+  it("keeps arrow navigation cycling through all three menuitems when phone is present", () => {
+    render(<TopBar onOpenDrawer={() => undefined} tenantName="Acme" userPhone="+2348011112222" />);
+    fireEvent.click(screen.getByTestId("user-menu-trigger"));
+
+    const settings = screen.getByRole("menuitem", { name: "Settings" });
+    const copy = screen.getByTestId("user-menu-copy-phone");
+    const logout = screen.getByTestId("user-menu-logout");
+    expect(document.activeElement).toBe(settings);
+
+    fireEvent.keyDown(document, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(copy);
+    fireEvent.keyDown(document, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(logout);
+    fireEvent.keyDown(document, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(settings);
+  });
 });
