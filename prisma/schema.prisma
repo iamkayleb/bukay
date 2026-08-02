@@ -15,6 +15,7 @@ model Tenant {
   id            String         @id @default(cuid())
   name          String
   slug          String         @unique
+  active        Boolean        @default(true)
   timezone      String         @default("Africa/Lagos")
   currency      String         @default("NGN")
   createdAt     DateTime       @default(now())
@@ -167,4 +168,3 @@ model AuditLog {
   @@index([tenantId])
   @@index([tenantId, entityType, entityId])
 }
-

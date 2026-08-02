@@ -3,6 +3,7 @@ CREATE TABLE "Tenant" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
+    "active" BOOLEAN NOT NULL DEFAULT true,
     "timezone" TEXT NOT NULL DEFAULT 'Africa/Lagos',
     "currency" TEXT NOT NULL DEFAULT 'NGN',
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
