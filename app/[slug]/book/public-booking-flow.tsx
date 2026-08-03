@@ -101,6 +101,15 @@ export function previousBookingStep(step: PublicBookingStep) {
   return PUBLIC_BOOKING_STEPS[Math.max(index - 1, 0)];
 }
 
+export function firstIncompleteBookingStep(
+  draft: PublicBookingDraft,
+  services: PublicBookingService[]
+): PublicBookingStep {
+  return (
+    PUBLIC_BOOKING_STEPS.find((step) => !canProceedFromStep(step, draft, services)) ?? "confirm"
+  );
+}
+
 export function buildAvailableSlots(date: string, service?: PublicBookingService) {
   if (!date || !service) {
     return [];
@@ -197,9 +206,13 @@ export function PublicBookingFlow({ tenantName, tenantSlug, services }: PublicBo
   );
 
   useEffect(() => {
-    setDraft(mergeStoredDraft(window.localStorage.getItem(bookingDraftStorageKey(tenantSlug))));
+    const storedDraft = mergeStoredDraft(
+      window.localStorage.getItem(bookingDraftStorageKey(tenantSlug))
+    );
+    setDraft(storedDraft);
+    setCurrentStep(firstIncompleteBookingStep(storedDraft, services));
     setLoadedDraftSlug(tenantSlug);
-  }, [tenantSlug]);
+  }, [services, tenantSlug]);
 
   useEffect(() => {
     if (loadedDraftSlug !== tenantSlug) {

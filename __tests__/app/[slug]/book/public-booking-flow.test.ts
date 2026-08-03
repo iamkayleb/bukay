@@ -6,6 +6,7 @@ import {
   buildPublicBookingPayload,
   canProceedFromStep,
   emptyPublicBookingDraft,
+  firstIncompleteBookingStep,
   nextBookingStep,
   previousBookingStep,
   type PublicBookingDraft,
@@ -62,6 +63,19 @@ describe("public booking flow helpers", () => {
     expect(canProceedFromStep("details", { ...completeDraft, customerPhone: " " }, services)).toBe(
       false
     );
+  });
+
+  it("restores a saved draft to the first incomplete booking step", () => {
+    expect(firstIncompleteBookingStep(emptyPublicBookingDraft, services)).toBe("service");
+    expect(firstIncompleteBookingStep({ ...completeDraft, slot: "" }, services)).toBe("slot");
+    expect(firstIncompleteBookingStep({ ...completeDraft, customerName: "" }, services)).toBe(
+      "details"
+    );
+    expect(firstIncompleteBookingStep(completeDraft, services)).toBe("confirm");
+  });
+
+  it("returns to service selection when a saved service is no longer available", () => {
+    expect(firstIncompleteBookingStep(completeDraft, [])).toBe("service");
   });
 
   it("builds bookable slots from service duration", () => {
