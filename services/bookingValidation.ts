@@ -10,6 +10,7 @@ export type BookingRecord = BookingInterval & {
   serviceId?: string;
   staffId: string | null;
   status?: string;
+  isSlotHold?: boolean;
   holdExpiresAt?: Date | null;
   slotHoldKey?: string | null;
   notes?: string | null;
@@ -114,7 +115,7 @@ export async function validateBookingInterval(
 export function blockingBookingWhere(now: Date) {
   return {
     status: { in: [CONFIRMED_BOOKING_STATUS, HELD_BOOKING_STATUS] },
-    OR: [{ status: CONFIRMED_BOOKING_STATUS }, { holdExpiresAt: { gt: now } }],
+    OR: [{ status: CONFIRMED_BOOKING_STATUS }, { isSlotHold: true, holdExpiresAt: { gt: now } }],
   };
 }
 

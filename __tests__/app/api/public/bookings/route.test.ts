@@ -10,6 +10,7 @@ type BookingRow = {
   startsAt: Date;
   endsAt: Date;
   status: string;
+  isSlotHold: boolean;
   holdExpiresAt: Date | null;
   slotHoldKey: string | null;
   notes: string | null;
@@ -33,7 +34,7 @@ type FindManyArgs = {
     startsAt: { lt: Date };
     endsAt: { gt: Date };
     status: { in: string[] };
-    OR: [{ status: string }, { holdExpiresAt: { gt: Date } }];
+    OR: [{ status: string }, { isSlotHold: true; holdExpiresAt: { gt: Date } }];
   };
   take: number;
 };
@@ -72,6 +73,7 @@ function booking(overrides: Partial<BookingRow> = {}): BookingRow {
     startsAt: new Date("2026-08-10T09:00:00.000Z"),
     endsAt: new Date("2026-08-10T10:00:00.000Z"),
     status: "pending_payment",
+    isSlotHold: true,
     holdExpiresAt: new Date("2026-08-10T08:10:00.000Z"),
     slotHoldKey: "tenant-1:public:2026-08-10T09:00:00.000Z:2026-08-10T10:00:00.000Z",
     notes: null,
@@ -176,6 +178,7 @@ beforeEach(() => {
         const hasBlockingStatus = args.where.status.in.includes(row.status);
         const isConfirmed = row.status === args.where.OR[0].status;
         const isActiveHold =
+          row.isSlotHold &&
           row.holdExpiresAt !== null && row.holdExpiresAt > args.where.OR[1].holdExpiresAt.gt;
 
         return (
@@ -195,6 +198,7 @@ beforeEach(() => {
       where: {
         tenantId: string;
         status: string;
+        isSlotHold: boolean;
         holdExpiresAt: { lte: Date };
         slotHoldKey: { not: null };
       };
@@ -205,6 +209,7 @@ beforeEach(() => {
         if (
           row.tenantId === args.where.tenantId &&
           row.status === args.where.status &&
+          row.isSlotHold === args.where.isSlotHold &&
           row.holdExpiresAt !== null &&
           row.holdExpiresAt <= args.where.holdExpiresAt.lte &&
           row.slotHoldKey !== args.where.slotHoldKey.not
@@ -252,11 +257,13 @@ describe("POST /api/public/bookings", () => {
       serviceId: "service-1",
       status: "pending_payment",
       holdExpiresAt: "2026-08-10T08:10:00.000Z",
+      isSlotHold: true,
     });
     expect(body.holdExpiresAt).toBe("2026-08-10T08:10:00.000Z");
     expect(state.bookingCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
         status: "pending_payment",
+        isSlotHold: true,
         holdExpiresAt: new Date("2026-08-10T08:10:00.000Z"),
         slotHoldKey: "tenant-1:public:2026-08-10T09:00:00.000Z:2026-08-10T10:00:00.000Z",
       }),
@@ -265,6 +272,7 @@ describe("POST /api/public/bookings", () => {
       where: {
         tenantId: "tenant-1",
         status: "pending_payment",
+        isSlotHold: true,
         holdExpiresAt: { lte: new Date("2026-08-10T08:00:00.000Z") },
         slotHoldKey: { not: null },
       },
@@ -287,7 +295,7 @@ describe("POST /api/public/bookings", () => {
         status: { in: ["confirmed", "pending_payment"] },
         OR: [
           { status: "confirmed" },
-          { holdExpiresAt: { gt: new Date("2026-08-10T08:00:00.000Z") } },
+          { isSlotHold: true, holdExpiresAt: { gt: new Date("2026-08-10T08:00:00.000Z") } },
         ],
       }),
       take: 1,
@@ -299,6 +307,7 @@ describe("POST /api/public/bookings", () => {
       booking({
         id: "confirmed-booking",
         status: "confirmed",
+        isSlotHold: false,
         holdExpiresAt: null,
         slotHoldKey: null,
       })
@@ -317,6 +326,7 @@ describe("POST /api/public/bookings", () => {
       booking({
         id: "cancelled-booking",
         status: "cancelled",
+        isSlotHold: false,
         holdExpiresAt: new Date("2026-08-10T08:10:00.000Z"),
         slotHoldKey: null,
       })
@@ -345,8 +355,25 @@ describe("POST /api/public/bookings", () => {
     expect(state.bookingCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
         slotHoldKey: "tenant-1:public:2026-08-10T09:00:00.000Z:2026-08-10T10:00:00.000Z",
+        isSlotHold: true,
       }),
     });
+  });
+
+  it("does not block a slot with an ordinary pending-payment booking that is not a hold", async () => {
+    state.bookings.push(
+      booking({
+        id: "pending-payment-booking",
+        isSlotHold: false,
+        holdExpiresAt: new Date("2026-08-10T08:10:00.000Z"),
+        slotHoldKey: null,
+      })
+    );
+
+    const res = await POST(request(validPayload()));
+
+    expect(res.status).toBe(201);
+    expect(state.bookingCreate).toHaveBeenCalledOnce();
   });
 
   it("allows a slot when the only overlapping hold has expired", async () => {

@@ -121,6 +121,7 @@ model Booking {
   startsAt      DateTime
   endsAt        DateTime
   status        String    @default("pending")
+  isSlotHold    Boolean   @default(false)
   holdExpiresAt DateTime?
   slotHoldKey   String?   @unique
   notes         String?
@@ -131,6 +132,7 @@ model Booking {
   @@index([tenantId])
   @@index([tenantId, startsAt])
   @@index([tenantId, status, holdExpiresAt])
+  @@index([tenantId, isSlotHold, holdExpiresAt])
   @@index([clientId])
   @@index([serviceId])
   @@index([staffId])

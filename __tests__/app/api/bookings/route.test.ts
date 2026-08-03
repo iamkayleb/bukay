@@ -10,6 +10,8 @@ type BookingRow = {
   startsAt: Date;
   endsAt: Date;
   status: string;
+  isSlotHold: boolean;
+  holdExpiresAt: Date | null;
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -68,6 +70,8 @@ function booking(overrides: Partial<BookingRow> = {}): BookingRow {
     startsAt: new Date("2026-07-27T10:00:00.000Z"),
     endsAt: new Date("2026-07-27T11:00:00.000Z"),
     status: "confirmed",
+    isSlotHold: false,
+    holdExpiresAt: null,
     notes: null,
     createdAt: new Date("2026-07-01T10:00:00.000Z"),
     updatedAt: new Date("2026-07-01T10:00:00.000Z"),
@@ -216,7 +220,10 @@ describe("PATCH /api/bookings/:id", () => {
         startsAt: { lt: new Date("2026-07-27T11:00:00.000Z") },
         endsAt: { gt: new Date("2026-07-27T09:45:00.000Z") },
         status: { in: ["confirmed", "pending_payment"] },
-        OR: [{ status: "confirmed" }, { holdExpiresAt: { gt: expect.any(Date) } }],
+        OR: [
+          { status: "confirmed" },
+          { isSlotHold: true, holdExpiresAt: { gt: expect.any(Date) } },
+        ],
       },
       take: 1,
     });
@@ -253,7 +260,10 @@ describe("PATCH /api/bookings/:id", () => {
         startsAt: { lt: new Date("2026-07-27T11:00:00.000Z") },
         endsAt: { gt: new Date("2026-07-27T09:00:00.000Z") },
         status: { in: ["confirmed", "pending_payment"] },
-        OR: [{ status: "confirmed" }, { holdExpiresAt: { gt: expect.any(Date) } }],
+        OR: [
+          { status: "confirmed" },
+          { isSlotHold: true, holdExpiresAt: { gt: expect.any(Date) } },
+        ],
       },
       take: 1,
     });

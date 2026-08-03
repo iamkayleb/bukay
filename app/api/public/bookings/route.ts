@@ -166,6 +166,7 @@ export async function POST(req: NextRequest) {
       where: {
         tenantId: tenant.id,
         status: "pending_payment",
+        isSlotHold: true,
         holdExpiresAt: { lte: now },
         slotHoldKey: { not: null },
       },
@@ -233,6 +234,7 @@ export async function POST(req: NextRequest) {
           startsAt: payload.startsAt,
           endsAt: payload.endsAt,
           status: "pending_payment",
+          isSlotHold: true,
           holdExpiresAt,
           slotHoldKey: buildPublicSlotHoldKey(tenant.id, payload.startsAt, payload.endsAt),
           notes: payload.notes ?? null,
@@ -274,6 +276,7 @@ function serializePublicBooking(booking: BookingRecord) {
     startsAt: booking.startsAt.toISOString(),
     endsAt: booking.endsAt.toISOString(),
     status: booking.status,
+    isSlotHold: booking.isSlotHold ?? false,
     holdExpiresAt: booking.holdExpiresAt?.toISOString() ?? null,
     notes: booking.notes,
     createdAt: booking.createdAt?.toISOString(),
