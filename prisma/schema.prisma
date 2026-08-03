@@ -109,25 +109,27 @@ model Client {
 }
 
 model Booking {
-  id        String    @id @default(cuid())
-  tenantId  String
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  clientId  String
-  client    Client    @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  serviceId String
-  service   Service   @relation(fields: [serviceId], references: [id], onDelete: Restrict)
-  staffId   String?
-  staff     Staff?    @relation(fields: [staffId], references: [id], onDelete: SetNull)
-  startsAt  DateTime
-  endsAt    DateTime
-  status    String    @default("pending")
-  notes     String?
-  payments  Payment[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client    @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  serviceId     String
+  service       Service   @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  staffId       String?
+  staff         Staff?    @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  startsAt      DateTime
+  endsAt        DateTime
+  status        String    @default("pending")
+  holdExpiresAt DateTime?
+  notes         String?
+  payments      Payment[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([tenantId])
   @@index([tenantId, startsAt])
+  @@index([tenantId, status, holdExpiresAt])
   @@index([clientId])
   @@index([serviceId])
   @@index([staffId])
@@ -167,4 +169,3 @@ model AuditLog {
   @@index([tenantId])
   @@index([tenantId, entityType, entityId])
 }
-

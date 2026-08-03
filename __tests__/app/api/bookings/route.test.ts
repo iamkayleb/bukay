@@ -215,6 +215,8 @@ describe("PATCH /api/bookings/:id", () => {
         staffId: "staff-1",
         startsAt: { lt: new Date("2026-07-27T11:00:00.000Z") },
         endsAt: { gt: new Date("2026-07-27T09:45:00.000Z") },
+        status: { in: ["confirmed", "pending_payment"] },
+        OR: [{ status: "confirmed" }, { holdExpiresAt: { gt: expect.any(Date) } }],
       },
       take: 1,
     });
@@ -250,6 +252,8 @@ describe("PATCH /api/bookings/:id", () => {
         staffId: "staff-1",
         startsAt: { lt: new Date("2026-07-27T11:00:00.000Z") },
         endsAt: { gt: new Date("2026-07-27T09:00:00.000Z") },
+        status: { in: ["confirmed", "pending_payment"] },
+        OR: [{ status: "confirmed" }, { holdExpiresAt: { gt: expect.any(Date) } }],
       },
       take: 1,
     });

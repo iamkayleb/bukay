@@ -7,6 +7,8 @@ export type BookingRecord = BookingInterval & {
   id: string;
   tenantId: string;
   staffId: string | null;
+  status?: string;
+  holdExpiresAt?: Date | null;
 };
 
 export type BusinessHourRecord = {
@@ -44,6 +46,7 @@ export type BookingValidationStore = {
     staffId: string | null;
     startsAt: Date;
     endsAt: Date;
+    now: Date;
   }): Promise<BookingRecord | null>;
 };
 
@@ -62,7 +65,8 @@ export function mergeBookingInterval(
 export async function validateBookingInterval(
   store: BookingValidationStore,
   existing: BookingRecord,
-  candidate: BookingInterval & { staffId?: string | null }
+  candidate: BookingInterval & { staffId?: string | null },
+  now = new Date()
 ): Promise<BookingValidationIssue | null> {
   const staffId = candidate.staffId ?? existing.staffId;
   const intervalIssue = validateIntervalShape(candidate);
@@ -86,6 +90,7 @@ export async function validateBookingInterval(
     staffId,
     startsAt: candidate.startsAt,
     endsAt: candidate.endsAt,
+    now,
   });
   if (overlappingBooking) {
     return {
@@ -96,6 +101,13 @@ export async function validateBookingInterval(
   }
 
   return null;
+}
+
+export function blockingBookingWhere(now: Date) {
+  return {
+    status: { in: ["confirmed", "pending_payment"] },
+    OR: [{ status: "confirmed" }, { holdExpiresAt: { gt: now } }],
+  };
 }
 
 function validateIntervalShape(interval: BookingInterval): BookingValidationIssue | null {
