@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
 import {
   bookingDraftStorageKey,
@@ -9,6 +11,7 @@ import {
   firstIncompleteBookingStep,
   nextBookingStep,
   previousBookingStep,
+  PublicBookingFlow,
   type PublicBookingDraft,
   type PublicBookingService,
 } from "@/app/[slug]/book/public-booking-flow";
@@ -34,6 +37,27 @@ const completeDraft: PublicBookingDraft = {
 };
 
 describe("public booking flow helpers", () => {
+  it("renders the public multi-step booking UI with service selection and summary", () => {
+    const html = renderToStaticMarkup(
+      createElement(PublicBookingFlow, {
+        services,
+        tenantName: "Demo Salon",
+        tenantSlug: "demo",
+      })
+    );
+
+    expect(html).toContain("Demo Salon");
+    expect(html).toContain("Book an appointment");
+    expect(html).toContain("Service");
+    expect(html).toContain("Date");
+    expect(html).toContain("Time");
+    expect(html).toContain("Details");
+    expect(html).toContain("Confirm");
+    expect(html).toContain("Choose a service");
+    expect(html).toContain("Classic Cut");
+    expect(html).toContain("Summary");
+  });
+
   it("advances and reverses through the booking steps in order", () => {
     expect(nextBookingStep("service")).toBe("date");
     expect(nextBookingStep("date")).toBe("slot");
