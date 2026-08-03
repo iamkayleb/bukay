@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/app/db/prisma";
-import { jsonError, readJson, validationError } from "@/app/api/services/_helpers";
+import {
+  isUniqueConstraintError,
+  jsonError,
+  readJson,
+  validationError,
+} from "@/app/api/services/_helpers";
 import {
   blockingBookingWhere,
   validateBookingInterval,
@@ -63,6 +68,7 @@ type TransactionClient = {
   };
   booking: {
     findMany(args: unknown): Promise<BookingRecord[]>;
+    updateMany(args: unknown): Promise<{ count: number }>;
     create(args: unknown): Promise<BookingRecord>;
   };
   businessHour: {
@@ -120,6 +126,10 @@ function buildValidationStore(tx: TransactionClient, now: Date): BookingValidati
   };
 }
 
+function buildPublicSlotHoldKey(tenantId: string, startsAt: Date, endsAt: Date) {
+  return [tenantId, "public", startsAt.toISOString(), endsAt.toISOString()].join(":");
+}
+
 export async function POST(req: NextRequest) {
   const body = await readJson(req);
   if (body instanceof NextResponse) {
@@ -151,6 +161,16 @@ export async function POST(req: NextRequest) {
     if (!service) {
       return jsonError("service_not_found", 404);
     }
+
+    await tx.booking.updateMany({
+      where: {
+        tenantId: tenant.id,
+        status: "pending_payment",
+        holdExpiresAt: { lte: now },
+        slotHoldKey: { not: null },
+      },
+      data: { slotHoldKey: null },
+    });
 
     const expectedEndsAt = new Date(payload.startsAt.getTime() + service.durationMinutes * 60_000);
     if (expectedEndsAt.getTime() !== payload.endsAt.getTime()) {
@@ -203,18 +223,35 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const booking = await tx.booking.create({
-      data: {
-        tenantId: tenant.id,
-        clientId: client.id,
-        serviceId: service.id,
-        startsAt: payload.startsAt,
-        endsAt: payload.endsAt,
-        status: "pending_payment",
-        holdExpiresAt,
-        notes: payload.notes ?? null,
-      },
-    });
+    let booking: BookingRecord;
+    try {
+      booking = await tx.booking.create({
+        data: {
+          tenantId: tenant.id,
+          clientId: client.id,
+          serviceId: service.id,
+          startsAt: payload.startsAt,
+          endsAt: payload.endsAt,
+          status: "pending_payment",
+          holdExpiresAt,
+          slotHoldKey: buildPublicSlotHoldKey(tenant.id, payload.startsAt, payload.endsAt),
+          notes: payload.notes ?? null,
+        },
+      });
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "BOOKING_OVERLAP",
+            message: "Booking overlaps with another booking for the selected time.",
+          },
+          { status: 409 }
+        );
+      }
+
+      throw error;
+    }
 
     return NextResponse.json(
       {
@@ -229,9 +266,17 @@ export async function POST(req: NextRequest) {
 
 function serializePublicBooking(booking: BookingRecord) {
   return {
-    ...booking,
+    id: booking.id,
+    tenantId: booking.tenantId,
+    clientId: booking.clientId,
+    serviceId: booking.serviceId,
+    staffId: booking.staffId,
     startsAt: booking.startsAt.toISOString(),
     endsAt: booking.endsAt.toISOString(),
+    status: booking.status,
     holdExpiresAt: booking.holdExpiresAt?.toISOString() ?? null,
+    notes: booking.notes,
+    createdAt: booking.createdAt?.toISOString(),
+    updatedAt: booking.updatedAt?.toISOString(),
   };
 }

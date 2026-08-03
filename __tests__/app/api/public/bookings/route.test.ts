@@ -11,6 +11,7 @@ type BookingRow = {
   endsAt: Date;
   status: string;
   holdExpiresAt: Date | null;
+  slotHoldKey: string | null;
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -47,6 +48,7 @@ const state = vi.hoisted(() => ({
   serviceFindFirst: vi.fn(),
   clientUpsert: vi.fn(),
   bookingFindMany: vi.fn(),
+  bookingUpdateMany: vi.fn(),
   bookingCreate: vi.fn(),
   businessHourFindFirst: vi.fn(),
   blackoutDateFindFirst: vi.fn(),
@@ -71,6 +73,7 @@ function booking(overrides: Partial<BookingRow> = {}): BookingRow {
     endsAt: new Date("2026-08-10T10:00:00.000Z"),
     status: "pending_payment",
     holdExpiresAt: new Date("2026-08-10T08:10:00.000Z"),
+    slotHoldKey: "tenant-1:public:2026-08-10T09:00:00.000Z:2026-08-10T10:00:00.000Z",
     notes: null,
     createdAt: new Date("2026-08-10T08:00:00.000Z"),
     updatedAt: new Date("2026-08-10T08:00:00.000Z"),
@@ -114,6 +117,7 @@ beforeEach(() => {
   state.serviceFindFirst.mockReset();
   state.clientUpsert.mockReset();
   state.bookingFindMany.mockReset();
+  state.bookingUpdateMany.mockReset();
   state.bookingCreate.mockReset();
   state.businessHourFindFirst.mockReset();
   state.blackoutDateFindFirst.mockReset();
@@ -124,6 +128,7 @@ beforeEach(() => {
     client: { upsert: state.clientUpsert },
     booking: {
       findMany: state.bookingFindMany,
+      updateMany: state.bookingUpdateMany,
       create: state.bookingCreate,
     },
     businessHour: { findFirst: state.businessHourFindFirst },
@@ -185,6 +190,33 @@ beforeEach(() => {
       })
       .slice(0, args.take)
   );
+  state.bookingUpdateMany.mockImplementation(
+    async (args: {
+      where: {
+        tenantId: string;
+        status: string;
+        holdExpiresAt: { lte: Date };
+        slotHoldKey: { not: null };
+      };
+      data: { slotHoldKey: null };
+    }) => {
+      let count = 0;
+      for (const row of state.bookings) {
+        if (
+          row.tenantId === args.where.tenantId &&
+          row.status === args.where.status &&
+          row.holdExpiresAt !== null &&
+          row.holdExpiresAt <= args.where.holdExpiresAt.lte &&
+          row.slotHoldKey !== args.where.slotHoldKey.not
+        ) {
+          row.slotHoldKey = args.data.slotHoldKey;
+          count += 1;
+        }
+      }
+
+      return { count };
+    }
+  );
   state.bookingCreate.mockImplementation(
     async (args: { data: Omit<BookingRow, "id" | "createdAt" | "updatedAt"> }) => {
       const row = booking({
@@ -226,7 +258,17 @@ describe("POST /api/public/bookings", () => {
       data: expect.objectContaining({
         status: "pending_payment",
         holdExpiresAt: new Date("2026-08-10T08:10:00.000Z"),
+        slotHoldKey: "tenant-1:public:2026-08-10T09:00:00.000Z:2026-08-10T10:00:00.000Z",
       }),
+    });
+    expect(state.bookingUpdateMany).toHaveBeenCalledWith({
+      where: {
+        tenantId: "tenant-1",
+        status: "pending_payment",
+        holdExpiresAt: { lte: new Date("2026-08-10T08:00:00.000Z") },
+        slotHoldKey: { not: null },
+      },
+      data: { slotHoldKey: null },
     });
   });
 
@@ -252,6 +294,27 @@ describe("POST /api/public/bookings", () => {
     });
   });
 
+  it("returns an overlap conflict when a racing request wins the slot hold key", async () => {
+    state.bookingCreate.mockRejectedValueOnce(
+      Object.assign(new Error("Unique constraint failed"), { code: "P2002" })
+    );
+
+    const res = await POST(request(validPayload()));
+
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body).toMatchObject({
+      ok: false,
+      error: "BOOKING_OVERLAP",
+      message: "Booking overlaps with another booking for the selected time.",
+    });
+    expect(state.bookingCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        slotHoldKey: "tenant-1:public:2026-08-10T09:00:00.000Z:2026-08-10T10:00:00.000Z",
+      }),
+    });
+  });
+
   it("allows a slot when the only overlapping hold has expired", async () => {
     state.bookings.push(
       booking({
@@ -264,6 +327,7 @@ describe("POST /api/public/bookings", () => {
 
     expect(res.status).toBe(201);
     expect(state.bookingCreate).toHaveBeenCalledOnce();
+    expect(state.bookings.find((row) => row.id === "expired-hold")?.slotHoldKey).toBeNull();
   });
 
   it("rejects invalid Nigerian phone numbers before opening a transaction", async () => {

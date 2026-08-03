@@ -122,6 +122,7 @@ model Booking {
   endsAt        DateTime
   status        String    @default("pending")
   holdExpiresAt DateTime?
+  slotHoldKey   String?   @unique
   notes         String?
   payments      Payment[]
   createdAt     DateTime  @default(now())

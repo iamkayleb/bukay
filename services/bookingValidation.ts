@@ -6,9 +6,15 @@ export type BookingInterval = {
 export type BookingRecord = BookingInterval & {
   id: string;
   tenantId: string;
+  clientId?: string;
+  serviceId?: string;
   staffId: string | null;
   status?: string;
   holdExpiresAt?: Date | null;
+  slotHoldKey?: string | null;
+  notes?: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
 };
 
 export type BusinessHourRecord = {
