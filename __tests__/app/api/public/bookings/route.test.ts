@@ -294,6 +294,40 @@ describe("POST /api/public/bookings", () => {
     });
   });
 
+  it("blocks an overlapping confirmed booking without requiring a hold expiry", async () => {
+    state.bookings.push(
+      booking({
+        id: "confirmed-booking",
+        status: "confirmed",
+        holdExpiresAt: null,
+        slotHoldKey: null,
+      })
+    );
+
+    const res = await POST(request(validPayload()));
+
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error).toBe("BOOKING_OVERLAP");
+    expect(state.bookingCreate).not.toHaveBeenCalled();
+  });
+
+  it("does not block a slot with an overlapping non-blocking booking status", async () => {
+    state.bookings.push(
+      booking({
+        id: "cancelled-booking",
+        status: "cancelled",
+        holdExpiresAt: new Date("2026-08-10T08:10:00.000Z"),
+        slotHoldKey: null,
+      })
+    );
+
+    const res = await POST(request(validPayload()));
+
+    expect(res.status).toBe(201);
+    expect(state.bookingCreate).toHaveBeenCalledOnce();
+  });
+
   it("returns an overlap conflict when a racing request wins the slot hold key", async () => {
     state.bookingCreate.mockRejectedValueOnce(
       Object.assign(new Error("Unique constraint failed"), { code: "P2002" })

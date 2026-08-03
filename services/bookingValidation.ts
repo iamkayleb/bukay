@@ -57,6 +57,8 @@ export type BookingValidationStore = {
 };
 
 const TIME_PATTERN = /^(\d{2}):(\d{2})$/;
+const CONFIRMED_BOOKING_STATUS = "confirmed";
+const HELD_BOOKING_STATUS = "pending_payment";
 
 export function mergeBookingInterval(
   existing: BookingInterval,
@@ -111,8 +113,8 @@ export async function validateBookingInterval(
 
 export function blockingBookingWhere(now: Date) {
   return {
-    status: { in: ["confirmed", "pending_payment"] },
-    OR: [{ status: "confirmed" }, { holdExpiresAt: { gt: now } }],
+    status: { in: [CONFIRMED_BOOKING_STATUS, HELD_BOOKING_STATUS] },
+    OR: [{ status: CONFIRMED_BOOKING_STATUS }, { holdExpiresAt: { gt: now } }],
   };
 }
 
