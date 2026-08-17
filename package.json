@@ -11,6 +11,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "lighthouse:mobile": "lhci autorun --config=lighthouserc.json",
+    "lighthouse:session-cookie": "node scripts/lhci-session-cookie.mjs",
     "prisma:generate": "prisma generate",
     "postinstall": "prisma generate",
     "migrate:dev": "prisma migrate dev",
@@ -24,6 +25,8 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
@@ -32,6 +35,7 @@
     "eslint": "^8",
     "eslint-config-next": "^14.2.15",
     "eslint-config-prettier": "^9.1.0",
+    "jsdom": "^29.1.1",
     "postcss": "^8",
     "prettier": "^3.3.0",
     "prisma": "^5.14.0",
