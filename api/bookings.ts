@@ -10,6 +10,7 @@ import {
   validationError,
 } from "@/app/api/services/_helpers";
 import {
+  blockingBookingWhere,
   mergeBookingInterval,
   validateBookingInterval,
   type BookingRecord,
@@ -108,7 +109,7 @@ function buildValidationStore(): BookingValidationStore {
 
       return !!blackoutDate;
     },
-    async findOverlappingBooking({ tenantId, bookingId, staffId, startsAt, endsAt }) {
+    async findOverlappingBooking({ tenantId, bookingId, staffId, startsAt, endsAt, now }) {
       const overlappingBookings = await bookingDelegate.findMany({
         where: {
           tenantId,
@@ -116,6 +117,7 @@ function buildValidationStore(): BookingValidationStore {
           staffId,
           startsAt: { lt: endsAt },
           endsAt: { gt: startsAt },
+          ...blockingBookingWhere(now),
         },
         take: 1,
       });

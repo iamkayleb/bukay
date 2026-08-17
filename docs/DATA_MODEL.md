@@ -63,7 +63,9 @@ relations.
 ### Booking
 
 `Booking` links a client, service, optional staff member, start and end timestamps, status string, and
-optional notes. The tenant/start index supports calendar views.
+optional notes. Public booking requests create temporary slot holds with `isSlotHold = true`,
+`holdExpiresAt`, and `slotHoldKey`; confirmed bookings and active holds block overlapping slots. The
+tenant/start index supports calendar views.
 
 ### Payment
 

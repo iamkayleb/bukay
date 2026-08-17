@@ -6,7 +6,16 @@ export type BookingInterval = {
 export type BookingRecord = BookingInterval & {
   id: string;
   tenantId: string;
+  clientId?: string;
+  serviceId?: string;
   staffId: string | null;
+  status?: string;
+  isSlotHold?: boolean;
+  holdExpiresAt?: Date | null;
+  slotHoldKey?: string | null;
+  notes?: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
 };
 
 export type BusinessHourRecord = {
@@ -44,10 +53,13 @@ export type BookingValidationStore = {
     staffId: string | null;
     startsAt: Date;
     endsAt: Date;
+    now: Date;
   }): Promise<BookingRecord | null>;
 };
 
 const TIME_PATTERN = /^(\d{2}):(\d{2})$/;
+const CONFIRMED_BOOKING_STATUS = "confirmed";
+const HELD_BOOKING_STATUS = "pending_payment";
 
 export function mergeBookingInterval(
   existing: BookingInterval,
@@ -62,7 +74,8 @@ export function mergeBookingInterval(
 export async function validateBookingInterval(
   store: BookingValidationStore,
   existing: BookingRecord,
-  candidate: BookingInterval & { staffId?: string | null }
+  candidate: BookingInterval & { staffId?: string | null },
+  now = new Date()
 ): Promise<BookingValidationIssue | null> {
   const staffId = candidate.staffId ?? existing.staffId;
   const intervalIssue = validateIntervalShape(candidate);
@@ -86,6 +99,7 @@ export async function validateBookingInterval(
     staffId,
     startsAt: candidate.startsAt,
     endsAt: candidate.endsAt,
+    now,
   });
   if (overlappingBooking) {
     return {
@@ -96,6 +110,13 @@ export async function validateBookingInterval(
   }
 
   return null;
+}
+
+export function blockingBookingWhere(now: Date) {
+  return {
+    status: { in: [CONFIRMED_BOOKING_STATUS, HELD_BOOKING_STATUS] },
+    OR: [{ status: CONFIRMED_BOOKING_STATUS }, { isSlotHold: true, holdExpiresAt: { gt: now } }],
+  };
 }
 
 function validateIntervalShape(interval: BookingInterval): BookingValidationIssue | null {
