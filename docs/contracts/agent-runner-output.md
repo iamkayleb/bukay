@@ -1,8 +1,8 @@
 # Agent Runner Output Contract
 
-**Version:** 1.0
+**Version:** 1.2
 **Status:** Canonical specification
-**Last Updated:** February 17, 2026
+**Last Updated:** August 21, 2026
 
 ## Purpose
 
@@ -103,6 +103,27 @@ All runners MUST support LLM-based task completion analysis:
 | `llm-completed-tasks` | string | JSON array of completed task descriptions | `'["Add tests", "Fix bug"]'` |
 | `llm-has-completions` | string | Whether any task completions were detected (`"true"` \| `"false"`) | `"true"` |
 
+### Optional Capability Effect Evidence
+
+These provider-neutral outputs are empty by default. A caller MAY supply a
+complete evidence record when the run is exercising an existing bounded
+capability. Runners MUST validate the record through the shared runner library;
+they MUST NOT infer capability identity or effects from free-form agent prose.
+
+| Output | Type | Description | Example |
+|--------|------|-------------|---------|
+| `capability-id` | string | Existing `capability:<lowercase-kebab-id>` identifier | `capability:consumer-sync` |
+| `effect-fingerprint` | string | Lowercase `sha256:` fingerprint of the bounded effect | `sha256:0000000000000000000000000000000000000000000000000000000000000000` |
+| `evidence-artifact-ref` | string | Secret-safe durable logical evidence reference | `github-actions:owner/repo:123:consumer-sync-plan` |
+| `supervision-mode` | string | `shadow` \| `human-reviewed` \| `human-on-exception` \| `unattended` | `shadow` |
+| `capability-evidence-status` | string | `accepted` \| `rejected` \| `not-evaluated` | `accepted` |
+| `terminal-disposition` | string | `success` \| `failure` \| `no-change` \| `blocked` \| `cancelled` | `no-change` |
+| `subject-id` | string | **Optional (v1.2).** The `owner/repo` whose state the effect acted on. Omit when the effect has no single subject. | `stranske/ready` |
+
+Evidence is all-or-none: if any field is non-empty, every field is required.
+Invalid or partial evidence fails before agent execution. Empty evidence retains
+the v1.0 behavior and is not interpreted as a rejected capability outcome.
+
 ---
 
 ## Output Semantics
@@ -140,7 +161,7 @@ All runners MUST support LLM-based task completion analysis:
 1. **Provider priority:**
    - Prefer GitHub Models (no external secrets)
    - Fallback to OpenAI if `OPENAI_API_KEY` available
-   - Fallback to Anthropic if `CLAUDE_API_KEY` available
+   - Fallback to Anthropic if `CLAUDE_API_STRANSKE` available
    - Last resort: regex-based fallback (confidence: 0.5)
 
 2. **Task extraction logic:**
@@ -200,6 +221,17 @@ New optional outputs MAY be added without breaking compatibility:
 - Add output with default empty string value
 - Update this document
 - Update all existing runners to provide the output
+
+`subject-id` was added in **v1.2** under the same additive rule: runners that do not emit it
+remain compliant, and consumers treat an absent or empty value as "no subject". It exists because
+the consumer side promotes a capability on *distinct durable subjects*, and without a subject it had
+nothing to count — it fell back to the delivering PR, under which several PRs from one batch would
+have posed as independent evidence. A subject MUST be a repository (`owner/repo`), never prose, so
+the count cannot be inflated with free text.
+
+Capability evidence added in v1.1 follows this rule: all existing runners
+provide the outputs, and all values remain empty unless a caller supplies one
+complete validated record.
 
 ### Deprecating Outputs
 

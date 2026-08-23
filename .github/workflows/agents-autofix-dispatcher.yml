@@ -1,5 +1,9 @@
 name: Agents Autofix Dispatch
 
+# Compatibility bridge for legacy Gate repository_dispatch events. Gate-driven
+# repair routing now lives in agents-81-gate-followups.yml via workflow_run, so
+# this workflow only validates and logs the old dispatch payload.
+
 on:
   repository_dispatch:
     types:
@@ -16,7 +20,7 @@ jobs:
     steps:
       - name: Mint GitHub App token
         id: app_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         continue-on-error: true
         with:
           app-id: ${{ secrets.WORKFLOWS_APP_ID || '0' }}
@@ -24,11 +28,12 @@ jobs:
           owner: ${{ github.repository_owner }}
 
       - name: Checkout workflow helpers
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ steps.app_token.outputs.token || github.token }}
           sparse-checkout: |
             .github/actions/setup-api-client
+            .github/scripts/error_classifier.js
             .github/scripts/github-api-with-retry.js
             .github/scripts/github-rate-limited-wrapper.js
             .github/scripts/token_load_balancer.js
@@ -41,18 +46,11 @@ jobs:
           secrets: ${{ toJSON(secrets) }}
           github_token: ${{ steps.app_token.outputs.token || github.token }}
 
-      - name: Dispatch autofix workflow
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+      - name: Acknowledge consolidated autofix handling
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           github-token: ${{ steps.app_token.outputs.token || github.token }}
           script: |
-            const { createTokenAwareRetry } = require('./.github/scripts/github-api-with-retry.js');
-            const { withRetry } = await createTokenAwareRetry({
-              github,
-              core,
-              task: 'dispatch-autofix-loop',
-            });
-
             const payload = context.payload.client_payload || {};
             const prNumber = Number(payload.pr_number);
             const gateRunId = String(payload.gate_run_id || '');
@@ -65,25 +63,9 @@ jobs:
               core.setFailed('Missing gate_run_id in payload');
               return;
             }
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const defaultBranch = context.payload.repository?.default_branch || 'main';
-            const ref = `refs/heads/${defaultBranch}`;
-            try {
-              await withRetry((client) =>
-                client.request('POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches', {
-                  owner,
-                  repo,
-                  workflow_id: 'agents-autofix-loop.yml',
-                  ref,
-                  inputs: {
-                    gate_run_id: gateRunId,
-                    pr_number: String(prNumber),
-                    head_sha: headSha,
-                  },
-                })
-              );
-              core.info(`Triggered agents-autofix-loop for PR #${prNumber} (Gate run ${gateRunId}).`);
-            } catch (error) {
-              core.setFailed(`Failed to dispatch autofix workflow: ${error.message}`);
-            }
+            const shaNote = headSha ? `, headSha=${headSha}` : '';
+            const trace = `gateRunId=${gateRunId}${shaNote}`;
+            const message =
+              `Autofix for PR #${prNumber} is handled by agents-81-gate-followups ` +
+              `via Gate workflow_run (${trace}).`;
+            core.info(message);

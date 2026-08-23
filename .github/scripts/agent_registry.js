@@ -1,6 +1,9 @@
 'use strict';
 
 const fs = require('node:fs');
+const path = require('node:path');
+
+const ALLOWED_CAPACITY_WINDOWS = new Set(['5h', 'weekly', 'daily']);
 
 function stripTrailingComment(rawLine) {
   const line = String(rawLine ?? '');
@@ -135,9 +138,17 @@ function parseRegistryYaml(text) {
   return root;
 }
 
-function loadAgentRegistry({ registryPath } = {}) {
-  const path = registryPath || '.github/agents/registry.yml';
-  const raw = fs.readFileSync(path, 'utf8');
+function normalizeRegistryOptions(options = {}) {
+  if (typeof options === 'string') {
+    return { registryPath: options };
+  }
+  return options || {};
+}
+
+function loadAgentRegistry(options = {}) {
+  const { registryPath } = normalizeRegistryOptions(options);
+  const registryFilePath = registryPath || '.github/agents/registry.yml';
+  const raw = fs.readFileSync(registryFilePath, 'utf8');
   const registry = parseRegistryYaml(raw);
   if (!registry || typeof registry !== 'object') {
     throw new Error('Agent registry did not parse into an object');
@@ -148,7 +159,119 @@ function loadAgentRegistry({ registryPath } = {}) {
   if (!registry.default_agent || typeof registry.default_agent !== 'string') {
     throw new Error('Agent registry missing required "default_agent" string');
   }
+  validateAgentRegistry(registry, { registryPath: registryFilePath });
   return registry;
+}
+
+function resolveModelRegistryPath(options = {}) {
+  if (options.modelRegistryPath) {
+    return options.modelRegistryPath;
+  }
+  const registryPath = options.registryPath || '.github/agents/registry.yml';
+  if (path.isAbsolute(registryPath)) {
+    return path.resolve(path.dirname(registryPath), '..', '..', 'config', 'model_registry.json');
+  }
+  return path.resolve(process.cwd(), 'config', 'model_registry.json');
+}
+
+function loadModelRegistryIds(options = {}) {
+  const modelRegistryPath = resolveModelRegistryPath(options);
+  if (!fs.existsSync(modelRegistryPath)) {
+    return null;
+  }
+  const raw = fs.readFileSync(modelRegistryPath, 'utf8');
+  const parsed = JSON.parse(raw);
+  if (!Array.isArray(parsed.models)) {
+    throw new Error(`Model registry ${modelRegistryPath} missing required models array`);
+  }
+  return new Set(
+    parsed.models
+      .map((model) => String(model?.model_id || '').trim())
+      .filter(Boolean),
+  );
+}
+
+function validateAgentCapacity(agentKey, agentConfig) {
+  if (!agentConfig || typeof agentConfig !== 'object' || Array.isArray(agentConfig)) {
+    throw new Error(`Agent registry entry for ${agentKey} must be an object`);
+  }
+
+  const capacity = agentConfig.capacity;
+  if (!capacity || typeof capacity !== 'object' || Array.isArray(capacity)) {
+    throw new Error(`Agent config missing capacity block for agent: ${agentKey}`);
+  }
+
+  const window = String(capacity.window || '').trim();
+  if (!ALLOWED_CAPACITY_WINDOWS.has(window)) {
+    throw new Error(
+      `Agent ${agentKey} capacity.window must be one of: ${Array.from(ALLOWED_CAPACITY_WINDOWS).join(', ')}`,
+    );
+  }
+
+  if (!Number.isInteger(capacity.limit) || capacity.limit <= 0) {
+    throw new Error(`Agent ${agentKey} capacity.limit must be a positive integer`);
+  }
+}
+
+function validateAgentRegistry(registry, options = {}) {
+  const knownModelIds = loadModelRegistryIds(options);
+
+  for (const [agentKey, agentConfig] of Object.entries(registry.agents || {})) {
+    validateAgentCapacity(agentKey, agentConfig);
+  }
+
+  for (const [profileId, profile] of Object.entries(registry.execution_profiles || {})) {
+    validateExecutionProfile(profileId, profile, registry, { knownModelIds });
+  }
+}
+
+function validateExecutionProfile(profileId, profile, registry, options = {}) {
+  if (!profile || typeof profile !== 'object' || Array.isArray(profile)) {
+    throw new Error(`Execution profile ${profileId} must be an object`);
+  }
+  const agent = String(profile.agent || '').trim();
+  if (!agent || !registry.agents?.[agent]) {
+    throw new Error(`Execution profile ${profileId} references unknown agent: ${agent || '(empty)'}`);
+  }
+  for (const field of ['model', 'runner', 'capacity_pool', 'safety', 'lifecycle']) {
+    if (!String(profile[field] || '').trim()) {
+      throw new Error(`Execution profile ${profileId} missing required field: ${field}`);
+    }
+  }
+  if (options.knownModelIds) {
+    for (const field of ['model', 'fallback_model']) {
+      const modelId = String(profile[field] || '').trim();
+      if (modelId && !options.knownModelIds.has(modelId)) {
+        throw new Error(
+          `Execution profile ${profileId} references unknown ${field}: ${modelId}`,
+        );
+      }
+    }
+  }
+}
+
+function resolveExecutionProfile(profileId, options = {}) {
+  const { registryPath } = normalizeRegistryOptions(options);
+  const registry = loadAgentRegistry({ registryPath });
+  const id = String(profileId || '').trim() || 'codex-default';
+  const profile = registry.execution_profiles?.[id];
+  if (!profile) {
+    const known = Object.keys(registry.execution_profiles || {}).sort();
+    throw new Error(
+      `Unknown execution profile: ${id}. Known profiles: ${known.join(', ') || '(none)'}`,
+    );
+  }
+  validateExecutionProfile(id, profile, registry);
+  if (String(profile.lifecycle || '').trim() !== 'active') {
+    throw new Error(
+      `Execution profile ${id} has lifecycle ${profile.lifecycle || '(empty)'}; ` +
+        'ordinary agent execution accepts active profiles only',
+    );
+  }
+  return {
+    id,
+    ...profile,
+  };
 }
 
 function normalizeLabel(label) {
@@ -164,7 +287,8 @@ function normalizeLabel(label) {
   return '';
 }
 
-function resolveAgentRoutingFromLabels(labels, { registryPath } = {}) {
+function resolveAgentRoutingFromLabels(labels, options = {}) {
+  const { registryPath } = normalizeRegistryOptions(options);
   const registry = loadAgentRegistry({ registryPath });
   const labelList = Array.isArray(labels) ? labels : [];
   const agentLabels = labelList
@@ -172,10 +296,7 @@ function resolveAgentRoutingFromLabels(labels, { registryPath } = {}) {
     .filter(Boolean)
     .filter((value) => value.startsWith('agent:'));
 
-  const knownAgents = new Set(Object.keys(registry.agents));
-  const requestedAgents = agentLabels
-    .map((value) => value.slice('agent:'.length))
-    .filter((value) => value === 'auto' || knownAgents.has(value));
+  const requestedAgents = agentLabels.map((value) => value.slice('agent:'.length));
   const uniqueRequested = new Set(requestedAgents);
   const hasAuto = uniqueRequested.has('auto');
   const explicitRequested = Array.from(uniqueRequested).filter((value) => value !== 'auto');
@@ -199,25 +320,6 @@ function resolveAgentRoutingFromLabels(labels, { registryPath } = {}) {
     mode = 'auto';
     agentKey = registry.default_agent;
     requested = 'auto';
-  } else {
-    // No explicit `agent:` label. Honor the originating agent recorded on
-    // follow-up issues/PRs via `from:<agent>` or `runner:<agent>` before
-    // falling back to the registry default — otherwise a Claude follow-up
-    // whose `agent:claude` label was dropped (e.g. by the capability/block
-    // flow) is silently rerouted to the default agent.
-    const affinity = labelList
-      .map(normalizeLabel)
-      .filter(Boolean)
-      .map((value) => {
-        const match = value.match(/^(?:from|runner):(.+)$/);
-        return match ? match[1] : null;
-      })
-      .find((value) => value && knownAgents.has(value));
-    if (affinity) {
-      mode = 'affinity';
-      agentKey = affinity;
-      requested = affinity;
-    }
   }
 
   if (!registry.agents[agentKey]) {
@@ -232,12 +334,14 @@ function resolveAgentRoutingFromLabels(labels, { registryPath } = {}) {
   };
 }
 
-function resolveAgentFromLabels(labels, { registryPath } = {}) {
+function resolveAgentFromLabels(labels, options = {}) {
+  const { registryPath } = normalizeRegistryOptions(options);
   const routing = resolveAgentRoutingFromLabels(labels, { registryPath });
   return routing.agentKey;
 }
 
-function getAgentConfig(agentKey, { registryPath } = {}) {
+function getAgentConfig(agentKey, options = {}) {
+  const { registryPath } = normalizeRegistryOptions(options);
   const registry = loadAgentRegistry({ registryPath });
   const key = String(agentKey || '').trim() || registry.default_agent;
   const config = registry.agents[key];
@@ -248,7 +352,8 @@ function getAgentConfig(agentKey, { registryPath } = {}) {
   return config;
 }
 
-function getRunnerWorkflow(agentKey, { registryPath } = {}) {
+function getRunnerWorkflow(agentKey, options = {}) {
+  const { registryPath } = normalizeRegistryOptions(options);
   const config = getAgentConfig(agentKey, { registryPath });
   const workflow = String(config.runner_workflow || '').trim();
   if (!workflow) {
@@ -257,16 +362,12 @@ function getRunnerWorkflow(agentKey, { registryPath } = {}) {
   return workflow;
 }
 
-function getAgentModel(agentKey, { registryPath } = {}) {
-  const config = getAgentConfig(agentKey, { registryPath });
-  return String(config.model || '').trim();
-}
-
 /**
  * Return all automation logins across all agents in the registry.
  * Useful for detecting bot-authored comments/commits.
  */
-function getAllAutomationLogins({ registryPath } = {}) {
+function getAllAutomationLogins(options = {}) {
+  const { registryPath } = normalizeRegistryOptions(options);
   const registry = loadAgentRegistry({ registryPath });
   const logins = new Set();
   for (const config of Object.values(registry.agents)) {
@@ -285,7 +386,8 @@ function getAllAutomationLogins({ registryPath } = {}) {
  * an array of readiness_candidates from the registry.
  * Drop-in replacement for the hardcoded CANDIDATES object.
  */
-function getReadinessCandidates({ registryPath } = {}) {
+function getReadinessCandidates(options = {}) {
+  const { registryPath } = normalizeRegistryOptions(options);
   const registry = loadAgentRegistry({ registryPath });
   const result = {};
   for (const [key, config] of Object.entries(registry.agents)) {
@@ -300,14 +402,16 @@ function getReadinessCandidates({ registryPath } = {}) {
  * Return the keepalive marker prefix from registry,
  * falling back to 'agent-keepalive' if not set.
  */
-function getKeepaliveMarkerPrefix({ registryPath } = {}) {
+function getKeepaliveMarkerPrefix(options = {}) {
+  const { registryPath } = normalizeRegistryOptions(options);
   const registry = loadAgentRegistry({ registryPath });
   return String(
     registry.keepalive_marker_prefix || 'agent-keepalive'
   );
 }
 
-function getAgentEntries({ registryPath } = {}) {
+function getAgentEntries(options = {}) {
+  const { registryPath } = normalizeRegistryOptions(options);
   const registry = loadAgentRegistry({ registryPath });
   return Object.entries(registry.agents || {}).map(([key, config]) => ({
     key,
@@ -347,13 +451,14 @@ module.exports = {
   getAllAutomationLogins,
   getAgentConfig,
   getAgentEntries,
-  getAgentModel,
   getAgentPreflightConfigs,
   getKeepaliveMarkerPrefix,
   getReadinessCandidates,
   getRunnerWorkflow,
   loadAgentRegistry,
   parseRegistryYaml,
+  resolveExecutionProfile,
   resolveAgentFromLabels,
   resolveAgentRoutingFromLabels,
+  validateAgentRegistry,
 };

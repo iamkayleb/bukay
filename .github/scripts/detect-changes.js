@@ -1,6 +1,7 @@
 'use strict';
 
 const { ensureRateLimitWrapped } = require('./github-rate-limited-wrapper.js');
+const { isRateLimitError } = require('./error_classifier');
 
 const DOC_EXTENSIONS = [
   '.md',
@@ -73,7 +74,7 @@ const DOCKERFILE_SUFFIXES = ['/dockerfile', '\\dockerfile'];
 const WORKFLOW_PREFIX = '.github/workflows/';
 
 function normalizeCase(value) {
-  return (value || '').toLowerCase();
+  return String(value || '').toLowerCase();
 }
 
 function normalizeSlashes(value) {
@@ -156,18 +157,6 @@ function isWorkflowFile(filename) {
   return normalized.startsWith(WORKFLOW_PREFIX);
 }
 
-function isRateLimitError(error) {
-  if (!error) {
-    return false;
-  }
-  const status = error.status || error?.response?.status;
-  if (status !== 403) {
-    return false;
-  }
-  const message = String(error.message || error?.response?.data?.message || '').toLowerCase();
-  return message.includes('rate limit') || message.includes('ratelimit');
-}
-
 function isNonFatalListFilesError(error) {
   if (!error) {
     return false;
@@ -240,7 +229,10 @@ async function listChangedFiles({ github, context }) {
 }
 
 function classifyChanges(filenames) {
-  const changedFiles = Array.from(new Set(filenames.filter(Boolean)));
+  const values = Array.isArray(filenames)
+    ? filenames
+    : (typeof filenames === 'string' ? [filenames] : []);
+  const changedFiles = Array.from(new Set(values.filter(Boolean).map(value => String(value))));
   const hasChanges = changedFiles.length > 0;
   const nonDocFiles = changedFiles.filter(filename => !isDocumentationFile(filename));
   const docOnly = hasChanges ? nonDocFiles.length === 0 : true;
@@ -338,7 +330,13 @@ async function detectChanges({ github, context, core, files, fetchFiles } = {}) 
 
 module.exports = {
   detectChanges: async function ({ github: rawGithub, context, core, files, fetchFiles } = {}) {
-    const github = await ensureRateLimitWrapped({ github: rawGithub, core, env: process.env });
+    let github = rawGithub;
+    try {
+      github = await ensureRateLimitWrapped({ github: rawGithub, core, env: process.env });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      core?.warning?.(`Failed to enable rate-limit wrapper for detect-changes: ${message}`);
+    }
     return detectChanges({ github, context, core, files, fetchFiles });
   },
   classifyChanges,

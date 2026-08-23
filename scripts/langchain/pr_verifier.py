@@ -11,23 +11,40 @@ Run with:
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import logging
 import os
 import re
 import sys
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, Field
 from scripts import api_client
+from scripts.langchain._llm_client import get_llm_client, get_llm_clients
 from scripts.langchain.structured_output import (
     build_repair_callback,
     parse_structured_output,
 )
+from scripts.langchain.verifier_config import (
+    EVAL_PAIR_BUDGET_TOKENS,
+    EVAL_SCHEMA_REPAIR_BUDGET_TOKENS,
+    SchemaRepairPolicy,
+)
+
+# The shared client builder returns the ClientInfo ``provider_label`` for the
+# verifier (the historical ``_get_llm_client`` returned that field). Bound under
+# the module name so existing tests can monkeypatch ``pr_verifier._get_llm_client``.
+_get_llm_client = partial(get_llm_client, return_field="provider_label")
+_get_llm_clients = get_llm_clients
 
 LOGGER = logging.getLogger(__name__)
+SCHEMA_REPAIR_POLICY = SchemaRepairPolicy()
+TOKEN_CHARS = 4
 
 PR_EVALUATION_PROMPT = """
 You are reviewing a **merged** pull request to evaluate whether the code
@@ -267,43 +284,6 @@ def _load_prompt() -> str:
     return _ensure_prompt_rubric(PR_EVALUATION_PROMPT)
 
 
-def _get_llm_client(
-    model: str | None = None, provider: str | None = None
-) -> tuple[object, str] | None:
-    """Get an LLM client for evaluation.
-
-    Args:
-        model: Optional model name override.
-        provider: Optional provider override ('openai' or 'github-models').
-                  If not specified, uses OpenAI if OPENAI_API_KEY is set and model
-                  is specified, otherwise falls back to GitHub Models.
-
-    Returns:
-        Tuple of (client, provider_name) or None if no credentials available.
-    """
-    try:
-        from tools.langchain_client import build_chat_client
-    except ImportError:
-        return None
-
-    resolved = build_chat_client(model=model, provider=provider)
-    if not resolved:
-        return None
-    return resolved.client, resolved.provider_label
-
-
-def _get_llm_clients(
-    model1: str | None = None, model2: str | None = None
-) -> list[tuple[object, str, str]]:
-    try:
-        from tools.langchain_client import build_chat_clients
-    except ImportError:
-        return []
-
-    clients = build_chat_clients(model1=model1, model2=model2)
-    return [(entry.client, entry.provider, entry.model) for entry in clients]
-
-
 @dataclass(frozen=True)
 class ComparisonRunner:
     context: str
@@ -409,8 +389,11 @@ def _get_chain_depth() -> int:
 def _prepare_prompt(context: str, diff: str | None) -> str:
     diff_block = diff.strip() if diff and diff.strip() else "(diff unavailable)"
     context_block = context.strip() if context and context.strip() else "(context unavailable)"
+    block_budget = max(1, EVAL_PAIR_BUDGET_TOKENS // 2)
+    diff_block = _cap_prompt_text(diff_block, block_budget)
+    context_block = _cap_prompt_text(context_block, block_budget)
 
-    change_type = _classify_change_type(diff)
+    change_type = _classify_change_type(_bounded_diff_for_classification(diff))
 
     if change_type == "infrastructure":
         if PROMPT_PATH.is_file():
@@ -435,6 +418,38 @@ def _prepare_prompt(context: str, diff: str | None) -> str:
         prompt = prompt.rstrip() + "\n\n" + CHAIN_DEPTH_ADDENDUM.format(depth=chain_depth) + "\n"
 
     return prompt.format(context=context_block, diff=diff_block)
+
+
+def _cap_prompt_text(text: str, token_budget: int) -> str:
+    max_chars = max(1, token_budget) * TOKEN_CHARS
+    if len(text) <= max_chars:
+        return text
+    marker = "\n[truncated: verifier prompt budget exceeded]"
+    if max_chars <= len(marker):
+        return marker[:max_chars]
+    return (text[: max_chars - len(marker)].rstrip() + marker)[:max_chars]
+
+
+def _bounded_diff_for_classification(diff: str | None) -> str:
+    if not diff:
+        return ""
+    max_chars = max(1, EVAL_PAIR_BUDGET_TOKENS // 4) * TOKEN_CHARS
+    max_lines = 1000
+    scanned_chars = 0
+    scan_text = diff[:max_chars]
+    lines = []
+    for index, line in enumerate(io.StringIO(scan_text)):
+        if index >= max_lines or scanned_chars >= max_chars:
+            break
+        scanned_chars += len(line)
+        line = line.rstrip("\n\r")
+        if line.startswith(("diff --git ", "+++ ", "--- ")):
+            lines.append(line)
+        if len(lines) >= 500:
+            break
+    if lines:
+        return "\n".join(lines)
+    return diff[:max_chars]
 
 
 def _extract_pr_metadata(context: str) -> tuple[int | None, str | None]:
@@ -660,20 +675,92 @@ def _fallback_evaluation(
     )
 
 
+def _text_from_response_content(content: object) -> str | None:
+    """Return provider text, or None when the payload carries no text blocks."""
+    if isinstance(content, str):
+        return content if content and not content.isspace() else None
+    if isinstance(content, Mapping):
+        block_type = content.get("type")
+        for key in ("text", "content"):
+            text = content.get(key)
+            if (
+                isinstance(text, str)
+                and text
+                and not text.isspace()
+                and block_type in (None, "text", "output_text")
+            ):
+                return text
+        return None
+    if isinstance(content, list):
+        text_blocks: list[str] = []
+        for block in content:
+            if isinstance(block, str):
+                text = block
+            elif isinstance(block, Mapping):
+                if block.get("type") not in (None, "text", "output_text"):
+                    text = None
+                else:
+                    text = block.get("text")
+                    if not isinstance(text, str):
+                        text = block.get("content")
+            else:
+                if getattr(block, "type", None) not in (None, "text", "output_text"):
+                    text = None
+                else:
+                    text = getattr(block, "text", None)
+                    if not isinstance(text, str):
+                        text = getattr(block, "content", None)
+            if isinstance(text, str):
+                text_blocks.append(text)
+        if any(block and not block.isspace() for block in text_blocks):
+            # Concatenate without a separator: a provider may split one JSON
+            # document across blocks, and an inserted newline inside a string
+            # literal would make the reassembled payload invalid JSON.
+            return "".join(text_blocks)
+    return None
+
+
+def _coerce_response_content(content: object) -> str:
+    """Return text from provider response blocks without losing a safe fallback."""
+    text = _text_from_response_content(content)
+    if text is not None:
+        return text
+    try:
+        return json.dumps(content, default=str)
+    except MemoryError:
+        raise
+    except Exception:
+        try:
+            return str(content)
+        except MemoryError:
+            raise
+        except Exception:
+            return f"<unserializable {type(content).__name__}>"
+
+
 def _parse_llm_response(
-    content: str, provider: str, *, client: object | None = None
+    content: object, provider: str, *, client: object | None = None
 ) -> EvaluationResult:
+    content_text = _coerce_response_content(content)
+    repair = _build_verifier_repair_callback(client) if client is not None else None
     parsed = parse_structured_output(
-        content,
+        content_text,
         EvaluationPayload,
-        repair=(build_repair_callback(client) if client is not None else None),
-        max_repair_attempts=1,
+        repair=repair,
+        max_repair_attempts=SCHEMA_REPAIR_POLICY.max_attempts,
     )
     if parsed.payload is None:
+        decision = SCHEMA_REPAIR_POLICY.terminal_decision(
+            repair_attempts_used=parsed.repair_attempts_used,
+            error_stage=parsed.error_stage,
+            has_payload=False,
+        )
         if parsed.error_stage == "repair_validation":
             error = f"Failed to parse JSON response after repair: {parsed.error_detail}"
         else:
             error = f"Failed to parse JSON response: {parsed.error_detail}"
+        if decision == "escalate":
+            error = f"Schema repair policy escalated verifier output: {error}"
         return EvaluationResult(
             verdict="CONCERNS",
             scores=None,
@@ -681,7 +768,7 @@ def _parse_llm_response(
             summary=None,
             provider_used=provider,
             used_llm=True,
-            raw_content=content,
+            raw_content=content_text,
             error=error,
         )
 
@@ -694,8 +781,31 @@ def _parse_llm_response(
         summary=payload.summary,
         provider_used=provider,
         used_llm=True,
-        raw_content=parsed.raw_content or content,
+        raw_content=parsed.raw_content or content_text,
     )
+
+
+def _build_verifier_repair_callback(client: object) -> Callable[[str, str, str], str | None]:
+    repair = build_repair_callback(client)
+
+    def _repair(schema_json: str, validation_errors: str, raw_response: str) -> str | None:
+        repaired = repair(
+            schema_json,
+            validation_errors,
+            _cap_prompt_text(raw_response, EVAL_SCHEMA_REPAIR_BUDGET_TOKENS),
+        )
+        if not repaired:
+            return None
+        # The repair path must be stricter than the parse path. A reply of only
+        # thinking/metadata blocks, or of empty text blocks, is still truthy, and
+        # serializing it would hand the parser block metadata dressed up as a
+        # repair attempt — burning the one retry on noise.
+        text = _text_from_response_content(repaired)
+        if text is None or not text.strip():
+            return None
+        return text
+
+    return _repair
 
 
 def _is_auth_error(exc: Exception) -> bool:
@@ -731,7 +841,7 @@ def evaluate_pr(
 
     client, provider_name = resolved
     prompt = _prepare_prompt(context, diff)
-    change_type = _classify_change_type(diff)
+    change_type = _classify_change_type(_bounded_diff_for_classification(diff))
     pr_number, _ = _extract_pr_metadata(context)
     trace_id, trace_url = None, None
     try:
@@ -804,10 +914,11 @@ def evaluate_pr(
 def evaluate_pr_multiple(
     context: str, diff: str | None = None, model1: str | None = None, model2: str | None = None
 ) -> list[EvaluationResult]:
-    change_type = _classify_change_type(diff)
+    change_type = _classify_change_type(_bounded_diff_for_classification(diff))
     runner = ComparisonRunner.from_environment(context, diff, model1, model2)
-    if not runner.clients:
-        result = _fallback_evaluation("LLM client unavailable (missing credentials or dependency).")
+    is_valid, error_message = _validate_comparison_clients(runner.clients)
+    if not is_valid:
+        result = _fallback_evaluation(error_message)
         result.change_type = change_type
         return [result]
     results: list[EvaluationResult] = []
@@ -816,6 +927,58 @@ def evaluate_pr_multiple(
         result.change_type = change_type
         results.append(result)
     return results
+
+
+def _provider_family(provider: str) -> str:
+    label = provider.lower()
+    if "github-models" in label:
+        return "github-models"
+    if "openai" in label:
+        return "openai"
+    if "anthropic" in label or "claude" in label:
+        return "anthropic"
+    return label.split("/", 1)[0].strip() or "unknown"
+
+
+def _get_provider_families(clients: list[tuple[object, str, str]]) -> set[str]:
+    """Extract the set of unique provider families from a list of clients.
+
+    Args:
+        clients: List of (client, provider, model) tuples.
+
+    Returns:
+        Set of provider family names (e.g., {"openai", "anthropic"}).
+    """
+    return {_provider_family(provider) for _, provider, _ in clients}
+
+
+def _validate_comparison_clients(clients: list[tuple[object, str, str]]) -> tuple[bool, str]:
+    """Validate that client list is sufficient for cross-family comparison.
+
+    Args:
+        clients: List of (client, provider, model) tuples.
+
+    Returns:
+        Tuple of (is_valid, error_message).
+        is_valid is True if there are >= 2 clients from >= 2 different provider families.
+        error_message describes the reason if validation fails.
+    """
+    families = _get_provider_families(clients)
+    if len(clients) < 2:
+        family_str = ", ".join(sorted(families)) or "none"
+        return (
+            False,
+            f"unverified: compare mode requires two cross-family verifier judges; "
+            f"available families: {family_str}.",
+        )
+    if len(families) < 2:
+        family_str = ", ".join(sorted(families)) or "none"
+        return (
+            False,
+            f"unverified: compare mode requires two cross-family verifier judges; "
+            f"available families: {family_str}.",
+        )
+    return True, ""
 
 
 def _normalize_text(text: str) -> str:

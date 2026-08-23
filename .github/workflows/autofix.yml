@@ -3,11 +3,16 @@
 #
 # Triggers:
 # - Gate/CI/Python CI workflow completes with failure (lint/format issues detected)
-# - Lint job fails early (workflow_job completed)
 # - PR labeled with 'autofix' or 'autofix:clean' (manual trigger)
 #
 # Note: push trigger removed — it caused "This isn't working right now" errors
-# because GitHub Actions can't resolve the reusable workflow reference on push events
+# because GitHub Actions can't resolve the reusable workflow reference on push events.
+#
+# Note: workflow_job removed 2026-05-14 — `workflow_job` is a webhook event
+# (delivered to webhook subscribers), NOT a valid `on:` trigger for workflows.
+# Adding it via PR #1528 caused every push to every consumer repo to record a
+# failed Autofix run with "This run likely failed because of a workflow file
+# issue" — for ~3 months until detected during 2026-05-14 verification.
 #
 # Copy this file to: .github/workflows/autofix.yml
 #
@@ -18,8 +23,6 @@ name: Autofix
 on:
   workflow_run:
     workflows: ["Gate", "CI", "Python CI"]
-    types: [completed]
-  workflow_job:
     types: [completed]
   pull_request_target:
     types:
@@ -41,11 +44,6 @@ concurrency:
         github.event.workflow_run.pull_requests[0] &&
         github.event.workflow_run.pull_requests[0].number
       )
-      || (
-        github.event.workflow_job.pull_requests &&
-        github.event.workflow_job.pull_requests[0] &&
-        github.event.workflow_job.pull_requests[0].number
-      )
       || github.run_id
     }}
   cancel-in-progress: true
@@ -56,7 +54,7 @@ jobs:
     name: Resolve Context
     runs-on: ubuntu-latest
     outputs:
-      should_run: ${{ steps.context.outputs.should_run }}
+      should_run: ${{ steps.context.outputs.should_run || 'false' }}
       pr_number: ${{ steps.context.outputs.pr_number }}
       pr_head_ref: ${{ steps.context.outputs.head_ref }}
       pr_title: ${{ steps.context.outputs.pr_title }}
@@ -64,29 +62,76 @@ jobs:
       pr_labels_json: ${{ steps.context.outputs.pr_labels_json }}
       same_repo: ${{ steps.context.outputs.same_repo }}
       caller_actor: ${{ steps.context.outputs.caller_actor }}
+      head_sha: ${{ steps.context.outputs.head_sha }}
+      dispatch_should_run: ${{ steps.runner_dispatch.outputs.should_dispatch || 'true' }}
+      dispatch_reason: ${{ steps.runner_dispatch.outputs.reason }}
     steps:
+      - name: Checkout eligibility action
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: >-
+            ${{ github.event.pull_request.base.sha ||
+            github.sha ||
+            github.event.repository.default_branch ||
+            github.event.workflow_run.repository.default_branch }}
+          sparse-checkout: .github/actions/agent-event-eligibility
+          sparse-checkout-cone-mode: false
+
+      # Escape hatch: set mode: warning if false-negative skips appear post-merge.
+      - name: Check event eligibility
+        id: eligibility
+        uses: ./.github/actions/agent-event-eligibility
+        with:
+          expected-actions: completed,labeled
+          custom-predicate: >-
+            (event_name == 'pull_request_target' && action == 'labeled' &&
+             (label.name == 'autofix' || label.name == 'autofix:clean')) ||
+            (event_name == 'workflow_run' && workflow_run.conclusion == 'failure' &&
+             length(workflow_run.pull_requests) > 0)
+
       - name: Checkout for API helpers
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        if: steps.eligibility.outputs.should-run == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
             .github/actions/setup-api-client
+            .github/scripts/error_classifier.js
             .github/scripts/github-api-with-retry.js
             .github/scripts/token_load_balancer.js
+            scripts/runner_lib
+            scripts/state_fingerprint.py
+            scripts/reference_packs.py
           sparse-checkout-cone-mode: false
 
       - name: Setup API client
+        if: steps.eligibility.outputs.should-run == 'true'
         uses: ./.github/actions/setup-api-client
         with:
-          secrets: ${{ toJSON(secrets) }}
+          service_bot_pat: ${{ secrets.SERVICE_BOT_PAT }}
+          actions_bot_pat: ${{ secrets.ACTIONS_BOT_PAT }}
+          owner_pr_pat: ${{ secrets.OWNER_PR_PAT }}
+          agents_automation_pat: ${{ secrets.AGENTS_AUTOMATION_PAT }}
+          workflows_app_id: ${{ secrets.WORKFLOWS_APP_ID }}
+          workflows_app_private_key: ${{ secrets.WORKFLOWS_APP_PRIVATE_KEY }}
+          keepalive_app_id: ${{ secrets.KEEPALIVE_APP_ID }}
+          keepalive_app_private_key: ${{ secrets.KEEPALIVE_APP_PRIVATE_KEY }}
+          gh_app_id: ${{ secrets.GH_APP_ID }}
+          gh_app_private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          app_1_id: ${{ secrets.APP_1_ID }}
+          app_1_private_key: ${{ secrets.APP_1_PRIVATE_KEY }}
+          app_2_id: ${{ secrets.APP_2_ID }}
+          app_2_private_key: ${{ secrets.APP_2_PRIVATE_KEY }}
           github_token: ${{ github.token }}
 
       - name: Resolve PR context
+        if: steps.eligibility.outputs.should-run == 'true'
         id: context
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           github-token: >-
             ${{ secrets.AGENTS_AUTOMATION_PAT || secrets.ACTIONS_BOT_PAT || github.token }}
           script: |
+            // # best-effort: this ancillary API failure is logged; reconciliation or the primary workflow result remains authoritative.
             const { createTokenAwareRetry } = require(
               './.github/scripts/github-api-with-retry.js'
             );
@@ -181,7 +226,7 @@ jobs:
                 const status = Number(error?.status || error?.response?.status || 0);
                 if (status === 403 && message.toLowerCase().includes('rate limit')) {
                   core.warning(
-                    'Rate limited listing PR files; proceeding without file filter.'
+                    'Rate limited listing PR files; skipping autofix to preserve the file filter.'
                   );
                   return null;
                 }
@@ -199,6 +244,7 @@ jobs:
               core.setOutput('pr_labels_json', JSON.stringify(labels));
               core.setOutput('same_repo', sameRepo ? 'true' : 'false');
               core.setOutput('caller_actor', callerActor);
+              core.setOutput('head_sha', pr.head?.sha || '');
             };
 
             // --- workflow_run trigger (after Gate/CI completes) ---
@@ -252,6 +298,12 @@ jobs:
                   pr.base.repo?.full_name;
               if (!sameRepo) {
                 core.info('Fork PR — not supported.');
+                core.setOutput('should_run', 'false');
+                return;
+              }
+
+              if (String(pr.head?.ref || '').startsWith('sync/workflows-')) {
+                core.info('Generated sync PR is Maint 71-owned; skipping autofix.');
                 core.setOutput('should_run', 'false');
                 return;
               }
@@ -319,13 +371,14 @@ jobs:
                 prNumber,
               });
 
-              const hasPython =
-                files === null
-                  ? true
-                  : files.some(
-                      (file) =>
-                        file.filename.endsWith('.py') || file.filename.endsWith('.pyi')
-                    );
+              if (files === null) {
+                core.setOutput('should_run', 'false');
+                return;
+              }
+              const hasPython = files.some(
+                (file) =>
+                  file.filename.endsWith('.py') || file.filename.endsWith('.pyi')
+              );
 
               if (!hasPython) {
                 core.info('No Python files changed.');
@@ -337,121 +390,6 @@ jobs:
                 pr,
                 sameRepo,
                 callerActor: run.actor?.login || context.actor,
-              });
-              return;
-            }
-
-            // --- workflow_job trigger (early lint failure) ---
-            if (context.eventName === 'workflow_job') {
-              const workflowJob = context.payload.workflow_job;
-              if (!workflowJob) {
-                core.setOutput('should_run', 'false');
-                return;
-              }
-
-              const workflowName = String(workflowJob.workflow_name || '').trim();
-              const jobName = String(workflowJob.name || '').toLowerCase();
-              const conclusion = String(workflowJob.conclusion || '').toLowerCase();
-
-              // Only respond to failing lint jobs in the workflows we care about.
-              const relevantJob =
-                jobName.includes('lint-format') || jobName.includes('lint-ruff');
-              if (!relevantJob) {
-                core.info(
-                  `workflow_job '${workflowJob.name}' is not a lint-format/lint-ruff job.`
-                );
-                core.setOutput('should_run', 'false');
-                return;
-              }
-
-              const allowedWorkflows = new Set(['Gate', 'CI', 'Python CI']);
-              if (workflowName && !allowedWorkflows.has(workflowName)) {
-                core.info(
-                  `workflow_job is from workflow '${workflowName}', not Gate/CI/Python CI; ` +
-                  'skipping.'
-                );
-                core.setOutput('should_run', 'false');
-                return;
-              }
-
-              if (conclusion !== 'failure') {
-                core.info(
-                  `workflow_job '${workflowJob.name}' concluded '${workflowJob.conclusion}' ` +
-                  '— no autofix needed'
-                );
-                core.setOutput('should_run', 'false');
-                return;
-              }
-
-              const prs = workflowJob.pull_requests || [];
-              if (!prs.length) {
-                core.info('workflow_job event has no associated PR; skipping.');
-                core.setOutput('should_run', 'false');
-                return;
-              }
-
-              const prNumber = prs[0].number;
-              const triggerHeadSha = String(workflowJob.head_sha || '');
-              const { owner, repo } = context.repo;
-              const { data: pr } = await withRetry((client) =>
-                client.rest.pulls.get({ owner, repo, pull_number: prNumber })
-              );
-
-              if (pr.state !== 'open') {
-                core.info(`PR #${prNumber} is ${pr.state}`);
-                core.setOutput('should_run', 'false');
-                return;
-              }
-
-              if (pr.draft) {
-                core.info('PR is draft.');
-                core.setOutput('should_run', 'false');
-                return;
-              }
-
-              const sameRepo =
-                pr.head.repo !== null &&
-                pr.head.repo.full_name === pr.base.repo?.full_name;
-              if (!sameRepo) {
-                core.info('Fork PR — not supported.');
-                core.setOutput('should_run', 'false');
-                return;
-              }
-
-              const headSha = pr.head?.sha;
-              if (!headSha) {
-                core.info('PR head SHA missing; skipping autofix.');
-                core.setOutput('should_run', 'false');
-                return;
-              }
-
-              if (triggerHeadSha && triggerHeadSha !== headSha) {
-                core.info(
-                  `workflow_job head_sha ${triggerHeadSha} does not match PR head ${headSha}; ` +
-                  'skipping stale event.'
-                );
-                core.setOutput('should_run', 'false');
-                return;
-              }
-
-              const files = await listFilesOrNullOnRateLimit({ owner, repo, prNumber });
-              const hasPython =
-                files === null
-                  ? true
-                  : files.some(
-                      (file) =>
-                        file.filename.endsWith('.py') || file.filename.endsWith('.pyi')
-                    );
-              if (!hasPython) {
-                core.info('No Python files changed.');
-                core.setOutput('should_run', 'false');
-                return;
-              }
-
-              setOutputs({
-                pr,
-                sameRepo,
-                callerActor: context.payload.sender?.login || context.actor,
               });
               return;
             }
@@ -512,6 +450,12 @@ jobs:
               return;
             }
 
+            if (String(pr.head?.ref || '').startsWith('sync/workflows-')) {
+              core.info('Generated sync PR is Maint 71-owned; skipping autofix.');
+              core.setOutput('should_run', 'false');
+              return;
+            }
+
             const labels =
               (pr.labels || []).map(l => l.name);
 
@@ -522,13 +466,13 @@ jobs:
               prNumber: pr.number,
             });
 
-            const hasPython =
-              files === null
-                ? true
-                : files.some(
-                    (file) =>
-                      file.filename.endsWith('.py') || file.filename.endsWith('.pyi')
-                  );
+            if (files === null) {
+              core.setOutput('should_run', 'false');
+              return;
+            }
+            const hasPython = files.some(
+              (file) => file.filename.endsWith('.py') || file.filename.endsWith('.pyi')
+            );
 
             if (!hasPython) {
               core.info('No Python files changed.');
@@ -543,9 +487,38 @@ jobs:
             });
 
   # Call reusable autofix workflow
+      - name: Check runner dispatch debounce
+        id: runner_dispatch
+        if: steps.context.outputs.should_run == 'true'
+        env:
+          GH_TOKEN: >-
+            ${{ secrets.AGENTS_AUTOMATION_PAT || secrets.ACTIONS_BOT_PAT ||
+                secrets.SERVICE_BOT_PAT || github.token }}
+          GITHUB_TOKEN: >-
+            ${{ secrets.AGENTS_AUTOMATION_PAT || secrets.ACTIONS_BOT_PAT ||
+                secrets.SERVICE_BOT_PAT || github.token }}
+          PR_NUMBER: ${{ steps.context.outputs.pr_number }}
+          HEAD_SHA: ${{ steps.context.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PR_NUMBER:-}" ] || [ -z "${HEAD_SHA:-}" ]; then
+            {
+              echo "should_dispatch=true"
+              echo "reason=missing-pr-or-sha"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          python -m scripts.runner_lib should-dispatch \
+            --provider autofix \
+            --pr-number "$PR_NUMBER" \
+            --head-sha "$HEAD_SHA" \
+            --storage auto
+
   autofix:
     needs: resolve
-    if: needs.resolve.outputs.should_run == 'true'
+    if: >-
+      needs.resolve.outputs.should_run == 'true' &&
+      needs.resolve.outputs.dispatch_should_run == 'true'
     uses: iamkayleb/Workflows/.github/workflows/reusable-18-autofix.yml@main
     with:
       pr_number: ${{ fromJson(needs.resolve.outputs.pr_number) }}
@@ -559,3 +532,57 @@ jobs:
       service_bot_pat: ${{ secrets.SERVICE_BOT_PAT }}
       WORKFLOWS_APP_ID: ${{ secrets.WORKFLOWS_APP_ID }}
       WORKFLOWS_APP_PRIVATE_KEY: ${{ secrets.WORKFLOWS_APP_PRIVATE_KEY }}
+
+  record-autofix-dispatch:
+    name: Record autofix dispatch completion
+    needs:
+      - resolve
+      - autofix
+    if: >-
+      always() &&
+      needs.resolve.outputs.dispatch_should_run == 'true' &&
+      needs.autofix.result != 'skipped'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout runner library
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: |
+            scripts/runner_lib
+            scripts/state_fingerprint.py
+            scripts/reference_packs.py
+          sparse-checkout-cone-mode: false
+
+      - name: Record completion
+        env:
+          GH_TOKEN: >-
+            ${{ secrets.AGENTS_AUTOMATION_PAT ||
+                secrets.ACTIONS_BOT_PAT ||
+                secrets.SERVICE_BOT_PAT ||
+                github.token }}
+          GITHUB_TOKEN: >-
+            ${{ secrets.AGENTS_AUTOMATION_PAT ||
+                secrets.ACTIONS_BOT_PAT ||
+                secrets.SERVICE_BOT_PAT ||
+                github.token }}
+          PR_NUMBER: ${{ needs.resolve.outputs.pr_number }}
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+          JOB_RESULT: ${{ needs.autofix.result }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PR_NUMBER:-}" ] || [ -z "${HEAD_SHA:-}" ]; then
+            echo "Autofix completion state missing PR or SHA; skipping."
+            exit 0
+          fi
+          if [ "${JOB_RESULT:-}" = "success" ]; then
+              EXIT_CODE=0
+            else
+              EXIT_CODE=1
+            fi
+          python -m scripts.runner_lib record-completion \
+            --provider autofix \
+            --pr-number "$PR_NUMBER" \
+            --head-sha "$HEAD_SHA" \
+            --summary "autofix workflow result: ${JOB_RESULT:-unknown}" \
+            --exit-code "$EXIT_CODE" \
+            --storage auto

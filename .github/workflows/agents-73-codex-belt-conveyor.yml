@@ -95,7 +95,7 @@ jobs:
       - name: Mint GitHub App token (preferred)
         id: app_token
         if: ${{ env.WORKFLOWS_APP_ID != '' && env.WORKFLOWS_APP_PRIVATE_KEY != '' }}
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         with:
           app-id: ${{ env.WORKFLOWS_APP_ID }}
           private-key: ${{ env.WORKFLOWS_APP_PRIVATE_KEY }}
@@ -184,13 +184,15 @@ jobs:
           } >>"$GITHUB_OUTPUT"
 
       - name: Checkout retry helpers
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
             .github/actions/setup-api-client
             .github/agents/registry.yml
             .github/scripts/agent_registry.js
+            .github/scripts/error_classifier.js
             .github/scripts/github-api-with-retry.js
+            .github/scripts/runtime_ac_merge_guard.js
             .github/scripts/token_load_balancer.js
           sparse-checkout-cone-mode: false
 
@@ -204,7 +206,7 @@ jobs:
 
       - name: Summarise invocation
         id: summary
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const summary = core.summary;
@@ -268,7 +270,7 @@ jobs:
 
       - name: Load PR details
         id: pr
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           github-token: ${{ env.GH_CONVEYOR_TOKEN }}
           script: |
@@ -329,7 +331,7 @@ jobs:
 
       - name: Ensure Gate succeeded
         id: gate
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           github-token: ${{ env.GH_CONVEYOR_TOKEN }}
           script: |
@@ -358,7 +360,7 @@ jobs:
 
       - name: Detect bootstrap-only placeholder change
         id: bootstrap
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           github-token: ${{ env.GH_CONVEYOR_TOKEN }}
           script: |
@@ -433,12 +435,13 @@ jobs:
       - name: Merge PR with squash
         if: ${{ steps.mode.outputs.dry_run != 'true' && steps.bootstrap.outputs.bootstrap != 'true' }}
         id: merge
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           github-token: ${{ env.GH_CONVEYOR_TOKEN }}
           script: |
             const fs = require('fs');
             const retryHelperPath = './.github/scripts/github-api-with-retry.js';
+            const { assertRuntimeAcMergeAllowed } = require('./.github/scripts/runtime_ac_merge_guard.js');
             const retryHelpers = fs.existsSync(retryHelperPath)
               ? require(retryHelperPath)
               : {
@@ -450,6 +453,15 @@ jobs:
             const prNumber = Number('${{ inputs.pr_number }}');
             const { owner, repo } = context.repo;
             try {
+              await assertRuntimeAcMergeAllowed({
+                github,
+                core,
+                owner,
+                repo,
+                prNumber,
+                withRetry,
+                source: 'agents-73-codex-belt-conveyor',
+              });
               await withRetry(() => github.rest.pulls.merge({ owner, repo, pull_number: prNumber, merge_method: 'squash' }));
               core.setOutput('merged', 'true');
             } catch (error) {
@@ -458,7 +470,7 @@ jobs:
 
       - name: Delete branch after merge
         if: ${{ steps.mode.outputs.dry_run != 'true' && steps.bootstrap.outputs.bootstrap != 'true' && steps.merge.outputs.merged == 'true' }}
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           github-token: ${{ env.GH_CONVEYOR_TOKEN }}
           script: |
@@ -477,12 +489,13 @@ jobs:
             try {
               await withRetry(() => github.rest.git.deleteRef({ owner, repo, ref: `heads/${branch}` }));
             } catch (error) {
+              // # best-effort: the PR is already merged, so branch cleanup can be retried later.
               core.warning(`Failed to delete branch ${branch}: ${error.message}`);
             }
 
       - name: Close source issue
         if: ${{ steps.mode.outputs.dry_run != 'true' && steps.bootstrap.outputs.bootstrap != 'true' && steps.merge.outputs.merged == 'true' }}
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           github-token: ${{ env.GH_CONVEYOR_TOKEN }}
           script: |
@@ -505,6 +518,7 @@ jobs:
             try {
               await withRetry(() => github.rest.issues.update({ owner, repo, issue_number: issue, state: 'closed' }));
             } catch (error) {
+              // # best-effort: GitHub may already have closed the issue from the merged closing reference.
               core.warning(`Failed to close issue #${issue}: ${error.message}`);
             }
             try {
@@ -528,7 +542,7 @@ jobs:
 
       - name: Leave merge confirmation on PR
         if: ${{ steps.mode.outputs.dry_run != 'true' && steps.bootstrap.outputs.bootstrap != 'true' && steps.merge.outputs.merged == 'true' }}
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           github-token: ${{ env.GH_CONVEYOR_TOKEN }}
           script: |
@@ -548,6 +562,7 @@ jobs:
             try {
               await withRetry(() => github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body: `Gate succeeded; merged automatically and closed issue #${issue || '(unknown)'}.` }));
             } catch (error) {
+              // # best-effort: the merge is durable even if its confirmation comment cannot be posted.
               core.warning(`Failed to comment on PR #${prNumber}: ${error.message}`);
             }
 
@@ -560,7 +575,7 @@ jobs:
 
       - name: Re-dispatch dispatcher
         if: ${{ steps.mode.outputs.dry_run != 'true' && steps.bootstrap.outputs.bootstrap != 'true' && steps.merge.outputs.merged == 'true' }}
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           github-token: ${{ env.GH_CONVEYOR_TOKEN }}
           script: |
@@ -587,5 +602,6 @@ jobs:
                 },
               }));
             } catch (error) {
+              // # best-effort: the completed merge does not depend on immediately waking the dispatcher.
               core.warning(`Failed to re-dispatch dispatcher: ${error.message}`);
             }

@@ -1,6 +1,14 @@
 # Gate orchestrates CI enforcement for pull requests. The final `summary`
 # job aggregates artifacts, computes coverage deltas, publishes the commit
 # status, and maintains the consolidated PR comment.
+#
+# Fresh-consumer bootstrap note:
+# This expanded Gate is not yet safe to seed into brand-new consumer repos.
+# sync_mode: create_only only protects repos that already have a Gate file; a
+# repo missing pr-00-gate.yml can still receive this template on first sync.
+# Fresh consumers should start from stranske/Template or another known-green
+# deployed consumer Gate, then upgrade after issue #2158 proves this expanded
+# detect-output version no longer hits the startup-failure regression.
 name: Gate
 
 on:
@@ -17,9 +25,24 @@ jobs:
     name: detect changed files
     runs-on: ubuntu-latest
     outputs:
-      doc_only: ${{ steps.diff.outputs.doc_only || 'false' }}
-      run_core: ${{ steps.diff.outputs.run_core || 'true' }}
-      reason: ${{ steps.diff.outputs.reason || 'code_changes' }}
+      doc_only: >-
+        ${{ github.event_name == 'pull_request' && steps.classify.outputs.is-docs-only == 'true' }}
+      run_core: >-
+        ${{
+          github.event_name == 'pull_request' &&
+          steps.classify.outputs.is-docs-only == 'true' &&
+          'false' ||
+          steps.diff.outputs.run_core ||
+          'true'
+        }}
+      reason: >-
+        ${{
+          github.event_name == 'pull_request' &&
+          steps.classify.outputs.is-docs-only == 'true' &&
+          'docs_only' ||
+          steps.diff.outputs.reason ||
+          'code_changes'
+        }}
       docker_changed: >-
         ${{ steps.diff.outputs.docker_changed || 'false' }}
       lint: ${{ steps.python_ci_toggles.outputs.lint || 'true' }}
@@ -29,12 +52,24 @@ jobs:
       cache: ${{ steps.python_ci_toggles.outputs.cache || 'true' }}
       pytest_markers: >-
         ${{ steps.python_ci_toggles.outputs.pytest_markers || 'not quarantine and not slow' }}
-      workflow_changed: ${{ steps.diff.outputs.workflow_changed || 'false' }}
+      workflow_changed: >-
+        ${{ steps.classify.outputs.is-workflow-change
+        || steps.diff.outputs.workflow_changed
+        || 'false' }}
+      is_docs_only: ${{ steps.classify.outputs.is-docs-only || 'false' }}
+      is_python_code: ${{ steps.classify.outputs.is-python-code || 'true' }}
+      is_workflow_change: ${{ steps.classify.outputs.is-workflow-change || 'false' }}
+      is_security_relevant: ${{ steps.classify.outputs.is-security-relevant || 'true' }}
+      is_template_change: ${{ steps.classify.outputs.is-template-change || 'false' }}
+      is_test_only: ${{ steps.classify.outputs.is-test-only || 'false' }}
+      affected_consumers: ${{ steps.classify.outputs.affected-consumers || '[]' }}
+      classification_rationale: >-
+        ${{ steps.classify.outputs.classification-rationale || 'path classifier unavailable' }}
     steps:
       # Mint GitHub App token early to use for API calls (avoids rate limits)
       - name: Mint GitHub App Token
         id: app_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         continue-on-error: true
         with:
           app-id: ${{ secrets.WORKFLOWS_APP_ID || '0' }}
@@ -42,18 +77,27 @@ jobs:
           owner: ${{ github.repository_owner }}
 
       - name: Checkout workflow helpers
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
 
           token: ${{ steps.app_token.outputs.token || github.token }}
+          persist-credentials: false
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           sparse-checkout: |
+            .github/actions/path-classifier
+            .github/path-classification.yml
             .github/scripts
           sparse-checkout-cone-mode: false
+      - name: Classify changed paths
+        id: classify
+        uses: ./.github/actions/path-classifier
+        with:
+          force-full: ${{ github.event_name == 'workflow_dispatch' }}
+
       - name: Detect changes via API
         id: diff
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const { detectChanges } = require('./.github/scripts/detect-changes.js');
@@ -120,20 +164,34 @@ jobs:
           echo "workflow_changed=${WORKFLOW_CHANGED}"
           echo "environment=${ENVIRONMENT_NAME}"
 
+  generated-delivery-seal:
+    name: generated delivery seal
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Require an exact-head delivery seal
+        uses: iamkayleb/Workflows/.github/actions/generated-delivery-seal@e85edadb246e41d172a0c79fad147752d1df9ea9
+
   python-ci:
     name: python ci
     needs:
       - detect
       - environment-gate
-    if: ${{ needs.detect.outputs.doc_only != 'true' && needs.detect.outputs.run_core == 'true' }}
+    if: >-
+      ${{
+        needs.detect.outputs.doc_only != 'true' &&
+        needs.detect.outputs.is_python_code == 'true' &&
+        needs.detect.outputs.run_core == 'true'
+      }}
     uses: iamkayleb/Workflows/.github/workflows/reusable-10-ci-python.yml@main
     secrets: inherit
     permissions:
       contents: read
       actions: read
     with:
-      primary-python-version: '3.11'
-      python-versions: '["3.11", "3.12"]'
+      primary-python-version: '3.12'
+      python-versions: '["3.12", "3.13"]'
       marker: "not quarantine and not slow"
       pytest_markers: ${{ needs.detect.outputs.pytest_markers }}
       lint: ${{ needs.detect.outputs.lint == 'true' }}
@@ -141,13 +199,51 @@ jobs:
       typecheck: ${{ needs.detect.outputs.typecheck == 'true' }}
       run-mypy: ${{ needs.detect.outputs.typecheck == 'true' }}
       coverage: ${{ needs.detect.outputs.coverage == 'true' }}
-      # Workflows repo has scripts/, not src/ - disable coverage minimum
+      # Keep coverage threshold informational; reusable Python CI owns source selection.
       coverage-min: ''
       cache: ${{ needs.detect.outputs.cache == 'true' }}
       enable-soft-gate: ${{ needs.detect.outputs.coverage == 'true' }}
       # Use the shared gate- prefix so downstream Maint workflows can locate the
       # coverage artifacts without special-casing runtime names.
       artifact-prefix: 'gate-'
+
+  docs-guard:
+    name: docs guard
+    needs:
+      - detect
+      - environment-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.14'
+      - name: Run reusable workflow docs guards
+        run: |
+          set -euo pipefail
+          tests=()
+          for path in \
+            tests/workflows/test_reusable_workflow_inputs_doc.py \
+            tests/workflows/test_reusable_workflow_outputs_doc.py; do
+            if [ -f "$path" ]; then
+              tests+=("$path")
+            fi
+          done
+          if [ "${#tests[@]}" -eq 0 ]; then
+            echo "No reusable workflow docs guard tests found; skipping."
+            exit 0
+          fi
+          python -m pip install --upgrade pip pytest pyyaml
+          python -m pytest "${tests[@]}" -q
+      - name: Warn on stale managed AGENTS.md playbook refs
+        run: >-
+          python scripts/check_agents_md_freshness.py
+          --repo-root .
+          --github-annotations
 
   github-scripts-tests:
     name: github scripts tests
@@ -157,25 +253,39 @@ jobs:
     if: ${{ needs.detect.outputs.doc_only != 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
-        with:
-          node-version: '20'
-      - run: node --test .github/scripts/__tests__/*.test.js
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.11'
-      - name: Run Python workflow tests (if present)
+      - name: Detect optional script test suites
+        id: script_tests
         run: |
-          if [ -d tests/workflows/github_scripts ]; then
-            python -m pip install --upgrade pip pytest requests
-            pytest tests/workflows/github_scripts
+          set -euo pipefail
+          if [ -d .github/scripts/__tests__ ]; then
+            echo "node_tests=true" >> "$GITHUB_OUTPUT"
           else
-            echo "No Python workflow tests found in tests/workflows/github_scripts/; skipping."
+            echo "node_tests=false" >> "$GITHUB_OUTPUT"
           fi
+          if [ -d tests/workflows/github_scripts ]; then
+            echo "python_tests=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "python_tests=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        if: ${{ steps.script_tests.outputs.node_tests == 'true' }}
+        with:
+          node-version: '24'
+      - run: node --test .github/scripts/__tests__/*.test.js
+        if: ${{ steps.script_tests.outputs.node_tests == 'true' }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        if: ${{ steps.script_tests.outputs.python_tests == 'true' }}
+        with:
+          python-version: '3.14'
+      - run: python -m pip install --upgrade pip pytest requests
+        if: ${{ steps.script_tests.outputs.python_tests == 'true' }}
+      - run: pytest tests/workflows/github_scripts
+        if: ${{ steps.script_tests.outputs.python_tests == 'true' }}
 
   issue-consistency:
     name: issue consistency
@@ -184,7 +294,7 @@ jobs:
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -197,21 +307,92 @@ jobs:
           git remote add upstream "$upstream"
           git fetch --no-tags upstream \
             "refs/heads/${base_ref}:refs/remotes/upstream/${base_ref}"
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        if: ${{ hashFiles('scripts/check_issue_consistency.py') != '' }}
         with:
-          python-version: '3.11'
+          python-version: '3.14'
       - name: Check issue number consistency
-        run: |
-          if [ -f scripts/check_issue_consistency.py ]; then
-            python scripts/check_issue_consistency.py
-          else
-            echo "scripts/check_issue_consistency.py not found; skipping."
-          fi
+        if: ${{ hashFiles('scripts/check_issue_consistency.py') != '' }}
+        run: python scripts/check_issue_consistency.py
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           BASE_REF: ${{ github.base_ref }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           BASE_REMOTE: upstream
+      - name: Skip issue consistency check
+        if: ${{ hashFiles('scripts/check_issue_consistency.py') == '' }}
+        run: >-
+          echo "scripts/check_issue_consistency.py not present;
+          skipping Workflows-specific issue consistency check."
+
+  test-quality:
+    name: test-quality
+    needs:
+      - detect
+      - environment-gate
+    if: ${{ github.event_name == 'pull_request' && needs.detect.outputs.doc_only != 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Fetch base ref
+        run: |
+          set -euo pipefail
+          upstream="https://github.com/${{ github.event.pull_request.base.repo.full_name }}.git"
+          base_ref="${{ github.event.pull_request.base.ref }}"
+          git remote add upstream "$upstream"
+          git fetch --no-tags upstream \
+            "refs/heads/${base_ref}:refs/remotes/upstream/${base_ref}"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.14'
+      - name: Install test-quality dependencies
+        run: python -m pip install --upgrade pip pytest
+      # Consumer repos intentionally omit Workflows-specific
+      # check_gate_diff_quality.py; only check_deliberate_break.py is synced.
+      - name: Check deliberate-break acceptance criterion
+        id: deliberate_break
+        if: ${{ hashFiles('scripts/check_deliberate_break.py') != '' }}
+        run: >-
+          python scripts/check_deliberate_break.py
+          --base "refs/remotes/upstream/${{ github.event.pull_request.base.ref }}"
+          --head HEAD
+        env:
+          PR_BODY: ${{ github.event.pull_request.body || '' }}
+      - name: Skip deliberate-break check
+        if: ${{ hashFiles('scripts/check_deliberate_break.py') == '' }}
+        run: >-
+          echo "scripts/check_deliberate_break.py not present;
+          skipping opt-in deliberate-break check."
+      - name: Apply runtime acceptance-criteria label
+        if: ${{ steps.deliberate_break.outputs.has_marker == 'true' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          script: |
+            const issue_number = context.payload.pull_request.number;
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+            });
+            const labels = issue.labels.map((label) =>
+              typeof label === 'string' ? label : label.name
+            );
+            if (!labels.includes('acceptance-criteria')) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number,
+                labels: ['acceptance-criteria'],
+              });
+            }
 
   docker-smoke:
     name: docker smoke
@@ -236,7 +417,7 @@ jobs:
     steps:
       - name: Mint GitHub App Token
         id: app_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         continue-on-error: true
         with:
           app-id: ${{ secrets.WORKFLOWS_APP_ID || '0' }}
@@ -244,17 +425,18 @@ jobs:
           owner: ${{ github.repository_owner }}
 
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           token: ${{ steps.app_token.outputs.token || github.token }}
+          persist-credentials: false
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
-          python-version: '3.11'
+          python-version: '3.14'
 
       - name: Install PyYAML
         run: pip install PyYAML
@@ -274,10 +456,13 @@ jobs:
       - detect
       - environment-gate
       - python-ci
+      - docs-guard
       - docker-smoke
       - github-scripts-tests
       - issue-consistency
+      - test-quality
       - ledger-validation
+      - generated-delivery-seal
     if: ${{ always() }}
     runs-on: ubuntu-latest
     permissions:
@@ -299,7 +484,7 @@ jobs:
       # Mint GitHub App token early to use for API calls (avoids rate limits)
       - name: Mint GitHub App Token
         id: app_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         continue-on-error: true
         with:
           app-id: ${{ secrets.WORKFLOWS_APP_ID || '0' }}
@@ -307,10 +492,11 @@ jobs:
           owner: ${{ github.repository_owner }}
 
       - name: Checkout workflow helpers
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
 
           token: ${{ steps.app_token.outputs.token || github.token }}
+          persist-credentials: false
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           sparse-checkout: |
@@ -328,15 +514,15 @@ jobs:
 
 
       - name: Set up Node
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: '20'
+          node-version: '24'
       - name: Install GitHub API dependencies
         run: npm install --no-save --no-package-lock @octokit/rest @octokit/auth-app
       - name: Handle docs-only change
         if: needs.detect.outputs.doc_only == 'true'
         id: docs_only
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
           REASON: ${{ needs.detect.outputs.reason || 'docs_only' }}
         with:
@@ -346,7 +532,7 @@ jobs:
 
       - name: Ensure docs-only fast-pass comment
         if: needs.detect.outputs.doc_only == 'true'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
           COMMENT_BODY: ${{ steps.docs_only.outputs.comment_body }}
           MARKER: ${{ steps.docs_only.outputs.marker }}
@@ -366,7 +552,7 @@ jobs:
 
       - name: Remove docs-only fast-pass comment when not needed
         if: needs.detect.outputs.doc_only != 'true'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
           MARKER: ${{ steps.docs_only.outputs.marker }}
           BASE_MESSAGE: ${{ steps.docs_only.outputs.base_message }}
@@ -383,7 +569,7 @@ jobs:
             });
       - name: Discover Gate workflow runs
         id: gather
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const { discoverWorkflowRuns } = require('./.github/scripts/maint-post-ci.js');
@@ -435,9 +621,10 @@ jobs:
       - name: Compute coverage stats
         if: needs.detect.outputs.doc_only != 'true' && needs.detect.outputs.coverage == 'true'
         id: coverage_stats
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
           COVERAGE_ROOT: gate_artifacts/downloads
+          COVERAGE_REFERENCE_RUNTIME: '3.12'
         with:
           script: |
             const fs = require('fs');
@@ -479,7 +666,11 @@ jobs:
           RUN_CORE: ${{ needs.detect.outputs.run_core || 'true' }}
           REASON: ${{ needs.detect.outputs.reason }}
           PYTHON_RESULT: ${{ needs.python-ci.result || 'skipped' }}
+          DOCS_GUARD_RESULT: ${{ needs.docs-guard.result || 'success' }}
+          PYTHON_REQUIRED: ${{ needs.detect.outputs.is_python_code || 'true' }}
           DOCKER_RESULT: ${{ needs.docker-smoke.result || 'skipped' }}
+          TEST_QUALITY_RESULT: ${{ needs.test-quality.result || 'skipped' }}
+          DELIVERY_SEAL_RESULT: ${{ needs.generated-delivery-seal.result || 'success' }}
           DOCKER_CHANGED: ${{ needs.detect.outputs.docker_changed || 'false' }}
           COVERAGE_ENABLED: ${{ needs.detect.outputs.coverage || 'true' }}
         run: python .github/scripts/gate_summary.py
@@ -492,7 +683,7 @@ jobs:
           steps.summarize.outputs.state == 'failure' &&
           steps.summarize.outputs.cosmetic_failure == 'true' &&
           !contains(github.event.pull_request.labels.*.name, 'autofix:clean')
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
           ALLOWED_EXTENSIONS: 'py,pyi'
           FORMAT_FAILURE: ${{ steps.summarize.outputs.format_failure || 'false' }}
@@ -591,7 +782,7 @@ jobs:
       - name: Prepare summary body
         id: summary_body
         run: |
-          python tools/post_ci_summary.py
+          python -m tools.post_ci_summary
         env:
           PYTHONPATH: ${{ github.workspace }}
           RUNS_JSON: ${{ steps.gather.outputs.runs || '[]' }}
@@ -605,6 +796,7 @@ jobs:
           GATE_ARTIFACTS_ROOT: ${{ github.workspace }}/gate_artifacts
 
       - name: Compose PR summary comment
+        if: always()
         id: compose_comment
         run: |
           python <<'PY'
@@ -616,7 +808,10 @@ jobs:
           head_sha = os.environ.get('HEAD_SHA', '').strip()
 
           if not body:
-              raise SystemExit('Summary body missing; aborting comment composition.')
+              body = (
+                  '## Automated Status Summary\n\n'
+                  '_Gate summary details were unavailable for this run._'
+              )
 
           head_token = head_sha[:12] if head_sha else ''
           parts = []
@@ -640,7 +835,7 @@ jobs:
             ${{ steps.gather.outputs.head_sha || github.event.pull_request.head.sha || github.sha }}
 
       - name: Append keepalive checklists
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           LABEL_APPLIED: ${{ steps.autofix_label.outputs.applied || 'false' }}
@@ -810,7 +1005,7 @@ jobs:
 
       - name: Ensure consolidated summary comment
         if: always()
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           github-token: ${{ github.token }}
           script: |
@@ -820,7 +1015,7 @@ jobs:
 
             const commentPath = path.resolve('gate-summary.md');
             if (!fs.existsSync(commentPath)) {
-              core.warning('gate-summary.md not found; skipping PR comment.');
+              core.warning('gate-summary.md was not created; skipping summary comment update.');
               return;
             }
             const body = fs.readFileSync(commentPath, 'utf8');
@@ -836,7 +1031,7 @@ jobs:
 
       - name: Report Gate commit status
         if: ${{ always() }}
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
           STATE: >-
             ${{ steps.summarize.outputs.state || steps.docs_only.outputs.state || 'pending' }}
@@ -850,6 +1045,7 @@ jobs:
             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
           script: |
+            // # best-effort: this ancillary API failure is logged; reconciliation or the primary workflow result remains authoritative.
             const retryScript = './.github/scripts/github-api-with-retry.js';
             const { createTokenAwareRetry } = require(retryScript);
             const { withRetry } = await createTokenAwareRetry({
@@ -895,10 +1091,12 @@ jobs:
 
       - name: Dispatch autofix notification
         if: ${{ (steps.summarize.outputs.state || steps.docs_only.outputs.state) == 'failure' }}
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           github-token: ${{ steps.app_token.outputs.token || github.token }}
           script: |
+            // # best-effort: dispatch only requests a later autofix evaluation; the
+            // failed Gate result remains authoritative if this notification fails.
             const prNumber = context.payload.pull_request?.number;
             if (!prNumber) {
               core.info('No pull request context; skipping autofix dispatch.');

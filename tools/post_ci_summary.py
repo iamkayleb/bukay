@@ -10,13 +10,23 @@ from __future__ import annotations
 import json
 import os
 import re
-import xml.etree.ElementTree as ET
 from collections.abc import Iterable, Mapping, MutableSequence, Sequence
 from dataclasses import dataclass
+from html import unescape
 from pathlib import Path
 from typing import Any, TypedDict
 
-from tools.ci_failure_triage import triage_ci_failure
+try:
+    from tools.ci_failure_triage import triage_ci_failure
+except ModuleNotFoundError as exc:
+    missing_name = exc.name or ""
+    if missing_name != "tools" and not missing_name.startswith("tools."):
+        raise
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    sys.modules.pop("tools", None)
+    from tools.ci_failure_triage import triage_ci_failure
 
 
 @dataclass(frozen=True)
@@ -27,17 +37,6 @@ class JobRecord:
     highlight: bool
 
 
-@dataclass(frozen=True)
-class RunRecord:
-    key: str
-    display_name: str
-    present: bool
-    state: str | None
-    attempt: int | None
-    label: str
-    url: str | None
-
-
 class RequiredJobGroup(TypedDict):
     label: str
     patterns: list[str]
@@ -45,12 +44,12 @@ class RequiredJobGroup(TypedDict):
 
 DEFAULT_REQUIRED_JOB_GROUPS: list[RequiredJobGroup] = [
     {
-        "label": "python ci (3.11)",
-        "patterns": [r"(python\s*ci|core\s*(tests?)?).*(3\.11|py\.?311)"],
-    },
-    {
         "label": "python ci (3.12)",
         "patterns": [r"(python\s*ci|core\s*(tests?)?).*(3\.12|py\.?312)"],
+    },
+    {
+        "label": "python ci (3.13)",
+        "patterns": [r"(python\s*ci|core\s*(tests?)?).*(3\.13|py\.?313)"],
     },
     {"label": "docker smoke", "patterns": [r"docker.*smoke|smoke.*docker"]},
     {"label": "gate", "patterns": [r"gate"]},
@@ -134,26 +133,25 @@ class RequiredJobRule(TypedDict):
 
 REQUIRED_JOB_RULES: list[RequiredJobRule] = [
     {
-        "key": "core311",
-        "label": "core tests (3.11)",
-        "slug_variants": [
-            ["core", "3-11"],
-            ["core", "311"],
-            ["py311"],
-            ["3-11", "tests"],
-        ],
-        "fallback_patterns": [r"core\s*(tests?)?.*(3\.11|py\.?311)"],
-    },
-    {
         "key": "core312",
         "label": "core tests (3.12)",
         "slug_variants": [
             ["core", "3-12"],
-            ["core", "312"],
             ["py312"],
             ["3-12", "tests"],
         ],
         "fallback_patterns": [r"core\s*(tests?)?.*(3\.12|py\.?312)"],
+    },
+    {
+        "key": "core313",
+        "label": "core tests (3.13)",
+        "slug_variants": [
+            ["core", "3-13"],
+            ["core", "313"],
+            ["py313"],
+            ["3-13", "tests"],
+        ],
+        "fallback_patterns": [r"core\s*(tests?)?.*(3\.13|py\.?313)"],
     },
     {
         "key": "docker",
@@ -170,11 +168,15 @@ REQUIRED_JOB_RULES: list[RequiredJobRule] = [
 ]
 
 
-DOC_ONLY_JOB_KEYS: tuple[str, ...] = ("core311", "core312", "docker")
+DOC_ONLY_JOB_KEYS: tuple[str, ...] = ("core312", "core313", "docker")
 
 
 def _matches_slug(slug: str, variants: Sequence[Sequence[str]]) -> bool:
-    return any(all(token in slug for token in option) for option in variants)
+    segments = set(slug.split("-"))
+    return any(
+        all(part in segments for token in option for part in token.split("-"))
+        for option in variants
+    )
 
 
 def _classify_job_key(name: str) -> str | None:
@@ -351,7 +353,7 @@ def _load_gate_summary_records(artifacts_root: Path) -> list[dict[str, object]]:
     base = artifacts_root / "downloads"
     if not base.exists():
         return records
-    for path in sorted(base.rglob("**/summary.json")):
+    for path in sorted(base.rglob("summary.json")):
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
@@ -382,28 +384,69 @@ def _collect_junit_failures(artifacts_root: Path, limit: int) -> list[str]:
     if not base.exists():
         return failures
 
-    for path in sorted(base.rglob("**/pytest-junit.xml")):
+    for path in sorted(base.rglob("pytest-junit.xml")):
         try:
-            tree = ET.parse(path)
-        except ET.ParseError:
+            xml_text = path.read_text(encoding="utf-8")
+        except OSError:
             continue
-        root = tree.getroot()
-        for case in root.iter("testcase"):
-            file_attr = case.attrib.get("file")
-            line_attr = case.attrib.get("line")
+        for case in _iter_junit_testcase_blocks(xml_text):
+            case_attrs = _parse_xml_attributes(case["attrs"])
+            file_attr = case_attrs.get("file")
+            line_attr = case_attrs.get("line")
             if file_attr:
                 line_suffix = f", line {line_attr}" if line_attr else ""
                 _append_line(failures, f'File "{file_attr}"{line_suffix}', limit)
             for tag in ("failure", "error"):
-                for node in case.findall(tag):
-                    message = node.attrib.get("message")
+                for node in _iter_xml_tag_blocks(case["body"], tag):
+                    attrs = _parse_xml_attributes(node["attrs"])
+                    message = attrs.get("message")
                     if message:
                         _append_text(failures, message, limit)
-                    if node.text:
-                        _append_text(failures, node.text, limit)
+                    if node["body"]:
+                        _append_text(failures, _strip_xml_tags(node["body"]), limit)
             if len(failures) >= limit:
                 return failures
     return failures
+
+
+_TESTCASE_RE = re.compile(
+    r"<testcase\b(?P<attrs>[^>]*)>(?P<body>.*?)</testcase>",
+    re.IGNORECASE | re.DOTALL,
+)
+_XML_ATTR_RE = re.compile(
+    r"(?P<name>[A-Za-z_:][A-Za-z0-9_.:-]*)\s*=\s*" r"(?P<quote>['\"])(?P<value>.*?)(?P=quote)",
+    re.DOTALL,
+)
+_XML_TAG_RE_CACHE: dict[str, re.Pattern[str]] = {}
+
+
+def _iter_junit_testcase_blocks(xml_text: str) -> Iterable[dict[str, str]]:
+    for match in _TESTCASE_RE.finditer(xml_text):
+        yield {"attrs": match.group("attrs"), "body": match.group("body")}
+
+
+def _iter_xml_tag_blocks(xml_text: str, tag: str) -> Iterable[dict[str, str]]:
+    pattern = _XML_TAG_RE_CACHE.get(tag)
+    if pattern is None:
+        escaped = re.escape(tag)
+        pattern = re.compile(
+            rf"<{escaped}\b(?P<attrs>[^>]*)>(?P<body>.*?)</{escaped}>",
+            re.IGNORECASE | re.DOTALL,
+        )
+        _XML_TAG_RE_CACHE[tag] = pattern
+    for match in pattern.finditer(xml_text):
+        yield {"attrs": match.group("attrs"), "body": match.group("body")}
+
+
+def _parse_xml_attributes(raw_attrs: str) -> dict[str, str]:
+    return {
+        match.group("name"): unescape(match.group("value"))
+        for match in _XML_ATTR_RE.finditer(raw_attrs)
+    }
+
+
+def _strip_xml_tags(xml_text: str) -> str:
+    return unescape(re.sub(r"<[^>]+>", "", xml_text))
 
 
 def _collect_check_failure_lines(records: Sequence[Mapping[str, object]]) -> list[str]:
@@ -420,7 +463,7 @@ def _collect_check_failure_lines(records: Sequence[Mapping[str, object]]) -> lis
 
         type_check = checks.get("type_check") if isinstance(checks, Mapping) else None
         if isinstance(type_check, Mapping) and _outcome_is_failure(type_check.get("outcome")):
-            lines.append("mypy: Found 1 errors in 1 files")
+            lines.append("mypy type check failed")
 
         tests = checks.get("tests") if isinstance(checks, Mapping) else None
         if isinstance(tests, Mapping) and _outcome_is_failure(tests.get("outcome")):
@@ -428,7 +471,7 @@ def _collect_check_failure_lines(records: Sequence[Mapping[str, object]]) -> lis
 
         coverage_min = checks.get("coverage_minimum") if isinstance(checks, Mapping) else None
         if isinstance(coverage_min, Mapping) and _outcome_is_failure(coverage_min.get("outcome")):
-            lines.append("coverage failure: required test coverage of 0% not reached")
+            lines.append("coverage failure: coverage minimum check failed")
 
     return lines
 
@@ -609,8 +652,6 @@ def _collect_required_segments(
     runs: Sequence[Mapping[str, object]],
     groups: Sequence[RequiredJobGroup],
 ) -> list[str]:
-    import re
-
     segments: list[str] = []
     job_sources: list[Mapping[str, object]] = []
     for run in runs:

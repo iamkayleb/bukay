@@ -1,5 +1,12 @@
 name: Agents Issue Optimizer
 
+# The recursion guard below correlates prior runs by issue number via `displayTitle`.
+# workflow_dispatch runs otherwise display the bare workflow name, so the guard matched
+# nothing and reported 0 for an issue it was re-running every minute. Pin the issue
+# number into the run name so both trigger types are correlatable.
+run-name: >-
+  Agents Issue Optimizer #${{ github.event.issue.number || github.event.inputs.issue_number }}
+
 on:
   issues:
     types: [labeled]
@@ -18,6 +25,13 @@ on:
           - apply
           - format
 
+concurrency:
+  group: >-
+    agents-issue-optimizer-${{
+    github.repository }}-${{
+    github.event.issue.number || github.event.inputs.issue_number || github.run_id }}
+  cancel-in-progress: false
+
 jobs:
   optimize_issue:
     runs-on: ubuntu-latest
@@ -25,6 +39,7 @@ jobs:
       issues: write
       contents: read
       models: read
+      actions: write
 
     steps:
       - name: Check trigger conditions
@@ -33,15 +48,74 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           LABEL_NAME: ${{ github.event.label.name }}
           DISPATCH_PHASE: ${{ inputs.phase }}
+          DISPATCH_ISSUE_NUMBER: ${{ inputs.issue_number }}
+          EVENT_ISSUE_NUMBER: ${{ github.event.issue.number }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
+          format_issue_is_eligible() {
+            local issue_number="$1"
+            if ! gh issue view "$issue_number" --repo "$GITHUB_REPOSITORY" \
+                --json body,labels,state,author > /tmp/format-eligibility.json; then
+              echo "::error::could not re-check issue eligibility; refusing format work"
+              return 2
+            fi
+            if [[ "$(jq -r '.state' /tmp/format-eligibility.json)" != "OPEN" ]]; then
+              echo "Skipping format: issue is not open."
+              return 1
+            fi
+            if jq -e '[.labels[].name] | any(
+                . == "agents:auto-pilot" or
+                . == "agents:auto-pilot-pause" or
+                . == "needs-human" or
+                . == "tracker:durable" or
+                . == "wontfix"
+              )' /tmp/format-eligibility.json >/dev/null; then
+              echo "Skipping format: issue is held, exempt, or owned by auto-pilot."
+              return 1
+            fi
+            if jq -er '.author.login // ""' /tmp/format-eligibility.json \
+                | grep -qiE '(\[bot\]|^renovate$|^dependabot$)'; then
+              echo "Skipping format: bot-authored issues are exempt."
+              return 1
+            fi
+            if jq -r '.body // ""' /tmp/format-eligibility.json \
+                | grep -qiE 'do not dispatch|not a (repo|cloud) coding task'; then
+              echo "Skipping format: issue body explicitly forbids dispatch."
+              return 1
+            fi
+            return 0
+          }
+
+          release_format_lease_after_skip() {
+            local issue_number="$1"
+            if jq -e '[.labels[].name] | any(. == "agents:format")' \
+                /tmp/format-eligibility.json >/dev/null; then
+              gh issue edit "$issue_number" --repo "$GITHUB_REPOSITORY" \
+                --remove-label "agents:format"
+              echo "Released agents:format lease after eligibility skip."
+            fi
+          }
+
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            should_run=true
+            if [[ "$DISPATCH_PHASE" == "format" ]]; then
+              if format_issue_is_eligible "$DISPATCH_ISSUE_NUMBER"; then
+                :
+              else
+                eligibility_rc=$?
+                if [[ "$eligibility_rc" -eq 2 ]]; then
+                  exit 1
+                fi
+                release_format_lease_after_skip "$DISPATCH_ISSUE_NUMBER"
+                should_run=false
+              fi
+            fi
             {
               echo "phase=$DISPATCH_PHASE"
-              echo "issue_number=${{ inputs.issue_number }}"
-              echo "should_run=true"
+              echo "issue_number=$DISPATCH_ISSUE_NUMBER"
+              echo "should_run=$should_run"
             } >> "$GITHUB_OUTPUT"
           elif [[ "$LABEL_NAME" == "agents:optimize" ]]; then
             # Skip if auto-pilot label is present (auto-pilot runs optimizer inline)
@@ -72,18 +146,19 @@ jobs:
               } >> "$GITHUB_OUTPUT"
             fi
           elif [[ "$LABEL_NAME" == "agents:format" ]]; then
-            # Skip if auto-pilot label is present (auto-pilot runs format inline)
-            # Use pipefail to ensure gh errors cause check to fail-closed
-            if gh issue view "${{ github.event.issue.number }}" --json labels \
-                --jq '.labels[].name' | grep -qx 'agents:auto-pilot'; then
-              echo "should_run=false" >> "$GITHUB_OUTPUT"
-              echo "Skipping: auto-pilot label present (runs inline)"
-            else
+            if format_issue_is_eligible "$EVENT_ISSUE_NUMBER"; then
               {
                 echo "phase=format"
-                echo "issue_number=${{ github.event.issue.number }}"
+                echo "issue_number=$EVENT_ISSUE_NUMBER"
                 echo "should_run=true"
               } >> "$GITHUB_OUTPUT"
+            else
+              eligibility_rc=$?
+              if [[ "$eligibility_rc" -eq 2 ]]; then
+                exit 1
+              fi
+              release_format_lease_after_skip "$EVENT_ISSUE_NUMBER"
+              echo "should_run=false" >> "$GITHUB_OUTPUT"
             fi
           else
             echo "should_run=false" >> "$GITHUB_OUTPUT"
@@ -93,7 +168,7 @@ jobs:
         id: app_token
         if: steps.check.outputs.should_run == 'true'
         continue-on-error: true
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         with:
           app-id: ${{ secrets.WORKFLOWS_APP_ID }}
           private-key: ${{ secrets.WORKFLOWS_APP_PRIVATE_KEY }}
@@ -117,15 +192,17 @@ jobs:
 
       - name: Checkout repository
         if: steps.check.outputs.should_run == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Checkout Workflows repository for scripts
         if: steps.check.outputs.should_run == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: iamkayleb/Workflows
           path: workflows-scripts
           sparse-checkout: |
+            .github/scripts/issue_format.py
+            config
             scripts/langchain
             tools
           sparse-checkout-cone-mode: false
@@ -139,18 +216,15 @@ jobs:
 
       - name: Set up Python
         if: steps.check.outputs.should_run == 'true'
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
-          python-version: '3.11'
+          python-version: '3.14'
 
       - name: Install dependencies
         if: steps.check.outputs.should_run == 'true'
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          # Install langchain dependencies
-          pip install langchain langchain-core langchain-openai \
-            langchain-anthropic langchain-community
+          python -m pip install -r workflows-scripts/tools/requirements-llm.txt
 
       - name: Check optimizer recursion guard
         if: steps.check.outputs.should_run == 'true'
@@ -165,14 +239,17 @@ jobs:
             '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null \
             || date -u -v-1H '+%Y-%m-%dT%H:%M:%SZ')
 
+          # `gh run list` defaults to 20 runs, which a tight loop exhausts inside the
+          # window; ask for enough history to actually see the recursion.
           # shellcheck disable=SC2016
           count=$(gh run list \
             --workflow=agents-issue-optimizer.yml \
+            --limit 100 \
             --json conclusion,createdAt,displayTitle \
             | jq --arg cutoff "$one_hour_ago" \
               --arg issue "#$ISSUE_NUMBER" \
               '[.[] | select(.createdAt > $cutoff
-              and (.displayTitle | contains($issue)))
+              and (.displayTitle | endswith($issue)))
               ] | length')
 
           echo "Optimizer runs for issue #$ISSUE_NUMBER in last hour: $count"
@@ -220,7 +297,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.token.outputs.token }}
           ISSUE_NUMBER: ${{ steps.check.outputs.issue_number }}
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           github-token: ${{ steps.token.outputs.token }}
           script: |
@@ -249,9 +326,9 @@ jobs:
           ISSUE_NUMBER: ${{ steps.check.outputs.issue_number }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          CLAUDE_API_STRANSKE: ${{ secrets.CLAUDE_API_STRANSKE }}
           LANGCHAIN_PROVIDER: anthropic
-          LANGCHAIN_MODEL: claude-opus-4-7
+          LANGCHAIN_MODEL: claude-sonnet-4-5-20250929
           PYTHONPATH: ${{ github.workspace }}/workflows-scripts
         run: |
           echo "Running analysis on issue #${ISSUE_NUMBER}"
@@ -300,7 +377,7 @@ jobs:
           ISSUE_NUMBER: ${{ steps.check.outputs.issue_number }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          CLAUDE_API_STRANSKE: ${{ secrets.CLAUDE_API_STRANSKE }}
           PYTHONPATH: ${{ github.workspace }}/workflows-scripts
         run: |
           echo "Checking for potential duplicate issues (advisory)"
@@ -342,7 +419,8 @@ jobs:
           });
           NODE
 
-          python - <<'PY' || true
+          set +e
+          python - <<'PY'
           import json
           import sys
           sys.path.insert(0, 'workflows-scripts/scripts/langchain')
@@ -352,33 +430,38 @@ jobs:
               issue = json.load(f)
           with open('/tmp/open_issues.json', encoding='utf-8') as f:
               open_issues = json.load(f)
-            with open('/tmp/dedup_comments.json', encoding='utf-8') as f:
-                comments = json.load(f)
+          with open('/tmp/dedup_comments.json', encoding='utf-8') as f:
+              comments = json.load(f)
 
-            marker = issue_dedup.SIMILAR_ISSUES_MARKER
-            for comment in comments or []:
-                body = (comment or {}).get('body') or ''
-                if marker in body:
-                    raise SystemExit(0)
+          marker = issue_dedup.SIMILAR_ISSUES_MARKER
+          for comment in comments or []:
+              body = (comment or {}).get('body') or ''
+              if marker in body:
+                  raise SystemExit(0)
 
           # Conservative defaults; can be tuned later.
           threshold = 0.82
-            store = issue_dedup.build_issue_vector_store(open_issues)
-            if store is None:
-                raise SystemExit(0)
+          store = issue_dedup.build_issue_vector_store(open_issues)
+          if store is None:
+              raise SystemExit(0)
 
-            title = (issue.get('title') or '').strip()
-            body = (issue.get('body') or '').strip()
-            query = f"{title}\n{body}".strip() if body else title
-            if not query:
-                raise SystemExit(0)
+          title = (issue.get('title') or '').strip()
+          body = (issue.get('body') or '').strip()
+          query = f"{title}\n{body}".strip() if body else title
+          if not query:
+              raise SystemExit(0)
 
-            matches = issue_dedup.find_similar_issues(store, query, threshold=threshold, k=5)
-            comment = issue_dedup.format_similar_issues_comment(matches, max_items=5)
-            if comment:
-                with open('/tmp/dedup_comment.md', 'w', encoding='utf-8') as out:
-                    out.write(comment)
+          matches = issue_dedup.find_similar_issues(store, query, threshold=threshold, k=5)
+          comment = issue_dedup.format_similar_issues_comment(matches, max_items=5)
+          if comment:
+              with open('/tmp/dedup_comment.md', 'w', encoding='utf-8') as out:
+                  out.write(comment)
           PY
+          dedup_rc=$?
+          set -e
+          if [[ $dedup_rc -ne 0 ]]; then
+            echo "::warning::issue dedup python exited with $dedup_rc; continuing without similar-issues comment"
+          fi
 
           if [[ -f /tmp/dedup_comment.md ]]; then
             gh issue comment "${ISSUE_NUMBER}" --body-file /tmp/dedup_comment.md || true
@@ -394,9 +477,9 @@ jobs:
           GH_TOKEN: ${{ steps.token.outputs.token }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          CLAUDE_API_STRANSKE: ${{ secrets.CLAUDE_API_STRANSKE }}
           LANGCHAIN_PROVIDER: anthropic
-          LANGCHAIN_MODEL: claude-opus-4-7
+          LANGCHAIN_MODEL: claude-sonnet-4-5-20250929
           PYTHONPATH: ${{ github.workspace }}/workflows-scripts
         run: |
           echo "Extracting suggestions from comments on issue #${ISSUE_NUMBER}"
@@ -468,6 +551,9 @@ jobs:
           print('Suggestions applied successfully')
           " || exit 1
 
+          # Keep agents:formatted truthful for apply-phase output too.
+          python workflows-scripts/.github/scripts/issue_format.py /tmp/updated_body.md
+
           # Update issue body
           gh issue edit "${ISSUE_NUMBER}" --body-file /tmp/updated_body.md
 
@@ -481,7 +567,7 @@ jobs:
           GH_TOKEN: ${{ steps.token.outputs.token }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          CLAUDE_API_STRANSKE: ${{ secrets.CLAUDE_API_STRANSKE }}
           PYTHONPATH: ${{ github.workspace }}/workflows-scripts
         run: |
           echo "Formatting issue #${ISSUE_NUMBER} into AGENT_ISSUE_TEMPLATE structure"
@@ -498,13 +584,18 @@ jobs:
               result = json.load(f)
           formatted = result.get('formatted_body', '')
           if not formatted:
-              print('ERROR: No formatted body returned')
+              print('ERROR: ' + (result.get('error') or 'No formatted body returned'))
               import sys
               sys.exit(1)
           with open('/tmp/formatted_body.md', 'w') as f:
               f.write(formatted)
           print('Issue formatted successfully')
           " || exit 1
+
+          # Keep the format-result label truthful: the generated issue must
+          # pass the canonical Workflows validator before it can be marked
+          # agents:formatted below.
+          python workflows-scripts/.github/scripts/issue_format.py /tmp/formatted_body.md
 
           # Update issue body with formatted version
           gh issue edit "${ISSUE_NUMBER}" --body-file /tmp/formatted_body.md
@@ -552,3 +643,22 @@ jobs:
             body="${body//RUN_URL_PLACEHOLDER/${RUN_URL}}"
             gh issue comment "${ISSUE_NUMBER}" --body "$body" || true
           fi
+
+      - name: Release failed format lease
+        if: >-
+          (failure() || cancelled()) &&
+          (steps.check.outputs.phase == 'format' ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.phase == 'format') ||
+          (github.event_name == 'issues' && github.event.label.name == 'agents:format'))
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token || github.token }}
+          ISSUE_NUMBER: ${{ steps.check.outputs.issue_number || github.event.inputs.issue_number || github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          # A guard retry may proceed only after the failed format run releases its lease.
+          gh issue edit "$ISSUE_NUMBER" --remove-label "agents:format" \
+            || echo "::warning::could not release failed agents:format lease"
+          # GITHUB_TOKEN label edits do not emit issues:unlabeled workflows; dispatch explicitly.
+          gh workflow run agents-issue-format-guard.yml --repo "$GITHUB_REPOSITORY" \
+            -f issue_number="$ISSUE_NUMBER" \
+            || echo "::warning::could not dispatch format guard retry after lease release"

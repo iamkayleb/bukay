@@ -1,8 +1,14 @@
 'use strict';
 
-const { createGithubApiCache } = require('./github-api-cache-client');
+const { getGithubApiCache } = require('./github-api-cache-client');
+const { classifyError, ERROR_CATEGORIES } = require('./error_classifier');
 const { makeTrace } = require('./keepalive_contract.js');
 const { ensureRateLimitWrapped } = require('./github-rate-limited-wrapper.js');
+const {
+  extractIssueNumberFromPull,
+  formatSourceContextForLog,
+  resolvePrSourceContext,
+} = require('./source_context.js');
 
 const DEFAULT_INSTRUCTION_SIGNATURE =
   'keepalive workflow continues nudging until everything is complete';
@@ -14,22 +20,8 @@ const DEFAULT_INSTRUCTION_SIGNATURE =
  */
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function getGithubApiCache({ github, core }) {
-  if (!github) {
-    return createGithubApiCache({ core });
-  }
-  if (github.__agentsPrMetaApiCache) {
-    return github.__agentsPrMetaApiCache;
-  }
-  const cache = createGithubApiCache({ core });
-  Object.defineProperty(github, '__agentsPrMetaApiCache', {
-    value: cache,
-    enumerable: false,
-    configurable: false,
-    writable: false,
-  });
-  return cache;
-}
+// getGithubApiCache is now the single shared factory from
+// github-api-cache-client.js (sentinel __githubApiCache).
 
 async function fetchPullRequestCached({ github, owner, repo, prNumber, core, maxRetries = 3 }) {
   if (!github?.rest?.pulls?.get || !owner || !repo) {
@@ -89,15 +81,7 @@ async function fetchPullRequestCached({ github, owner, repo, prNumber, core, max
  */
 function isTransientError(error) {
   if (!error) return false;
-  const status = Number(error?.status || 0);
-  const message = String(error?.message || '').toLowerCase();
-  // Secondary rate limit (429), server errors (5xx) are always retryable
-  if (status === 429 || status >= 500) return true;
-  // 403 is only retryable if message indicates rate limit or abuse detection
-  if (status === 403 && (message.includes('rate limit') || message.includes('abuse detection'))) return true;
-  // Check for rate limit keywords in any error message
-  if (message.includes('rate limit') || message.includes('abuse detection') || message.includes('timeout')) return true;
-  return false;
+  return classifyError(error).category === ERROR_CATEGORIES.transient;
 }
 
 // Inlined from ../../scripts/keepalive_instruction_segment.js to avoid relative require issues in github-script
@@ -184,7 +168,6 @@ try {
 const INSTRUCTION_REACTION = 'hooray';
 // Valid GitHub reactions: +1, -1, laugh, confused, heart, hooray, rocket, eyes
 const LOCK_REACTION = 'rocket';
-
 function normaliseLogin(login) {
   return String(login || '')
     .trim()
@@ -198,64 +181,6 @@ function parseAllowedLogins(env) {
     .map((value) => normaliseLogin(value))
     .filter(Boolean);
   return new Set(raw);
-}
-
-function extractIssueNumberFromPull(pull) {
-  if (!pull) {
-    return null;
-  }
-
-  const candidates = [];
-
-  const bodyText = pull?.body || '';
-  const metaMatch = bodyText.match(/<!--\s*meta:issue:([0-9]+)\s*-->/i);
-  if (metaMatch) {
-    candidates.push(metaMatch[1]);
-  }
-
-  const branch = pull?.head?.ref || '';
-  // Match issue-XX, issue-#XX, or -issue-#XX patterns (handles Codex verbose branch names)
-  const branchMatch = branch.match(/issue-#?([0-9]+)/i) || branch.match(/-issue-#([0-9]+)(?:$|[^0-9])/i);
-  if (branchMatch) {
-    candidates.push(branchMatch[1]);
-  }
-
-  const title = pull?.title || '';
-  const titleMatch = title.match(/#([0-9]+)/);
-  if (titleMatch) {
-    candidates.push(titleMatch[1]);
-  }
-
-  for (const match of bodyText.matchAll(/#([0-9]+)/g)) {
-    if (!match[1]) {
-      continue;
-    }
-    // Skip cross-repo refs like owner/repo#123
-    const before = bodyText.slice(Math.max(0, match.index - 200), match.index);
-    const token = before.split(/\s/).pop() || '';
-    if (token.includes('/')) {
-      continue;
-    }
-    // Skip cross-repo shorthand like RepoName#123 or PR#123
-    if (match.index > 0 && /\w/.test(bodyText[match.index - 1])) {
-      continue;
-    }
-    // Skip non-issue refs like "Run #123", "run #123", "attempt #2"
-    const preceding = bodyText.slice(Math.max(0, match.index - 20), match.index);
-    if (/\b(?:run|attempt|step|job|check|version|v)\s*$/i.test(preceding)) {
-      continue;
-    }
-    candidates.push(match[1]);
-  }
-
-  for (const value of candidates) {
-    const parsed = Number.parseInt(value, 10);
-    if (!Number.isNaN(parsed)) {
-      return parsed;
-    }
-  }
-
-  return null;
 }
 
 async function detectKeepalive({ core, github, context, env = process.env }) {
@@ -335,6 +260,8 @@ async function detectKeepalive({ core, github, context, env = process.env }) {
     instruction_bytes: '0',
     agent_alias: '',
     head_sha: '',
+    source_type: '',
+    source_ref: '',
   };
 
   const setBasicOutputs = () => {
@@ -359,6 +286,8 @@ async function detectKeepalive({ core, github, context, env = process.env }) {
     core.setOutput('instruction_bytes', outputs.instruction_bytes || '0');
     core.setOutput('agent_alias', outputs.agent_alias || '');
     core.setOutput('head_sha', outputs.head_sha || '');
+    core.setOutput('source_type', outputs.source_type || '');
+    core.setOutput('source_ref', outputs.source_ref || '');
   };
 
   const { comment, issue } = context.payload || {};
@@ -641,9 +570,25 @@ async function detectKeepalive({ core, github, context, env = process.env }) {
     return finalise();
   }
 
-  const issueNumber = extractIssueNumberFromPull(pull);
+  const sourceContext = resolvePrSourceContext(pull);
+  const issueNumber = sourceContext.issueNumber;
   if (issueNumber) {
     outputs.issue = String(issueNumber);
+  }
+  if (sourceContext.isKnown) {
+    outputs.source_type = sourceContext.sourceType;
+  }
+  if (sourceContext.sourceRef) {
+    outputs.source_ref = sourceContext.sourceRef;
+  }
+
+  if (sourceContext.noAutomation) {
+    outputs.reason = 'no-automation-source-context';
+    outputs.dispatch = 'false';
+    core.info(
+      `Keepalive dispatch skipped: PR source context opts out of automation (${formatSourceContextForLog(sourceContext)}).`,
+    );
+    return finalise();
   }
 
   let reactions = [];
@@ -741,9 +686,17 @@ async function detectKeepalive({ core, github, context, env = process.env }) {
   }
 
   if (!issueNumber) {
-    outputs.reason = 'missing-issue-reference';
-    core.info('Keepalive dispatch skipped: unable to determine linked issue number.');
-    return finalise();
+    if (sourceContext.isValid && !sourceContext.requiresIssue) {
+      core.info(
+        `Keepalive dispatch continuing with non-issue workflow source context (${formatSourceContextForLog(sourceContext)}).`,
+      );
+    } else {
+      outputs.reason = 'missing-source-context';
+      core.info(
+        'Keepalive dispatch skipped: unable to determine linked issue number or another valid workflow source context.',
+      );
+      return finalise();
+    }
   }
 
   // Add agents:activated label on first human activation per GoalsAndPlumbing.md Section 1

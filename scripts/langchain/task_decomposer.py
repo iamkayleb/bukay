@@ -15,6 +15,13 @@ import re
 from pathlib import Path
 from typing import Any
 
+try:
+    from scripts.langchain._llm_client import get_llm_client
+    from scripts.langchain.trace_utils import TraceInfo, invoke_with_trace
+except ModuleNotFoundError:
+    from _llm_client import get_llm_client
+    from trace_utils import TraceInfo, invoke_with_trace
+
 TASK_DECOMPOSITION_PROMPT = """
 This task is too large for a single agent iteration (~10 minutes):
 
@@ -25,6 +32,11 @@ Each sub-task should:
 - Be completable in one iteration
 - Have a clear verification condition
 - Not depend on un-merged work from other sub-tasks
+
+Length & scope discipline (do NOT inflate):
+- Output AT MOST 3 sub-tasks; fewer is better.
+- Preserve scope; do not invent steps the task does not already imply.
+- If the task is already a single ~10-minute action, return it unchanged.
 
 Return the sub-tasks as a markdown bullet list.
 """.strip()
@@ -74,6 +86,38 @@ EXPANSION_PREFIXES = (
 )
 MAX_CHILD_TITLE_LEN = 96
 
+# Anti-bloat caps. The pipeline already enforces a quality *floor* (required
+# sections, no-silent-loss audit); these are the missing *ceiling*. They bound
+# how far a single decomposition pass can multiply task/criteria counts so an
+# already-large issue cannot balloon (incidents #805, #862, #873, #1135, #1143,
+# #4191). When a cap trims items, callers emit an explicit elision sentinel so
+# nothing is silently dropped.
+MAX_TASKS = 20
+MAX_ACCEPTANCE = 15
+# Maximum sub-tasks emitted per parent task in one normalization pass. The
+# mechanical scope/implement/validate triple is 3 lines, so this still allows a
+# couple of genuine splits while stopping the 3xN fan-out runaway.
+MAX_SUBTASKS_PER_PARENT = 6
+
+
+def elision_sentinel(remaining: int, *, kind: str = "items") -> str:
+    """Return the explicit elided-items marker used when a cap trims a list.
+
+    The no-silent-loss audit reconciles input vs output counts; emitting this
+    sentinel keeps the elided items accounted for instead of vanishing.
+    """
+    return f"_({remaining} further {kind} elided; split this issue)_"
+
+
+ELISION_RE = re.compile(r"^_\(\d+ further [\w \-]+ elided; split this issue\)_$")
+
+
+def is_elision_sentinel(text: str) -> bool:
+    """Return True when ``text`` is an elision sentinel line (marker-insensitive)."""
+    stripped = re.sub(r"^\s*([-*+]|\d+[.)]|[A-Za-z][.)])\s*", "", text.strip())
+    stripped = re.sub(r"^\s*\[[ xX]\]\s*", "", stripped).strip()
+    return bool(ELISION_RE.match(stripped))
+
 
 def _load_prompt() -> str:
     if PROMPT_PATH.is_file():
@@ -81,31 +125,25 @@ def _load_prompt() -> str:
     return TASK_DECOMPOSITION_PROMPT
 
 
-def _get_llm_client(force_openai: bool = False) -> tuple[object, str] | None:
-    """Get LLM client using slot order (OpenAI, Claude, GitHub Models).
+def _resolve_decomposer_provider(force_openai: bool = False) -> str | None:
+    """Resolve the provider for task decomposition.
+
+    Script-specific slot logic preserved from the former ``_get_llm_client``:
+    force OpenAI on retry, otherwise honor ``LANGCHAIN_PROVIDER`` and fall back to
+    GitHub Models when only a ``GITHUB_TOKEN`` is present. The actual client
+    construction is delegated to :func:`get_llm_client`.
 
     Args:
         force_openai: If True, force OpenAI for retry after GitHub Models 401 error.
     """
-    try:
-        from tools.langchain_client import build_chat_client
-    except ImportError:
-        return None
-
-    provider = None
     if force_openai:
-        provider = "openai"
-    else:
-        env_provider = os.environ.get("LANGCHAIN_PROVIDER")
-        if env_provider:
-            provider = env_provider
-        elif os.environ.get("GITHUB_TOKEN") and not os.environ.get("OPENAI_API_KEY"):
-            provider = "github-models"
-
-    resolved = build_chat_client(provider=provider)
-    if not resolved:
-        return None
-    return resolved.client, resolved.provider
+        return "openai"
+    env_provider = os.environ.get("LANGCHAIN_PROVIDER")
+    if env_provider:
+        return env_provider
+    if os.environ.get("GITHUB_TOKEN") and not os.environ.get("OPENAI_API_KEY"):
+        return "github-models"
+    return None
 
 
 def _ensure_verification(text: str) -> str:
@@ -260,30 +298,70 @@ def _rewrite_dependency_task(task: str) -> str:
     return f"Document dependency for: {cleaned} (verify: dependency recorded)"
 
 
-def _normalize_subtasks(sub_tasks: list[str]) -> list[str]:
-    normalized: list[str] = []
+def _collect_cleaned_parts(sub_tasks: list[str]) -> list[str]:
+    """Split + de-duplicate sub-task inputs into cleaned, dependency-rewritten parts."""
+    parts: list[str] = []
     seen: set[str] = set()
     for task in sub_tasks:
+        # Pass elision sentinels through verbatim — they are bookkeeping markers,
+        # not tasks, and must not be split, expanded, or verification-tagged.
+        if is_elision_sentinel(task):
+            norm_key = re.sub(r"\s+", " ", task.strip().lower())
+            if norm_key not in seen:
+                seen.add(norm_key)
+                parts.append(task.strip())
+            continue
         cleaned_task = _strip_dependency_clause(task.strip())
         for part in _split_task_parts(cleaned_task):
             cleaned = _strip_dependency_clause(part.strip())
             if not cleaned:
                 continue
-            # Deduplicate by normalized text
             norm_key = re.sub(r"\s+", " ", cleaned.lower().strip())
             if norm_key in seen:
                 continue
             seen.add(norm_key)
             if _contains_dependency_phrase(cleaned):
                 cleaned = _rewrite_dependency_task(cleaned)
-            if _is_large_task(cleaned) and not cleaned.lower().startswith("document dependency"):
-                for scoped_task in _expand_large_task(cleaned):
-                    normalized.append(_ensure_verification(scoped_task))
-                continue
-            normalized.append(_ensure_verification(cleaned))
-    # Second dedupe pass on final output — catches duplicates introduced by
-    # _rewrite_dependency_task / _ensure_verification rewriting different
-    # inputs to the same canonical form.
+            parts.append(cleaned)
+    return parts
+
+
+def _normalize_subtasks(
+    sub_tasks: list[str], *, max_subtasks: int = MAX_SUBTASKS_PER_PARENT
+) -> list[str]:
+    """Normalize sub-tasks with bounded fan-out.
+
+    The mechanical scope/implement/validate triple (``_expand_large_task``) is
+    the main multiplication vector behind the runaway-expansion incidents. It is
+    now gated: a single large input is still expanded into the triple (its
+    intended decomposition), but once splitting has already produced multiple
+    parts we do NOT additionally triple each part — that is the 3xN fan-out that
+    ballooned issues. The final list is capped at ``max_subtasks``; any trimmed
+    remainder is replaced with an explicit elision sentinel so the no-silent-loss
+    audit still balances.
+    """
+    parts = _collect_cleaned_parts(sub_tasks)
+    task_parts = [part for part in parts if not is_elision_sentinel(part)]
+    # Only expand the mechanical triple when the input was effectively a single
+    # task; multiple parts already represent a decomposition and must not be
+    # tripled again (that 3xN fan-out is what ballooned issues).
+    allow_triple = len(task_parts) == 1
+
+    normalized: list[str] = []
+    for cleaned in parts:
+        if is_elision_sentinel(cleaned):
+            normalized.append(cleaned)
+            continue
+        is_large = _is_large_task(cleaned) and not cleaned.lower().startswith("document dependency")
+        if is_large and allow_triple:
+            for scoped_task in _expand_large_task(cleaned):
+                normalized.append(_ensure_verification(scoped_task))
+            continue
+        normalized.append(_ensure_verification(cleaned))
+
+    # Dedupe final output — catches duplicates introduced by
+    # _rewrite_dependency_task / _ensure_verification rewriting different inputs
+    # to the same canonical form.
     final: list[str] = []
     seen_final: set[str] = set()
     for entry in normalized:
@@ -291,11 +369,21 @@ def _normalize_subtasks(sub_tasks: list[str]) -> list[str]:
         if key not in seen_final:
             seen_final.add(key)
             final.append(entry)
+
+    # Bound fan-out. Emit an elided sentinel for the trimmed remainder so nothing
+    # is silently dropped.
+    cap = max(1, max_subtasks)
+    if len(final) > cap:
+        elided = len(final) - (cap - 1)
+        final = final[: cap - 1]
+        final.append(elision_sentinel(elided, kind="sub-tasks"))
     return final
 
 
-def normalize_subtasks(sub_tasks: list[str]) -> list[str]:
-    return _normalize_subtasks(sub_tasks)
+def normalize_subtasks(
+    sub_tasks: list[str], *, max_subtasks: int = MAX_SUBTASKS_PER_PARENT
+) -> list[str]:
+    return _normalize_subtasks(sub_tasks, max_subtasks=max_subtasks)
 
 
 def _truncate_title(text: str, max_len: int = MAX_CHILD_TITLE_LEN) -> str:
@@ -386,7 +474,12 @@ def build_child_issues(
     milestone: str | int | None = None,
     max_children: int | None = None,
 ) -> list[dict[str, Any]]:
-    normalized = _normalize_subtasks(sub_tasks)
+    # Honor the caller's child cap as the per-parent fan-out budget so the
+    # normalized list and the child count agree.
+    cap = max_children if max_children is not None else MAX_SUBTASKS_PER_PARENT
+    normalized = _normalize_subtasks(sub_tasks, max_subtasks=cap)
+    # Sentinels are in-body bookkeeping markers, never real child issues.
+    normalized = [task for task in normalized if not is_elision_sentinel(task)]
     if len(normalized) <= 1:
         return []
     if max_children is not None:
@@ -519,7 +612,7 @@ def decompose_task(task: str, *, use_llm: bool = True) -> dict[str, Any]:
         return {"sub_tasks": [], "provider_used": None, "used_llm": False}
 
     if use_llm:
-        client_info = _get_llm_client()
+        client_info = get_llm_client(provider=_resolve_decomposer_provider())
         if client_info:
             client, provider = client_info
             try:
@@ -530,16 +623,27 @@ def decompose_task(task: str, *, use_llm: bool = True) -> dict[str, Any]:
                 prompt = _load_prompt()
                 template = ChatPromptTemplate.from_template(prompt)
                 chain = template | client
+                trace = TraceInfo()
                 try:
-                    response = chain.invoke({"large_task": task})
+                    response, trace = invoke_with_trace(
+                        chain,
+                        {"large_task": task},
+                        operation="task_decomposer",
+                    )
                 except Exception as e:
                     # If GitHub Models fails with 401, retry with OpenAI
                     if provider == "github-models" and _is_github_models_auth_error(e):
-                        fallback_info = _get_llm_client(force_openai=True)
+                        fallback_info = get_llm_client(
+                            provider=_resolve_decomposer_provider(force_openai=True)
+                        )
                         if fallback_info:
                             client, provider = fallback_info
                             chain = template | client
-                            response = chain.invoke({"large_task": task})
+                            response, trace = invoke_with_trace(
+                                chain,
+                                {"large_task": task},
+                                operation="task_decomposer",
+                            )
                         else:
                             raise
                     else:
@@ -547,11 +651,13 @@ def decompose_task(task: str, *, use_llm: bool = True) -> dict[str, Any]:
                 content = getattr(response, "content", None) or str(response)
                 sub_tasks = _normalize_subtasks(_parse_subtasks(content))
                 if sub_tasks:
-                    return {
+                    result = {
                         "sub_tasks": sub_tasks,
                         "provider_used": provider,
                         "used_llm": True,
                     }
+                    result.update(trace.as_dict())
+                    return result
 
     return {
         "sub_tasks": _normalize_subtasks(_fallback_decompose(task)),
