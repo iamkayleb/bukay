@@ -1,6 +1,4 @@
 # Consolidated PR event hub for consumer repos.
-# Replaces agents-pr-meta.yml, agents-bot-comment-handler.yml, and agents-verify-to-issue-v2.yml
-# when USE_CONSOLIDATED_WORKFLOWS is enabled.
 
 name: Agents PR Event Hub
 
@@ -71,10 +69,43 @@ jobs:
       gate_conclusion: ${{ steps.resolve.outputs.gate_conclusion }}
       dry_run: ${{ steps.resolve.outputs.dry_run }}
       debug: ${{ steps.resolve.outputs.debug }}
+      should_run: ${{ steps.eligibility.outputs.should-run || 'false' }}
     steps:
+      - name: Checkout eligibility action
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: >-
+            ${{ github.event.pull_request.base.sha ||
+            github.sha ||
+            github.event.repository.default_branch ||
+            github.event.workflow_run.repository.default_branch }}
+          sparse-checkout: .github/actions/agent-event-eligibility
+          sparse-checkout-cone-mode: false
+
+      # Escape hatch: set mode: warning if false-negative skips appear post-merge.
+      - name: Check event eligibility
+        id: eligibility
+        uses: ./.github/actions/agent-event-eligibility
+        with:
+          expected-actions: >-
+            workflow_dispatch,created,opened,synchronize,reopened,edited,
+            labeled,completed
+          custom-predicate: >-
+            event_name == 'workflow_dispatch' ||
+            (event_name == 'issue_comment' && issue.pull_request.url && comment) ||
+            (event_name == 'pull_request' && (
+              action == 'opened' || action == 'synchronize' ||
+              action == 'reopened' || action == 'edited' ||
+              (action == 'labeled' && label.name == 'autofix:bot-comments')
+            )) ||
+            (event_name == 'pull_request_target' && action == 'labeled' &&
+             label.name == 'verify:create-issue') ||
+            (event_name == 'workflow_run' && length(workflow_run.pull_requests) > 0)
+
       - name: Resolve handler inputs
+        if: steps.eligibility.outputs.should-run == 'true'
         id: resolve
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const eventName = context.eventName;
@@ -159,6 +190,7 @@ jobs:
     name: Fetch PR context
     needs: resolve
     if: |
+      needs.resolve.outputs.should_run == 'true' &&
       needs.resolve.outputs.pr_number != '' &&
       (needs.resolve.outputs.run_pr_meta == 'true' ||
        needs.resolve.outputs.run_bot_comments == 'true')
@@ -171,6 +203,7 @@ jobs:
     name: PR meta handler
     needs: [resolve, pr_context]
     if: |
+      needs.resolve.outputs.should_run == 'true' &&
       needs.resolve.outputs.pr_number != '' &&
       needs.resolve.outputs.run_pr_meta == 'true'
     uses: iamkayleb/Workflows/.github/workflows/reusable-20-pr-meta.yml@main
@@ -189,6 +222,7 @@ jobs:
     name: Bot comment handler
     needs: [resolve, pr_context]
     if: |
+      needs.resolve.outputs.should_run == 'true' &&
       needs.resolve.outputs.pr_number != '' &&
       needs.resolve.outputs.run_bot_comments == 'true' &&
       (
@@ -202,6 +236,7 @@ jobs:
       dry_run: ${{ needs.resolve.outputs.dry_run == 'true' }}
     secrets:
       service_bot_pat: ${{ secrets.SERVICE_BOT_PAT }}
+      gh_app_client_id: ${{ secrets.GH_APP_CLIENT_ID }}
       gh_app_id: ${{ secrets.GH_APP_ID }}
       gh_app_private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
 
@@ -210,15 +245,17 @@ jobs:
     needs: [resolve, bot_comments]
     if: |
       always() &&
+      needs.resolve.outputs.should_run == 'true' &&
       needs.resolve.outputs.run_bot_comments == 'true' &&
       needs.resolve.outputs.event_name == 'pull_request' &&
       needs.resolve.outputs.label_name == 'autofix:bot-comments'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout scripts
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
+            .github/scripts/error_classifier.js
             .github/scripts/github-api-with-retry.js
             .github/actions/setup-api-client
           sparse-checkout-cone-mode: false
@@ -230,7 +267,7 @@ jobs:
           github_token: ${{ github.token }}
 
       - name: Remove trigger label
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const fs = require('fs');
@@ -248,20 +285,23 @@ jobs:
               }));
               console.log('Removed autofix:bot-comments label');
             } catch (error) {
+              // # best-effort: the one-shot trigger label may be removed on a later event.
               console.log(`Could not remove label: ${error.message}`);
             }
 
   verify_to_issue:
     name: Create issue from verification (enhanced)
     needs: resolve
-    if: needs.resolve.outputs.run_verify_to_issue == 'true'
+    if: |
+      needs.resolve.outputs.should_run == 'true' &&
+      needs.resolve.outputs.run_verify_to_issue == 'true'
     runs-on: ubuntu-latest
     env:
       PYTHON_VERSION: "3.12"
     steps:
       - name: Check PR is merged
         id: check-merged
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const pr = context.payload.pull_request;
@@ -275,18 +315,21 @@ jobs:
 
       - name: Checkout repository
         if: steps.check-merged.outputs.merged == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: iamkayleb/Workflows
-          token: ${{ secrets.CODESPACES_WORKFLOWS || github.token }}
+          token: ${{ secrets.SERVICE_BOT_PAT || github.token }}
           sparse-checkout: |
+            config
             scripts/langchain
             tools
+            .github/scripts/error_classifier.js
             .github/scripts/github-api-with-retry.js
+          sparse-checkout-cone-mode: false
 
       - name: Set up Python
         if: steps.check-merged.outputs.merged == 'true'
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -298,7 +341,7 @@ jobs:
       - name: Collect verification and original issue data
         id: collect
         if: steps.check-merged.outputs.merged == 'true'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const fs = require('fs');
@@ -385,7 +428,7 @@ jobs:
         if: steps.check-merged.outputs.merged == 'true'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          CLAUDE_API_STRANSKE: ${{ secrets.CLAUDE_API_STRANSKE }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ORIGINAL_ISSUE_NUMBER: ${{ steps.collect.outputs.original_issue_number }}
           ORIGINAL_ISSUE_TITLE: ${{ steps.collect.outputs.original_issue_title }}
@@ -411,7 +454,7 @@ jobs:
       - name: Fallback to simple extraction
         id: fallback
         if: steps.generate.outcome == 'failure' && steps.check-merged.outputs.merged == 'true'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const fs = require('fs');
@@ -442,7 +485,14 @@ jobs:
 
       - name: Create issue
         if: steps.check-merged.outputs.merged == 'true'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        # Security: pass agent/LLM-generated title and body via the environment, never
+        # interpolated into the script body. A value containing a quote or newline could
+        # otherwise break out of the JS string literal and execute with the workflow token
+        # on the pull_request_target path (script injection).
+        env:
+          ISSUE_TITLE: ${{ steps.generate.outputs.issue_title || steps.fallback.outputs.issue_title }}
+          ISSUE_BODY: ${{ steps.generate.outputs.issue_body || steps.fallback.outputs.issue_body }}
         with:
           script: |
             const fs = require('fs');
@@ -451,12 +501,8 @@ jobs:
               ? require(retryHelperPath)
               : { withRetry: (fn) => fn() };
 
-            const issueTitle = (
-              '${{ steps.generate.outputs.issue_title || steps.fallback.outputs.issue_title }}'
-            );
-            const issueBody = (
-              '${{ steps.generate.outputs.issue_body || steps.fallback.outputs.issue_body }}'
-            );
+            const issueTitle = process.env.ISSUE_TITLE || '';
+            const issueBody = process.env.ISSUE_BODY || '';
 
             if (!issueTitle || !issueBody) {
               core.setFailed('Failed to generate issue content');
@@ -475,7 +521,7 @@ jobs:
 
       - name: Remove trigger label
         if: always()
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const fs = require('fs');
@@ -493,5 +539,6 @@ jobs:
               }));
               core.info('Removed verify:create-issue label');
             } catch (error) {
+              // # best-effort: the one-shot trigger label may be removed on a later event.
               core.warning(`Could not remove label: ${error.message}`);
             }

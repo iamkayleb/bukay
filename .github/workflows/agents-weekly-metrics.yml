@@ -19,7 +19,7 @@ jobs:
       # Mint GitHub App token early to use for API calls (avoids rate limits)
       - name: Mint GitHub App Token
         id: app_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         continue-on-error: true
         with:
           app-id: ${{ secrets.WORKFLOWS_APP_ID || '0' }}
@@ -27,18 +27,27 @@ jobs:
           owner: ${{ github.repository_owner }}
 
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
 
           token: ${{ steps.app_token.outputs.token || github.token }}
           sparse-checkout: |
             .github/actions/setup-api-client
+            .github/scripts/bot_comment_auth_coverage.js
+            .github/scripts/error_classifier.js
             .github/scripts/github-api-with-retry.js
+            .github/scripts/terminal_disposition.js
+            .github/scripts/terminal_disposition_coverage.js
             .github/scripts/token_load_balancer.js
+            .github/scripts/weekly_metrics_artifacts.js
+            .github/scripts/weekly_metrics_download_manifest.js
+            scripts/aggregate_agent_metrics.py
           sparse-checkout-cone-mode: false
 
-      - name: Install GitHub API dependencies
-        run: npm install --no-save --no-package-lock @octokit/rest @octokit/auth-app
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "24"
 
       - name: Setup API client
         uses: ./.github/actions/setup-api-client
@@ -49,9 +58,9 @@ jobs:
 
 
       - name: Setup Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
-          python-version: "3.11"
+          python-version: "3.14"
 
       - name: Download metrics artifacts
         env:
@@ -63,111 +72,252 @@ jobs:
 
           # Get artifact IDs and names
           # shellcheck disable=SC1009,SC1073,SC1039,SC1072
-          node - <<'NODE' |
+          artifact_list="artifacts/metric-artifacts.tsv"
+          selection_report="artifacts/metric-artifacts-selection.json"
+          selection_markdown="artifacts/metric-artifacts-selection.md"
+          download_manifest="artifacts/metric-artifact-download-manifest.json"
+          download_manifest_markdown="artifacts/metric-artifact-download-manifest.md"
+          set +e
+          node .github/scripts/weekly_metrics_artifacts.js \
+            --output "$artifact_list" \
+            --report "$selection_report" \
+            --markdown "$selection_markdown"
+          selector_status=$?
+          set -e
+          if [ -f "$selection_report" ]; then
+            cat "$selection_report"
+          fi
+          node .github/scripts/weekly_metrics_download_manifest.js \
+            --init \
+            --selection "$selection_report" \
+            --manifest "$download_manifest" \
+            --markdown "$download_manifest_markdown"
+          if [ "$selector_status" != "0" ]; then
+            exit "$selector_status"
+          fi
+          if [ ! -s "$artifact_list" ]; then
+            echo "No metrics artifacts found"
+          fi
+          while IFS=$'\t' read -r id name; do
+            echo "Downloading artifact $id ($name)"
+            safe_name="$(
+              node -e '
+              const m = require("./.github/scripts/weekly_metrics_download_manifest.js");
+              process.stdout.write(m.safeArtifactPathSegment(process.argv[1] || ""));
+              ' "$name"
+            )"
+            artifact_dir="artifacts/$safe_name/$id"
+            mkdir -p "$artifact_dir"
+            # shellcheck disable=SC1009,SC1073,SC1039,SC1072
+            export ARTIFACT_ID="$id"
+            export ARTIFACT_DIR="$artifact_dir"
+            export ARTIFACT_ZIP="$artifact_dir/$id.zip"
+            if ! node - <<'NODE'
+          const fs = require('fs');
           const { Octokit } = require('@octokit/rest');
           const { createTokenAwareRetry } = require('./.github/scripts/github-api-with-retry.js');
           const core = { info: () => {}, warning: console.warn, debug: () => {} };
           const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
-          const target = new Set([
-            'keepalive-metrics',
-            'agents-autofix-metrics',
-            'agents-verifier-metrics'
-          ]);
-          const prefixes = ['autopilot-metrics-'];
-
+          const artifactId = Number(process.env.ARTIFACT_ID);
+          const zipPath = process.env.ARTIFACT_ZIP;
           (async () => {
-            const github = new Octokit({ auth: process.env.GH_TOKEN || process.env.GITHUB_TOKEN });
-            const { paginateWithRetry } = await createTokenAwareRetry({
+            const token = process.env.GH_TOKEN ||
+              process.env.GITHUB_TOKEN;
+            const github = new Octokit({ auth: token });
+            const { withRetry } = await createTokenAwareRetry({
               github,
               core,
               env: process.env,
-              task: 'agents-weekly-metrics-artifacts',
+              task: 'agents-weekly-metrics-download',
               capabilities: ['actions:read']
             });
-            const artifacts = await paginateWithRetry(github.rest.actions.listArtifactsForRepo, {
+            const response = await withRetry((client) => client.rest.actions.downloadArtifact({
               owner,
               repo,
-              per_page: 100
-            });
-            const lines = artifacts
-              .filter((artifact) => !artifact.expired && (
-                target.has(artifact.name) ||
-                prefixes.some((p) => artifact.name.startsWith(p))
-              ))
-              .map((artifact) => `${artifact.id}\t${artifact.name}`)
-              .join('\n');
-            process.stdout.write(lines);
+              artifact_id: artifactId,
+              archive_format: 'zip'
+            }));
+            const data = response.data;
+            const buffer = Buffer.isBuffer(data)
+              ? data
+              : Buffer.from(data instanceof ArrayBuffer ? new Uint8Array(data) : data);
+            fs.writeFileSync(zipPath, buffer);
           })().catch((error) => {
             console.error(error);
             process.exit(1);
           });
           NODE
-          while IFS=$'\t' read -r id name; do
-            echo "Downloading artifact $id ($name)"
-            mkdir -p "artifacts/$name"
-            # shellcheck disable=SC1009,SC1073,SC1039,SC1072
-            export ARTIFACT_ID="$id"
-            export ARTIFACT_DIR="artifacts/$name"
-            export ARTIFACT_ZIP="artifacts/$name/$id.zip"
-            if ! node - <<'NODE'
-            const fs = require('fs');
-            const { Octokit } = require('@octokit/rest');
-            const { createTokenAwareRetry } = require('./.github/scripts/github-api-with-retry.js');
-            const core = { info: () => {}, warning: console.warn, debug: () => {} };
-            const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
-            const artifactId = Number(process.env.ARTIFACT_ID);
-            const zipPath = process.env.ARTIFACT_ZIP;
-            (async () => {
-              const token = process.env.GH_TOKEN ||
-                process.env.GITHUB_TOKEN;
-              const github = new Octokit({ auth: token });
-              const { withRetry } = await createTokenAwareRetry({
-                github,
-                core,
-                env: process.env,
-                task: 'agents-weekly-metrics-download',
-                capabilities: ['actions:read']
-              });
-              const response = await withRetry((client) => client.rest.actions.downloadArtifact({
-                owner,
-                repo,
-                artifact_id: artifactId,
-                archive_format: 'zip'
-              }));
-              const data = response.data;
-              const buffer = Buffer.isBuffer(data)
-                ? data
-                : Buffer.from(data instanceof ArrayBuffer ? new Uint8Array(data) : data);
-              fs.writeFileSync(zipPath, buffer);
-            })().catch((error) => {
-              console.error(error);
-              process.exit(1);
-            });
-            NODE
             then
               echo "Warning: Could not download artifact $id ($name)"
+              node .github/scripts/weekly_metrics_download_manifest.js \
+                --record \
+                --manifest "$download_manifest" \
+                --markdown "$download_manifest_markdown" \
+                --id "$id" \
+                --name "$name" \
+                --artifact-dir "$ARTIFACT_DIR" \
+                --zip-path "$ARTIFACT_ZIP" \
+                --download-status failed \
+                --download-error download-command-failed \
+                --unzip-status skipped \
+                --unzip-error download-failed
               continue
             fi
-            unzip -o "artifacts/$name/$id.zip" -d "artifacts/$name" >/dev/null || \
+            zip_bytes="$(wc -c < "$ARTIFACT_ZIP" | tr -d ' ')"
+            if unzip -o "$ARTIFACT_ZIP" -d "$ARTIFACT_DIR" >/dev/null; then
+              node .github/scripts/weekly_metrics_download_manifest.js \
+                --record \
+                --manifest "$download_manifest" \
+                --markdown "$download_manifest_markdown" \
+                --id "$id" \
+                --name "$name" \
+                --artifact-dir "$ARTIFACT_DIR" \
+                --zip-path "$ARTIFACT_ZIP" \
+                --zip-bytes "$zip_bytes" \
+                --download-status pass \
+                --unzip-status pass
+            else
               echo "Warning: Could not unzip artifact $id ($name)"
-          done || true  # Don't fail if no artifacts found
+              node .github/scripts/weekly_metrics_download_manifest.js \
+                --record \
+                --manifest "$download_manifest" \
+                --markdown "$download_manifest_markdown" \
+                --id "$id" \
+                --name "$name" \
+                --artifact-dir "$ARTIFACT_DIR" \
+                --zip-path "$ARTIFACT_ZIP" \
+                --zip-bytes "$zip_bytes" \
+                --download-status pass \
+                --unzip-status failed \
+                --unzip-error unzip-command-failed
+            fi
+          done < "$artifact_list"
+          node .github/scripts/weekly_metrics_download_manifest.js \
+            --finalize \
+            --manifest "$download_manifest" \
+            --markdown "$download_manifest_markdown"
 
       - name: Aggregate metrics
         env:
           METRICS_DIR: artifacts
           OUTPUT_PATH: agent-weekly-metrics.md
+          OUTPUT_JSON_PATH: agent-weekly-metrics.json
         run: |
           python scripts/aggregate_agent_metrics.py
 
+      - name: Attach artifact selection summary
+        run: |
+          if [ -f artifacts/metric-artifacts-selection.md ]; then
+            cat artifacts/metric-artifacts-selection.md >> "$GITHUB_STEP_SUMMARY"
+            if [ -f agent-weekly-metrics.md ]; then
+              {
+                printf '\n'
+                cat artifacts/metric-artifacts-selection.md
+              } >> agent-weekly-metrics.md
+            fi
+          fi
+          if [ -f artifacts/metric-artifact-download-manifest.md ]; then
+            cat artifacts/metric-artifact-download-manifest.md >> "$GITHUB_STEP_SUMMARY"
+            if [ -f agent-weekly-metrics.md ]; then
+              {
+                printf '\n'
+                cat artifacts/metric-artifact-download-manifest.md
+              } >> agent-weekly-metrics.md
+            fi
+          fi
+
+      - name: Review-thread terminal coverage preflight
+        env:
+          TERMINAL_DISPOSITION_METRICS_DIR: artifacts
+          TERMINAL_DISPOSITION_ARTIFACT_SELECTION_JSON: artifacts/metric-artifacts-selection.json
+          TERMINAL_DISPOSITION_COVERAGE_JSON: terminal-disposition-coverage.json
+          TERMINAL_DISPOSITION_COVERAGE_MD: terminal-disposition-coverage.md
+          TERMINAL_DISPOSITION_COVERAGE_MODE: >-
+            ${{ vars.TERMINAL_DISPOSITION_COVERAGE_MODE || 'warning-only' }}
+          TERMINAL_DISPOSITION_HARD_BLOCK_APPROVED: >-
+            ${{ vars.TERMINAL_DISPOSITION_HARD_BLOCK_APPROVED || 'false' }}
+        run: |
+          set +e
+          node .github/scripts/terminal_disposition_coverage.js
+          terminal_coverage_status=$?
+          set -e
+          if [ -f terminal-disposition-coverage.md ]; then
+            cat terminal-disposition-coverage.md >> "$GITHUB_STEP_SUMMARY"
+            if [ -f agent-weekly-metrics.md ]; then
+              {
+                printf '\n'
+                cat terminal-disposition-coverage.md
+              } >> agent-weekly-metrics.md
+            fi
+          fi
+          echo \
+            "TERMINAL_DISPOSITION_COVERAGE_EXIT_STATUS=${terminal_coverage_status}" \
+            >> "$GITHUB_ENV"
+
+      - name: Bot-comment auth coverage preflight
+        env:
+          BOT_COMMENT_AUTH_COVERAGE_DIR: artifacts
+          BOT_COMMENT_AUTH_ARTIFACT_SELECTION_JSON: artifacts/metric-artifacts-selection.json
+          BOT_COMMENT_AUTH_COVERAGE_JSON: bot-comment-auth-coverage-summary.json
+          BOT_COMMENT_AUTH_COVERAGE_MD: bot-comment-auth-coverage-summary.md
+          BOT_COMMENT_AUTH_COVERAGE_MODE: >-
+            ${{ vars.BOT_COMMENT_AUTH_COVERAGE_MODE || 'warning-only' }}
+          BOT_COMMENT_AUTH_HARD_BLOCK_APPROVED: >-
+            ${{ vars.BOT_COMMENT_AUTH_HARD_BLOCK_APPROVED || 'false' }}
+          BOT_COMMENT_WRAPPER_EXPECTED_AUTH_MODE: >-
+            ${{ vars.BOT_COMMENT_WRAPPER_EXPECTED_AUTH_MODE || 'client-id' }}
+          BOT_COMMENT_WRAPPER_ALLOWED_AUTH_MODES: >-
+            ${{ vars.BOT_COMMENT_WRAPPER_ALLOWED_AUTH_MODES || 'client-id' }}
+          BOT_COMMENT_REUSABLE_EXPECTED_AUTH_MODE: >-
+            ${{ vars.BOT_COMMENT_REUSABLE_EXPECTED_AUTH_MODE }}
+          BOT_COMMENT_REUSABLE_ALLOWED_AUTH_MODES: >-
+            ${{ vars.BOT_COMMENT_REUSABLE_ALLOWED_AUTH_MODES || 'client-id,none' }}
+          BOT_COMMENT_AUTH_REQUIRED_ORGANIC_EVENTS: >-
+            ${{ vars.BOT_COMMENT_AUTH_REQUIRED_ORGANIC_EVENTS || 'pull_request,workflow_run' }}
+          BOT_COMMENT_AUTH_ORGANIC_COMPONENTS: >-
+            ${{
+              vars.BOT_COMMENT_AUTH_ORGANIC_COMPONENTS ||
+              'agents-bot-comment-handler-wrapper,reusable-bot-comment-handler'
+            }}
+          BOT_COMMENT_AUTH_ORGANIC_EXPECTED_MODE: >-
+            ${{ vars.BOT_COMMENT_AUTH_ORGANIC_EXPECTED_MODE || 'client-id' }}
+        run: |
+          set +e
+          node .github/scripts/bot_comment_auth_coverage.js
+          bot_comment_auth_status=$?
+          set -e
+          if [ -f bot-comment-auth-coverage-summary.md ]; then
+            cat bot-comment-auth-coverage-summary.md >> "$GITHUB_STEP_SUMMARY"
+            if [ -f agent-weekly-metrics.md ]; then
+              {
+                printf '\n'
+                cat bot-comment-auth-coverage-summary.md
+              } >> agent-weekly-metrics.md
+            fi
+          fi
+          echo "BOT_COMMENT_AUTH_COVERAGE_EXIT_STATUS=${bot_comment_auth_status}" >> "$GITHUB_ENV"
+
       - name: Upload weekly summary
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: agent-weekly-metrics
-          path: agent-weekly-metrics.md
+          path: |
+            agent-weekly-metrics.md
+            agent-weekly-metrics.json
+            artifacts/metric-artifacts-selection.json
+            artifacts/metric-artifacts-selection.md
+            artifacts/metric-artifact-download-manifest.json
+            artifacts/metric-artifact-download-manifest.md
+            terminal-disposition-coverage.json
+            terminal-disposition-coverage.md
+            bot-comment-auth-coverage-summary.json
+            bot-comment-auth-coverage-summary.md
+          if-no-files-found: warn
           retention-days: 30
 
       - name: Post summary to tracking issue
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           github-token: ${{ steps.app_token.outputs.token || github.token }}
           script: |
@@ -187,6 +337,14 @@ jobs:
               ? fs.readFileSync(summaryPath, 'utf8')
               : 'No metrics available.';
             const title = 'Agent metrics weekly summary';
+            const repoLabels = await paginateWithRetry(
+              github,
+              github.rest.issues.listLabelsForRepo,
+              { owner, repo, per_page: 100 },
+            );
+            const hasDurableTrackerLabel = repoLabels.some(
+              (label) => label.name === 'tracker:durable',
+            );
 
             const issues = await paginateWithRetry(github, github.rest.issues.listForRepo, {
               owner,
@@ -202,6 +360,9 @@ jobs:
                 repo,
                 title,
                 body: 'Tracking issue for weekly agent workflow metrics.\n\n' + body,
+                labels: hasDurableTrackerLabel
+                  ? ['tracker:durable', 'automated']
+                  : ['automated'],
               }));
               target = created.data;
             } else {
@@ -211,6 +372,36 @@ jobs:
                 issue_number: target.number,
                 body,
               }));
+              const hasLabel = (target.labels || []).some(
+                l => (typeof l === 'string' ? l : l?.name) === 'tracker:durable'
+              );
+              if (hasDurableTrackerLabel && !hasLabel) {
+                await withRetry(() => github.rest.issues.addLabels({
+                  owner,
+                  repo,
+                  issue_number: target.number,
+                  labels: ['tracker:durable'],
+                }));
+              }
             }
 
             core.setOutput('issue_number', target.number);
+
+      - name: Honor coverage hard-blocks
+        if: ${{ always() }}
+        run: |
+          terminal_status="${TERMINAL_DISPOSITION_COVERAGE_EXIT_STATUS:-0}"
+          bot_comment_auth_status="${BOT_COMMENT_AUTH_COVERAGE_EXIT_STATUS:-0}"
+          if [ "${terminal_status}" != "0" ] || [ "${bot_comment_auth_status}" != "0" ]; then
+            echo "::error title=Coverage hard-block failed::" \
+              "terminal-disposition-exit-status=${terminal_status}; " \
+              "bot-comment-auth-exit-status=${bot_comment_auth_status}; " \
+              "coverage reports were uploaded before this failure"
+            if [ "${terminal_status}" != "0" ]; then
+              echo "Failed check: Review-thread terminal coverage preflight"
+            fi
+            if [ "${bot_comment_auth_status}" != "0" ]; then
+              echo "Failed check: Bot-comment auth coverage preflight"
+            fi
+            exit 1
+          fi

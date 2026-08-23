@@ -10,32 +10,102 @@ const path = require('path');
 const DEFAULT_MARKER = '<!-- agents-guard-marker -->';
 
 const DEFAULT_PROTECTED_PATHS = ['.github/workflows/agents-*.yml'];
+const DEPENDENCY_UPDATE_BOT_LOGINS = new Set(['dependabot[bot]', 'renovate[bot]']);
+const TRUSTED_DEPENDENCY_AUTHOR_ASSOCIATIONS = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
+const LEGACY_ALLOW_REMOVED_PATHS = [
+  // Keepalive consolidation retired the standalone keepalive sweeps.
+  '.github/workflows/agents-75-keepalive-on-gate.yml',
+  '.github/workflows/agents-keepalive-pr.yml',
+  // Issue intake now serves as the sole public entry point; the
+  // ChatGPT wrapper was intentionally removed.
+  '.github/workflows/agents-63-chatgpt-issue-sync.yml',
+  // Redundant issue intake workflow removed in favor of the primary entrypoint.
+  '.github/workflows/agents-63-issue-intake.yml',
+  // Clean up retired agent workflows from .github/workflows to reduce noise.
+  '.github/workflows/agents-64-pr-comment-commands.yml',
+  '.github/workflows/agents-74-pr-body-writer.yml',
+  // Legacy pr-meta workflows superseded by agents-pr-meta-v4.yml.
+  // v1 had corrupted workflow ID, v2/v3 were still running and failing.
+  // Archived to archives/github-actions/2025-12-02-pr-meta-legacy/
+  '.github/workflows/agents-pr-meta.yml',
+  '.github/workflows/agents-pr-meta-v2.yml',
+  '.github/workflows/agents-pr-meta-v3.yml',
+  // v1 verify-to-issue workflow deprecated; v2 is the active version.
+  // Archived to archives/deprecated-workflows/
+  '.github/workflows/agents-verify-to-issue.yml',
+  // Issue 2275 retired the unnumbered belt alias wrappers after callers were
+  // rewired to agents-71/72/73 directly.
+  '.github/workflows/agents-belt-dispatcher.yml',
+  '.github/workflows/agents-belt-worker.yml',
+  '.github/workflows/agents-belt-conveyor.yml',
+];
+
+const CONSUMER_ONLY_ALLOW_REMOVED_PATHS = [
+  // Wave 0 cleanup removes deprecated consumer-template workflows past the
+  // 2026-02-15 deprecation deadline so sync PRs can delete stale copies.
+  '.github/workflows/agents-autofix-loop.yml',
+  '.github/workflows/agents-bot-comment-handler.yml',
+  '.github/workflows/agents-keepalive-loop.yml',
+  '.github/workflows/agents-verify-to-issue-v2.yml',
+  // The verify-to-new-pr autopilot bridge was collapsed into the main workflow.
+  '.github/workflows/agents-verify-to-new-pr-autopilot.yml',
+  // Legacy keepalive orchestrator superseded by the consolidated
+  // agents-80-pr-event-hub.yml + agents-81-gate-followups.yml hubs (controlled
+  // by USE_CONSOLIDATED_WORKFLOWS=true). The Template repo's pre-installed
+  // copy lingered on fresh consumer repos; this allowlist entry lets the
+  // first-PR template sync remove it without tripping the guard. Discovered
+  // during stranske/learning-management-system bootstrap (2026-05).
+  '.github/workflows/agents-70-orchestrator.yml',
+  // The consumer-template name (without the 70- prefix). Some Template-based
+  // consumer repos shipped this version; allow removal alongside the prefixed
+  // form so either spelling can be cleaned up.
+  '.github/workflows/agents-orchestrator.yml',
+];
+
 const ALLOW_REMOVED_PATHS = new Set(
-  [
-    // Keepalive consolidation retired the standalone keepalive sweeps.
-    '.github/workflows/agents-75-keepalive-on-gate.yml',
-    '.github/workflows/agents-keepalive-pr.yml',
-    // Issue intake now serves as the sole public entry point; the
-    // ChatGPT wrapper was intentionally removed.
-    '.github/workflows/agents-63-chatgpt-issue-sync.yml',
-    // Redundant issue intake workflow removed in favor of the primary entrypoint.
-    '.github/workflows/agents-63-issue-intake.yml',
-    // Clean up retired agent workflows from .github/workflows to reduce noise.
-    '.github/workflows/agents-64-pr-comment-commands.yml',
-    '.github/workflows/agents-74-pr-body-writer.yml',
-    // Legacy pr-meta workflows superseded by agents-pr-meta-v4.yml.
-    // v1 had corrupted workflow ID, v2/v3 were still running and failing.
-    // Archived to archives/github-actions/2025-12-02-pr-meta-legacy/
-    '.github/workflows/agents-pr-meta.yml',
-    '.github/workflows/agents-pr-meta-v2.yml',
-    '.github/workflows/agents-pr-meta-v3.yml',
-    // v1 verify-to-issue workflow deprecated; v2 is the active version.
-    // Archived to archives/deprecated-workflows/
-    '.github/workflows/agents-verify-to-issue.yml',
-    // The verify-to-new-pr autopilot bridge was collapsed into the main workflow.
-    '.github/workflows/agents-verify-to-new-pr-autopilot.yml',
-  ].map((entry) => entry.toLowerCase()),
+  [...LEGACY_ALLOW_REMOVED_PATHS, ...CONSUMER_ONLY_ALLOW_REMOVED_PATHS]
+    .map((entry) => entry.toLowerCase()),
 );
+const CONSUMER_ONLY_REMOVED_PATHS = new Set(
+  CONSUMER_ONLY_ALLOW_REMOVED_PATHS.map((entry) => entry.toLowerCase()),
+);
+
+function isConsumerOnlyRemovalAllowed(normalizedPath, repository) {
+  if (!CONSUMER_ONLY_REMOVED_PATHS.has(normalizedPath)) {
+    return true;
+  }
+  return String(repository || '').toLowerCase() !== 'stranske/workflows';
+}
+
+function isAllowlistedRemoval({ status, current = '', previous = '', repository = '' } = {}) {
+  if (status !== 'removed') {
+    return false;
+  }
+
+  const normalizedPath = normalizePattern(current || previous).toLowerCase();
+  return ALLOW_REMOVED_PATHS.has(normalizedPath) && isConsumerOnlyRemovalAllowed(normalizedPath, repository);
+}
+
+function isArchivePath(filePath) {
+  const normalized = normalizePattern(filePath || '').toLowerCase();
+  return (
+    normalized.startsWith('archives/') ||
+    normalized.startsWith('.github/workflows/archive/') ||
+    normalized.startsWith('.github/workflows-archive/')
+  );
+}
+
+function isAllowlistedArchiveRename({ status, current = '', previous = '', repository = '' } = {}) {
+  if (status !== 'renamed' || !previous || !current || !isArchivePath(current)) {
+    return false;
+  }
+
+  const normalizedPrevious = normalizePattern(previous).toLowerCase();
+  return (
+    ALLOW_REMOVED_PATHS.has(normalizedPrevious) &&
+    isConsumerOnlyRemovalAllowed(normalizedPrevious, repository)
+  );
+}
 
 const PULL_REQUEST_TARGET_EVENT = 'pull_request_target';
 const HEAD_SHA_REF_REGEX = /\bref:\s*\$\{\{\s*github\.event\.pull_request\.head\.sha\s*\}\}/i;
@@ -328,6 +398,83 @@ function extractLabelNames(labels) {
   );
 }
 
+function parseActionReferenceLine(line) {
+  const match = String(line || '').match(/^\s*(?:-\s*)?uses:\s*["']?([^@\s#'"]+)@([^\s#'"]+)["']?(?:\s*(?:#.*)?)?$/i);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    action: match[1].toLowerCase(),
+    ref: match[2],
+  };
+}
+
+function sameActionSequence(left, right) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index].action !== right[index].action) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function sameActionRefSequence(left, right) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index].action !== right[index].action || left[index].ref !== right[index].ref) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function patchChangesOnlyActionReferences(patch) {
+  if (!patch || typeof patch !== 'string') {
+    return false;
+  }
+
+  const removedRefs = [];
+  const addedRefs = [];
+  for (const rawLine of patch.split(/\r?\n/)) {
+    if (!rawLine || rawLine.startsWith('+++') || rawLine.startsWith('---')) {
+      continue;
+    }
+
+    const marker = rawLine[0];
+    if (marker !== '+' && marker !== '-') {
+      continue;
+    }
+
+    const parsed = parseActionReferenceLine(rawLine.slice(1));
+    if (!parsed) {
+      return false;
+    }
+
+    if (marker === '-') {
+      removedRefs.push(parsed);
+    } else {
+      addedRefs.push(parsed);
+    }
+  }
+
+  if (removedRefs.length === 0 || addedRefs.length === 0) {
+    return false;
+  }
+
+  return sameActionSequence(removedRefs, addedRefs) &&
+    !sameActionRefSequence(removedRefs, addedRefs);
+}
+
 function evaluateGuard({
   files = [],
   labels = [],
@@ -336,7 +483,9 @@ function evaluateGuard({
   protectedPaths = DEFAULT_PROTECTED_PATHS,
   labelName = 'agents:allow-change',
   authorLogin = '',
+  authorAssociation = '',
   marker = DEFAULT_MARKER,
+  repository = process.env.GITHUB_REPOSITORY || '',
 } = {}) {
   const normalizedLabelName = String(labelName).toLowerCase();
 
@@ -391,11 +540,18 @@ function evaluateGuard({
 
     const protectedPath = matchProtectedPath(current) || (previous ? matchProtectedPath(previous) : null);
 
-    const normalizedCurrent = normalizePattern(current).toLowerCase();
-    const normalizedPrevious = normalizePattern(previous).toLowerCase();
-    const removalAllowed =
-      (normalizedCurrent && ALLOW_REMOVED_PATHS.has(normalizedCurrent)) ||
-      (normalizedPrevious && ALLOW_REMOVED_PATHS.has(normalizedPrevious));
+    const removalAllowed = isAllowlistedRemoval({
+      status,
+      current,
+      previous,
+      repository,
+    });
+    const archiveRenameAllowed = isAllowlistedArchiveRename({
+      status,
+      current,
+      previous,
+      repository,
+    });
 
     if (protectedPath) {
       touchedProtectedPaths.add(protectedPath);
@@ -408,8 +564,7 @@ function evaluateGuard({
       }
 
       if (status === 'renamed' && previous) {
-        // Allow renames/moves of files in the ALLOW_REMOVED_PATHS list
-        if (removalAllowed) {
+        if (archiveRenameAllowed) {
           continue;
         }
         fatalViolations.push(`• ${previous} was renamed to ${current}.`);
@@ -449,16 +604,37 @@ function evaluateGuard({
   }
 
   const normalizedAuthor = authorLogin ? String(authorLogin).toLowerCase() : '';
-  const authorIsCodeowner = normalizedAuthor && codeownerLogins.has(normalizedAuthor);
+  const normalizedAuthorAssociation = authorAssociation
+    ? String(authorAssociation).toUpperCase()
+    : '';
+  const authorIsCodeowner = Boolean(
+    normalizedAuthor && codeownerLogins.has(normalizedAuthor),
+  );
   const hasExternalApproval = [...codeownerLogins].some((login) => approvedLogins.has(login));
-  const hasCodeownerApproval = hasExternalApproval || authorIsCodeowner;
+  const hasCodeownerApproval = Boolean(hasExternalApproval || authorIsCodeowner);
 
   const hasProtectedChanges = modifiedProtectedPaths.size > 0;
-  // Security note: Allow `agents:allow-change` label to bypass CODEOWNER approval
-  // ONLY for automated dependency PRs from known bots (dependabot, renovate).
-  // Human PRs or other bot PRs still require CODEOWNER approval even with label.
-  const isAutomatedPR = normalizedAuthor && (normalizedAuthor === 'dependabot[bot]' || normalizedAuthor === 'renovate[bot]');
-  const needsApproval = hasProtectedChanges && !hasCodeownerApproval && !(hasAllowLabel && isAutomatedPR);
+  const protectedChangesAreDependencyOnly = hasProtectedChanges && relevantFiles
+    .filter((file) => file.status === 'modified' && matchProtectedPath(file.filename || ''))
+    .every((file) => patchChangesOnlyActionReferences(file.patch || ''));
+  const isDependencyUpdateBot = Boolean(
+    normalizedAuthor && DEPENDENCY_UPDATE_BOT_LOGINS.has(normalizedAuthor),
+  );
+  const authorCanUseDependencyBypass = Boolean(
+    isDependencyUpdateBot ||
+      (normalizedAuthorAssociation &&
+        TRUSTED_DEPENDENCY_AUTHOR_ASSOCIATIONS.has(normalizedAuthorAssociation)),
+  );
+  // Security note: the `agents:allow-change` label can bypass CODEOWNER approval
+  // only for protected workflow dependency reference updates. This keeps routine
+  // action version alignment moving while arbitrary workflow logic edits still
+  // require CODEOWNER review.
+  const hasDependencyUpgradeBypass = Boolean(
+    hasAllowLabel &&
+      authorCanUseDependencyBypass &&
+      protectedChangesAreDependencyOnly,
+  );
+  const needsApproval = hasProtectedChanges && !hasCodeownerApproval && !hasDependencyUpgradeBypass;
   const needsLabel = hasProtectedChanges && !hasAllowLabel && !hasCodeownerApproval;
 
   const failureReasons = [];
@@ -544,6 +720,10 @@ function evaluateGuard({
     authorIsCodeowner,
     needsLabel,
     needsApproval,
+    hasDependencyUpgradeBypass,
+    protectedChangesAreDependencyOnly,
+    isDependencyUpdateBot,
+    authorCanUseDependencyBypass,
     modifiedProtectedPaths: [...modifiedProtectedPaths],
     touchedProtectedPaths: [...touchedProtectedPaths],
     fatalViolations,
@@ -558,6 +738,7 @@ module.exports = {
   evaluateGuard,
   parseCodeowners,
   globToRegExp,
+  patchChangesOnlyActionReferences,
   validatePullRequestTargetSafety,
   detectPullRequestTargetViolations,
 };

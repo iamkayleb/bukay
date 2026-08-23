@@ -15,6 +15,15 @@ const fs = require('fs');
 const os = require('os');
 const childProcess = require('child_process');
 const { ensureRateLimitWrapped } = require('./github-rate-limited-wrapper.js');
+const { isRateLimitError: classifyRateLimitError } = require('./error_classifier');
+const {
+  extractIssueNumbersFromText,
+  formatSourceContextForLog,
+  normalizeSourceType,
+  resolvePrSourceContext,
+  SOURCE_TYPES,
+  VALID_SOURCE_TYPES,
+} = require('./source_context.js');
 
 class RateLimitError extends Error {
   constructor(message, options = {}) {
@@ -226,7 +235,13 @@ function extractContextSectionWithPython(issueBody, comments, core) {
     const output = childProcess.execFileSync(
       'python3',
       ['scripts/langchain/context_extractor.py', '--input-file', issuePath, '--comments-file', commentsPath],
-      { encoding: 'utf8' },
+      {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          ISSUE_PR_CONTEXT_WORKFLOW: 'agents-pr-meta-v4',
+        },
+      },
     );
     return String(output || '').trim();
   } catch (error) {
@@ -435,6 +450,28 @@ function resolveAgentType({ inputs = {}, env = {}, pr = {} } = {}) {
     }
   }
   return '';
+}
+
+function prLabelNames(pr = {}) {
+  return new Set(
+    (Array.isArray(pr.labels) ? pr.labels : [])
+      .map((label) => normalise(typeof label === 'string' ? label : label?.name))
+      .filter(Boolean),
+  );
+}
+
+function isReleasePleasePr(pr = {}) {
+  const labels = prLabelNames(pr);
+  const title = normalise(pr.title);
+  const body = normalise(pr.body);
+  const headRef = normalise(pr.head?.ref || pr.headRefName);
+
+  return (
+    headRef.startsWith('release-please--branches--') ||
+    labels.has('autorelease: pending') ||
+    /^chore\([^)]*\):\s*release\b/i.test(title) ||
+    /\brelease-please\b/i.test(body)
+  );
 }
 
 /**
@@ -820,25 +857,12 @@ function isRateLimitError(error) {
   if (!error) {
     return false;
   }
+  // Preserve the module-local RateLimitError sentinel; delegate everything
+  // else to the centralized predicate in error_classifier.js.
   if (error instanceof RateLimitError) {
     return true;
   }
-  const status = typeof error.status === 'number' ? error.status : null;
-  const message = error instanceof Error ? error.message : String(error);
-  const messageLower = message.toLowerCase();
-  if (status === 429) {
-    return true;
-  }
-  if (status !== 403) {
-    return false;
-  }
-  if (messageLower.includes('rate limit')) {
-    return true;
-  }
-  const headers = error?.response?.headers || {};
-  const remainingRaw = headers['x-ratelimit-remaining'] ?? headers['X-RateLimit-Remaining'];
-  const remaining = Number(remainingRaw);
-  return Number.isFinite(remaining) && remaining <= 0;
+  return classifyRateLimitError(error);
 }
 
 // ========== Status Block Functions ==========
@@ -895,8 +919,196 @@ function selectLatestWorkflows(runs) {
   return latest;
 }
 
+const SELF_OBSERVING_WORKFLOW_NAMES = new Set([
+  'agents pr meta manager',
+]);
+
+function isSelfObservingWorkflowRun(run) {
+  const name = String(run?.name || '').trim().toLowerCase();
+  return Boolean(name && SELF_OBSERVING_WORKFLOW_NAMES.has(name));
+}
+
+function filterWorkflowRunsForStatus(workflowRuns) {
+  const filtered = new Map();
+  for (const [key, run] of workflowRuns || new Map()) {
+    if (isSelfObservingWorkflowRun(run)) {
+      continue;
+    }
+    filtered.set(key, run);
+  }
+  return filtered;
+}
+
 function fallbackChecklist(message) {
   return `- [ ] ${message}`;
+}
+
+function issueLabelNames(issue = {}) {
+  return Array.isArray(issue.labels)
+    ? issue.labels.map((label) => String(typeof label === 'string' ? label : label?.name || '').trim())
+    : [];
+}
+
+function isCampaignIssue(issue = {}) {
+  const labels = new Set(issueLabelNames(issue));
+  return labels.has('campaign:sync-dependabot') || labels.has('campaign:active');
+}
+
+function buildSourceContextRepairCommentBody(prNumber) {
+  return [
+    '<!-- missing-issue-warning -->',
+    '### Workflow source needed',
+    '',
+    `PR #${prNumber} needs either a linked GitHub issue or one valid non-issue Workflow Source before PR metadata automation can manage it safely.`,
+    '',
+    'Please do one of:',
+    '',
+    '- Add `<!-- meta:issue:123 -->` or a normal `Closes #123` / `Related to #123` line.',
+    '- Check one `Workflow Source` option in the PR body.',
+    '- Add a hidden marker such as `<!-- workflow-source:local_request -->`, `<!-- workflow-source:manual_remote -->`, `<!-- workflow-source:review_followup -->`, `<!-- workflow-source:sync_campaign -->`, or `<!-- workflow-source:dependabot -->`.',
+    '- Add a workflow source label such as `workflow:source-direct-pr`, `workflow:source-local-request`, `workflow:source-review-followup`, `workflow:source-sync`, or `workflow:no-automation`.',
+    '',
+    'Once a valid source is present, this warning will not be reposted.',
+  ].join('\n');
+}
+
+async function updateIssueCommentWithRetry({ github, owner, repo, commentId, body, core }) {
+  return withRetries(
+    () => github.rest.issues.updateComment({
+      owner,
+      repo,
+      comment_id: commentId,
+      body,
+    }),
+    { description: `issues.updateComment #${commentId}`, core },
+  );
+}
+
+async function createIssueCommentWithRetry({ github, owner, repo, issueNumber, body, core }) {
+  return withRetries(
+    () => github.rest.issues.createComment({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      body,
+    }),
+    { description: `issues.createComment #${issueNumber}`, core },
+  );
+}
+
+function buildSourceContextResolvedCommentBody(prNumber, sourceContext) {
+  const hasLinkedIssue = Boolean(sourceContext?.issueNumber);
+  const issueRequired = Boolean(sourceContext?.requiresIssue || sourceContext?.sourceType === SOURCE_TYPES.GITHUB_ISSUE);
+  return [
+    '<!-- missing-issue-warning -->',
+    '### Workflow source detected',
+    '',
+    `PR #${prNumber} now has valid workflow source context (${formatSourceContextForLog(sourceContext)}).`,
+    '',
+    hasLinkedIssue
+      ? 'A linked GitHub issue is present for this PR.'
+      : issueRequired
+        ? 'A linked GitHub issue is required but was not detected for this PR.'
+        : 'No linked GitHub issue is required for this PR.',
+  ].join('\n');
+}
+
+function parseHtmlMarker(body, name) {
+  const pattern = new RegExp(`<!--\\s*${name}\\s*:\\s*([\\s\\S]*?)\\s*-->`, 'i');
+  const match = String(body || '').match(pattern);
+  return match ? String(match[1] || '').trim() : '';
+}
+
+function resolveExplicitNonIssueWorkflowSourceContext(pr = {}) {
+  const body = String(pr.body || '');
+  const sourceType = normalizeSourceType(parseHtmlMarker(body, 'workflow-source'));
+  if (
+    !VALID_SOURCE_TYPES.has(sourceType)
+    || sourceType === SOURCE_TYPES.GITHUB_ISSUE
+    || sourceType === SOURCE_TYPES.UNKNOWN
+  ) {
+    return null;
+  }
+
+  const sourceRef = parseHtmlMarker(body, 'workflow-source-ref');
+  const lifecycle = parseHtmlMarker(body, 'workflow-lifecycle');
+  const automation = parseHtmlMarker(body, 'workflow-automation');
+  return {
+    sourceType,
+    issueNumber: null,
+    sourceRef,
+    lifecycle,
+    automation,
+    isKnown: true,
+    isValid: true,
+    isExplicit: true,
+    requiresIssue: false,
+  };
+}
+
+function extractExplicitIssueSyncNumbers(pr = {}) {
+  const issueNumbers = new Set();
+  for (const text of [pr.title, pr.body]) {
+    for (const issueNumber of extractIssueNumbersFromText(text)) {
+      issueNumbers.add(issueNumber);
+    }
+  }
+  return issueNumbers;
+}
+
+function hasExplicitIssueSyncReference(pr = {}) {
+  return extractExplicitIssueSyncNumbers(pr).size > 0;
+}
+
+function resolveNonIssueWorkflowSourceContextForBodySync(pr = {}, issueNumber = null) {
+  const explicitNonIssueSourceContext = resolveExplicitNonIssueWorkflowSourceContext(pr);
+  if (!explicitNonIssueSourceContext) {
+    return null;
+  }
+  const explicitIssueSyncNumbers = extractExplicitIssueSyncNumbers(pr);
+  const targetIssueNumber = Number.parseInt(issueNumber, 10);
+  if (
+    explicitIssueSyncNumbers.size > 0 &&
+    (!Number.isFinite(targetIssueNumber) ||
+      targetIssueNumber <= 0 ||
+      explicitIssueSyncNumbers.has(targetIssueNumber))
+  ) {
+    return null;
+  }
+  return explicitNonIssueSourceContext;
+}
+
+async function resolveSourceContextRepairComment({
+  github,
+  owner,
+  repo,
+  prNumber,
+  comments,
+  sourceContext,
+  core,
+}) {
+  const marker = '<!-- missing-issue-warning -->';
+  const existingWarning = comments.find((c) => c.body && c.body.includes(marker));
+  if (!existingWarning) {
+    return false;
+  }
+
+  const resolvedBody = buildSourceContextResolvedCommentBody(prNumber, sourceContext);
+  if (existingWarning.body === resolvedBody) {
+    core?.info?.(`Workflow source repair comment already resolved (id: ${existingWarning.id})`);
+    return false;
+  }
+
+  await updateIssueCommentWithRetry({
+    github,
+    owner,
+    repo,
+    commentId: existingWarning.id,
+    body: resolvedBody,
+    core,
+  });
+  core?.info?.(`Resolved workflow source repair comment (id: ${existingWarning.id})`);
+  return true;
 }
 
 function buildPreamble(sections) {
@@ -904,7 +1116,13 @@ function buildPreamble(sections) {
   
   // Add reference to source issue if available
   if (sections.issueNumber) {
+    lines.push(`<!-- meta:issue:${sections.issueNumber} -->`);
     lines.push(`> **Source:** Issue #${sections.issueNumber}`, '');
+    if (isCampaignIssue(sections.sourceIssue)) {
+      lines.push(`Related to campaign issue #${sections.issueNumber}`, '');
+    } else {
+      lines.push(`Closes #${sections.issueNumber}`, '');
+    }
   }
   
   if (sections.summary && sections.summary.trim()) {
@@ -926,6 +1144,7 @@ function buildPreamble(sections) {
 function buildStatusBlock({scope, contextSection, tasks, acceptance, headSha, workflowRuns, requiredChecks, existingBody, connectorStates, core, agentType, owner, repo}) {
   const statusLines = ['<!-- auto-status-summary:start -->', '## Automated Status Summary'];
   const isCliAgent = Boolean(agentType && String(agentType).trim());
+  const statusWorkflowRuns = filterWorkflowRunsForStatus(workflowRuns);
 
   const existingBlock = extractBlock(existingBody || '', 'auto-status-summary');
   const existingStates = parseCheckboxStates(existingBlock);
@@ -980,7 +1199,7 @@ function buildStatusBlock({scope, contextSection, tasks, acceptance, headSha, wo
   if (!isCliAgent) {
     statusLines.push(`**Head SHA:** ${headSha}`);
 
-    const latestRuns = Array.from(workflowRuns.values()).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const latestRuns = Array.from(statusWorkflowRuns.values()).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     let latestLine = '—';
     if (latestRuns.length > 0) {
       const gate = latestRuns.find((run) => (run.name || '').toLowerCase() === 'gate');
@@ -992,7 +1211,7 @@ function buildStatusBlock({scope, contextSection, tasks, acceptance, headSha, wo
 
     const requiredParts = [];
     for (const name of requiredChecks) {
-      const run = Array.from(workflowRuns.values()).find((item) => (item.name || '').toLowerCase() === name.toLowerCase());
+      const run = Array.from(statusWorkflowRuns.values()).find((item) => (item.name || '').toLowerCase() === name.toLowerCase());
       if (!run) {
         requiredParts.push(`${name}: ⏸️ not started`);
       } else {
@@ -1004,7 +1223,7 @@ function buildStatusBlock({scope, contextSection, tasks, acceptance, headSha, wo
     statusLines.push('');
 
     const table = ['| Workflow / Job | Result | Logs |', '|----------------|--------|------|'];
-    const runs = Array.from(workflowRuns.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const runs = Array.from(statusWorkflowRuns.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     if (runs.length === 0) {
       table.push('| _(no workflow runs yet for this commit)_ | — | — |');
@@ -1142,26 +1361,17 @@ async function run({github: rawGithub, context, core, inputs}) {
   const scriptsBase = process.env.WORKFLOWS_SCRIPTS_PATH || process.env.GITHUB_WORKSPACE || process.cwd();
   
   // Load external helper scripts
-  let extractIssueNumberFromPull;
   let parseScopeTasksAcceptanceSections;
 
   try {
-    const keepalivePath = path.resolve(scriptsBase, '.github/scripts/agents_pr_meta_keepalive.js');
     const parserPath = path.resolve(scriptsBase, '.github/scripts/issue_scope_parser.js');
 
-    if (!fs.existsSync(keepalivePath)) {
-      throw new Error(`Keepalive script not found at ${keepalivePath}`);
-    }
     if (!fs.existsSync(parserPath)) {
       throw new Error(`Parser script not found at ${parserPath}`);
     }
 
-    extractIssueNumberFromPull = require(keepalivePath).extractIssueNumberFromPull;
     parseScopeTasksAcceptanceSections = require(parserPath).parseScopeTasksAcceptanceSections;
     
-    if (typeof extractIssueNumberFromPull !== 'function') {
-      throw new Error('extractIssueNumberFromPull is not exported from keepalive script');
-    }
     if (typeof parseScopeTasksAcceptanceSections !== 'function') {
       throw new Error('parseScopeTasksAcceptanceSections is not exported from parser script');
     }
@@ -1192,10 +1402,98 @@ async function run({github: rawGithub, context, core, inputs}) {
     return;
   }
 
-  const issueNumber = extractIssueNumberFromPull(pr);
+  if (isReleasePleasePr(pr)) {
+    core.info(`PR #${pr.number} is a release-please PR; skipping issue-sourced PR body sync.`);
+    return;
+  }
+
+  const sourceContext = resolvePrSourceContext(pr);
+  const issueNumber = sourceContext.issueNumber;
+  if (sourceContext.noAutomation) {
+    core.info(
+      `PR #${pr.number} has automation disabled (${formatSourceContextForLog(sourceContext)}); skipping PR body update.`,
+    );
+    if (sourceContext.isValid && (!sourceContext.requiresIssue || sourceContext.issueNumber)) {
+      try {
+        const comments = await github.paginate(github.rest.issues.listComments, {
+          owner,
+          repo,
+          issue_number: pr.number,
+        });
+        await resolveSourceContextRepairComment({
+          github,
+          owner,
+          repo,
+          prNumber: pr.number,
+          comments,
+          sourceContext,
+          core,
+        });
+      } catch (error) {
+        core.warning(`Failed to resolve workflow source repair comment: ${error.message}`);
+      }
+    } else {
+      core.warning(
+        `PR #${pr.number} has automation disabled but lacks valid non-issue workflow source context (${formatSourceContextForLog(sourceContext)}); leaving repair comment unresolved.`,
+      );
+    }
+    return;
+  }
+
+  const explicitNonIssueSourceContext = resolveNonIssueWorkflowSourceContextForBodySync(pr, issueNumber);
+  if (explicitNonIssueSourceContext) {
+    core.info(
+      `PR #${pr.number} has explicit non-issue workflow source context (${formatSourceContextForLog(explicitNonIssueSourceContext)}); skipping issue-sourced body sync.`,
+    );
+    try {
+      const comments = await github.paginate(github.rest.issues.listComments, {
+        owner,
+        repo,
+        issue_number: pr.number,
+      });
+      await resolveSourceContextRepairComment({
+        github,
+        owner,
+        repo,
+        prNumber: pr.number,
+        comments,
+        sourceContext: explicitNonIssueSourceContext,
+        core,
+      });
+    } catch (error) {
+      core.warning(`Failed to resolve workflow source repair comment: ${error.message}`);
+    }
+    return;
+  }
+
   if (!issueNumber) {
+    if (sourceContext.isValid && !sourceContext.requiresIssue) {
+      core.info(
+        `PR #${pr.number} has valid non-issue workflow source context (${formatSourceContextForLog(sourceContext)}); skipping issue-sourced body sync.`,
+      );
+      try {
+        const comments = await github.paginate(github.rest.issues.listComments, {
+          owner,
+          repo,
+          issue_number: pr.number,
+        });
+        await resolveSourceContextRepairComment({
+          github,
+          owner,
+          repo,
+          prNumber: pr.number,
+          comments,
+          sourceContext,
+          core,
+        });
+      } catch (error) {
+        core.warning(`Failed to resolve workflow source repair comment: ${error.message}`);
+      }
+      return;
+    }
+
     const marker = '<!-- missing-issue-warning -->';
-    const warningMsg = `Unable to determine source issue for PR #${pr.number}. The PR title, branch name, or body must contain the issue number (e.g. #123, branch: issue-123, or the hidden marker <!-- meta:issue:123 -->).`;
+    const warningMsg = `Unable to determine workflow source context for PR #${pr.number}. Add a GitHub issue reference or another valid Workflow Source entry.`;
     core.warning(warningMsg);
 
     try {
@@ -1206,17 +1504,30 @@ async function run({github: rawGithub, context, core, inputs}) {
       });
       // Find existing warning comment by marker to enable upsert pattern
       const existingWarning = comments.find((c) => c.body && c.body.includes(marker));
-      const commentBody = `${marker}\n⚠️ **Action Required**: ${warningMsg}`;
+      const commentBody = buildSourceContextRepairCommentBody(pr.number);
       
       if (existingWarning) {
-        // Update existing comment (avoids duplicates from race conditions)
-        core.info(`Warning comment already exists (id: ${existingWarning.id}), skipping duplicate`);
+        if (existingWarning.body !== commentBody) {
+          await updateIssueCommentWithRetry({
+            github,
+            owner,
+            repo,
+            commentId: existingWarning.id,
+            body: commentBody,
+            core,
+          });
+          core.info(`Updated workflow source repair comment (id: ${existingWarning.id})`);
+        } else {
+          core.info(`Workflow source repair comment already exists (id: ${existingWarning.id})`);
+        }
       } else {
-        await github.rest.issues.createComment({
+        await createIssueCommentWithRetry({
+          github,
           owner,
           repo,
-          issue_number: pr.number,
-          body: commentBody
+          issueNumber: pr.number,
+          body: commentBody,
+          core,
         });
       }
     } catch (error) {
@@ -1231,6 +1542,25 @@ async function run({github: rawGithub, context, core, inputs}) {
     {description: `issues.get #${issueNumber}`, core},
   );
   const issueBody = issueResponse.data.body || '';
+
+  try {
+    const comments = await github.paginate(github.rest.issues.listComments, {
+      owner,
+      repo,
+      issue_number: pr.number,
+    });
+    await resolveSourceContextRepairComment({
+      github,
+      owner,
+      repo,
+      prNumber: pr.number,
+      comments,
+      sourceContext,
+      core,
+    });
+  } catch (error) {
+    core.warning(`Failed to resolve workflow source repair comment: ${error.message}`);
+  }
 
   if (!issueBody) {
     core.warning(`Issue #${issueNumber} has no body content`);
@@ -1279,7 +1609,13 @@ async function run({github: rawGithub, context, core, inputs}) {
     || '';
   contextSection = augmentContextWithRelatedIssues(contextSection, issueBody);
 
-  const preamble = buildPreamble({summary, testing, ci, issueNumber});
+  const preamble = buildPreamble({
+    summary,
+    testing,
+    ci,
+    issueNumber,
+    sourceIssue: issueResponse.data,
+  });
 
   const workflowRunResponse = await withRetries(
     () => github.rest.actions.listWorkflowRunsForRepo({
@@ -1388,8 +1724,19 @@ module.exports = {
   upsertCompletionAuthorWarning,
   stripPrTemplateContent,
   upsertBlock,
+  filterWorkflowRunsForStatus,
   buildContextBlock,
   buildPreamble,
+  buildSourceContextRepairCommentBody,
+  buildSourceContextResolvedCommentBody,
+  prLabelNames,
+  isReleasePleasePr,
+  resolveExplicitNonIssueWorkflowSourceContext,
+  extractExplicitIssueSyncNumbers,
+  hasExplicitIssueSyncReference,
+  resolveNonIssueWorkflowSourceContextForBodySync,
+  resolveSourceContextRepairComment,
+  isCampaignIssue,
   buildStatusBlock,
   withRetries,
   RateLimitError,

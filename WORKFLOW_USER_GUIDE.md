@@ -35,7 +35,7 @@ This guide explains how to use the automated workflows in your repository. All w
 **What Happens:**
 - Issue is analyzed for clarity and completeness
 - Issue is formatted to standard template
-- Codex agent creates a branch and opens a draft PR
+- Codex agent creates a branch and opens a ready-for-review PR
 - Agent works through the tasks automatically
 - Keepalive monitors and continues work until complete
 - Verification runs after merge
@@ -76,7 +76,32 @@ Issue: "Add user authentication"
 
 ---
 
-### 3. End-to-End Automation (Auto-Pilot)
+### 3. Start Work Directly From a PR
+
+**Use Case:** You are opening a PR without first creating a GitHub issue
+
+**Steps:**
+1. Fill out exactly one option in the PR template's `Workflow Source` section
+2. If the PR came from an issue, include `Closes #123` or `Related to #123`
+3. If there is no issue, choose the direct, local request, automation, review follow-up, sync/maintenance, or Dependabot source
+4. Use a `workflow:source-*` label if you need to classify an existing PR from the PR list
+
+**What Happens:**
+- Workflows treats valid non-issue sources as intentional work instead of missing process state
+- PR metadata automation avoids repeated missing-source repair comments
+- Keepalive can continue without a linked issue when the PR has a valid non-issue workflow source context
+
+**Common labels:**
+- `workflow:source-direct-pr`
+- `workflow:source-local-request`
+- `workflow:source-review-followup`
+- `workflow:source-sync`
+- `workflow:source-dependabot`
+- `workflow:no-automation`
+
+---
+
+### 4. End-to-End Automation (Auto-Pilot)
 
 **Use Case:** You want complete hands-off automation from issue to merged PR
 
@@ -100,7 +125,8 @@ Issue: "Add user authentication"
 - 4-hour timeout
 - Pause anytime with `agents:auto-pilot-pause`
 - Stops on errors with `agents:auto-pilot-failed`
-- Escalates to `needs-human` on repeated failures
+- Routes repeated failures to bounded automation retry and scheduled recovery
+- Uses `needs-human` only for independently confirmed external authority
 
 **Time:** 20 minutes to 2 hours depending on complexity
 
@@ -113,7 +139,7 @@ Issue: "Add user authentication"
 ### User-Applied Labels (Triggers)
 
 | Label | Where | What It Does |
-|-------|-------|--------------||
+|-------|-------|--------------|
 | `autofix` | PR | Auto-fixes formatting/lint errors |
 | `autofix:clean` | PR | Aggressive autofix with cosmetic repairs |
 | `agent:codex` | Issue | Creates PR from issue |
@@ -134,12 +160,13 @@ Issue: "Add user authentication"
 ### Auto-Applied Labels (Status)
 
 | Label | Meaning |
-|-------|---------||
+|-------|---------|
 | `agents:formatted` | Issue has been formatted |
 | `agents:keepalive` | Keepalive is monitoring this PR |
 | `agent:needs-attention` | Human intervention required |
 | `agents:auto-pilot-pause` | Auto-pilot paused |
 | `agents:auto-pilot-failed` | Auto-pilot stopped due to errors |
+| `agents:allow-change` | Permission signal for `agents-guard`; bypasses guard-level CODEOWNER approval only for dependency-only `uses:` reference updates from Dependabot/Renovate or repository owner/member/collaborator PRs. Auto-applied to dependency-bot PRs by `maint-auto-label-dep-prs.yml`; arbitrary workflow logic edits still require review. |
 | `needs-human` | Escalated to human |
 | `follow-up` | Created as follow-up to another issue/PR |
 | `duplicate` | Potential duplicate detected |
@@ -165,7 +192,7 @@ Issue: "Add user authentication"
 
 | Event | Workflows That Trigger |
 |-------|----------------------|
-| PR opened | Gate (CI), PR Meta, Agents Guard |
+| PR opened | Gate (CI), Agents 80 PR Event Hub, Agents Guard |
 | Label added: `autofix` | Autofix loop |
 | Label added: `agents:keepalive` | Enables keepalive loop (runs on Gate workflow_run) |
 | Label removed: `agents:paused` | Keepalive resumes |
@@ -237,10 +264,10 @@ Extracts suggestions from the analysis comment and:
 **Assigns Codex agent to create a PR**
 
 1. Creates branch `codex/issue-<number>`
-2. Opens draft PR linked to issue
+2. Opens a ready-for-review PR linked to the issue
 3. Agent begins implementing tasks
 4. Keeps working through keepalive system
-5. Marks PR ready when complete
+5. Keeps dependency and progress state in labels, checks, and the PR body
 
 **Prerequisites:**
 - Issue must be formatted (`agents:formatted` label)
@@ -480,7 +507,7 @@ Orchestrates entire pipeline:
 1. PR must be merged
 2. PR must have verification comment (from `verify:evaluate` or `verify:compare`)
 3. Verification comment must contain concerns or low scores
-4. Check `agents-verify-to-issue-v2.yml` logs
+4. Check `agents-80-pr-event-hub.yml` logs
 
 ---
 
@@ -648,7 +675,7 @@ If concerns → Add verify:create-issue → New issue auto-created
 
 **Resources:**
 - [Full Documentation](https://github.com/stranske/Workflows/tree/main/docs)
-- [Label Reference](https://github.com/stranske/Workflows/blob/main/docs/LABELS.md)
+- [Consumer Label Reference](https://github.com/stranske/Workflows/blob/main/templates/consumer-repo/docs/LABELS.md)
 - [Agents Policy](https://github.com/stranske/Workflows/blob/main/docs/AGENTS_POLICY.md)
 
 **For Issues:**
@@ -754,32 +781,17 @@ The Workflows repository includes maintenance workflows that handle sync, update
 
 ---
 
-### `maint-73-refresh-reusable-tags.yml` - Legacy Tag Refresh Notice
-**Purpose:** Historical maintenance workflow for floating-tag management
-
-**Trigger:** Manual dispatch only (deprecated notice workflow)
-
-**What It Does:**
-- Records that first-party consumers now standardize on `@main`
-- Leaves any historical floating-tag maintenance to explicit migration work
-- Does not change the current first-party consumer default
-
-**Use When:** Only when you need a manual reminder of the deprecated floating-tag policy during an audit or migration review
-
----
-
 ### `maint-52-sync-dev-versions.yml` - Sync Dev Versions
-**Purpose:** Updates development environment versions
+**Purpose:** Central Workflows propagation workflow; it has no consumer-template counterpart.
 
-**Trigger:** On push to main or manual
+**Trigger:** Runs only in the central Workflows repository after a settled source commit
 
 **What It Does:**
-- Syncs Python version from `.python-version`
-- Updates Node.js version in workflows
-- Updates action versions in workflows
-- Commits version bumps
+- Uses the central `autofix-versions.env` pin set
+- Opens at most one propagation PR per consumer repository
+- Records the settled canonical source commit in each delivery marker
 
-**Use When:** After dependency updates
+**Use When:** Observe central propagation; do not copy or configure this workflow in a consumer repo
 
 ---
 
@@ -818,47 +830,42 @@ The Workflows repository includes maintenance workflows that handle sync, update
 ---
 
 ### `maint-auto-update-pypi-versions.yml` - Auto-Update PyPI Packages
-**Purpose:** Automatically updates Python package versions
+**Purpose:** Central Workflows source-proposal workflow; it has no consumer-template counterpart.
 
-**Trigger:** Daily scheduled
+**Trigger:** Monday 03:00 UTC or an explicit central security override
 
 **What It Does:**
-- Checks PyPI for latest versions
-- Updates minor/patch versions automatically
-- Creates PR for major version updates
-- Runs CI to validate
+- Checks PyPI for the central dev-tool pin set
+- Batches routine changes into one mutable weekly source PR
+- Runs source validation before the consumer propagation lane can start
 
-**Safety:** Only auto-merges patch versions
+**Safety:** Consumer repos must not create partial copies of the central pin update
 
 ---
 
-### `maint-dependabot-auto-label.yml` - Label Dependabot PRs
-**Purpose:** Auto-labels Dependabot PRs by category
+### `maint-auto-label-dep-prs.yml` - Label dependency PRs
+**Purpose:** Auto-labels dependency-bot PRs with `agents:allow-change`
 
-**Trigger:** When Dependabot opens PR
+**Trigger:** When Dependabot or Renovate opens a PR
 
 **Labels Applied:**
-- `dependencies` (all)
-- `python` for Python packages
-- `github-actions` for action updates
-- `security` for security updates
+- `agents:allow-change` (so dependency-bot protected-workflow version updates can use the guarded dependency-update lane)
 
 **Use When:** Automatic, no action needed
 
 ---
 
-### `maint-dependabot-auto-lock.yml` - Lock Dependabot PRs
-**Purpose:** Prevents auto-merge for major version updates
+### `maint-auto-lock-deps.yml` - Auto-lock dependency PRs
+**Purpose:** Keeps `requirements.lock` in sync on dependency-bot PRs
 
-**Trigger:** When Dependabot PR is major version
+**Trigger:** A `dependabot[bot]`/`renovate[bot]` PR changes a lock input (`pyproject.toml`, `requirements.txt`, `tools/requirements-llm.txt`)
 
 **What It Does:**
-- Detects major version bumps
-- Adds `do-not-merge` label
-- Comments with review request
-- Requires manual review
+- Re-runs the `uv pip compile` command recorded in the lock header
+- Commits the refreshed `requirements.lock` back to the PR branch if it changed
+- Workflows-local backstop to the fleet Renovate pip-compile manager
 
-**Use When:** Automatic protection
+**Use When:** Automatic, no action needed
 
 ---
 
@@ -1109,20 +1116,20 @@ The Workflows repository includes maintenance workflows that handle sync, update
 ---
 
 ### `maint-50-tool-version-check.yml` - Tool Version Audit
-**Purpose:** Checks versions of all development tools
+**Purpose:** Central read-only freshness audit; it has no consumer-template counterpart.
 
-**Trigger:** Weekly scheduled
+**Trigger:** Weekly in the central Workflows repository
 
 **Checks:**
-- Python version
-- Node.js version
-- pip version
-- git version
-- gh version
-- docker version
-- Action versions
+- PyPI freshness for the central developer-tool pin set (`black`, `ruff`, `mypy`, `pytest`, related tooling)
+- Canonical pin alignment evidence only (no runtime/CLI/Action version inventory)
 
-**Result:** Report on outdated tools
+**Result:** Freshness evidence only; it never creates a competing update issue or PR
+
+**Consumer note:** Maint 50 is not synced into consumer repositories. Older
+consumer-local documentation may still describe a legacy
+`maint-50-tool-version-check.yml`; treat those references as historical unless
+that workflow actually exists in the consumer checkout.
 
 ---
 
@@ -1144,18 +1151,17 @@ The Workflows repository includes maintenance workflows that handle sync, update
 ---
 
 ### `maint-65-sync-label-docs.yml` - Sync Label Documentation
-**Purpose:** Keeps label docs in sync with actual labels
+**Purpose:** Copies the canonical consumer label guide to registered repositories
 
-**Trigger:** On label changes or manual
+**Trigger:** When `templates/consumer-repo/docs/LABELS.md` changes, or manually
 
 **What It Does:**
-1. Fetches current labels from repos
-2. Updates `docs/LABELS.md`
-3. Adds descriptions for new labels
-4. Marks deprecated labels
-5. Commits documentation
+1. Loads the shared registered consumer-repository list
+2. Copies `templates/consumer-repo/docs/LABELS.md` to consumer `docs/LABELS.md`
+3. Skips repositories whose copy is already identical
+4. Commits and pushes changed consumer copies, or reports a dry run
 
-**Use When:** After adding/removing labels
+**Use When:** After updating the consumer label guide or when reconciling label-doc drift
 
 ---
 
@@ -1396,7 +1402,7 @@ The sync manifest (`config/sync-manifest.json`) controls what gets synced:
 
 | Secret | Purpose | Used By |
 |--------|---------|---------|
-| `CODESPACES_WORKFLOWS` | High-privilege PAT for sync operations | Sync workflows |
+| `OWNER_PR_PAT` | Owner PAT for cross-repo sync operations | Sync workflows |
 | `OPENAI_API_KEY` | OpenAI API access | Agent workflows |
 | `ANTHROPIC_API_KEY` | Anthropic API access | Agent workflows |
 | `GH_APP_PRIVATE_KEY` | GitHub App authentication | Integration workflows |
@@ -1416,7 +1422,7 @@ The sync manifest (`config/sync-manifest.json`) controls what gets synced:
 ### Sync Not Creating PRs
 
 **Check:**
-1. `CODESPACES_WORKFLOWS` token valid and has repo permissions
+1. `OWNER_PR_PAT` or `SERVICE_BOT_PAT` token valid and has repo permissions
 2. Consumer repo exists and accessible
 3. Sync manifest valid (run validation workflow)
 4. No existing open sync PR (closes old ones first)

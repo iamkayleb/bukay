@@ -5,27 +5,91 @@ default_agent: codex
 # Shared keepalive marker prefix (agent-agnostic)
 keepalive_marker_prefix: agent-keepalive
 
-# Optional per-agent field: base_branch
-#   The branch an agent's work branches from and its PRs target. When unset
-#   (the default), the bridge uses the repository default branch. Set it to a
-#   long-lived per-agent integration branch to stack an agent's work there
-#   instead of the default branch — e.g. for a Codex-vs-Claude evaluation:
-#       codex:  { base_branch: eval/codex }
-#       claude: { base_branch: eval/claude }
-#   The branch MUST already exist on origin. See
-#   docs/evaluations/AGENT_EVAL_RUNBOOK.md and
-#   docs/ops/CONSUMER_REPO_MAINTENANCE.md before enabling it.
+# Cross-agent credentials whose absence can form a concrete authority remedy.
+# Provider credentials come from each routed agent's required_secrets list.
+authority_shared_secrets:
+  - ACTIONS_BOT_PAT
+  - OPENAI_API_KEY
+
+# Dedicated instrumentation-only contract for the Sol/Terra/Luna plumbing
+# canary. The reusable workflow ref is replaced with the exact commit containing
+# this runner before merge. Trial profiles are rejected by ordinary agent and
+# Keepalive execution. The lane cannot fall back, mutate source, invoke an
+# evaluator, or claim provider-resolved identity.
+model_profile_trial_contract:
+  mode: read-only
+  artifact_schema: workflows.model-profile-trial-result/v2
+  identity_authority: workflows-read-only-trial-artifact/v2
+  collector_identity_authority: github-actions-api/workflows-read-only-trial-artifact/v2
+  runner_ref: iamkayleb/Workflows/.github/workflows/reusable-model-profile-trial.yml@e85edadb246e41d172a0c79fad147752d1df9ea9
+  cli_version: 0.144.1
+  runtime_fallback_allowed: false
+  auxiliary_evaluator_allowed: false
+  provider_resolved_identity: unavailable
+  capacity_pool_mapping:
+    orchestrator: codex-subscription
+    workflows: codex-standard
+
+execution_profiles:
+  codex-default:
+    agent: codex
+    model: gpt-5.6-terra
+    fallback_model: gpt-5.5
+    runner: reusable-codex-run
+    capacity_pool: codex-standard
+    safety: standard
+    lifecycle: active
+  codex-fast:
+    agent: codex
+    model: gpt-5.4
+    fallback_model: gpt-5.5
+    runner: reusable-codex-run
+    capacity_pool: codex-standard
+    safety: standard
+    lifecycle: active
+  codex-5.6-sol-high:
+    agent: codex
+    model: gpt-5.6-sol
+    fallback_model: gpt-5.5
+    runner: reusable-model-profile-trial
+    runner_ref: iamkayleb/Workflows/.github/workflows/reusable-model-profile-trial.yml@e85edadb246e41d172a0c79fad147752d1df9ea9
+    capacity_pool: codex-standard
+    safety: read-only
+    lifecycle: trial
+    reasoning_effort: high
+    permission_mode: read-only
+  codex-5.6-terra-high:
+    agent: codex
+    model: gpt-5.6-terra
+    fallback_model: gpt-5.5
+    runner: reusable-model-profile-trial
+    runner_ref: iamkayleb/Workflows/.github/workflows/reusable-model-profile-trial.yml@e85edadb246e41d172a0c79fad147752d1df9ea9
+    capacity_pool: codex-standard
+    safety: read-only
+    lifecycle: trial
+    reasoning_effort: high
+    permission_mode: read-only
+  codex-5.6-luna-high:
+    agent: codex
+    model: gpt-5.6-luna
+    fallback_model: gpt-5.5
+    runner: reusable-model-profile-trial
+    runner_ref: iamkayleb/Workflows/.github/workflows/reusable-model-profile-trial.yml@e85edadb246e41d172a0c79fad147752d1df9ea9
+    capacity_pool: codex-standard
+    safety: read-only
+    lifecycle: trial
+    reasoning_effort: high
+    permission_mode: read-only
 
 agents:
   codex:
     runner_workflow: .github/workflows/reusable-codex-run.yml
-    # Code production uses the ChatGPT subscription token (CODEX_AUTH_JSON) ONLY.
-    # OPENAI_API_KEY is intentionally NOT a code-production credential — it is
-    # reserved for verify:compare. Using the API to generate code is not economical.
     required_secrets:
       - CODEX_AUTH_JSON
     branch_prefix: codex/issue-
-    # base_branch: eval/codex   # optional; see note above. Unset -> repo default branch.
+    capacity:
+      window: 5h
+      limit: 1  # TODO: confirm owner-supplied public plan limit
     ui_mentions_allowed: false
     automation_logins:
       - chatgpt-codex-connector
@@ -42,22 +106,22 @@ agents:
       verifier_checkbox: true
 
   claude:
-    display_name: Claude
-    model: claude-opus-4-7
     runner_workflow: .github/workflows/reusable-claude-run.yml
     required_secrets:
       - CLAUDE_CODE_OAUTH_TOKEN  # preferred: long-lived token from `claude setup-token`
       - CLAUDE_AUTH_JSON          # fallback: credentials.json (short-lived OAuth)
     required_secrets_mode: any    # at least one must be present
     branch_prefix: claude/issue-
-    # base_branch: eval/claude   # optional; see note above. Unset -> repo default branch.
+    capacity:
+      window: 5h
+      limit: 1  # TODO: confirm owner-supplied public plan limit
     ui_mentions_allowed: false
     automation_logins:
-      - kayleb-automation-bot
+      - stranske-automation-bot
     readiness_candidates:
-      - kayleb-automation-bot
+      - stranske-automation-bot
     preflight:
-      assign_user: kayleb-automation-bot
+      assign_user: stranske-automation-bot
       command_phrase: ''
       enabled: true
     capabilities:
@@ -66,24 +130,77 @@ agents:
       belt: true
       verifier_checkbox: true
 
+  cursor:
+    runner_workflow: .github/workflows/reusable-cursor-run.yml
+    required_secrets:
+      - CURSOR_API_KEY
+    branch_prefix: cursor/issue-
+    capacity:
+      window: daily
+      limit: 1  # TODO: confirm owner-supplied public plan limit
+    ui_mentions_allowed: false
+    # Reuses stranske-automation-bot for branch pushes/attribution until a
+    # dedicated stranske-cursor-bot service account is provisioned.
+    automation_logins:
+      - stranske-automation-bot
+    readiness_candidates:
+      - stranske-automation-bot
+    preflight:
+      assign_user: stranske-automation-bot
+      command_phrase: ''
+      enabled: false   # issue-intake/invite flow deferred; PR keepalive + autofix only this phase
+    capabilities:
+      pr_keepalive: true
+      pr_autofix: true          # wired into agents-autofix-loop.yml (autofix-cursor job)
+      belt: false              # belt routing deferred to a later phase
+      verifier_checkbox: false  # verification stays on the existing judge (config/llm_slots.json)
+
   gemini:
-    display_name: Gemini
+    enabled: true
     runner_workflow: .github/workflows/reusable-gemini-run.yml
     required_secrets:
       - GEMINI_API_KEY
     branch_prefix: gemini/issue-
+    capacity:
+      window: daily
+      limit: 1  # TODO: confirm owner-supplied public plan limit
     ui_mentions_allowed: false
+    # Reuses stranske-automation-bot for branch pushes/attribution until a
+    # dedicated service account is provisioned.
     automation_logins:
-      - kayleb-automation-bot
+      - stranske-automation-bot
     readiness_candidates:
-      - kayleb-automation-bot
+      - stranske-automation-bot
     preflight:
-      assign_user: kayleb-automation-bot
+      assign_user: stranske-automation-bot
       command_phrase: ''
-      enabled: true
+      enabled: false   # issue-intake/invite flow deferred; PR keepalive only this phase
     capabilities:
       pr_keepalive: true
-      pr_autofix: true
-      belt: true
-      verifier_checkbox: true
+      pr_autofix: false         # autofix-loop wiring deferred
+      belt: false
+      verifier_checkbox: false  # verification stays on the existing judge (config/llm_slots.json)
 
+  aider:
+    enabled: false
+    runner_workflow: ''
+    required_secrets:
+      - AIDER_API_KEY
+    branch_prefix: aider/issue-
+    capacity:
+      window: daily
+      limit: 1  # TODO: confirm owner-supplied public plan limit
+    ui_mentions_allowed: false
+    automation_logins:
+      - stranske-automation-bot
+    readiness_candidates:
+      - stranske-automation-bot
+    preflight:
+      assign_user: stranske-automation-bot
+      command_phrase: ''
+      enabled: false
+    capabilities:
+      pr_keepalive: false
+      pr_autofix: false
+      belt: false
+      verifier_checkbox: false

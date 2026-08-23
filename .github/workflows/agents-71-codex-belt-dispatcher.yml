@@ -20,8 +20,16 @@ on:
         required: false
         default: false
         type: boolean
-      base_branch:
-        description: 'Override base branch for the automation PR (defaults to issue marker or repository default)'
+      orchestrator_skill_pack:
+        description: >-
+          Optional reference-pack name override for exported Orchestrator skill context on
+          downstream Codex opener/closer runs (repo config remains primary).
+        required: false
+        default: ''
+        type: string
+      orchestrator_skill_enabled:
+        description: >-
+          Optional enabled override for exported Orchestrator skill context (true/false).
         required: false
         default: ''
         type: string
@@ -68,8 +76,16 @@ on:
         required: false
         default: false
         type: boolean
-      base_branch:
-        description: 'Override base branch for the automation PR (defaults to issue marker or repository default)'
+      orchestrator_skill_pack:
+        description: >-
+          Optional reference-pack name override for exported Orchestrator skill context on
+          downstream Codex opener/closer runs (repo config remains primary).
+        required: false
+        default: ''
+        type: string
+      orchestrator_skill_enabled:
+        description: >-
+          Optional enabled override for exported Orchestrator skill context (true/false).
         required: false
         default: ''
         type: string
@@ -102,7 +118,7 @@ jobs:
       - name: Mint GitHub App token (preferred)
         id: app_token
         if: ${{ env.WORKFLOWS_APP_ID != '' && env.WORKFLOWS_APP_PRIVATE_KEY != '' }}
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         with:
           app-id: ${{ env.WORKFLOWS_APP_ID }}
           private-key: ${{ env.WORKFLOWS_APP_PRIVATE_KEY }}
@@ -177,7 +193,7 @@ jobs:
           echo "dry_run=${{ inputs.dry_run }}" >>"$GITHUB_OUTPUT"
 
       - name: Checkout repo (for retry helpers)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ env.GH_DISPATCH_TOKEN }}
           fetch-depth: 1
@@ -188,27 +204,12 @@ jobs:
           secrets: ${{ toJSON(secrets) }}
           github_token: ${{ env.GH_DISPATCH_TOKEN || github.token }}
 
-      - name: Resolve Workflows default branch
+      - name: Resolve Workflows ref
         id: workflows_ref
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
-        with:
-          script: |
-            const { createTokenAwareRetry } = require('./.github/scripts/github-api-with-retry.js');
-            const { withRetry } = await createTokenAwareRetry({ github, core });
-            const { data } = await withRetry((client) =>
-              client.rest.repos.get({
-                owner: context.repo.owner,
-                repo: 'Workflows'
-              })
-            );
-            if (!data?.default_branch) {
-              core.setFailed('Could not determine Workflows default branch');
-              return;
-            }
-            core.setOutput('ref', data.default_branch);
+        uses: ./.github/actions/resolve-default-branch
 
       - name: Checkout (for retry helpers)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: iamkayleb/Workflows
           ref: ${{ steps.workflows_ref.outputs.ref }}
@@ -216,13 +217,17 @@ jobs:
             .github/actions/setup-api-client
             .github/agents/registry.yml
             .github/scripts/agent_registry.js
+            .github/scripts/error_classifier.js
             .github/scripts/github-api-with-retry.js
             .github/scripts/token_load_balancer.js
           sparse-checkout-cone-mode: false
 
       - name: Resolve candidate issue
         id: pick
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        env:
+          FORCE_ISSUE: ${{ inputs.force_issue }}
+          AGENT_KEY: ${{ inputs.agent_key }}
         with:
           github-token: ${{ env.GH_DISPATCH_TOKEN }}
           script: |
@@ -232,8 +237,8 @@ jobs:
               core,
               task: 'codex-belt-dispatcher-pick',
             });
-            const forced = '${{ inputs.force_issue }}';
-            const agentKey = String('${{ inputs.agent_key }}' || 'codex').trim().toLowerCase() || 'codex';
+            const forced = process.env.FORCE_ISSUE || '';
+            const agentKey = String(process.env.AGENT_KEY || 'codex').trim().toLowerCase() || 'codex';
             const { owner, repo } = context.repo;
 
             const summary = core.summary;
@@ -287,57 +292,11 @@ jobs:
             ]);
 
             const { data: repoInfo } = await withRetry((client) => client.rest.repos.get({ owner, repo }));
-            const defaultBranch = repoInfo.default_branch;
-            if (!defaultBranch) {
+            const base = repoInfo.default_branch;
+            if (!base) {
               core.setFailed('Repository default branch not available');
               return;
             }
-
-            // Resolve the PR base branch. Precedence:
-            //   1. explicit base_branch input
-            //   2. <!-- base-branch: X --> marker in the issue body
-            //      (set by agents-verify-to-new-pr for eval-branch follow-ups)
-            //   3. repository default branch
-            let base = String('${{ inputs.base_branch }}' || '').trim();
-            let baseSource = base ? 'input' : '';
-            if (!base) {
-              let issueBody = '';
-              try {
-                const { data: issueData } = await withRetry((client) =>
-                  client.rest.issues.get({ owner, repo, issue_number: issueNumber }));
-                issueBody = issueData.body || '';
-              } catch (error) {
-                core.warning(
-                  `Could not fetch issue #${issueNumber} body for base marker: ${error.message}`
-                );
-              }
-              const markerMatch = issueBody.match(/<!--\s*base-branch:\s*([^\s>]+)\s*-->/);
-              if (markerMatch) {
-                base = markerMatch[1].trim();
-                baseSource = 'issue-marker';
-              }
-            }
-            if (!base) {
-              base = defaultBranch;
-              baseSource = 'default';
-            }
-
-            // Guard: never target a base branch that does not exist. A stale or
-            // mistyped marker would otherwise wedge dispatch, so fall back to
-            // the default branch.
-            if (base !== defaultBranch) {
-              try {
-                await withRetry((client) => client.rest.repos.getBranch({ owner, repo, branch: base }));
-              } catch (error) {
-                core.warning(
-                  `Base branch '${base}' (from ${baseSource}) not found; ` +
-                  `falling back to '${defaultBranch}'.`
-                );
-                base = defaultBranch;
-                baseSource = 'default-fallback';
-              }
-            }
-            core.info(`Resolved PR base branch: ${base} (source: ${baseSource})`);
 
             let branchPrefix = 'codex/issue-';
             try {
@@ -363,7 +322,7 @@ jobs:
 
       - name: Checkout default branch
         if: ${{ steps.pick.outputs.issue != '' && steps.mode.outputs.dry_run != 'true' }}
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ steps.pick.outputs.base }}
           token: ${{ env.GH_DISPATCH_TOKEN }}
@@ -376,8 +335,8 @@ jobs:
           branch="${{ steps.pick.outputs.branch }}"
           default_ref="${{ steps.pick.outputs.base }}"
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "stranske-automation-bot"
+          git config user.email "stranske-automation-bot@users.noreply.github.com"
 
           existing_ref=$(git ls-remote --heads origin "$branch" || true)
           if [ -n "$existing_ref" ]; then
@@ -390,7 +349,7 @@ jobs:
 
       - name: Transition issue to in-progress
         if: ${{ steps.pick.outputs.issue != '' && steps.mode.outputs.dry_run != 'true' }}
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           github-token: ${{ env.GH_DISPATCH_TOKEN }}
           script: |

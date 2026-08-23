@@ -8,16 +8,29 @@ timeouts, retries, and environment overrides.
 from __future__ import annotations
 
 import contextlib
-import json
 import logging
 import os
+import re
 from dataclasses import dataclass
-from pathlib import Path
 
-from tools.llm_provider import (
-    DEFAULT_MODEL,
-    GITHUB_MODELS_BASE_URL,
-    metered_providers_allowed,
+from tools import llm_registry as _llm_registry
+from tools.llm_provider import DEFAULT_MODEL, GITHUB_MODELS_BASE_URL
+from tools.llm_registry import (
+    PROVIDER_ANTHROPIC,
+    PROVIDER_GITHUB,
+    PROVIDER_OPENAI,
+    ModelRegistryEntry,
+    SlotDefinition,
+    apply_slot_env_overrides,
+    configured_model_for_provider,
+    default_slots,
+    is_model_blocked,
+    load_model_registry,
+    load_slot_config,
+    normalize_provider,
+    registry_entry_for,
+    resolve_slots,
+    select_model_for_tier,
 )
 
 logger = logging.getLogger(__name__)
@@ -26,15 +39,12 @@ ENV_PROVIDER = "LANGCHAIN_PROVIDER"
 ENV_MODEL = "LANGCHAIN_MODEL"
 ENV_TIMEOUT = "LANGCHAIN_TIMEOUT"
 ENV_MAX_RETRIES = "LANGCHAIN_MAX_RETRIES"
-ENV_SLOT_CONFIG = "LANGCHAIN_SLOT_CONFIG"
+ENV_SLOT_CONFIG = _llm_registry.ENV_SLOT_CONFIG
+ENV_MODEL_REGISTRY_CONFIG = _llm_registry.ENV_MODEL_REGISTRY_CONFIG
 ENV_SLOT_PREFIX = "LANGCHAIN_SLOT"
-ENV_ANTHROPIC_KEY = "CLAUDE_API_KEY"
-
-PROVIDER_OPENAI = "openai"
-PROVIDER_ANTHROPIC = "anthropic"
-PROVIDER_GITHUB = "github-models"
-
-DEFAULT_SLOT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "llm_slots.json"
+ENV_ANTHROPIC_KEY = "CLAUDE_API_STRANSKE"
+DEFAULT_SLOT_CONFIG_PATH = _llm_registry.DEFAULT_SLOT_CONFIG_PATH
+DEFAULT_MODEL_REGISTRY_CONFIG_PATH = _llm_registry.DEFAULT_MODEL_REGISTRY_CONFIG_PATH
 
 
 def _env_int(name: str, default: int) -> int:
@@ -63,24 +73,8 @@ class ClientInfo:
         return f"{self.provider}/{self.model}"
 
 
-@dataclass(frozen=True)
-class SlotDefinition:
-    name: str
-    provider: str
-    model: str
-
-
 def _normalize_provider(value: str | None) -> str | None:
-    if not value:
-        return None
-    normalized = value.strip().lower()
-    if normalized in {"github", "github_models", "github-models"}:
-        return PROVIDER_GITHUB
-    if normalized in {"anthropic", "claude"}:
-        return PROVIDER_ANTHROPIC
-    if normalized in {"openai"}:
-        return PROVIDER_OPENAI
-    return None
+    return normalize_provider(value)
 
 
 def _resolve_provider(provider: str | None, *, force_openai: bool) -> tuple[str | None, bool]:
@@ -97,57 +91,53 @@ def _resolve_model(model: str | None) -> str:
     return model or env_model or DEFAULT_MODEL
 
 
+def _load_model_registry() -> list[ModelRegistryEntry]:
+    return load_model_registry()
+
+
+def _registry_entry_for(
+    provider: str, model: str, registry: list[ModelRegistryEntry] | None = None
+) -> ModelRegistryEntry | None:
+    return registry_entry_for(provider, model, registry=registry)
+
+
+def _is_model_blocked(
+    provider: str, model: str, registry: list[ModelRegistryEntry] | None = None
+) -> bool:
+    return is_model_blocked(provider, model, registry=registry)
+
+
+def _select_model_for_tier(
+    *,
+    provider: str,
+    tier: str,
+    registry: list[ModelRegistryEntry] | None = None,
+) -> str | None:
+    return select_model_for_tier(provider=provider, tier=tier, registry=registry)
+
+
 def _default_slots() -> list[SlotDefinition]:
-    return [
-        SlotDefinition(name="slot1", provider=PROVIDER_OPENAI, model="gpt-5.5"),
-        SlotDefinition(name="slot2", provider=PROVIDER_ANTHROPIC, model="claude-opus-4-7"),
-        SlotDefinition(name="slot3", provider=PROVIDER_GITHUB, model="gpt-4.1"),
-    ]
+    return default_slots(github_default_model=DEFAULT_MODEL)
 
 
 def _load_slot_config() -> list[SlotDefinition]:
-    config_path = os.environ.get(ENV_SLOT_CONFIG)
-    path = Path(config_path) if config_path else DEFAULT_SLOT_CONFIG_PATH
-    if not path.is_file():
-        return _default_slots()
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return _default_slots()
-
-    slots: list[SlotDefinition] = []
-    for idx, entry in enumerate(payload.get("slots", []), start=1):
-        provider = _normalize_provider(str(entry.get("provider", "")))
-        model = str(entry.get("model", "")).strip()
-        if not provider or not model:
-            continue
-        name = str(entry.get("name") or f"slot{idx}").strip() or f"slot{idx}"
-        slots.append(SlotDefinition(name=name, provider=provider, model=model))
-
-    return slots or _default_slots()
+    return load_slot_config(github_default_model=DEFAULT_MODEL)
 
 
 def _apply_slot_env_overrides(slots: list[SlotDefinition]) -> list[SlotDefinition]:
-    updated: list[SlotDefinition] = []
-    for idx, slot in enumerate(slots, start=1):
-        provider_key = f"{ENV_SLOT_PREFIX}{idx}_PROVIDER"
-        model_key = f"{ENV_SLOT_PREFIX}{idx}_MODEL"
-        provider_override = _normalize_provider(os.environ.get(provider_key))
-        model_override = os.environ.get(model_key)
-        if idx == 1:
-            model_override = model_override or os.environ.get(ENV_MODEL)
-        updated.append(
-            SlotDefinition(
-                name=slot.name,
-                provider=provider_override or slot.provider,
-                model=(model_override or slot.model).strip(),
-            )
-        )
-    return updated
+    return apply_slot_env_overrides(
+        slots,
+        env_model_name=ENV_MODEL,
+        env_slot_prefix=ENV_SLOT_PREFIX,
+    )
 
 
 def _resolve_slots() -> list[SlotDefinition]:
-    return _apply_slot_env_overrides(_load_slot_config())
+    return resolve_slots(
+        github_default_model=DEFAULT_MODEL,
+        env_model_name=ENV_MODEL,
+        env_slot_prefix=ENV_SLOT_PREFIX,
+    )
 
 
 def _is_reasoning_model(model: str) -> bool:
@@ -161,7 +151,7 @@ def _is_reasoning_model(model: str) -> bool:
     # o-series reasoning models use an `o` prefix followed by digits with optional
     # hyphen-separated suffixes: o1, o1-preview, o1-preview-2024-09-12, o3, o3-mini,
     # o3-pro, o4-mini, o4-mini-deep-research.
-    return bool(__import__("re").fullmatch(r"o[0-9]+(?:-[a-z0-9]+)*", name))
+    return bool(re.fullmatch(r"o[0-9]+(?:-[a-z0-9]+)*", name))
 
 
 def _build_openai_client(
@@ -179,9 +169,22 @@ def _build_openai_client(
 
 
 def _anthropic_rejects_temperature(model: str) -> bool:
-    """Return True if the Anthropic model rejects the temperature parameter."""
+    """Return True for Anthropic models that reject an explicit ``temperature``.
+
+    The newer "thinking" generation returns HTTP 400 ``invalid_request_error`` when a
+    custom ``temperature`` is set. Confirmed via the maint-78 verifier pilot
+    (2026-07-24): ``claude-opus-4-8`` and ``claude-sonnet-5`` (while ``claude-opus-4-6``
+    still accepts ``temperature=0.1``). Matches Opus 4.8 explicitly plus the Claude 5
+    family (``claude-<name>-5...``); minor-version ``-5`` suffixes like
+    ``claude-haiku-4-5`` are NOT matched. Interim, evidence-based guard; the durable
+    capability-aware handling (e.g. retry-on-400) is tracked in stranske/Workflows#2819.
+    """
     name = model.lower().strip()
-    return "opus" in name
+    if name == "claude-opus-4-8":
+        return True
+    return any(
+        name.startswith(f"claude-{family}-5") for family in ("opus", "sonnet", "haiku", "fable")
+    )
 
 
 def _build_anthropic_client(
@@ -198,11 +201,26 @@ def _build_anthropic_client(
     return chat_anthropic(**kwargs)
 
 
+def _github_model_id(model: str) -> str:
+    """Return a GitHub Models GA-compatible model id (``publisher/model``).
+
+    The GA endpoint (``models.github.ai/inference``) requires publisher-namespaced ids
+    such as ``openai/gpt-5``. A bare id (e.g. ``codex-mini-latest``) 404s ("page not
+    found") there. Default a bare id to the ``openai/`` publisher; already-namespaced
+    ids (containing ``/``) are returned unchanged. (If a bare id maps to a model the
+    GitHub Models catalog does not offer at all, the durable fix is an owner-reviewed
+    change of the github-models selection to a catalogued id — this only normalizes
+    the id format.)
+    """
+    name = model.strip()
+    return name if "/" in name else f"openai/{name}"
+
+
 def _build_github_client(
     chat_openai: type, *, model: str, token: str, timeout: int, max_retries: int
 ) -> object:
     kwargs: dict = {
-        "model": model,
+        "model": _github_model_id(model),
         "base_url": GITHUB_MODELS_BASE_URL,
         "api_key": token,
         "timeout": timeout,
@@ -224,23 +242,20 @@ def build_chat_client(
     try:
         from langchain_openai import ChatOpenAI
     except ImportError:
-        return None
+        chat_openai_cls = None
+    else:
+        chat_openai_cls = ChatOpenAI
 
     try:
         from langchain_anthropic import ChatAnthropic
     except ImportError:
-        ChatAnthropic = None  # noqa: N806
+        chat_anthropic_cls = None
+    else:
+        chat_anthropic_cls = ChatAnthropic
 
     github_token = os.environ.get("GITHUB_TOKEN")
     openai_token = os.environ.get("OPENAI_API_KEY")
     anthropic_token = os.environ.get(ENV_ANTHROPIC_KEY)
-    # Cost isolation: the metered keys (OPENAI_API_KEY / CLAUDE_API_KEY) are
-    # reserved for verify:compare. Unless the caller explicitly opts in via
-    # LLM_ALLOW_METERED, treat them as absent so this client falls back to the
-    # free GitHub Models tier and cannot spend the verify budget.
-    if not metered_providers_allowed():
-        openai_token = None
-        anthropic_token = None
     if not github_token and not openai_token and not anthropic_token:
         return None
 
@@ -251,13 +266,21 @@ def build_chat_client(
     selected_provider, provider_explicit = _resolve_provider(provider, force_openai=force_openai)
     if provider_explicit and selected_provider is None:
         return None
+    if selected_provider and not selected_model:
+        selected_model = configured_model_for_provider(selected_provider)
+    if selected_provider and not selected_model:
+        logger.warning("No reviewed model is configured for provider %s", selected_provider)
+        return None
+    if selected_provider and _is_model_blocked(selected_provider, selected_model):
+        logger.warning("Refusing blocked LLM model: %s/%s", selected_provider, selected_model)
+        return None
 
     if selected_provider == PROVIDER_GITHUB:
-        if not github_token:
+        if not github_token or not chat_openai_cls:
             return None
         try:
             client = _build_github_client(
-                ChatOpenAI,
+                chat_openai_cls,
                 model=selected_model,
                 token=github_token,
                 timeout=selected_timeout,
@@ -268,11 +291,11 @@ def build_chat_client(
             return None
 
     if selected_provider == PROVIDER_OPENAI:
-        if not openai_token:
+        if not openai_token or not chat_openai_cls:
             return None
         try:
             client = _build_openai_client(
-                ChatOpenAI,
+                chat_openai_cls,
                 model=selected_model,
                 token=openai_token,
                 timeout=selected_timeout,
@@ -283,11 +306,11 @@ def build_chat_client(
             return None
 
     if selected_provider == PROVIDER_ANTHROPIC:
-        if not anthropic_token or not ChatAnthropic:
+        if not anthropic_token or not chat_anthropic_cls:
             return None
         try:
             client = _build_anthropic_client(
-                ChatAnthropic,
+                chat_anthropic_cls,
                 model=selected_model,
                 token=anthropic_token,
                 timeout=selected_timeout,
@@ -303,10 +326,28 @@ def build_chat_client(
     used_override = False
     for slot in slots:
         slot_model = model_override if model_override and not used_override else slot.model
-        if slot.provider == PROVIDER_OPENAI and openai_token:
+        if model_override and not used_override and _is_model_blocked(slot.provider, slot_model):
+            logger.warning("Skipping blocked LLM model override: %s/%s", slot.provider, slot_model)
+            used_override = True
+            slot_model = slot.model
+        if not slot_model:
+            continue
+        if _is_model_blocked(slot.provider, slot_model):
+            logger.warning("Skipping blocked LLM model: %s/%s", slot.provider, slot_model)
+            continue
+        slot_available = any(
+            (
+                slot.provider == PROVIDER_OPENAI and openai_token,
+                slot.provider == PROVIDER_ANTHROPIC and anthropic_token and chat_anthropic_cls,
+                slot.provider == PROVIDER_GITHUB and github_token and chat_openai_cls,
+            )
+        )
+        if not slot_available:
+            continue
+        if slot.provider == PROVIDER_OPENAI and openai_token and chat_openai_cls:
             with contextlib.suppress(Exception):
                 client = _build_openai_client(
-                    ChatOpenAI,
+                    chat_openai_cls,
                     model=slot_model,
                     token=openai_token,
                     timeout=selected_timeout,
@@ -314,10 +355,10 @@ def build_chat_client(
                 )
                 used_override = True
                 return ClientInfo(client=client, provider=PROVIDER_OPENAI, model=slot_model)
-        if slot.provider == PROVIDER_ANTHROPIC and anthropic_token and ChatAnthropic:
+        if slot.provider == PROVIDER_ANTHROPIC and anthropic_token and chat_anthropic_cls:
             with contextlib.suppress(Exception):
                 client = _build_anthropic_client(
-                    ChatAnthropic,
+                    chat_anthropic_cls,
                     model=slot_model,
                     token=anthropic_token,
                     timeout=selected_timeout,
@@ -325,10 +366,10 @@ def build_chat_client(
                 )
                 used_override = True
                 return ClientInfo(client=client, provider=PROVIDER_ANTHROPIC, model=slot_model)
-        if slot.provider == PROVIDER_GITHUB and github_token:
+        if slot.provider == PROVIDER_GITHUB and github_token and chat_openai_cls:
             with contextlib.suppress(Exception):
                 client = _build_github_client(
-                    ChatOpenAI,
+                    chat_openai_cls,
                     model=slot_model,
                     token=github_token,
                     timeout=selected_timeout,
@@ -351,20 +392,20 @@ def build_chat_clients(
     try:
         from langchain_openai import ChatOpenAI
     except ImportError:
-        return []
+        chat_openai_cls = None
+    else:
+        chat_openai_cls = ChatOpenAI
 
     try:
         from langchain_anthropic import ChatAnthropic
     except ImportError:
-        ChatAnthropic = None  # noqa: N806
+        chat_anthropic_cls = None
+    else:
+        chat_anthropic_cls = ChatAnthropic
 
     github_token = os.environ.get("GITHUB_TOKEN")
     openai_token = os.environ.get("OPENAI_API_KEY")
     anthropic_token = os.environ.get(ENV_ANTHROPIC_KEY)
-    # Cost isolation: metered keys only when explicitly opted in (verify:compare).
-    if not metered_providers_allowed():
-        openai_token = None
-        anthropic_token = None
     if not github_token and not openai_token and not anthropic_token:
         return []
 
@@ -377,16 +418,25 @@ def build_chat_clients(
     selected_provider, provider_explicit = _resolve_provider(provider, force_openai=False)
     if provider_explicit and selected_provider is None:
         return []
+    registry = _load_model_registry()
+    if selected_provider:
+        blocked_models = [candidate for candidate in (first_model, second_model) if candidate]
+        if any(
+            _is_model_blocked(selected_provider, candidate, registry=registry)
+            for candidate in blocked_models
+        ):
+            logger.warning("Refusing blocked LLM model for provider %s", selected_provider)
+            return []
 
     clients: list[ClientInfo] = []
 
     if selected_provider:
-        if selected_provider == PROVIDER_GITHUB and github_token:
+        if selected_provider == PROVIDER_GITHUB and github_token and chat_openai_cls:
             with contextlib.suppress(Exception):
                 clients.append(
                     ClientInfo(
                         client=_build_github_client(
-                            ChatOpenAI,
+                            chat_openai_cls,
                             model=first_model,
                             token=github_token,
                             timeout=selected_timeout,
@@ -401,7 +451,7 @@ def build_chat_clients(
                     clients.append(
                         ClientInfo(
                             client=_build_github_client(
-                                ChatOpenAI,
+                                chat_openai_cls,
                                 model=second_model,
                                 token=github_token,
                                 timeout=selected_timeout,
@@ -411,12 +461,12 @@ def build_chat_clients(
                             model=second_model,
                         )
                     )
-        elif selected_provider == PROVIDER_OPENAI and openai_token:
+        elif selected_provider == PROVIDER_OPENAI and openai_token and chat_openai_cls:
             with contextlib.suppress(Exception):
                 clients.append(
                     ClientInfo(
                         client=_build_openai_client(
-                            ChatOpenAI,
+                            chat_openai_cls,
                             model=first_model,
                             token=openai_token,
                             timeout=selected_timeout,
@@ -431,7 +481,7 @@ def build_chat_clients(
                     clients.append(
                         ClientInfo(
                             client=_build_openai_client(
-                                ChatOpenAI,
+                                chat_openai_cls,
                                 model=second_model,
                                 token=openai_token,
                                 timeout=selected_timeout,
@@ -441,12 +491,12 @@ def build_chat_clients(
                             model=second_model,
                         )
                     )
-        elif selected_provider == PROVIDER_ANTHROPIC and anthropic_token and ChatAnthropic:
+        elif selected_provider == PROVIDER_ANTHROPIC and anthropic_token and chat_anthropic_cls:
             with contextlib.suppress(Exception):
                 clients.append(
                     ClientInfo(
                         client=_build_anthropic_client(
-                            ChatAnthropic,
+                            chat_anthropic_cls,
                             model=first_model,
                             token=anthropic_token,
                             timeout=selected_timeout,
@@ -461,7 +511,7 @@ def build_chat_clients(
                     clients.append(
                         ClientInfo(
                             client=_build_anthropic_client(
-                                ChatAnthropic,
+                                chat_anthropic_cls,
                                 model=second_model,
                                 token=anthropic_token,
                                 timeout=selected_timeout,
@@ -480,8 +530,8 @@ def build_chat_clients(
         if any(
             (
                 slot.provider == PROVIDER_OPENAI and openai_token,
-                slot.provider == PROVIDER_ANTHROPIC and anthropic_token and ChatAnthropic,
-                slot.provider == PROVIDER_GITHUB and github_token,
+                slot.provider == PROVIDER_ANTHROPIC and anthropic_token and chat_anthropic_cls,
+                slot.provider == PROVIDER_GITHUB and github_token and chat_openai_cls,
             )
         ):
             candidate_slots.append(slot)
@@ -494,12 +544,18 @@ def build_chat_clients(
     for idx, slot in enumerate(candidate_slots):
         slot_model = model_overrides[idx] if idx < len(model_overrides) else None
         slot_model = slot_model or slot.model
-        if slot.provider == PROVIDER_OPENAI and openai_token:
+        if not slot_model:
+            logger.warning("Skipping LLM slot without a resolved model: %s", slot.name)
+            continue
+        if _is_model_blocked(slot.provider, slot_model, registry=registry):
+            logger.warning("Skipping blocked LLM model override: %s/%s", slot.provider, slot_model)
+            continue
+        if slot.provider == PROVIDER_OPENAI and openai_token and chat_openai_cls:
             with contextlib.suppress(Exception):
                 clients.append(
                     ClientInfo(
                         client=_build_openai_client(
-                            ChatOpenAI,
+                            chat_openai_cls,
                             model=slot_model,
                             token=openai_token,
                             timeout=selected_timeout,
@@ -509,12 +565,12 @@ def build_chat_clients(
                         model=slot_model,
                     )
                 )
-        if slot.provider == PROVIDER_ANTHROPIC and anthropic_token and ChatAnthropic:
+        if slot.provider == PROVIDER_ANTHROPIC and anthropic_token and chat_anthropic_cls:
             with contextlib.suppress(Exception):
                 clients.append(
                     ClientInfo(
                         client=_build_anthropic_client(
-                            ChatAnthropic,
+                            chat_anthropic_cls,
                             model=slot_model,
                             token=anthropic_token,
                             timeout=selected_timeout,
@@ -524,12 +580,12 @@ def build_chat_clients(
                         model=slot_model,
                     )
                 )
-        if slot.provider == PROVIDER_GITHUB and github_token:
+        if slot.provider == PROVIDER_GITHUB and github_token and chat_openai_cls:
             with contextlib.suppress(Exception):
                 clients.append(
                     ClientInfo(
                         client=_build_github_client(
-                            ChatOpenAI,
+                            chat_openai_cls,
                             model=slot_model,
                             token=github_token,
                             timeout=selected_timeout,

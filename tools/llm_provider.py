@@ -3,7 +3,7 @@ LLM Provider Abstraction with Fallback Chain
 
 Provides a unified interface for LLM calls with automatic fallback:
 1. OpenAI API (primary) - uses OPENAI_API_KEY
-2. Anthropic API (secondary) - uses CLAUDE_API_KEY
+2. Anthropic API (secondary) - uses CLAUDE_API_STRANSKE
 3. GitHub Models API (fallback) - uses GITHUB_TOKEN
 4. Regex patterns (last resort) - no API calls
 
@@ -31,36 +31,24 @@ from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
-# GitHub Models API endpoint (OpenAI-compatible)
-GITHUB_MODELS_BASE_URL = "https://models.inference.ai.azure.com"
-# Default model for GitHub Models and OpenAI fallback paths.
-# gpt-4.1 is available on both GitHub Models and OpenAI, making it a reliable
-# fallback when no provider-specific model is configured.
-DEFAULT_MODEL = "gpt-4.1"
-ANTHROPIC_API_KEY_ENV = "CLAUDE_API_KEY"
+# GitHub Models API endpoint (OpenAI-compatible).
+GITHUB_MODELS_BASE_URL = "https://models.github.ai/inference"
+# Model versions live only in config/model_registry.json. Empty constants keep
+# import compatibility while ensuring a missing registry fails closed.
+DEFAULT_MODEL = ""
+ANTHROPIC_API_KEY_ENV = "CLAUDE_API_STRANSKE"
 SHORT_ANALYSIS_CONFIDENCE_CAP = 0.4
-
-# Cost isolation: the metered API keys (OPENAI_API_KEY / CLAUDE_API_KEY) are
-# reserved EXCLUSIVELY for verify:compare. Every other LLM use (session
-# analysis, progress review, issue optimization, dedup, auto-label, etc.) must
-# run on the free GitHub Models tier so it cannot spend the verify budget.
-#
-# Metered providers therefore report themselves unavailable unless the caller
-# explicitly opts in by setting LLM_ALLOW_METERED. Only the verify:compare
-# workflow steps set that flag, so a grep for LLM_ALLOW_METERED shows exactly
-# where metered spend is permitted. This is defense-in-depth: even if a metered
-# key leaks into another workflow's env, the provider stays disabled.
-METERED_OPT_IN_ENV = "LLM_ALLOW_METERED"
+DEFAULT_OPENAI_ANALYSIS_MODEL = ""
+DEFAULT_ANTHROPIC_ANALYSIS_MODEL = ""
 
 
-def metered_providers_allowed() -> bool:
-    """Return True only when metered providers are explicitly opted in.
-
-    Reserved for verify:compare. Returns False (free GitHub Models only) for
-    every other LLM use so the verify budget cannot be spent on code analysis.
-    """
-    value = os.environ.get(METERED_OPT_IN_ENV, "").strip().lower()
-    return value in {"1", "true", "yes", "on", "enabled"}
+def _configured_langchain_model(provider: str, *, fallback: str) -> str:
+    try:
+        from tools.llm_registry import configured_model_for_provider
+    except ImportError:
+        return fallback
+    configured = configured_model_for_provider(provider, fallback=fallback)
+    return fallback if configured is None else configured
 
 
 def _setup_langsmith_tracing() -> bool:
@@ -73,14 +61,17 @@ def _setup_langsmith_tracing() -> bool:
     if not api_key:
         return False
 
-    # Enable LangChain tracing v2
-    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    # Respect an explicit opt-out while defaulting enabled tracing for configured users.
+    os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
     os.environ.setdefault("LANGCHAIN_PROJECT", "workflows-agents")
     # LangSmith uses LANGSMITH_API_KEY directly, but LangChain expects LANGCHAIN_API_KEY
     os.environ.setdefault("LANGCHAIN_API_KEY", api_key)
     os.environ.setdefault("LANGSMITH_API_KEY", api_key)
 
     project = os.environ.get("LANGCHAIN_PROJECT")
+    if os.environ["LANGCHAIN_TRACING_V2"].strip().lower() == "false":
+        logger.info("LangSmith tracing explicitly disabled for project: %s", project)
+        return False
     logger.info(f"LangSmith tracing enabled for project: {project}")
     return True
 
@@ -243,7 +234,7 @@ class CompletionAnalysis:
     confidence: float  # 0.0 to 1.0
     reasoning: str  # Explanation of the analysis
     provider_used: str  # Which provider generated this
-    model_name: str = "unknown"  # Specific model used (e.g., gpt-4o, claude-3.5-sonnet)
+    model_name: str = "unknown"  # Specific model used by the selected provider.
 
     # Quality metrics for BS detection
     raw_confidence: float | None = None  # Original confidence before adjustment
@@ -345,7 +336,10 @@ class GitHubModelsProvider(LLMProvider):
         return "github-models"
 
     def is_available(self) -> bool:
-        return bool(os.environ.get("GITHUB_TOKEN"))
+        return bool(
+            os.environ.get("GITHUB_TOKEN")
+            and _configured_langchain_model("github-models", fallback=DEFAULT_MODEL)
+        )
 
     def supports_quality_context(self) -> bool:
         return True
@@ -358,8 +352,13 @@ class GitHubModelsProvider(LLMProvider):
             logger.warning("langchain_openai not installed")
             return None
 
+        model_name = _configured_langchain_model("github-models", fallback=DEFAULT_MODEL)
+        if not model_name:
+            logger.warning("No reviewed GitHub Models selection is configured")
+            return None
+        self._model_name = model_name
         return ChatOpenAI(
-            model="gpt-4.1",  # Battle-tested, reliable, available on GitHub Models
+            model=model_name,
             base_url=GITHUB_MODELS_BASE_URL,
             api_key=os.environ.get("GITHUB_TOKEN"),
             temperature=0.1,  # Low temperature for consistent analysis
@@ -374,7 +373,9 @@ class GitHubModelsProvider(LLMProvider):
     ) -> CompletionAnalysis:
         client = self._get_client()
         if not client:
-            raise RuntimeError("LangChain OpenAI not available")
+            raise RuntimeError(
+                "GitHub Models client unavailable: install langchain-openai or configure a reviewed model"
+            )
 
         prompt = self._build_analysis_prompt(session_output, tasks, context)
 
@@ -571,7 +572,7 @@ Be conservative - if unsure, don't mark as completed."""
                 confidence=adjusted_confidence,
                 reasoning=reasoning,
                 provider_used=self.name,
-                model_name="gpt-4.1",  # Actual model used by GitHubModelsProvider
+                model_name=getattr(self, "_model_name", "unknown"),
                 raw_confidence=raw_confidence if adjusted_confidence != raw_confidence else None,
                 confidence_adjusted=adjusted_confidence != raw_confidence,
                 quality_warnings=warnings if warnings else None,
@@ -586,7 +587,7 @@ Be conservative - if unsure, don't mark as completed."""
                 confidence=0.0,
                 reasoning=f"Failed to parse response: {e}",
                 provider_used=self.name,
-                model_name="gpt-4.1",  # Actual model used by GitHubModelsProvider
+                model_name=getattr(self, "_model_name", "unknown"),
             )
 
 
@@ -598,7 +599,10 @@ class OpenAIProvider(LLMProvider):
         return "openai"
 
     def is_available(self) -> bool:
-        return metered_providers_allowed() and bool(os.environ.get("OPENAI_API_KEY"))
+        return bool(
+            os.environ.get("OPENAI_API_KEY")
+            and _configured_langchain_model("openai", fallback=DEFAULT_OPENAI_ANALYSIS_MODEL)
+        )
 
     def supports_quality_context(self) -> bool:
         return True
@@ -606,16 +610,19 @@ class OpenAIProvider(LLMProvider):
     def _get_client(self):
         """Get LangChain ChatOpenAI client."""
         try:
-            from langchain_openai import ChatOpenAI
+            from tools.langchain_client import build_chat_client
         except ImportError:
-            logger.warning("langchain_openai not installed")
+            logger.warning("LangChain client helper not available")
             return None
 
-        return ChatOpenAI(
-            model="gpt-5.1-codex",  # Purpose-built for analyzing Codex coding sessions
-            api_key=os.environ.get("OPENAI_API_KEY"),
-            temperature=0.1,
-        )
+        model_name = _configured_langchain_model("openai", fallback=DEFAULT_OPENAI_ANALYSIS_MODEL)
+        if not model_name:
+            return None
+        resolved = build_chat_client(provider="openai", model=model_name)
+        if resolved:
+            self._model_name = resolved.model
+            return resolved.client
+        return None
 
     def analyze_completion(
         self,
@@ -647,7 +654,11 @@ class OpenAIProvider(LLMProvider):
                 confidence=result.confidence,
                 reasoning=result.reasoning,
                 provider_used=self.name,
-                model_name="gpt-5.1-codex",  # Actual model used by OpenAIProvider
+                model_name=getattr(
+                    self,
+                    "_model_name",
+                    _configured_langchain_model("openai", fallback=DEFAULT_OPENAI_ANALYSIS_MODEL),
+                ),
                 raw_confidence=result.raw_confidence,
                 confidence_adjusted=result.confidence_adjusted,
                 quality_warnings=result.quality_warnings,
@@ -665,23 +676,31 @@ class AnthropicProvider(LLMProvider):
         return "anthropic"
 
     def is_available(self) -> bool:
-        return metered_providers_allowed() and bool(os.environ.get(ANTHROPIC_API_KEY_ENV))
+        return bool(
+            os.environ.get(ANTHROPIC_API_KEY_ENV)
+            and _configured_langchain_model("anthropic", fallback=DEFAULT_ANTHROPIC_ANALYSIS_MODEL)
+        )
 
     def supports_quality_context(self) -> bool:
         return True
 
     def _get_client(self):
         try:
-            from langchain_anthropic import ChatAnthropic
+            from tools.langchain_client import build_chat_client
         except ImportError:
-            logger.warning("langchain_anthropic not installed")
+            logger.warning("LangChain client helper not available")
             return None
 
-        return ChatAnthropic(
-            model="claude-opus-4-7",
-            anthropic_api_key=os.environ.get(ANTHROPIC_API_KEY_ENV),
-            temperature=0.1,
+        model_name = _configured_langchain_model(
+            "anthropic", fallback=DEFAULT_ANTHROPIC_ANALYSIS_MODEL
         )
+        if not model_name:
+            return None
+        resolved = build_chat_client(provider="anthropic", model=model_name)
+        if resolved:
+            self._model_name = resolved.model
+            return resolved.client
+        return None
 
     def analyze_completion(
         self,
@@ -723,7 +742,13 @@ class AnthropicProvider(LLMProvider):
                 confidence=result.confidence,
                 reasoning=result.reasoning,
                 provider_used=self.name,
-                model_name="claude-opus-4-7",
+                model_name=getattr(
+                    self,
+                    "_model_name",
+                    _configured_langchain_model(
+                        "anthropic", fallback=DEFAULT_ANTHROPIC_ANALYSIS_MODEL
+                    ),
+                ),
                 raw_confidence=result.raw_confidence,
                 confidence_adjusted=result.confidence_adjusted,
                 quality_warnings=result.quality_warnings,
@@ -974,9 +999,9 @@ def get_llm_provider(force_provider: str | None = None) -> LLMProvider:
             Options: "github-models", "openai", "anthropic", "regex-fallback"
 
     Returns a FallbackChainProvider that tries:
-    1. Anthropic claude-opus-4-7 (if CLAUDE_API_KEY set) - Best reasoning
-    2. OpenAI gpt-5.1-codex (if OPENAI_API_KEY set) - Purpose-built for code analysis
-    3. GitHub Models gpt-4.1 (if GITHUB_TOKEN set) - Always available, reliable
+    1. Anthropic configured slot model (if CLAUDE_API_STRANSKE set) - Best reasoning
+    2. OpenAI configured slot model (if OPENAI_API_KEY set) - Code analysis
+    3. GitHub Models configured slot model (if GITHUB_TOKEN set)
     4. Regex fallback (always available) - 30% confidence baseline
     """
     # Force a specific provider for testing
@@ -1002,9 +1027,9 @@ def get_llm_provider(force_provider: str | None = None) -> LLMProvider:
         return provider
 
     providers = [
-        AnthropicProvider(),  # Primary: claude-opus-4-7 for best reasoning
-        OpenAIProvider(),  # Secondary: gpt-5.1-codex for code-optimized analysis
-        GitHubModelsProvider(),  # Tertiary: gpt-4.1 via GITHUB_TOKEN (always available)
+        AnthropicProvider(),  # Primary: configured Anthropic slot model
+        OpenAIProvider(),  # Secondary: configured OpenAI slot model
+        GitHubModelsProvider(),  # Tertiary: configured GitHub Models slot
         RegexFallbackProvider(),  # Last resort: 30% confidence pattern matching
     ]
 

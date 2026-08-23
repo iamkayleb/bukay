@@ -10,10 +10,20 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from collections.abc import Iterable
 from pathlib import Path
+
+try:
+    from scripts.langchain._llm_client import get_llm_client as _get_llm_client
+    from scripts.langchain.issue_pr_context import ContextOptions, build_issue_context
+    from scripts.langchain.trace_utils import TraceInfo, invoke_with_trace
+except ModuleNotFoundError:
+    from _llm_client import get_llm_client as _get_llm_client
+    from issue_pr_context import ContextOptions, build_issue_context
+    from trace_utils import TraceInfo, invoke_with_trace
 
 CONTEXT_EXTRACTOR_PROMPT = """
 From this issue and related discussion, extract:
@@ -38,6 +48,27 @@ REFERENCE_REGEX = re.compile(r"https?://[^\s)>\"]+")
 ISSUE_REF_REGEX = re.compile(r"\b[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#\d+\b|(?<!\w)#\d+\b")
 LIST_ITEM_REGEX = re.compile(r"^\s*[-*+]\s+(.*)$")
 CHECKBOX_REGEX = re.compile(r"^\s*[-*+]\s+\[[ xX]\]\s+")
+
+
+def _context_token_budget() -> int:
+    raw = os.environ.get("ISSUE_PR_CONTEXT_TOKEN_BUDGET", "")
+    return int(raw) if raw.isdigit() and int(raw) > 0 else 4000
+
+
+def _context_workflow(default: str) -> str:
+    return os.environ.get("ISSUE_PR_CONTEXT_WORKFLOW") or default
+
+
+def _capped_issue_body(issue_body: str, workflow: str) -> str:
+    context = build_issue_context(
+        {"body": issue_body},
+        ContextOptions(
+            token_budget=_context_token_budget(),
+            downstream_workflow=workflow,
+        ),
+    )
+    return context["formatted_body"]
+
 
 DECISION_KEYWORDS = (
     "decision",
@@ -71,24 +102,6 @@ def _load_prompt() -> str:
     if PROMPT_PATH.is_file():
         return PROMPT_PATH.read_text(encoding="utf-8").strip()
     return CONTEXT_EXTRACTOR_PROMPT
-
-
-def _get_llm_client(force_openai: bool = False) -> tuple[object, str] | None:
-    """Get LLM client using slot order (OpenAI, Claude, GitHub Models).
-
-    Args:
-        force_openai: If True, skip GitHub Models and use OpenAI directly.
-                      Use this for retry after GitHub Models 401 error.
-    """
-    try:
-        from tools.langchain_client import build_chat_client
-    except ImportError:
-        return None
-
-    resolved = build_chat_client(provider="openai" if force_openai else None)
-    if not resolved:
-        return None
-    return resolved.client, resolved.provider
 
 
 def _strip_code_fences(lines: Iterable[str]) -> list[str]:
@@ -218,6 +231,7 @@ def extract_context(
     if not issue_body:
         issue_body = ""
 
+    issue_body = _capped_issue_body(issue_body, _context_workflow("context_extractor"))
     comments = comments or []
 
     if use_llm:
@@ -232,12 +246,15 @@ def extract_context(
                 prompt = _load_prompt()
                 template = ChatPromptTemplate.from_template(prompt)
                 chain = template | client
+                trace = TraceInfo()
                 try:
-                    response = chain.invoke(
+                    response, trace = invoke_with_trace(
+                        chain,
                         {
                             "issue_body": issue_body,
                             "comments": "\n\n".join(comments) if comments else "_None._",
-                        }
+                        },
+                        operation="context_extractor",
                     )
                 except Exception as e:
                     # If GitHub Models fails with 401, retry with OpenAI
@@ -246,22 +263,26 @@ def extract_context(
                         if fallback_info:
                             client, provider = fallback_info
                             chain = template | client
-                            response = chain.invoke(
+                            response, trace = invoke_with_trace(
+                                chain,
                                 {
                                     "issue_body": issue_body,
                                     "comments": "\n\n".join(comments) if comments else "_None._",
-                                }
+                                },
+                                operation="context_extractor",
                             )
                         else:
                             raise
                     else:
                         raise
                 content = (getattr(response, "content", None) or str(response)).strip()
-                return {
+                result = {
                     "context_section": content,
                     "provider_used": provider,
                     "used_llm": True,
                 }
+                result.update(trace.as_dict())
+                return result
 
     return {
         "context_section": _fallback_extract(issue_body, comments),

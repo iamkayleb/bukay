@@ -84,7 +84,7 @@ function decideNextAgent({ state = {}, labels = [], secrets = {}, registry = {},
 
   // Current agent exists - check if we should continue or switch
   const effectiveness = calculateEffectiveness({ history, lookbackRounds: 3, core });
-  const stall = detectStall({ history, threshold: 3, core });
+  const stall = detectStall({ history, threshold: 2, core });
   const roundsSinceSwitch = currentIteration - lastSwitchIteration;
   const inCooldown = roundsSinceSwitch < 5;
 
@@ -156,6 +156,14 @@ function decideNextAgent({ state = {}, labels = [], secrets = {}, registry = {},
  * @returns {Object} - { available, reason }
  */
 function checkPrerequisites({ agent, agentConfig, secrets, core }) {
+  if (agentConfig.enabled === false) {
+    core?.debug?.(`Agent ${agent} disabled in registry`);
+    return {
+      available: false,
+      reason: 'agent-disabled',
+    };
+  }
+
   const requiredSecrets = agentConfig.required_secrets || [];
   const mode = agentConfig.required_secrets_mode || 'all';
 
@@ -216,11 +224,13 @@ function calculateEffectiveness({ history = [], lookbackRounds = 3, core }) {
   const tasks = recentRounds.reduce((sum, round) => sum + (round.tasks || 0), 0);
   const gatePassed = recentRounds.some((round) => round.gate === 'pass');
 
-  // Agent is effective if any of these conditions met:
-  // - Made at least 1 commit in lookback window
-  // - Completed at least 1 task in lookback window
-  // - Gate passed in lookback window
-  const effective = commits >= 1 || tasks >= 1 || gatePassed;
+  // Agent is effective only when it produced verified forward motion:
+  // - Completed at least 1 task in the lookback window, OR
+  // - Made commits and has a green Gate signal in the lookback window.
+  // Bare commits with no checkbox progress and a non-green Gate are churn, not
+  // progress; otherwise an agent can commit indefinitely without advancing
+  // acceptance criteria or CI and never trip delegation.
+  const effective = tasks >= 1 || (commits >= 1 && gatePassed);
 
   const summary = [
     commits > 0 ? `${commits} commits` : null,
@@ -250,7 +260,7 @@ function calculateEffectiveness({ history = [], lookbackRounds = 3, core }) {
  * @param {Object} [options.core] - GitHub Actions core for logging
  * @returns {Object} - { isStalled, consecutiveRounds, reason }
  */
-function detectStall({ history = [], threshold = 3, core }) {
+function detectStall({ history = [], threshold = 2, core }) {
   if (history.length < threshold) {
     return {
       isStalled: false,
@@ -263,10 +273,13 @@ function detectStall({ history = [], threshold = 3, core }) {
   let consecutiveNoProgress = 0;
   for (let i = history.length - 1; i >= 0; i--) {
     const round = history[i];
+    // Progress = real forward motion only. A commit-less green Gate must NOT
+    // reset the consecutive-no-progress counter, otherwise a stuck agent that
+    // keeps a green Gate while making zero commits never trips the stall
+    // threshold and `agent:auto` delegation can never switch (#2268).
     const hasProgress =
-      (round.commits || 0) > 0 ||
       (round.tasks || 0) > 0 ||
-      round.gate === 'pass';
+      ((round.commits || 0) > 0 && round.gate === 'pass');
 
     if (hasProgress) {
       break; // Found progress, stop counting

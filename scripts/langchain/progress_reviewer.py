@@ -126,18 +126,17 @@ class ProgressReviewResult(BaseModel):
 
 def build_review_payload(result: ProgressReviewResult) -> dict:
     payload = result.model_dump()
-    if payload.get("review") is None:
-        suggestions = []
-        analysis = result.analysis
-        if analysis and analysis.blocking_issues:
-            suggestions.extend([item for item in analysis.blocking_issues if item])
-        if analysis and analysis.scope_drift_identified:
-            suggestions.extend([item for item in analysis.scope_drift_identified if item])
-        payload["review"] = {
-            "score": result.alignment_score,
-            "feedback": result.feedback_for_agent,
-            "suggestions": "; ".join(suggestions),
-        }
+    suggestions = []
+    analysis = result.analysis
+    if analysis.blocking_issues:
+        suggestions.extend([item for item in analysis.blocking_issues if item])
+    if analysis.scope_drift_identified:
+        suggestions.extend([item for item in analysis.scope_drift_identified if item])
+    payload["review"] = {
+        "score": result.alignment_score,
+        "feedback": result.feedback_for_agent,
+        "suggestions": "; ".join(suggestions),
+    }
     return payload
 
 
@@ -415,7 +414,7 @@ def review_progress_with_llm(
     recent_commits: list[str],
     files_changed: list[str],
     rounds_without_completion: int,
-    model: str = "gpt-4o-mini",
+    model: str = "gpt-5.4-mini",
 ) -> ProgressReviewResult:
     """
     Use LLM to review agent progress and provide recommendation.
@@ -427,11 +426,11 @@ def review_progress_with_llm(
         rounds_without_completion,
     )
     try:
-        from tools.langchain_client import build_chat_client
+        from scripts.langchain._llm_client import build_client
     except ImportError:
-        build_chat_client = None
+        build_client = None
 
-    resolved = build_chat_client(model=model) if build_chat_client else None
+    resolved = build_client(model=model) if build_client else None
     if not resolved:
         score, aligned, unaligned = heuristic_alignment_check(
             acceptance_criteria, recent_commits, files_changed
@@ -537,7 +536,7 @@ def review_progress(
     files_changed: list[str],
     rounds_without_completion: int,
     use_llm: bool = True,
-    model: str = "gpt-4o-mini",
+    model: str = "gpt-5.4-mini",
 ) -> ProgressReviewResult:
     """
     Main entry point for progress review.
@@ -714,7 +713,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--model",
-        default="gpt-4o-mini",
+        default="gpt-5.4-mini",
         help="LLM model to use",
     )
     parser.add_argument(

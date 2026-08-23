@@ -3,9 +3,14 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, ValidationError
+
+try:
+    from scripts.langchain.trace_utils import invoke_with_trace
+except ModuleNotFoundError:
+    from trace_utils import invoke_with_trace
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -31,7 +36,7 @@ MAX_REPAIR_ATTEMPTS = 1
 
 
 @dataclass(frozen=True)
-class StructuredOutputResult(Generic[T]):
+class StructuredOutputResult[T: BaseModel]:
     payload: T | None
     raw_content: str | None
     error_stage: str | None
@@ -70,7 +75,10 @@ def build_repair_prompt(
 
 
 def build_repair_callback(
-    client: Any, *, template: str = DEFAULT_REPAIR_PROMPT
+    client: Any,
+    *,
+    template: str = DEFAULT_REPAIR_PROMPT,
+    operation: str = "structured_output_repair",
 ) -> Callable[[str, str, str], str | None]:
     def _repair(schema_json: str, validation_errors: str, raw_response: str) -> str | None:
         try:
@@ -80,7 +88,11 @@ def build_repair_callback(
                 raw_response=raw_response,
                 template=template,
             )
-            response = client.invoke(repair_prompt)
+            response, _trace = invoke_with_trace(
+                client,
+                repair_prompt,
+                operation=operation,
+            )
         except Exception:
             return None
         return getattr(response, "content", None) or str(response)
@@ -89,13 +101,19 @@ def build_repair_callback(
 
 
 def clamp_repair_attempts(max_repair_attempts: int) -> int:
-    return min(
-        MAX_REPAIR_ATTEMPTS,
-        max(MIN_REPAIR_ATTEMPTS, int(max_repair_attempts)),
-    )
+    if isinstance(max_repair_attempts, bool) or not isinstance(max_repair_attempts, int):
+        raise TypeError(
+            "max_repair_attempts must be an integer, got " f"{type(max_repair_attempts).__name__}"
+        )
+    if not MIN_REPAIR_ATTEMPTS <= max_repair_attempts <= MAX_REPAIR_ATTEMPTS:
+        raise ValueError(
+            f"max_repair_attempts must be between {MIN_REPAIR_ATTEMPTS} and "
+            f"{MAX_REPAIR_ATTEMPTS}, got {max_repair_attempts}"
+        )
+    return max_repair_attempts
 
 
-def _invoke_repair_loop(
+def _invoke_repair_loop[T: BaseModel](
     *,
     repair: Callable[[str, str, str], str | None] | None,
     attempts: int,
@@ -154,7 +172,7 @@ def _invoke_repair_loop(
     )
 
 
-def invoke_repair_loop(
+def invoke_repair_loop[T: BaseModel](
     *,
     repair: Callable[[str, str, str], str | None] | None,
     attempts: int,
@@ -171,7 +189,7 @@ def invoke_repair_loop(
     )
 
 
-def parse_structured_output(
+def parse_structured_output[T: BaseModel](
     content: str,
     model: type[T],
     *,

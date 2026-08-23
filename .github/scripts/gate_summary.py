@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -19,6 +21,12 @@ class SummaryContext:
     artifacts_root: Path
     summary_path: Path | None
     output_path: Path | None
+    python_required: bool = True
+    docs_guard_result: str = "success"
+    test_quality_result: str = "skipped"
+    delivery_seal_required: bool = False
+    delivery_seal_valid: bool = True
+    delivery_seal_reason: str = ""
 
 
 @dataclass(slots=True)
@@ -39,6 +47,65 @@ PRIORITY: dict[str, int] = {
     "skipped": 4,
     "pending": 5,
 }
+
+STABLE_SYNC_BRANCHES = {"sync/workflows-candidate", "sync/workflows-delivery"}
+DELIVERY_RECORD_PATTERN = re.compile(r"<!--\s*sync-pr-delivery-record:v1\s+([\s\S]*?)\s*-->")
+
+
+def _delivery_seal_from_event(event_path: Path | None) -> tuple[bool, bool, str]:
+    """Return whether a stable generated delivery is sealed to its exact head."""
+    if event_path is None or not event_path.is_file():
+        return False, True, ""
+    try:
+        payload = json.loads(event_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False, True, ""
+    pull_request = payload.get("pull_request")
+    if not isinstance(pull_request, Mapping):
+        return False, True, ""
+    head = pull_request.get("head")
+    branch = str(head.get("ref") or "") if isinstance(head, Mapping) else ""
+    if branch not in STABLE_SYNC_BRANCHES:
+        return False, True, ""
+    head_repository = (
+        str(head.get("repo", {}).get("full_name") or "")
+        if isinstance(head, Mapping) and isinstance(head.get("repo"), Mapping)
+        else ""
+    )
+    base_repository = str(pull_request.get("base", {}).get("repo", {}).get("full_name") or "")
+    if not head_repository or not base_repository or head_repository != base_repository:
+        return True, False, "stable delivery must originate from the base repository"
+    head_sha = str(head.get("sha") or "") if isinstance(head, Mapping) else ""
+    body = str(pull_request.get("body") or "")
+    match = DELIVERY_RECORD_PATTERN.search(body)
+    if not match:
+        return True, False, "missing delivery record"
+    try:
+        record = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return True, False, "invalid delivery record"
+    if record.get("schema") != "sync-pr-delivery-record/v1":
+        return True, False, "invalid delivery schema"
+    if record.get("terminal_disposition"):
+        return True, False, "terminal delivery record"
+    if record.get("delivery_state") != "sealed":
+        return True, False, f"delivery state is {record.get('delivery_state') or 'missing'}"
+    if not head_sha or record.get("sealed_head_sha") != head_sha:
+        return True, False, "sealed head does not match the PR head"
+    repository = base_repository
+    if record.get("repository") != repository:
+        return True, False, "delivery repository does not match the PR"
+    try:
+        lease_expires_at = datetime.fromisoformat(
+            str(record.get("lease_expires_at") or "").replace("Z", "+00:00")
+        )
+    except ValueError:
+        return True, False, "delivery lease is invalid"
+    if lease_expires_at.tzinfo is None:
+        return True, False, "delivery lease is invalid"
+    if lease_expires_at <= datetime.now(UTC):
+        return True, False, "delivery lease expired"
+    return True, True, "exact head sealed"
 
 
 def _normalize(value: str | None, default: str = "unknown") -> str:
@@ -216,7 +283,7 @@ def _collect_table(
     )
 
 
-def _doc_only_lines(reason: str) -> list[str]:
+def _doc_only_lines(reason: str, docs_guard_result: str = "success") -> list[str]:
     if not reason:
         reason = "docs_only"
     note = (
@@ -231,12 +298,17 @@ def _doc_only_lines(reason: str) -> list[str]:
         "| Job | Result |",
         "| --- | --- |",
         "| docs-only | success |",
+        f"| docs-guard | {_friendly(docs_guard_result)} |",
     ]
     return lines
 
 
 def _append_job_table(
-    lines: list[str], job_results: Mapping[str, Iterable[str]], docker_result: str
+    lines: list[str],
+    job_results: Mapping[str, Iterable[str]],
+    docs_guard_result: str,
+    docker_result: str,
+    test_quality_result: str,
 ) -> None:
     lines.append("")
     lines.append("| Job | Result |")
@@ -244,7 +316,9 @@ def _append_job_table(
     for job_name, outcomes in sorted(job_results.items()):
         result = _pick_best(outcomes)
         lines.append(f"| {job_name} | {_friendly(result)} |")
+    lines.append(f"| docs-guard | {_friendly(docs_guard_result)} |")
     lines.append(f"| docker-smoke | {_friendly(docker_result)} |")
+    lines.append(f"| test-quality | {_friendly(test_quality_result)} |")
 
 
 def _active_lines(
@@ -255,10 +329,12 @@ def _active_lines(
     coverage_entries: Iterable[tuple[str, str]],
     coverage_percents: Iterable[str],
     job_results: Mapping[str, list[str]],
-    docker_result: str,
+    docs_guard_result: str = "success",
+    docker_result: str = "skipped",
+    test_quality_result: str = "skipped",
 ) -> list[str]:
     lines = ["### Gate status", *table]
-    _append_job_table(lines, job_results, docker_result)
+    _append_job_table(lines, job_results, docs_guard_result, docker_result, test_quality_result)
 
     lint_status, lint_detail = _aggregate(lint_entries)
     type_status, type_detail = _aggregate(type_entries)
@@ -280,13 +356,39 @@ def _active_lines(
 
 
 def summarize(context: SummaryContext) -> SummaryResult:
+    docs_guard_result = _normalize(context.docs_guard_result or "success")
+
+    if context.delivery_seal_required and not context.delivery_seal_valid:
+        reason = context.delivery_seal_reason or "exact-head seal missing"
+        return SummaryResult(
+            lines=[
+                "### Gate status",
+                f"Generated delivery hold: {_emoji('failure')} {reason}.",
+                "Maint 71 must complete bounded review settlement and seal this exact head.",
+            ],
+            state="failure",
+            description=f"Generated delivery is not sealed: {reason}.",
+        )
+
     if context.doc_only or not context.run_core:
-        lines = _doc_only_lines(context.reason)
+        lines = _doc_only_lines(context.reason, docs_guard_result)
         description = (
             "Gate fast-pass: docs-only change detected; heavy checks skipped."
             if context.reason == "docs_only"
             else f"Docs-only change; heavy checks skipped ({context.reason or 'docs_only'})."
         )
+        if docs_guard_result == "cancelled":
+            return SummaryResult(
+                lines=lines,
+                state="pending",
+                description="Docs guard cancelled; waiting for rerun.",
+            )
+        if docs_guard_result not in ("success", "skipped"):
+            return SummaryResult(
+                lines=lines,
+                state="failure",
+                description=f"Docs guard result: {docs_guard_result}.",
+            )
         return SummaryResult(lines=lines, state="success", description=description)
 
     records = _load_summary_records(context.artifacts_root)
@@ -310,7 +412,9 @@ def summarize(context: SummaryContext) -> SummaryResult:
         coverage_entries,
         coverage_percents,
         job_results,
+        docs_guard_result,
         context.docker_result,
+        context.test_quality_result,
     )
 
     state = "success"
@@ -318,14 +422,24 @@ def summarize(context: SummaryContext) -> SummaryResult:
 
     python_result = _normalize(context.python_result or "success")
     docker_result_norm = _normalize(context.docker_result or "skipped")
+    test_quality_result = _normalize(context.test_quality_result or "skipped")
     cosmetic_failure = False
     failure_checks: tuple[str, ...] = ()
     format_failure = False
 
-    # Python CI skipped is OK if run_core is false (doc/workflow-only changes)
-    if python_result == "cancelled":
+    if docs_guard_result == "cancelled":
         state = "pending"
-        description = "Python CI cancelled; waiting for rerun."
+        description = "Docs guard cancelled; waiting for rerun."
+    elif docs_guard_result not in ("success", "skipped"):
+        state = "failure"
+        description = f"Docs guard result: {docs_guard_result}."
+    # Python CI skipped is OK when path classification says no Python-relevant
+    # files changed.
+    elif not context.python_required and python_result == "skipped":
+        lines.append("- Python CI skipped: no Python-code changes detected.")
+    elif python_result in {"cancelled", "abandoned"}:
+        state = "pending"
+        description = f"Python CI {python_result}; waiting for rerun."
     elif python_result not in ("success", "skipped") or (
         python_result == "skipped" and context.run_core
     ):
@@ -346,10 +460,20 @@ def summarize(context: SummaryContext) -> SummaryResult:
     elif not context.docker_changed:
         lines.append("- Docker smoke skipped: no Docker-related changes detected.")
 
+    if state == "success":
+        if test_quality_result == "cancelled":
+            state = "pending"
+            description = "Test-quality cancelled; waiting for rerun."
+        elif test_quality_result not in ("success", "skipped"):
+            state = "failure"
+            description = f"Test-quality result: {test_quality_result}."
+
     adjusted_lines = []
     for line in lines:
         if line.startswith("| docker-smoke"):
             adjusted_lines.append(f"| docker-smoke | {_friendly(docker_result_norm)} |")
+        elif line.startswith("| test-quality"):
+            adjusted_lines.append(f"| test-quality | {_friendly(test_quality_result)} |")
         else:
             adjusted_lines.append(line)
 
@@ -375,22 +499,38 @@ def build_context() -> SummaryContext:
     run_core = _normalize(os.environ.get("RUN_CORE"), "true") == "true"
     reason = os.environ.get("REASON") or ""
     python_result = os.environ.get("PYTHON_RESULT") or "skipped"
+    docs_guard_result = os.environ.get("DOCS_GUARD_RESULT") or "success"
     docker_result = os.environ.get("DOCKER_RESULT") or "skipped"
+    test_quality_result = os.environ.get("TEST_QUALITY_RESULT") or "skipped"
     docker_changed = _normalize(os.environ.get("DOCKER_CHANGED"), "false") == "true"
+    python_required = _normalize(os.environ.get("PYTHON_REQUIRED"), "true") == "true"
     artifacts_root = Path(os.environ.get("GATE_ARTIFACTS_ROOT", "gate_artifacts"))
     summary_path = _resolve_path("GITHUB_STEP_SUMMARY")
     output_path = _resolve_path("GITHUB_OUTPUT")
+    delivery_seal_required, delivery_seal_valid, delivery_seal_reason = _delivery_seal_from_event(
+        _resolve_path("GITHUB_EVENT_PATH")
+    )
+    if _normalize(os.environ.get("DELIVERY_SEAL_RESULT"), "success") == "failure":
+        delivery_seal_required = True
+        delivery_seal_valid = False
+        delivery_seal_reason = delivery_seal_reason or "generated delivery seal job failed"
 
     return SummaryContext(
         doc_only=doc_only,
         run_core=run_core,
         reason=reason,
         python_result=python_result,
+        docs_guard_result=docs_guard_result,
         docker_result=docker_result,
+        test_quality_result=test_quality_result,
         docker_changed=docker_changed,
         artifacts_root=artifacts_root,
         summary_path=summary_path,
         output_path=output_path,
+        python_required=python_required,
+        delivery_seal_required=delivery_seal_required,
+        delivery_seal_valid=delivery_seal_valid,
+        delivery_seal_reason=delivery_seal_reason,
     )
 
 

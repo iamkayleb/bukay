@@ -48,11 +48,6 @@ on:
         required: false
         type: boolean
         default: true
-      bridge_draft_pr:
-        description: "[agent_bridge] Open bootstrap PRs as draft"
-        required: false
-        type: boolean
-        default: false
       topic_files:
         description: "[chatgpt_sync] Topic files to sync (e.g., topics.json, agents/*.md)"
         required: false
@@ -111,9 +106,11 @@ jobs:
     if: |
       needs.route.outputs.should_run_bridge == 'true' &&
       (github.event_name != 'issues' ||
-       contains(toJson(github.event.issue.labels.*.name), 'agent:') ||
-       contains(toJson(github.event.issue.labels.*.name), 'agents:')) &&
-      !contains(github.event.issue.labels.*.name, 'agents:auto-pilot')
+       (github.event.issue.state != 'closed' &&
+        (contains(toJson(github.event.issue.labels.*.name), 'agent:') ||
+         contains(toJson(github.event.issue.labels.*.name), 'agents:')))) &&
+      (github.event_name != 'issues' ||
+      !contains(github.event.issue.labels.*.name, 'agents:auto-pilot'))
     runs-on: ubuntu-latest
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
@@ -122,7 +119,7 @@ jobs:
     steps:
       - name: Check labels and extract info
         id: check
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const eventName = context.eventName;
@@ -176,10 +173,6 @@ jobs:
   # Agent bridge mode: Call the Workflows repo reusable issue bridge
   bridge:
     needs: [route, check_labels]
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
     if: |
       needs.route.outputs.should_run_bridge == 'true' &&
       needs.check_labels.outputs.should_run == 'true'
@@ -195,7 +188,6 @@ jobs:
         ${{ github.event_name == 'workflow_dispatch'
             && (inputs.post_codex_comment && 'true' || 'false')
             || (needs.check_labels.outputs.agent != 'codex' && 'true' || 'false') }}
-      agent_pr_draft: ${{ inputs.bridge_draft_pr && 'true' || 'false' }}
     secrets:
       service_bot_pat: ${{ secrets.SERVICE_BOT_PAT }}
       owner_pr_pat: ${{ secrets.OWNER_PR_PAT }}

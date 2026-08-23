@@ -30,10 +30,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout eligibility action
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: >-
+            ${{ github.event.pull_request.base.sha ||
+            github.sha ||
+            github.event.repository.default_branch ||
+            github.event.workflow_run.repository.default_branch }}
+          sparse-checkout: .github/actions/agent-event-eligibility
+          sparse-checkout-cone-mode: false
+
+      # Escape hatch: set mode: warning if false-negative skips appear post-merge.
+      - name: Check event eligibility
+        id: eligibility
+        uses: ./.github/actions/agent-event-eligibility
+        with:
+          expected-labels: >-
+            agent:auto,agent:codex,agent:claude,agent:copilot,
+            agents:auto-pilot,agents:keepalive
+          expected-actions: opened,reopened,synchronize,ready_for_review,labeled,unlabeled
+          custom-predicate: pull_request
+
       # Mint GitHub App token early to use for API calls (avoids rate limits)
       - name: Mint GitHub App Token
+        if: steps.eligibility.outputs.should-run == 'true'
         id: app_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         continue-on-error: true
         with:
           app-id: ${{ secrets.WORKFLOWS_APP_ID || '0' }}
@@ -41,8 +64,10 @@ jobs:
           owner: ${{ github.repository_owner }}
 
       - name: Checkout base ref for safety validation
-        if: github.event_name == 'pull_request_target'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        if: >-
+          steps.eligibility.outputs.should-run == 'true' &&
+          github.event_name == 'pull_request_target'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           sparse-checkout-cone-mode: false
@@ -50,6 +75,7 @@ jobs:
             .github/actions/setup-api-client
             .github/scripts/agents-guard.js
             .github/scripts/github-api-with-retry.js
+            .github/scripts/error_classifier.js
             .github/scripts/package.json
             .github/scripts/package-lock.json
             .github/scripts/node_modules/minimatch
@@ -58,7 +84,9 @@ jobs:
             .github/workflows/agents-guard.yml
 
       - name: Check API client action (base)
-        if: github.event_name == 'pull_request_target'
+        if: >-
+          steps.eligibility.outputs.should-run == 'true' &&
+          github.event_name == 'pull_request_target'
         id: api_client_base
         run: |
           if [ -f .github/actions/setup-api-client/action.yml ] || \
@@ -71,6 +99,7 @@ jobs:
       - name: Setup API client
         if: >-
           github.event_name == 'pull_request_target' &&
+          steps.eligibility.outputs.should-run == 'true' &&
           steps.api_client_base.outputs.available == 'true'
         uses: ./.github/actions/setup-api-client
         with:
@@ -80,15 +109,18 @@ jobs:
       - name: Setup API client (Workflows fallback)
         if: >-
           github.event_name == 'pull_request_target' &&
+          steps.eligibility.outputs.should-run == 'true' &&
           steps.api_client_base.outputs.available != 'true'
-        uses: "iamkayleb/Workflows/.github/actions/setup-api-client@main"
+        uses: "iamkayleb/Workflows/.github/actions/setup-api-client@e85edadb246e41d172a0c79fad147752d1df9ea9" # v1
         with:
           secrets: ${{ toJSON(secrets) }}
           github_token: ${{ github.token }}
 
       - name: Verify pull_request_target safety invariants
-        if: github.event_name == 'pull_request_target'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        if: >-
+          steps.eligibility.outputs.should-run == 'true' &&
+          github.event_name == 'pull_request_target'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const path = require('path');
@@ -103,14 +135,17 @@ jobs:
             });
 
       - name: Checkout PR head for pull_request event
-        if: github.event_name == 'pull_request'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        if: >-
+          steps.eligibility.outputs.should-run == 'true' &&
+          github.event_name == 'pull_request'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             .github/actions/setup-api-client
             .github/scripts/agents-guard.js
             .github/scripts/github-api-with-retry.js
+            .github/scripts/error_classifier.js
             .github/scripts/package.json
             .github/scripts/package-lock.json
             .github/scripts/node_modules/minimatch
@@ -118,7 +153,9 @@ jobs:
             .github/scripts/token_load_balancer.js
             .github/workflows/agents-guard.yml
       - name: Check API client action (head)
-        if: github.event_name == 'pull_request'
+        if: >-
+          steps.eligibility.outputs.should-run == 'true' &&
+          github.event_name == 'pull_request'
         id: api_client_head
         run: |
           if [ -f .github/actions/setup-api-client/action.yml ] || \
@@ -129,21 +166,28 @@ jobs:
           fi
 
       - name: Setup API client
-        if: github.event_name == 'pull_request' && steps.api_client_head.outputs.available == 'true'
+        if: >-
+          steps.eligibility.outputs.should-run == 'true' &&
+          github.event_name == 'pull_request' &&
+          steps.api_client_head.outputs.available == 'true'
         uses: ./.github/actions/setup-api-client
         with:
           secrets: ${{ toJSON(secrets) }}
           github_token: ${{ github.token }}
 
       - name: Setup API client (Workflows fallback)
-        if: github.event_name == 'pull_request' && steps.api_client_head.outputs.available != 'true'
-        uses: "iamkayleb/Workflows/.github/actions/setup-api-client@main"
+        if: >-
+          steps.eligibility.outputs.should-run == 'true' &&
+          github.event_name == 'pull_request' &&
+          steps.api_client_head.outputs.available != 'true'
+        uses: "iamkayleb/Workflows/.github/actions/setup-api-client@e85edadb246e41d172a0c79fad147752d1df9ea9" # v1
         with:
           secrets: ${{ toJSON(secrets) }}
           github_token: ${{ github.token }}
       - name: Evaluate protected file changes
+        if: steps.eligibility.outputs.should-run == 'true'
         id: evaluate
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const fs = require('fs');
@@ -164,6 +208,8 @@ jobs:
             const authorLogin =
               context.payload.pull_request.user &&
               context.payload.pull_request.user.login;
+            const authorAssociation =
+              context.payload.pull_request.author_association || '';
             const { owner, repo } = context.repo;
             const baseRef = context.payload.pull_request.base.sha;
             const labelName = 'agents:allow-change';
@@ -376,6 +422,7 @@ jobs:
               protectedPaths,
               labelName,
               authorLogin,
+              authorAssociation,
               marker,
             });
 
@@ -403,8 +450,10 @@ jobs:
             }
 
       - name: Post guard failure comment
-        if: steps.evaluate.outputs.blocked == 'true'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        if: >-
+          steps.eligibility.outputs.should-run == 'true' &&
+          steps.evaluate.outputs.blocked == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
           COMMENT_BODY_B64: ${{ steps.evaluate.outputs.comment_body_b64 }}
           COMMENT_MARKER: ${{ steps.evaluate.outputs.marker }}
@@ -552,8 +601,8 @@ jobs:
             );
 
       - name: Report agents guard commit status
-        if: always()
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        if: always() && steps.eligibility.outputs.should-run == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
           BLOCKED: ${{ steps.evaluate.outputs.blocked || 'false' }}
           SUMMARY: ${{ steps.evaluate.outputs.summary }}
@@ -669,7 +718,9 @@ jobs:
             }
 
       - name: Fail when guard blocks the pull request
-        if: steps.evaluate.outputs.blocked == 'true'
+        if: >-
+          steps.eligibility.outputs.should-run == 'true' &&
+          steps.evaluate.outputs.blocked == 'true'
         run: |
           echo "${{ steps.evaluate.outputs.summary }}"
           exit 1

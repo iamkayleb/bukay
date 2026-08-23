@@ -20,6 +20,13 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+try:
+    from scripts.langchain._llm_client import get_llm_client as _get_llm_client
+    from scripts.langchain.trace_utils import invoke_with_trace
+except ModuleNotFoundError:
+    from _llm_client import get_llm_client as _get_llm_client
+    from trace_utils import invoke_with_trace
+
 TOPIC_SPLITTER_PROMPT = """
 You are a text parsing assistant. The input contains one or more GitHub issues
 or feature requests. Your job is to split them into separate, individual issues.
@@ -53,20 +60,6 @@ Input text to split:
 """.strip()
 
 
-def _get_llm_client() -> tuple[object, str] | None:
-    """Get LangChain LLM client using slot order."""
-    try:
-        from tools.langchain_client import build_chat_client
-    except ImportError:
-        print("langchain_client not available", file=sys.stderr)
-        return None
-
-    resolved = build_chat_client()
-    if not resolved:
-        return None
-    return resolved.client, resolved.provider
-
-
 def _generate_guid(title: str) -> str:
     """Generate a stable GUID from the title."""
     normalized = re.sub(r"\s+", " ", title.strip().lower())
@@ -85,7 +78,7 @@ def split_topics_with_llm(input_text: str) -> list[dict[str, Any]]:
     client_info = _get_llm_client()
     if not client_info:
         raise RuntimeError(
-            "No LLM client available. Set OPENAI_API_KEY, CLAUDE_API_KEY, or GITHUB_TOKEN."
+            "No LLM client available. Set OPENAI_API_KEY, CLAUDE_API_STRANSKE, or GITHUB_TOKEN."
         )
 
     llm, provider = client_info
@@ -94,7 +87,9 @@ def split_topics_with_llm(input_text: str) -> list[dict[str, Any]]:
     prompt = TOPIC_SPLITTER_PROMPT.format(input_text=input_text)
 
     try:
-        response = llm.invoke(prompt)
+        response, trace = invoke_with_trace(llm, prompt, operation="topic_splitter")
+        if trace.trace_url:
+            print(f"LangSmith trace: {trace.trace_url}", file=sys.stderr)
         content = response.content if hasattr(response, "content") else str(response)
     except Exception as e:
         raise RuntimeError(f"LLM call failed: {e}") from e

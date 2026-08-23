@@ -13,6 +13,7 @@ import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, Protocol, cast
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,10 @@ class TriageReport:
     findings: list[TriageFinding]
     summary: str
     failed_tests: list[str] = field(default_factory=list)
+
+
+class _LLMClient(Protocol):
+    def invoke(self, prompt: str) -> object: ...
 
 
 _DEFAULT_FILE_REGEX = re.compile(r"(?P<path>[A-Za-z0-9_./-]+\.(?:py|js|ts|tsx|json|ya?ml))")
@@ -276,7 +281,7 @@ def _run_llm_triage(log_text: str) -> list[TriageFinding]:
     return _parse_llm_findings(content)
 
 
-def _get_llm_client() -> tuple[object, str] | None:
+def _get_llm_client() -> tuple[_LLMClient, str] | None:
     try:
         from langchain_openai import ChatOpenAI
     except ImportError:
@@ -287,23 +292,37 @@ def _get_llm_client() -> tuple[object, str] | None:
     if not github_token and not openai_token:
         return None
 
-    from tools.llm_provider import DEFAULT_MODEL, GITHUB_MODELS_BASE_URL
+    from tools.llm_provider import GITHUB_MODELS_BASE_URL
+    from tools.llm_registry import configured_model_for_provider
 
     if github_token:
-        return (
+        model = configured_model_for_provider("github-models")
+        if model:
+            return (
+                cast(
+                    _LLMClient,
+                    ChatOpenAI(
+                        model=model,
+                        base_url=GITHUB_MODELS_BASE_URL,
+                        api_key=cast(Any, github_token),
+                        temperature=0.1,
+                    ),
+                ),
+                "github-models",
+            )
+    if not openai_token:
+        return None
+    model = configured_model_for_provider("openai")
+    if not model:
+        return None
+    return (
+        cast(
+            _LLMClient,
             ChatOpenAI(
-                model=DEFAULT_MODEL,
-                base_url=GITHUB_MODELS_BASE_URL,
-                api_key=github_token,
+                model=model,
+                api_key=cast(Any, openai_token),
                 temperature=0.1,
             ),
-            "github-models",
-        )
-    return (
-        ChatOpenAI(
-            model=DEFAULT_MODEL,
-            api_key=openai_token,
-            temperature=0.1,
         ),
         "openai",
     )
@@ -428,7 +447,10 @@ def _format_text_report(report: TriageReport) -> str:
 
 def _read_log_text(path: str | None) -> str:
     if path:
-        return Path(path).read_text(encoding="utf-8")
+        try:
+            return Path(path).read_text(encoding="utf-8")
+        except OSError as exc:
+            sys.exit(f"Error reading log file: {exc}")
     return sys.stdin.read()
 
 
