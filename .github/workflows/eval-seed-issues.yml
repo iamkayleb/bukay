@@ -47,14 +47,42 @@ concurrency:
 jobs:
   seed:
     runs-on: ubuntu-latest
+    env:
+      WORKFLOWS_APP_ID: ${{ secrets.WORKFLOWS_APP_ID || '' }}
+      WORKFLOWS_APP_PRIVATE_KEY: ${{ secrets.WORKFLOWS_APP_PRIVATE_KEY || '' }}
+      SERVICE_BOT_PAT: ${{ secrets.SERVICE_BOT_PAT || '' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
+      # Issues created with GITHUB_TOKEN do NOT trigger other workflows
+      # (GitHub's loop guard), so auto-pilot would never see them. Seeding
+      # must use an App installation token or a PAT.
+      - name: Mint GitHub App token
+        id: app_token
+        if: ${{ env.WORKFLOWS_APP_ID != '' && env.WORKFLOWS_APP_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ env.WORKFLOWS_APP_ID }}
+          private-key: ${{ env.WORKFLOWS_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Require a triggering token
+        env:
+          APP_TOKEN: ${{ steps.app_token.outputs.token || '' }}
+        run: |
+          if [ -z "${APP_TOKEN:-}" ] && [ -z "${SERVICE_BOT_PAT:-}" ]; then
+            echo "::error::No GitHub App token or SERVICE_BOT_PAT available."
+            echo "::error::Seeding with GITHUB_TOKEN creates issues that never"
+            echo "::error::trigger auto-pilot. Set WORKFLOWS_APP_ID and"
+            echo "::error::WORKFLOWS_APP_PRIVATE_KEY (or SERVICE_BOT_PAT), then re-run."
+            exit 1
+          fi
+
       - name: Seed issues
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           SPEC_PATH: ${{ inputs.spec_path }}
           ROUND_INPUT: ${{ inputs.round }}
@@ -63,7 +91,7 @@ jobs:
         # The rendered body follows the agent issue template so the format
         # guard and the capability check both see a well-formed issue.
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.app_token.outputs.token || secrets.SERVICE_BOT_PAT }}
           script: |
             const fs = require('fs');
             const { owner, repo } = context.repo;

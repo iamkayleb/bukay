@@ -36,11 +36,26 @@ jobs:
       github.event.action != 'closed' &&
       startsWith(github.event.pull_request.base.ref, 'eval/')
     runs-on: ubuntu-latest
+    env:
+      WORKFLOWS_APP_ID: ${{ secrets.WORKFLOWS_APP_ID || '' }}
+      WORKFLOWS_APP_PRIVATE_KEY: ${{ secrets.WORKFLOWS_APP_PRIVATE_KEY || '' }}
+      SERVICE_BOT_PAT: ${{ secrets.SERVICE_BOT_PAT || '' }}
     steps:
-      - name: Add automerge label
-        uses: actions/github-script@v7
+      # Labels applied with GITHUB_TOKEN do NOT trigger other workflows
+      # (GitHub's loop guard), which would make this hand-off inert.
+      - name: Mint GitHub App token
+        id: app_token
+        if: ${{ env.WORKFLOWS_APP_ID != '' && env.WORKFLOWS_APP_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@v3
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          app-id: ${{ env.WORKFLOWS_APP_ID }}
+          private-key: ${{ env.WORKFLOWS_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Add automerge label
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ steps.app_token.outputs.token || secrets.SERVICE_BOT_PAT || secrets.GITHUB_TOKEN }}
           script: |
             const pr = context.payload.pull_request;
             const labels = (pr.labels || []).map((l) => l.name);
@@ -71,11 +86,26 @@ jobs:
       github.event.pull_request.merged == true &&
       startsWith(github.event.pull_request.base.ref, 'eval/')
     runs-on: ubuntu-latest
+    env:
+      WORKFLOWS_APP_ID: ${{ secrets.WORKFLOWS_APP_ID || '' }}
+      WORKFLOWS_APP_PRIVATE_KEY: ${{ secrets.WORKFLOWS_APP_PRIVATE_KEY || '' }}
+      SERVICE_BOT_PAT: ${{ secrets.SERVICE_BOT_PAT || '' }}
     steps:
-      - name: Add verify:compare label
-        uses: actions/github-script@v7
+      # Labels applied with GITHUB_TOKEN do NOT trigger other workflows
+      # (GitHub's loop guard), which would make this hand-off inert.
+      - name: Mint GitHub App token
+        id: app_token
+        if: ${{ env.WORKFLOWS_APP_ID != '' && env.WORKFLOWS_APP_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@v3
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          app-id: ${{ env.WORKFLOWS_APP_ID }}
+          private-key: ${{ env.WORKFLOWS_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Add verify:compare label
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ steps.app_token.outputs.token || secrets.SERVICE_BOT_PAT || secrets.GITHUB_TOKEN }}
           script: |
             const pr = context.payload.pull_request;
             const labels = (pr.labels || []).map((l) => l.name);
