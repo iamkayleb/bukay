@@ -1,0 +1,131 @@
+# Close the evaluation loop: when verify:compare reports concerns on an
+# eval-lane PR, request the remediation follow-up automatically.
+#
+# Fires on the Provider Comparison Report comment that agents-verifier posts.
+# It reads the NEUTRAL judge's verdict (the cross-family judge — OpenAI/gpt for
+# a Claude PR, and vice versa) because a same-family self-verdict is biased
+# toward PASS. On CONCERNS/FAIL it adds `verify:create-new-pr`, which generates
+# a structured follow-up issue and dispatches the agent again. The follow-up
+# inherits the `<!-- base-branch: eval/<agent> -->` marker, so the remediation
+# PR stays in the same lane.
+#
+# Loop safety: upstream caps the follow-up chain at depth 2, after which it
+# applies needs-human instead of generating another round.
+name: Eval Auto Followup
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: eval-followup-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  request-followup:
+    # Only PR comments that look like the verifier's comparison report.
+    if: >-
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, 'Provider Comparison Report')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate neutral verdict and request follow-up
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const prNumber = context.payload.issue.number;
+            const body = context.payload.comment.body || '';
+
+            const { data: pr } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: prNumber,
+            });
+
+            if (!pr.base.ref.startsWith('eval/')) {
+              core.info(`PR #${prNumber} targets ${pr.base.ref}, not an eval lane. Skipping.`);
+              return;
+            }
+            if (!pr.merged) {
+              core.info('Follow-up generation requires a merged PR. Skipping.');
+              return;
+            }
+
+            const labels = (pr.labels || []).map((l) => l.name);
+            const agentLabel = labels.find((n) => n.startsWith('agent:')) || '';
+            const agent = agentLabel.replace('agent:', '');
+            if (!agent) {
+              core.info('No agent:* label; skipping.');
+              return;
+            }
+            if (labels.includes('verify:create-new-pr')) {
+              core.info('Follow-up already requested.');
+              return;
+            }
+            if (labels.includes('needs-human')) {
+              core.info('PR is flagged needs-human; leaving it for a human.');
+              return;
+            }
+
+            // Parse the "| Provider | Model | Verdict | Confidence | ..." table.
+            const rows = [];
+            for (const line of body.split('\n')) {
+              const t = line.trim();
+              if (!t.startsWith('|')) continue;
+              const cells = t.replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
+              if (cells.length < 4) continue;
+              const head = cells[0].toLowerCase();
+              if (head === 'provider' || /^-+$/.test(cells[0].replace(/[: ]/g, ''))) continue;
+              rows.push({ provider: cells[0], model: cells[1], verdict: cells[2].toUpperCase() });
+            }
+            if (rows.length === 0) {
+              core.info('No provider table rows parsed; skipping.');
+              return;
+            }
+
+            // The neutral judge is the one NOT from the agent's own family.
+            const familyOf = (s) => {
+              const v = s.toLowerCase();
+              if (v.includes('openai') || v.includes('gpt')) return 'codex';
+              if (v.includes('anthropic') || v.includes('claude')) return 'claude';
+              return 'other';
+            };
+            const neutral = rows.find(
+              (r) => familyOf(`${r.provider} ${r.model}`) !== agent,
+            );
+            if (!neutral) {
+              core.info(`No neutral (cross-family) judge found for agent "${agent}"; skipping.`);
+              return;
+            }
+            core.info(
+              `Neutral judge for ${agent}: ${neutral.provider}/${neutral.model} -> ${neutral.verdict}`,
+            );
+
+            if (!['CONCERNS', 'FAIL'].includes(neutral.verdict)) {
+              core.info('Neutral verdict is clean; no follow-up needed.');
+              await core.summary
+                .addRaw(`PR #${prNumber}: neutral verdict **${neutral.verdict}** — no follow-up.`)
+                .write();
+              return;
+            }
+
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: prNumber,
+              labels: ['verify:create-new-pr'],
+            });
+            core.info(`Requested remediation follow-up for PR #${prNumber}.`);
+            await core.summary
+              .addRaw(
+                `PR #${prNumber}: neutral verdict **${neutral.verdict}** ` +
+                  `(${neutral.provider}/${neutral.model}) — requested \`verify:create-new-pr\`.`,
+              )
+              .write();

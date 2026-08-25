@@ -1,0 +1,29 @@
+{
+  "$comment": "Evaluation task specs. Each entry is seeded as ONE issue PER AGENT by .github/workflows/eval-seed-issues.yml, so both agents receive identical work. Keep 'tasks' at 10 items or fewer: larger issues exceed an agent session budget and stall mid-way. Bump 'round' (or pass round= on dispatch) to seed a new round without duplicating the previous one.",
+  "round": 1,
+  "specs": [
+    {
+      "id": "notifications-email",
+      "title": "Booking confirmation emails",
+      "why": "Clients receive no confirmation after booking, so no-shows are high and owners field avoidable phone calls.",
+      "scope": "Transactional email on booking create/reschedule/cancel. Templating and a send adapter with a dev no-op driver.",
+      "non_goals": "Marketing email, SMS, and provider account setup are out of scope.",
+      "tasks": [
+        "Add an email adapter interface with a dev/no-op driver selected by env",
+        "Create booking-confirmed, booking-rescheduled and booking-cancelled templates including tenant name, service, staff, start time and timezone",
+        "Send the confirmation on booking create within the existing tenant scope",
+        "Send the reschedule and cancellation emails on the corresponding transitions",
+        "Record each send attempt in AuditLog with outcome and template id",
+        "Add unit tests for template rendering across timezones",
+        "Add an integration test asserting a send is attempted exactly once per booking transition"
+      ],
+      "acceptance": [
+        "Creating a booking attempts exactly one confirmation send and writes one AuditLog row",
+        "Rescheduling and cancelling each send their own template and write their own AuditLog rows",
+        "Templates render the correct local time for at least two distinct tenant timezones",
+        "No email is sent when the dev/no-op driver is selected, but the attempt is still audited",
+        "All new tests pass and existing tests remain green"
+      ]
+    }
+  ]
+}

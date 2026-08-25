@@ -1,0 +1,190 @@
+# Seed identical evaluation issues for every agent under test.
+#
+# Reads eval/tasks.json and creates ONE issue PER (spec x agent), so each agent
+# receives byte-identical work. Each issue carries:
+#   - agent:<agent>            -> routes the work to that agent
+#   - agents:auto-pilot        -> auto-pilot shapes and dispatches it
+#   - eval:round-<n>           -> groups a round for scoring
+#   - <!-- base-branch: eval/<agent> --> marker, which the issue bridge reads so
+#     the agent's PR targets its own lane instead of the default branch.
+#
+# Idempotent: an issue whose eval-key marker already exists is skipped, so
+# re-running the same round is safe.
+name: Eval Seed Issues
+
+on:
+  workflow_dispatch:
+    inputs:
+      spec_path:
+        description: 'Path to the evaluation spec file'
+        required: false
+        type: string
+        default: 'eval/tasks.json'
+      round:
+        description: 'Round number (blank = use "round" from the spec file)'
+        required: false
+        type: string
+        default: ''
+      agents:
+        description: 'Comma-separated agents to seed'
+        required: false
+        type: string
+        default: 'claude,codex'
+      dry_run:
+        description: 'Print what would be created without creating it'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: eval-seed-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Seed issues
+        uses: actions/github-script@v7
+        env:
+          SPEC_PATH: ${{ inputs.spec_path }}
+          ROUND_INPUT: ${{ inputs.round }}
+          AGENTS_INPUT: ${{ inputs.agents }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        # The rendered body follows the agent issue template so the format
+        # guard and the capability check both see a well-formed issue.
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const { owner, repo } = context.repo;
+            const dryRun = String(process.env.DRY_RUN) === 'true';
+
+            const specPath = process.env.SPEC_PATH || 'eval/tasks.json';
+            if (!fs.existsSync(specPath)) {
+              core.setFailed(`Spec file not found: ${specPath}`);
+              return;
+            }
+            const spec = JSON.parse(fs.readFileSync(specPath, 'utf8'));
+            const round = String(process.env.ROUND_INPUT || spec.round || '1').trim();
+            const agents = String(process.env.AGENTS_INPUT || 'claude,codex')
+              .split(',')
+              .map((a) => a.trim().toLowerCase())
+              .filter(Boolean);
+
+            if (!Array.isArray(spec.specs) || spec.specs.length === 0) {
+              core.setFailed('Spec file has no "specs" array.');
+              return;
+            }
+
+            // Existing eval keys, so re-running a round is a no-op.
+            const existing = new Set();
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'all',
+              labels: `eval:round-${round}`,
+              per_page: 100,
+            });
+            for (const issue of issues) {
+              const m = String(issue.body || '').match(/<!--\s*eval-key:\s*([^\s>]+)\s*-->/);
+              if (m) existing.add(m[1]);
+            }
+            core.info(`Found ${existing.size} already-seeded issue(s) for round ${round}.`);
+
+            const bullets = (items) =>
+              (items || []).map((t) => `- [ ] ${t}`).join('\n');
+
+            let created = 0;
+            let skipped = 0;
+
+            for (const s of spec.specs) {
+              if (!s.id || !s.title) {
+                core.warning('Skipping a spec entry without "id" or "title".');
+                continue;
+              }
+              const taskCount = (s.tasks || []).length;
+              if (taskCount > 10) {
+                core.warning(
+                  `Spec "${s.id}" has ${taskCount} tasks (>10). Large issues ` +
+                    'routinely exceed an agent session budget and stall mid-way.',
+                );
+              }
+
+              for (const agent of agents) {
+                const evalKey = `r${round}-${s.id}-${agent}`;
+                if (existing.has(evalKey)) {
+                  core.info(`skip (already seeded): ${evalKey}`);
+                  skipped += 1;
+                  continue;
+                }
+
+                const body = [
+                  `<!-- eval-key: ${evalKey} -->`,
+                  `<!-- eval-round: ${round} -->`,
+                  `<!-- base-branch: eval/${agent} -->`,
+                  '',
+                  '## Why',
+                  '',
+                  s.why || 'See scope.',
+                  '',
+                  '## Scope',
+                  '',
+                  s.scope || s.title,
+                  ...(s.non_goals ? ['', '## Non-Goals', '', s.non_goals] : []),
+                  '',
+                  '## Tasks',
+                  '',
+                  bullets(s.tasks),
+                  '',
+                  '## Acceptance Criteria',
+                  '',
+                  bullets(s.acceptance),
+                  '',
+                  '---',
+                  `*Evaluation round ${round} · agent \`${agent}\` · lane \`eval/${agent}\`.*`,
+                  '*Seeded by `eval-seed-issues.yml` — identical body for every agent.*',
+                ].join('\n');
+
+                const title = `[eval r${round}] ${s.title} (${agent})`;
+                const labels = [
+                  `agent:${agent}`,
+                  'agents:auto-pilot',
+                  `eval:round-${round}`,
+                ];
+
+                if (dryRun) {
+                  core.info(`DRY-RUN would create: ${title}  labels=${labels.join(',')}`);
+                  created += 1;
+                  continue;
+                }
+
+                const { data: issue } = await github.rest.issues.create({
+                  owner,
+                  repo,
+                  title,
+                  body,
+                  labels,
+                });
+                core.info(`created #${issue.number}: ${title}`);
+                created += 1;
+              }
+            }
+
+            await core.summary
+              .addHeading(`Eval seed — round ${round}`)
+              .addRaw(
+                `Agents: \`${agents.join('`, `')}\`  ·  ` +
+                  `${dryRun ? '**DRY RUN** — would create' : 'Created'}: **${created}**  ·  ` +
+                  `Skipped (already seeded): **${skipped}**`,
+              )
+              .write();

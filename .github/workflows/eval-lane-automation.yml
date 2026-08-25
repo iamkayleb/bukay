@@ -1,0 +1,96 @@
+# Eval-lane PR lifecycle automation.
+#
+# Handles the two label hand-offs that would otherwise be manual for every
+# evaluation PR, and ONLY for PRs targeting an eval/* lane:
+#
+#   1. PR opened/reopened against eval/*  -> add `automerge`
+#      guarded-merge (agents-81) still refuses unless every check is green,
+#      no tasks are unchecked, review threads are resolved and the review
+#      window has elapsed. This label only opts the PR in.
+#
+#   2. PR merged into eval/*              -> add `verify:compare`
+#      agents-verifier is label-gated and wants a merged PR, so this is the
+#      hand-off from "merged" to "graded".
+#
+# Scope guard: every job requires base.ref to start with `eval/`, so nothing
+# here can ever touch a PR targeting the default branch.
+name: Eval Lane Automation
+
+on:
+  pull_request_target:
+    types: [opened, reopened, closed]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: eval-lane-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  opt-in-automerge:
+    name: Label eval PR for automerge
+    if: >-
+      github.event.action != 'closed' &&
+      startsWith(github.event.pull_request.base.ref, 'eval/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add automerge label
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            const labels = (pr.labels || []).map((l) => l.name);
+            const agentLabel = labels.find((n) => n.startsWith('agent:'));
+            if (!agentLabel) {
+              core.info('No agent:* label on this PR; leaving it alone.');
+              return;
+            }
+            if (labels.includes('automerge')) {
+              core.info('automerge already present.');
+              return;
+            }
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              labels: ['automerge'],
+            });
+            core.info(
+              `Added automerge to PR #${pr.number} (${agentLabel} -> ${pr.base.ref}). ` +
+                'guarded-merge still enforces its own conditions.',
+            );
+
+  verify-on-merge:
+    name: Request verify:compare after merge
+    if: >-
+      github.event.action == 'closed' &&
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.base.ref, 'eval/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add verify:compare label
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            const labels = (pr.labels || []).map((l) => l.name);
+            if (!labels.some((n) => n.startsWith('agent:'))) {
+              core.info('Not an agent PR; skipping verification.');
+              return;
+            }
+            if (labels.includes('verify:compare')) {
+              core.info('verify:compare already requested.');
+              return;
+            }
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              labels: ['verify:compare'],
+            });
+            core.info(`Requested verify:compare on merged PR #${pr.number}.`);
