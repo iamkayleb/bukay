@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 import { prisma } from "@/app/db/prisma";
 import { bookingUpdateSchema } from "@/app/lib/bookings/schemas";
 import { getOpenWindows } from "@/app/lib/availability/open-windows";
+import { sendBookingNotification } from "@/app/lib/email/send-booking-notification";
 import { resolveTenant } from "@/app/lib/resolve-tenant";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 
@@ -31,6 +32,21 @@ type ServiceRow = {
   active: boolean;
 };
 
+type StaffRow = {
+  id: string;
+  tenantId: string;
+  name: string;
+};
+
+type ClientRow = {
+  id: string;
+  tenantId: string;
+  name: string;
+  email: string | null;
+};
+
+type TenantRow = { name: string; timezone: string };
+
 const bookingDelegate = prisma.booking as unknown as {
   findFirst(args: unknown): Promise<BookingRow | null>;
   findMany(args: unknown): Promise<BookingRow[]>;
@@ -39,6 +55,18 @@ const bookingDelegate = prisma.booking as unknown as {
 
 const serviceDelegate = prisma.service as unknown as {
   findFirst(args: unknown): Promise<ServiceRow | null>;
+};
+
+const staffDelegate = prisma.staff as unknown as {
+  findFirst(args: unknown): Promise<StaffRow | null>;
+};
+
+const clientDelegate = prisma.client as unknown as {
+  findFirst(args: unknown): Promise<ClientRow | null>;
+};
+
+const tenantDelegate = prisma.tenant as unknown as {
+  findUnique(args: unknown): Promise<TenantRow | null>;
 };
 
 const auditLogDelegate = prisma.auditLog as unknown as {
@@ -305,6 +333,42 @@ export async function PATCH(
         }),
       },
     });
+
+    const isCancellation = updated.status === "cancelled" && existing.status !== "cancelled";
+    const isReschedule = !isCancellation && (startChanged || serviceChanged || staffChanged);
+    const notificationKind = isCancellation ? "cancelled" : isReschedule ? "rescheduled" : null;
+
+    if (notificationKind) {
+      const [tenant, client, notifiedService, staff] = await Promise.all([
+        tenantDelegate.findUnique({
+          where: { id: tenantId },
+          select: { name: true, timezone: true },
+        }),
+        clientDelegate.findFirst({ where: { tenantId, id: updated.clientId } }),
+        serviceDelegate.findFirst({ where: { tenantId, id: updated.serviceId } }),
+        updated.staffId
+          ? staffDelegate.findFirst({ where: { tenantId, id: updated.staffId } })
+          : Promise.resolve(null),
+      ]);
+
+      await sendBookingNotification({
+        kind: notificationKind,
+        tenantId,
+        actorId,
+        bookingId: updated.id,
+        context: {
+          tenantName: tenant?.name ?? "",
+          timezone: tenant?.timezone ?? "UTC",
+          serviceName: notifiedService?.name ?? "",
+          staffName: staff?.name ?? null,
+          clientName: client?.name ?? "",
+          clientEmail: client?.email ?? null,
+          startsAt: updated.startsAt,
+          previousStartsAt: notificationKind === "rescheduled" ? existing.startsAt : undefined,
+        },
+        auditLog: auditLogDelegate,
+      });
+    }
 
     return NextResponse.json({ ok: true, booking: serializeBooking(updated) });
   });

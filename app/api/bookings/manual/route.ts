@@ -3,6 +3,7 @@ import { ZodError } from "zod";
 
 import { prisma } from "@/app/db/prisma";
 import { manualBookingSchema, type ManualBookingInput } from "@/app/lib/bookings/schemas";
+import { sendBookingNotification } from "@/app/lib/email/send-booking-notification";
 import { resolveTenant } from "@/app/lib/resolve-tenant";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 
@@ -64,6 +65,12 @@ const bookingDelegate = prisma.booking as unknown as {
 
 const auditLogDelegate = prisma.auditLog as unknown as {
   create(args: unknown): Promise<unknown>;
+};
+
+type TenantRow = { name: string; timezone: string };
+
+const tenantDelegate = prisma.tenant as unknown as {
+  findUnique(args: unknown): Promise<TenantRow | null>;
 };
 
 function jsonError(error: string, status: number, extra?: Record<string, unknown>) {
@@ -227,8 +234,9 @@ export async function POST(req: NextRequest) {
       return jsonError("service_inactive", 409);
     }
 
+    let staff: StaffRow | null = null;
     if (parsed.data.staffId) {
-      const staff = await staffDelegate.findFirst({
+      staff = await staffDelegate.findFirst({
         where: { tenantId, id: parsed.data.staffId },
       });
       if (!staff) {
@@ -284,6 +292,28 @@ export async function POST(req: NextRequest) {
           endsAt: endsAt.toISOString(),
         }),
       },
+    });
+
+    const tenant = await tenantDelegate.findUnique({
+      where: { id: tenantId },
+      select: { name: true, timezone: true },
+    });
+
+    await sendBookingNotification({
+      kind: "confirmed",
+      tenantId,
+      actorId,
+      bookingId: booking.id,
+      context: {
+        tenantName: tenant?.name ?? "",
+        timezone: tenant?.timezone ?? "UTC",
+        serviceName: service.name,
+        staffName: staff?.name ?? null,
+        clientName: clientResult.client.name,
+        clientEmail: clientResult.client.email,
+        startsAt,
+      },
+      auditLog: auditLogDelegate,
     });
 
     return NextResponse.json(

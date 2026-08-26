@@ -7,3 +7,16 @@ export {
   setEmailProviderForTests,
   __resetEmailProviderForTests,
 } from "./from-env";
+export {
+  renderBookingConfirmedTemplate,
+  renderBookingRescheduledTemplate,
+  renderBookingCancelledTemplate,
+} from "./templates";
+export type { BookingEmailContext, RenderedBookingEmail } from "./templates";
+export { sendBookingNotification } from "./send-booking-notification";
+export type {
+  BookingNotificationKind,
+  BookingNotificationOutcome,
+  BookingNotificationResult,
+  AuditLogWriter,
+} from "./send-booking-notification";
