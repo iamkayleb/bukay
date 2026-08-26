@@ -46,19 +46,20 @@ model User {
 }
 
 model Service {
-  id              String    @id @default(cuid())
+  id              String         @id @default(cuid())
   tenantId        String
-  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name            String
   description     String?
   durationMinutes Int
   priceKobo       Int
-  bufferMinutes   Int       @default(0)
-  currency        String    @default("NGN")
-  active          Boolean   @default(true)
+  bufferMinutes   Int            @default(0)
+  currency        String         @default("NGN")
+  active          Boolean        @default(true)
   bookings        Booking[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  staffServices   StaffService[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   @@unique([tenantId, name])
   @@index([tenantId])
@@ -182,7 +183,7 @@ model Payment {
   tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   bookingId   String
   booking     Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  amountCents Int
+  amountKobo  Int
   currency    String    @default("NGN")
   provider    String?
   providerRef String?

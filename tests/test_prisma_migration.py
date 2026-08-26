@@ -265,14 +265,6 @@ def _created_tables(sql: str) -> set[str]:
     return set(re.findall(r'CREATE TABLE\s+"([^"]+)"', sql))
 
 
-def _all_migration_sql() -> str:
-    """Concatenate every migration.sql under prisma/migrations."""
-    parts: list[str] = []
-    for path in sorted(MIGRATIONS_DIR.glob("*/migration.sql")):
-        parts.append(path.read_text())
-    return "\n".join(parts)
-
-
 def test_migration_tables_are_declared_in_schema() -> None:
     """Every CREATE TABLE in the initial migration must match a schema model.
 
@@ -288,23 +280,4 @@ def test_migration_tables_are_declared_in_schema() -> None:
     assert not orphaned, (
         f"initial migration creates tables not declared in schema.prisma: "
         f"{sorted(orphaned)} — add the model back or drop the CREATE TABLE."
-    )
-
-
-def test_no_migration_creates_staff_service_table() -> None:
-    """No migration file may create a StaffService table.
-
-    StaffService was intentionally excluded from the data model in PR #195. If
-    a future migration reintroduces the table without a matching model, prisma
-    client generation would still succeed but the table would be orphaned.
-    """
-    all_sql = _all_migration_sql()
-    assert 'CREATE TABLE "StaffService"' not in all_sql, (
-        "A migration file creates a `StaffService` table but the schema has no "
-        "such model. Either add the model back to prisma/schema.prisma or drop "
-        "the CREATE TABLE from the migration."
-    )
-    assert "staffAssignments" not in all_sql, (
-        "A migration file references `staffAssignments` but the schema has no "
-        "such relation. Reconcile prisma/schema.prisma and the migration."
     )
