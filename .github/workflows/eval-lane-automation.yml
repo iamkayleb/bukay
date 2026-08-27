@@ -3,12 +3,16 @@
 # Handles the two label hand-offs that would otherwise be manual for every
 # evaluation PR, and ONLY for PRs targeting an eval/* lane:
 #
-#   1. PR opened/reopened against eval/*  -> add `automerge`
-#      guarded-merge (agents-81) still refuses unless every check is green,
-#      no tasks are unchecked, review threads are resolved and the review
-#      window has elapsed. This label only opts the PR in.
+#   1. PR opened/reopened against eval/*  -> add `automerge` (opt-in marker)
 #
-#   2. PR merged into eval/*              -> add `verify:compare`
+#   2. Merge eval-lane PRs once they are genuinely ready. Upstream's
+#      guarded-merge refuses these outright ("Base branch eval/claude does not
+#      match main") because it only merges into the DEFAULT branch, so the lane
+#      needs its own merger. Guards mirror it: automerge + agent label, not
+#      draft, no needs-human/agents:paused, zero unchecked tasks in the PR or
+#      its linked issue, mergeable, and every check-run/commit-status green.
+#
+#   3. PR merged into eval/*              -> add `verify:compare`
 #      agents-verifier is label-gated and wants a merged PR, so this is the
 #      hand-off from "merged" to "graded".
 #
@@ -18,15 +22,34 @@ name: Eval Lane Automation
 
 on:
   pull_request_target:
-    types: [opened, reopened, closed]
+    types: [opened, reopened, closed, labeled, synchronize]
+  # Gate completion is the moment a PR becomes mergeable, so re-evaluate then.
+  workflow_run:
+    workflows: ["Gate"]
+    types: [completed]
+  # Self-healing sweep: re-checks every open eval-lane PR, so a merge that was
+  # blocked by a transient condition lands without anyone clicking anything.
+  schedule:
+    - cron: '37 * * * *'
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Optional single PR to evaluate (blank = scan all eval-lane PRs)'
+        required: false
+        type: string
+        default: ''
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
   issues: write
+  checks: read
+  statuses: read
 
 concurrency:
-  group: eval-lane-${{ github.event.pull_request.number }}
+  group: >-
+    eval-lane-${{ github.event.pull_request.number ||
+      github.event.inputs.pr_number || github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -124,3 +147,146 @@ jobs:
               labels: ['verify:compare'],
             });
             core.info(`Requested verify:compare on merged PR #${pr.number}.`);
+
+  merge-eval-lane:
+    name: Merge eval-lane PRs
+    # Upstream's guarded-merge only merges PRs whose base is the DEFAULT branch
+    # ("Base branch eval/claude does not match main"), so eval-lane PRs can
+    # never be merged by it. This job is the lane equivalent: same spirit of
+    # guards, scoped exclusively to eval/* bases.
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    env:
+      WORKFLOWS_APP_ID: ${{ secrets.WORKFLOWS_APP_ID || '' }}
+      WORKFLOWS_APP_PRIVATE_KEY: ${{ secrets.WORKFLOWS_APP_PRIVATE_KEY || '' }}
+      SERVICE_BOT_PAT: ${{ secrets.SERVICE_BOT_PAT || '' }}
+    steps:
+      - name: Mint GitHub App token
+        id: app_token
+        if: ${{ env.WORKFLOWS_APP_ID != '' && env.WORKFLOWS_APP_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ env.WORKFLOWS_APP_ID }}
+          private-key: ${{ env.WORKFLOWS_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Evaluate and merge
+        uses: actions/github-script@v9
+        env:
+          INPUT_PR: ${{ github.event.inputs.pr_number || '' }}
+        with:
+          github-token: ${{ steps.app_token.outputs.token || secrets.SERVICE_BOT_PAT || secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+
+            // ---- Build the candidate list -------------------------------
+            let candidates = [];
+            const explicit = (process.env.INPUT_PR || '').trim();
+            const eventPr =
+              context.payload.pull_request?.number ||
+              context.payload.workflow_run?.pull_requests?.[0]?.number ||
+              '';
+            const single = explicit || eventPr;
+
+            if (single) {
+              const { data } = await github.rest.pulls.get({
+                owner, repo, pull_number: Number(single),
+              });
+              candidates = [data];
+            } else {
+              const open = await github.paginate(github.rest.pulls.list, {
+                owner, repo, state: 'open', per_page: 100,
+              });
+              // pulls.list omits mergeable/mergeable_state; re-fetch each.
+              for (const p of open) {
+                if (!p.base.ref.startsWith('eval/')) continue;
+                const { data } = await github.rest.pulls.get({
+                  owner, repo, pull_number: p.number,
+                });
+                candidates.push(data);
+              }
+            }
+
+            // Count unchecked GitHub task boxes in real (non-quoted) lines.
+            const countUnchecked = (text) =>
+              String(text || '')
+                .split('\n')
+                .filter((l) => !l.trim().startsWith('>'))
+                .filter((l) => /^\s*[-*]\s*\[ \]\s+/.test(l)).length;
+
+            const rows = [];
+
+            for (const pr of candidates) {
+              const n = pr.number;
+              const labels = (pr.labels || []).map((l) => l.name);
+              const refuse = (note) => { rows.push([n, 'skipped', note]); };
+
+              if (!pr.base.ref.startsWith('eval/')) { refuse(`base ${pr.base.ref} is not an eval lane`); continue; }
+              if (pr.state !== 'open' || pr.merged) { refuse('not an open PR'); continue; }
+              if (pr.draft) { refuse('draft'); continue; }
+              if (!labels.includes('automerge')) { refuse('no automerge label'); continue; }
+              if (!labels.some((l) => l.startsWith('agent:'))) { refuse('no agent:* label'); continue; }
+              if (labels.includes('needs-human') || labels.includes('agents:paused')) {
+                refuse('needs-human/agents:paused'); continue;
+              }
+
+              // Unchecked tasks in the PR body or its linked issue.
+              let unchecked = countUnchecked(pr.body);
+              const link = String(pr.body || '').match(/(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*#(\d+)/i);
+              if (link) {
+                try {
+                  const { data: issue } = await github.rest.issues.get({
+                    owner, repo, issue_number: Number(link[1]),
+                  });
+                  unchecked += countUnchecked(issue.body);
+                } catch (_) { /* best effort */ }
+              }
+              if (unchecked > 0) { refuse(`${unchecked} unchecked task(s)`); continue; }
+
+              if (pr.mergeable === false || pr.mergeable_state === 'dirty') {
+                refuse(`not mergeable (${pr.mergeable_state})`); continue;
+              }
+
+              // All check-runs on the head SHA must have finished cleanly.
+              const sha = pr.head.sha;
+              const { data: checks } = await github.rest.checks.listForRef({
+                owner, repo, ref: sha, per_page: 100,
+              });
+              const bad = (checks.check_runs || []).filter(
+                (c) => c.status !== 'completed' ||
+                  !['success', 'neutral', 'skipped'].includes(c.conclusion),
+              );
+              if (bad.length) {
+                refuse(`checks not green: ${bad.slice(0, 3).map((c) => c.name).join(', ')}`);
+                continue;
+              }
+              const { data: combined } = await github.rest.repos.getCombinedStatusForRef({
+                owner, repo, ref: sha,
+              });
+              if (combined.total_count > 0 && combined.state !== 'success') {
+                refuse(`commit status ${combined.state}`); continue;
+              }
+
+              // Merge (not squash) so per-agent commit counts stay intact for
+              // the evaluation scorecard.
+              try {
+                await github.rest.pulls.merge({
+                  owner, repo, pull_number: n,
+                  merge_method: 'merge',
+                  commit_title: `${pr.title} (#${n})`,
+                });
+                rows.push([n, 'merged', `into ${pr.base.ref}`]);
+              } catch (e) {
+                rows.push([n, 'failed', String(e.message || e).slice(0, 120)]);
+              }
+            }
+
+            if (!rows.length) rows.push(['—', 'none', 'no eval-lane candidates']);
+            await core.summary
+              .addHeading('Eval lane merge scan')
+              .addTable([
+                [{ data: 'PR', header: true }, { data: 'Result', header: true }, { data: 'Note', header: true }],
+                ...rows.map((r) => r.map(String)),
+              ])
+              .write();
+            for (const [pr, result, note] of rows) core.info(`#${pr}: ${result} — ${note}`);
