@@ -137,7 +137,7 @@ agents:
     branch_prefix: cursor/issue-
     capacity:
       window: daily
-      limit: 1  # TODO: confirm owner-supplied public plan limit
+      limit: 10  # SET THIS to your actual Cursor plan quota
     ui_mentions_allowed: false
     # Reuses stranske-automation-bot for branch pushes/attribution until a
     # dedicated stranske-cursor-bot service account is provisioned.
@@ -152,7 +152,7 @@ agents:
     capabilities:
       pr_keepalive: true
       pr_autofix: true          # wired into agents-autofix-loop.yml (autofix-cursor job)
-      belt: false              # belt routing deferred to a later phase
+      belt: true               # dispatched by agents-81 run-cursor
       verifier_checkbox: false  # verification stays on the existing judge (config/llm_slots.json)
 
   gemini:
