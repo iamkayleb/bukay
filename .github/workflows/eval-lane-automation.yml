@@ -9,8 +9,8 @@
 #      guarded-merge refuses these outright ("Base branch eval/claude does not
 #      match main") because it only merges into the DEFAULT branch, so the lane
 #      needs its own merger. Guards mirror it: automerge + agent label, not
-#      draft, no needs-human/agents:paused, zero unchecked tasks in the PR or
-#      its linked issue, mergeable, and every check-run/commit-status green.
+#      draft, no needs-human/agents:paused, zero unchecked tasks in the PR
+#      body, mergeable, and every check-run/commit-status green.
 #
 #   3. PR merged into eval/*              -> add `verify:compare`
 #      agents-verifier is label-gated and wants a merged PR, so this is the
@@ -230,18 +230,16 @@ jobs:
                 refuse('needs-human/agents:paused'); continue;
               }
 
-              // Unchecked tasks in the PR body or its linked issue.
-              let unchecked = countUnchecked(pr.body);
-              const link = String(pr.body || '').match(/(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*#(\d+)/i);
-              if (link) {
-                try {
-                  const { data: issue } = await github.rest.issues.get({
-                    owner, repo, issue_number: Number(link[1]),
-                  });
-                  unchecked += countUnchecked(issue.body);
-                } catch (_) { /* best effort */ }
-              }
-              if (unchecked > 0) { refuse(`${unchecked} unchecked task(s)`); continue; }
+              // Unchecked tasks in the PR body ONLY.
+              //
+              // Deliberately NOT the linked issue. In this pipeline the seeded
+              // issue is the immutable spec — nothing ever ticks its boxes —
+              // while the PR body is the live checklist the keepalive
+              // reconciles as the agent works. Counting the issue makes this
+              // guard permanently unsatisfiable (PR at 15/15 was refused for
+              // "12 unchecked task(s)" that lived only in the issue).
+              const unchecked = countUnchecked(pr.body);
+              if (unchecked > 0) { refuse(`${unchecked} unchecked task(s) in the PR body`); continue; }
 
               if (pr.mergeable === false || pr.mergeable_state === 'dirty') {
                 refuse(`not mergeable (${pr.mergeable_state})`); continue;
