@@ -715,12 +715,39 @@ jobs:
       appendix: ${{ needs.evaluate.outputs.task_appendix }}
       iteration: ${{ needs.evaluate.outputs.iteration }}
 
+  run-cursor:
+    name: Keepalive next task (Cursor)
+    needs:
+      - evaluate
+      - preflight
+      - mark-running
+    if: |
+      needs.evaluate.outputs.agent_type == 'cursor' &&
+      needs.evaluate.outputs.dispatch_should_run == 'true' &&
+      (needs.evaluate.outputs.action == 'run' ||
+       needs.evaluate.outputs.action == 'fix' ||
+       needs.evaluate.outputs.action == 'conflict')
+    uses: iamkayleb/Workflows/.github/workflows/reusable-cursor-run.yml@main
+    secrets: inherit
+    with:
+      skip: >-
+        ${{ needs.evaluate.outputs.action != 'run' &&
+            needs.evaluate.outputs.action != 'fix' &&
+            needs.evaluate.outputs.action != 'conflict' }}
+      prompt_file: ${{ needs.evaluate.outputs.prompt_file }}
+      mode: keepalive
+      pr_number: ${{ needs.evaluate.outputs.pr_number }}
+      pr_ref: ${{ needs.evaluate.outputs.pr_ref }}
+      appendix: ${{ needs.evaluate.outputs.task_appendix }}
+      iteration: ${{ needs.evaluate.outputs.iteration }}
+
   record-keepalive-completion:
     name: Record keepalive dispatch completion
     needs:
       - evaluate
       - run-codex
       - run-claude
+      - run-cursor
     if: >-
       always() &&
       needs.evaluate.outputs.dispatch_should_run == 'true' &&
@@ -780,6 +807,7 @@ jobs:
       - preflight
       - run-codex
       - run-claude
+      - run-cursor
     # Run always if PR exists, handle skipped agent jobs gracefully
     if: |
       always() &&
@@ -1653,6 +1681,25 @@ jobs:
       WORKFLOWS_APP_ID: ${{ secrets.WORKFLOWS_APP_ID }}
       WORKFLOWS_APP_PRIVATE_KEY: ${{ secrets.WORKFLOWS_APP_PRIVATE_KEY }}
 
+  autofix-cursor:
+    needs: prepare
+    if: >-
+      needs.prepare.outputs.should_run == 'true' &&
+      needs.prepare.outputs.dispatch_should_run == 'true' &&
+      needs.prepare.outputs.agent_type == 'cursor'
+    name: Run Cursor autofix
+    uses: iamkayleb/Workflows/.github/workflows/reusable-cursor-run.yml@main
+    with:
+      prompt_file: .github/codex/prompts/autofix_from_ci_failure.md
+      mode: autofix
+      pr_number: ${{ needs.prepare.outputs.pr_number }}
+      pr_ref: ${{ needs.prepare.outputs.head_ref }}
+      appendix: ${{ needs.prepare.outputs.appendix }}
+    secrets:
+      CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+      WORKFLOWS_APP_ID: ${{ secrets.WORKFLOWS_APP_ID }}
+      WORKFLOWS_APP_PRIVATE_KEY: ${{ secrets.WORKFLOWS_APP_PRIVATE_KEY }}
+
   needs-human:
     needs: prepare
     if: needs.prepare.outputs.stop_reason == 'max_attempts'
@@ -1727,6 +1774,7 @@ jobs:
       - prepare
       - autofix
       - autofix-claude
+      - autofix-cursor
     if: >-
       ${{
         always() &&
