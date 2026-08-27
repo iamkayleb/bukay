@@ -196,7 +196,7 @@ async function main() {
     data: {
       tenantId: tenant.id,
       bookingId: booking.id,
-      amountCents: haircut.priceKobo,
+      amountKobo: haircut.priceKobo,
       currency: tenant.currency,
       provider: "mobile_money",
       providerRef: "demo-mm-0001",
@@ -204,7 +204,7 @@ async function main() {
       paidAt: startsAt,
     },
   });
-  console.log(`Payment ready: ${payment.id} (${payment.amountCents} ${payment.currency})`);
+  console.log(`Payment ready: ${payment.id} (${payment.amountKobo} ${payment.currency})`);
 
   await prisma.auditLog.create({
     data: {

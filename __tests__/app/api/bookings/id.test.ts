@@ -45,14 +45,19 @@ const state = vi.hoisted(() => ({
   bookingFindMany: vi.fn(),
   bookingUpdate: vi.fn(),
   serviceFindFirst: vi.fn(),
+  staffFindFirst: vi.fn(),
+  clientFindFirst: vi.fn(),
   auditCreate: vi.fn(),
   tenantFindUnique: vi.fn(),
   getOpenWindows: vi.fn(),
+  sendBookingNotification: vi.fn(),
 }));
 
 vi.mock("@/app/db/prisma", () => ({
   prisma: {
     service: { findFirst: state.serviceFindFirst },
+    staff: { findFirst: state.staffFindFirst },
+    client: { findFirst: state.clientFindFirst },
     booking: {
       findFirst: state.bookingFindFirst,
       findMany: state.bookingFindMany,
@@ -65,6 +70,10 @@ vi.mock("@/app/db/prisma", () => ({
 
 vi.mock("@/app/lib/availability/open-windows", () => ({
   getOpenWindows: state.getOpenWindows,
+}));
+
+vi.mock("@/app/lib/email/send-booking-notification", () => ({
+  sendBookingNotification: state.sendBookingNotification,
 }));
 
 import { PATCH } from "@/app/api/bookings/[id]/route";
@@ -145,9 +154,42 @@ beforeEach(() => {
   state.bookingFindMany.mockReset();
   state.bookingUpdate.mockReset();
   state.serviceFindFirst.mockReset();
+  state.staffFindFirst.mockReset();
+  state.clientFindFirst.mockReset();
   state.auditCreate.mockReset();
   state.tenantFindUnique.mockReset();
   state.getOpenWindows.mockReset();
+  state.sendBookingNotification.mockReset();
+  state.sendBookingNotification.mockResolvedValue({
+    outcome: "sent",
+    templateId: "booking-rescheduled-v1",
+  });
+  state.tenantFindUnique.mockResolvedValue({
+    id: "tenant-1",
+    name: "Acme Salon",
+    timezone: "Africa/Lagos",
+  });
+  state.staffFindFirst.mockImplementation(
+    async (args: { where: { tenantId: string; id: string } }) => {
+      const staff: Record<string, { id: string; tenantId: string; name: string }> = {
+        "staff-1": { id: "staff-1", tenantId: "tenant-1", name: "Alice" },
+        "staff-2": { id: "staff-2", tenantId: "tenant-1", name: "Bob" },
+      };
+      const row = staff[args.where.id];
+      return row && row.tenantId === args.where.tenantId ? row : null;
+    },
+  );
+  state.clientFindFirst.mockImplementation(
+    async (args: { where: { tenantId: string; id: string } }) => {
+      const clients: Record<string, { id: string; tenantId: string; name: string; email: string | null }> = {
+        "client-1": { id: "client-1", tenantId: "tenant-1", name: "Existing", email: "existing@example.com" },
+        "client-2": { id: "client-2", tenantId: "tenant-1", name: "Second", email: "second@example.com" },
+        "client-3": { id: "client-3", tenantId: "tenant-1", name: "Third", email: "third@example.com" },
+      };
+      const row = clients[args.where.id];
+      return row && row.tenantId === args.where.tenantId ? row : null;
+    },
+  );
 
   state.bookingFindFirst.mockImplementation(
     async (args: { where: { tenantId: string; id: string } }) =>
@@ -260,6 +302,12 @@ describe("PATCH /api/bookings/[id]", () => {
     expect(meta.next.endsAt).toBe("2026-07-15T14:30:00.000Z");
     expect(meta.changes).toContain("startsAt");
     expect(meta.changes).toContain("endsAt");
+
+    expect(state.sendBookingNotification).toHaveBeenCalledTimes(1);
+    const call = state.sendBookingNotification.mock.calls[0][0];
+    expect(call.kind).toBe("rescheduled");
+    expect(call.bookingId).toBe("booking-1");
+    expect(call.context.previousStartsAt).toEqual(new Date("2026-07-15T10:00:00.000Z"));
   });
 
   it("returns 409 when the new time overlaps another booking on the same staff", async () => {
@@ -308,9 +356,10 @@ describe("PATCH /api/bookings/[id]", () => {
     expect(state.auditLogs[0].action).toBe("booking_updated");
     const meta = JSON.parse(state.auditLogs[0].metadata as string);
     expect(meta.changes).toEqual(["notes"]);
+    expect(state.sendBookingNotification).not.toHaveBeenCalled();
   });
 
-  it("updates status", async () => {
+  it("updates status and sends a cancellation notification when cancelled", async () => {
     const res = await PATCH(
       jsonRequest("booking-1", { status: "cancelled" }),
       { params: { id: "booking-1" } },
@@ -319,6 +368,21 @@ describe("PATCH /api/bookings/[id]", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.booking.status).toBe("cancelled");
+
+    expect(state.sendBookingNotification).toHaveBeenCalledTimes(1);
+    const call = state.sendBookingNotification.mock.calls[0][0];
+    expect(call.kind).toBe("cancelled");
+    expect(call.bookingId).toBe("booking-1");
+  });
+
+  it("does not send a notification for a status change that is not a cancellation", async () => {
+    const res = await PATCH(
+      jsonRequest("booking-1", { status: "completed" }),
+      { params: { id: "booking-1" } },
+    );
+
+    expect(res.status).toBe(200);
+    expect(state.sendBookingNotification).not.toHaveBeenCalled();
   });
 
   it("changes service and recomputes endsAt from the new duration", async () => {

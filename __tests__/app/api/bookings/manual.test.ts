@@ -65,6 +65,7 @@ const state = vi.hoisted(() => ({
   bookingCreate: vi.fn(),
   auditCreate: vi.fn(),
   tenantFindUnique: vi.fn(),
+  sendBookingNotification: vi.fn(),
 }));
 
 vi.mock("@/app/db/prisma", () => ({
@@ -76,6 +77,10 @@ vi.mock("@/app/db/prisma", () => ({
     auditLog: { create: state.auditCreate },
     tenant: { findUnique: state.tenantFindUnique },
   },
+}));
+
+vi.mock("@/app/lib/email/send-booking-notification", () => ({
+  sendBookingNotification: state.sendBookingNotification,
 }));
 
 import { POST } from "@/app/api/bookings/manual/route";
@@ -134,6 +139,16 @@ beforeEach(() => {
   state.bookingCreate.mockReset();
   state.auditCreate.mockReset();
   state.tenantFindUnique.mockReset();
+  state.sendBookingNotification.mockReset();
+  state.sendBookingNotification.mockResolvedValue({
+    outcome: "sent",
+    templateId: "booking-confirmed-v1",
+  });
+  state.tenantFindUnique.mockResolvedValue({
+    id: "tenant-1",
+    name: "Acme Salon",
+    timezone: "Africa/Lagos",
+  });
 
   state.serviceFindFirst.mockImplementation(
     async (args: { where: { tenantId: string; id: string } }) =>
@@ -331,6 +346,52 @@ describe("POST /api/bookings/manual", () => {
 
     expect(res.status).toBe(201);
     expect(state.auditLogs[0].actorId).toBe("user-42");
+  });
+
+  it("sends exactly one confirmation notification with the booking context", async () => {
+    const res = await POST(
+      jsonRequest({
+        clientId: "client-1",
+        serviceId: "svc-1",
+        staffId: "staff-1",
+        startsAt: "2026-07-15T10:00:00.000Z",
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    expect(state.sendBookingNotification).toHaveBeenCalledTimes(1);
+    const call = state.sendBookingNotification.mock.calls[0][0];
+    expect(call.kind).toBe("confirmed");
+    expect(call.tenantId).toBe("tenant-1");
+    expect(call.bookingId).toBe(state.bookings[0].id);
+    expect(call.context).toMatchObject({
+      tenantName: "Acme Salon",
+      timezone: "Africa/Lagos",
+      serviceName: "Haircut",
+      staffName: "Alice",
+      clientName: "Existing",
+    });
+  });
+
+  it("does not send a notification when booking creation fails", async () => {
+    state.bookingCreateError = Object.assign(
+      new Error(
+        'conflicting key value violates exclusion constraint "Booking_no_overlap_per_staff"',
+      ),
+      { code: "P2010" },
+    );
+
+    const res = await POST(
+      jsonRequest({
+        clientId: "client-1",
+        serviceId: "svc-1",
+        staffId: "staff-1",
+        startsAt: "2026-07-15T10:00:00.000Z",
+      }),
+    );
+
+    expect(res.status).toBe(409);
+    expect(state.sendBookingNotification).not.toHaveBeenCalled();
   });
 
   it("rejects payloads that provide both clientId and newClient", async () => {

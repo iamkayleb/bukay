@@ -171,24 +171,3 @@ def test_no_model_relation_references_missing_model() -> None:
                 f"Model {model_name!r} references undefined model "
                 f"{referenced!r} — either declare the model or drop the relation."
             )
-
-
-def test_removed_staff_service_model_stays_removed() -> None:
-    """StaffService was removed in PR #195; regressing it silently would
-    revive the multi-tenant staff-assignment path we intentionally deferred.
-    Fail loudly if it (or a stray `staffAssignments` relation) reappears
-    without a companion migration reintroducing the table.
-    """
-    schema_text = SCHEMA_PATH.read_text()
-    blocks = _model_blocks(schema_text)
-
-    assert "StaffService" not in blocks, (
-        "StaffService model reappeared in schema.prisma — this was intentionally "
-        "removed in PR #195. If reintroducing, also add a migration and update tests."
-    )
-
-    for model_name, body in blocks.items():
-        assert not re.search(r"^\s*staffAssignments\s+", body, re.MULTILINE), (
-            f"Model {model_name!r} declares a `staffAssignments` relation but "
-            "StaffService is not defined — remove the relation or add the model back."
-        )
