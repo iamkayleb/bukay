@@ -35,6 +35,7 @@ jobs:
       !contains(github.event.issue.labels.*.name, 'agents:autofix') &&
       !contains(github.event.issue.labels.*.name, 'agent:codex') &&
       !contains(github.event.issue.labels.*.name, 'agent:claude') &&
+      !contains(github.event.issue.labels.*.name, 'agent:cursor') &&
       !contains(github.event.issue.labels.*.name, 'agent:auto') &&
       !contains(join(github.event.issue.labels.*.name, ','), 'campaign:') &&
       !contains(github.event.issue.labels.*.name, 'automated')

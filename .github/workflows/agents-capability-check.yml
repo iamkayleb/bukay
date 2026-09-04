@@ -21,7 +21,7 @@ jobs:
   capability-check:
     runs-on: ubuntu-latest
     # Trigger when an agent assignment label is added (pre-agent gate)
-    if: contains(fromJSON('["agent:codex","agent:claude","agent:auto"]'), github.event.label.name)
+    if: contains(fromJSON('["agent:codex","agent:claude","agent:cursor","agent:auto"]'), github.event.label.name)
 
     steps:
       - name: Checkout repository
