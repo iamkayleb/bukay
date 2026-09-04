@@ -1,0 +1,39 @@
+{
+  "round": 6,
+  "specs": [
+    {
+      "id": "public-page",
+      "title": "Slug and public tenant page",
+      "why": "This is the merchant's shareable shopfront and the entry point for every public booking.",
+      "scope": "`/{slug}` SSR route renders a branded landing page: business name, logo, services list, hours and a Book now CTA. Correct SEO meta and Open Graph tags. Cache with stale-while-revalidate.",
+      "tasks": [
+        "Dynamic route with SSR",
+        "404 for a missing or inactive tenant",
+        "SEO meta and OG tags",
+        "CDN cache headers"
+      ],
+      "acceptance": [
+        "A valid slug renders with TTFB under 500ms",
+        "An invalid slug returns 404",
+        "Lighthouse SEO score is 95 or above"
+      ]
+    },
+    {
+      "id": "availability-engine",
+      "title": "Availability engine",
+      "why": "Slot computation is the highest-risk logic in the product and benefits from being pure and exhaustively tested.",
+      "scope": "Pure function `computeSlots(service, dateRange, existingBookings, hours, buffers, leadTime, maxAdvance)` returning open slots. No side effects, fully unit-tested.",
+      "tasks": [
+        "Implement `computeSlots` in `lib/availability.ts`",
+        "Handle service duration, buffer, lead time and max-advance",
+        "Exhaustive unit tests including edge cases",
+        "Benchmark at 1000 bookings per day"
+      ],
+      "acceptance": [
+        "Branch coverage is 95% or above",
+        "Correct slots are returned for all test fixtures",
+        "Runs in under 50ms on the benchmark dataset"
+      ]
+    }
+  ]
+}

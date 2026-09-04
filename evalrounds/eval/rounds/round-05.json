@@ -1,0 +1,58 @@
+{
+  "round": 5,
+  "specs": [
+    {
+      "id": "calendar",
+      "title": "Calendar view",
+      "why": "The calendar is the owner's primary daily surface for seeing and moving work.",
+      "scope": "Day and week calendar views at `/app/calendar`. Click a booking to edit. Drag to reschedule. Persist the reschedule and emit an audit log entry.",
+      "tasks": [
+        "Day view and week view components",
+        "Drag-and-drop reschedule",
+        "Edit modal (service, time, notes, status)",
+        "`PATCH /api/bookings/:id` with audit logging"
+      ],
+      "acceptance": [
+        "Drag rescheduling persists and updates the UI optimistically",
+        "An invalid drag (overlap or outside hours) reverts with a toast",
+        "The audit log records both old and new time"
+      ]
+    },
+    {
+      "id": "clients-crm",
+      "title": "Clients CRM",
+      "why": "Repeat business is the core value for these merchants, which requires client history in one place.",
+      "scope": "`/app/clients` list with search by name or phone. Client profile shows booking history, lifetime value, no-show count, tags and notes.",
+      "tasks": [
+        "Client list with server-side search and pagination",
+        "Client detail page",
+        "Compute lifetime value from confirmed payments",
+        "Tag system (free-text, reusable)",
+        "Owner-only notes field"
+      ],
+      "acceptance": [
+        "Search returns matches within 300ms over 10k clients",
+        "The profile shows every past booking",
+        "Tags persist and filter the list"
+      ]
+    },
+    {
+      "id": "tenant-settings",
+      "title": "Tenant settings",
+      "why": "Branding and locale settings are prerequisites for the public page and payments.",
+      "scope": "Settings page for business name, slug, timezone (default `Africa/Lagos`), currency (default `NGN`), logo upload, brand colour and cancellation policy text.",
+      "non_goals": "If object-storage credentials are unavailable, implement the storage port with a local-filesystem adapter and leave the S3 adapter behind the same interface.",
+      "tasks": [
+        "Settings form and API",
+        "Slug uniqueness check and reservation",
+        "Logo upload to S3-compatible object storage",
+        "Colour picker with a contrast check"
+      ],
+      "acceptance": [
+        "Changing the slug updates the public URL",
+        "Logo and colour are reflected on the public booking page",
+        "A duplicate slug is rejected with a helpful error"
+      ]
+    }
+  ]
+}

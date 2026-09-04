@@ -1,0 +1,42 @@
+{
+  "round": 7,
+  "specs": [
+    {
+      "id": "public-booking",
+      "title": "Public booking flow",
+      "why": "This is the revenue path: without it the product has no customer-facing function.",
+      "scope": "Multi-step booking on `/{slug}/book`: pick service, pick date, pick slot, enter client details (name, phone), confirm. Creates `Booking(status=pending_payment)` and holds the slot for 10 minutes.",
+      "tasks": [
+        "Step-based UI with state persistence",
+        "Phone number validation (Nigerian format)",
+        "Slot hold mechanism with expiry",
+        "`POST /api/public/bookings`",
+        "E2E test that books a slot end to end"
+      ],
+      "acceptance": [
+        "The booking is created with `status=pending_payment`",
+        "A held slot is blocked from other sessions",
+        "The hold auto-releases after 10 minutes",
+        "The E2E test passes"
+      ]
+    },
+    {
+      "id": "booking-confirmation",
+      "title": "Booking confirmation page and notification stub",
+      "why": "Customers need proof of booking, and the domain event is the seam that later notification work plugs into.",
+      "scope": "After booking, show a confirmation screen with an `.ics` download and signed reschedule/cancel links. Emit a stub notification event.",
+      "tasks": [
+        "Confirmation page",
+        "Generate an `.ics` file",
+        "Signed tokens with 30-day expiry for reschedule and cancel",
+        "Emit a `booking.confirmed` domain event"
+      ],
+      "acceptance": [
+        "The `.ics` file imports into Google Calendar cleanly",
+        "A tampered token is rejected",
+        "An expired token is rejected",
+        "The event is emitted and logged"
+      ]
+    }
+  ]
+}

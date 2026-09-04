@@ -1,0 +1,45 @@
+{
+  "round": 2,
+  "specs": [
+    {
+      "id": "multitenancy",
+      "title": "Multi-tenancy middleware",
+      "why": "Tenant isolation must be enforced structurally before any tenant data is written, or every later query is a leak risk.",
+      "scope": "Add request-scoped tenant resolution from subdomain or session. Build a Prisma client extension that rejects queries on tenant-scoped models when `tenantId` is absent from the `where` clause.",
+      "tasks": [
+        "Implement `resolveTenant(req)` helper (subdomain + session)",
+        "Wrap the Prisma client with a tenant-guard extension",
+        "Expose `tenantContext` via AsyncLocalStorage",
+        "Unit tests: cross-tenant read throws; correct tenant passes",
+        "Document the pattern in `docs/MULTITENANCY.md`"
+      ],
+      "acceptance": [
+        "A cross-tenant query throws in test",
+        "A valid tenant query returns the expected row",
+        "All existing queries include `tenantId`",
+        "No raw `prisma.*.findMany()` without tenant scope"
+      ]
+    },
+    {
+      "id": "auth-otp",
+      "title": "Auth with phone + OTP",
+      "why": "Phone-first login matches how the target market actually signs in, and everything owner-facing sits behind it.",
+      "scope": "Implement phone-number authentication with OTP through an SMS provider port. Normalize Nigerian numbers to E.164 (+234). Use signed HTTP-only session cookies.",
+      "non_goals": "Use a stubbed/faked SMS adapter in tests. Do not require live Termii credentials to pass CI.",
+      "tasks": [
+        "Add a `SmsProvider` interface and a Termii adapter",
+        "Build `/login` and `/verify` routes",
+        "Implement OTP generation, storage, 5-minute expiry and rate limiting",
+        "Normalize `+234` phone numbers",
+        "Session cookie with rolling expiry",
+        "E2E tests: signup, login, logout"
+      ],
+      "acceptance": [
+        "A user can sign up and log in by phone + OTP",
+        "Expired or already-used OTP is rejected",
+        "Rate limiting blocks brute force",
+        "Session persists across reloads"
+      ]
+    }
+  ]
+}

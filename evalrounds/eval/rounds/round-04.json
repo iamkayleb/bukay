@@ -1,0 +1,39 @@
+{
+  "round": 4,
+  "specs": [
+    {
+      "id": "business-hours",
+      "title": "Business hours and blackout dates",
+      "why": "The availability engine cannot compute slots without a source of truth for when the business is open.",
+      "scope": "Per-tenant weekly schedule (open/close per weekday, multiple windows) plus date-specific overrides for holidays and closures. Expose an availability helper `getOpenWindows(date)`.",
+      "tasks": [
+        "Add `BusinessHour` and `Blackout` models",
+        "UI to edit the weekly schedule and add blackouts",
+        "Implement `getOpenWindows(tenantId, date)`",
+        "Unit tests covering multi-window days and blackouts"
+      ],
+      "acceptance": [
+        "Owner can set different hours per weekday",
+        "Blackout dates return no windows",
+        "The helper is exported for the availability engine to consume"
+      ]
+    },
+    {
+      "id": "manual-booking",
+      "title": "Manual booking entry",
+      "why": "Owners need to record walk-ins and phone bookings from day one, and it forces the double-booking constraint early.",
+      "scope": "Owner can add a booking from the dashboard: pick or create a client, select service, select slot, add notes. Enforce no-double-book with a database constraint.",
+      "tasks": [
+        "Add a Postgres exclusion constraint on `(staffId, tstzrange)` for overlaps",
+        "Booking form with client search and inline create",
+        "API endpoint `POST /api/bookings/manual`",
+        "Write an audit log entry on create"
+      ],
+      "acceptance": [
+        "An overlapping booking for the same staff is rejected at the database",
+        "The created booking appears in the calendar immediately",
+        "The audit log shows `manual_booking_created`"
+      ]
+    }
+  ]
+}

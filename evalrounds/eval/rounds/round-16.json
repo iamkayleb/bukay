@@ -1,0 +1,39 @@
+{
+  "round": 16,
+  "specs": [
+    {
+      "id": "risk-score",
+      "title": "Risk score and deposit gating",
+      "why": "Turning no-show history into an automatic deposit requirement is the payoff for tracking it.",
+      "scope": "Compute a client risk score from no-show history and recency. High-risk clients must pay a deposit before their slot is confirmed. Thresholds configurable per tenant.",
+      "tasks": [
+        "`computeRiskScore(client)` pure function",
+        "Tenant-level thresholds in settings",
+        "Booking flow enforces a deposit for high-risk clients",
+        "Unit tests covering edge cases"
+      ],
+      "acceptance": [
+        "The score is deterministic for the same inputs",
+        "A high-risk booking is blocked until the deposit is paid",
+        "The owner can override per booking"
+      ]
+    },
+    {
+      "id": "waitlist",
+      "title": "Waitlist auto-fill",
+      "why": "Refilling cancelled slots automatically recovers revenue the merchant would otherwise lose.",
+      "scope": "When a booking cancels, notify waitlisted clients in order over WhatsApp with a payment link. First to pay keeps the slot. Must be race-safe.",
+      "tasks": [
+        "`Waitlist` model",
+        "Enrollment from the public page and the agent",
+        "Cancel trigger dispatches to the waitlist",
+        "Atomic slot claim with a database constraint"
+      ],
+      "acceptance": [
+        "Only one waitlist client can claim the slot",
+        "Notifications go out in enrollment order",
+        "An unclaimed slot reopens after 30 minutes"
+      ]
+    }
+  ]
+}

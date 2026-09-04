@@ -1,0 +1,39 @@
+{
+  "round": 14,
+  "specs": [
+    {
+      "id": "setup-agent",
+      "title": "Onboarding intake (setup agent)",
+      "why": "Self-serve onboarding is what makes the product scale without hand-holding each merchant.",
+      "scope": "Single chat surface where the setup agent extracts business type, location, hours, services, payment provider and deposit policy, producing a draft tenant config.",
+      "tasks": [
+        "Setup agent prompt with extraction tools",
+        "Web chat widget at `/start`",
+        "WhatsApp entry point for the same agent",
+        "Persist the draft config to `PendingTenant`"
+      ],
+      "acceptance": [
+        "A single descriptive message yields a complete draft config",
+        "Missing fields prompt follow-up questions",
+        "A dropped session can be recovered"
+      ]
+    },
+    {
+      "id": "config-confirm",
+      "title": "Config preview and confirm",
+      "why": "The owner must be able to see and correct what the agent understood before a tenant is created.",
+      "scope": "Show the parsed tenant, services and hours to the owner. Owner edits in natural language. On confirm, create the tenant, provision the booking link and link the WhatsApp number where applicable.",
+      "tasks": [
+        "Preview card rendered in chat and web",
+        "Natural-language edit handler",
+        "Confirm handler creates the full tenant from the draft",
+        "Telemetry timer from start to confirm"
+      ],
+      "acceptance": [
+        "The round trip completes in under 5 minutes in a scripted test",
+        "Edits are applied correctly",
+        "Confirm creates tenant, services, hours and booking link"
+      ]
+    }
+  ]
+}
