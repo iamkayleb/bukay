@@ -5,36 +5,37 @@
       "id": "whatsapp-inbound",
       "title": "Inbound WhatsApp webhook and routing",
       "why": "Two-way messaging is the precondition for the conversational booking agent.",
-      "scope": "Receive inbound WhatsApp messages, identify the business phone number, route to the correct tenant, and persist conversation and message history per client.",
+      "scope": "Receive inbound messages, route by business number to the tenant, and persist conversation history.",
       "tasks": [
-        "`POST /api/webhooks/whatsapp`",
-        "Route by `to` number to the tenant",
-        "`Conversation` and `Message` models",
-        "Greeting for unknown senders",
-        "Continuity for known clients by phone lookup"
+        "Add `app/api/webhooks/whatsapp/route.ts`: implement",
+        "Add `lib/whatsapp/routing.ts`: resolve the tenant by number",
+        "Add `prisma/schema.prisma`: add `Conversation` and `Message` models",
+        "Add `lib/whatsapp/templates.ts`: send the greeting template from  for unknown senders"
       ],
       "acceptance": [
-        "An incoming message is persisted with the correct `tenantId`",
-        "An unknown number receives the greeting template",
-        "A known client is resumed without re-asking identity"
+        "An inbound message persists with the correct `tenantId`, verified by `pnpm test`",
+        "An unknown number receives the greeting and returns HTTP 200",
+        "A known client resumes without re-identification",
+        "`pnpm test` passes"
       ]
     },
     {
       "id": "booking-agent",
       "title": "Booking agent happy path",
       "why": "Conversational booking is the product's core differentiator.",
-      "scope": "LLM tool-using agent that books a service over WhatsApp. Tools: `list_services`, `check_availability`, `hold_slot`, `confirm_booking`, `send_payment_link`. Slot holds expire in 15 minutes.",
+      "scope": "Tool-using agent that books a service over chat, with slot holds expiring in 15 minutes.",
       "tasks": [
-        "Agent runtime with a tool registry",
-        "Each tool implemented and tenant-scoped",
-        "Prompt and few-shot examples",
-        "E2E test: book haircut Saturday 2pm, payment link, confirmed",
-        "Save conversation transcripts for review"
+        "Add `lib/agent/runtime.ts`: add the runtime and registry",
+        "Add `lib/agent/tools/`: implement the five tools",
+        "Add `lib/agent/prompt.ts`: add the prompt",
+        "Add `tests/agent-booking.test.ts` covering the full path",
+        "Add `prisma/schema.prisma`: persist transcripts via the `Message` model"
       ],
       "acceptance": [
-        "The happy-path E2E passes in the test harness",
-        "Tool calls are tenant-scoped and cannot reach another tenant",
-        "A held slot releases after 15 minutes if unpaid"
+        "The scripted conversation reaches a confirmed booking, verified by `pnpm test`",
+        "A tool call for another tenant returns HTTP 403",
+        "An unpaid hold releases after 15 minutes",
+        "`pnpm test` passes"
       ]
     }
   ]

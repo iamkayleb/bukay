@@ -4,41 +4,41 @@
     {
       "id": "multitenancy",
       "title": "Multi-tenancy middleware",
-      "why": "Tenant isolation must be enforced structurally before any tenant data is written, or every later query is a leak risk.",
-      "scope": "Add request-scoped tenant resolution from subdomain or session. Build a Prisma client extension that rejects queries on tenant-scoped models when `tenantId` is absent from the `where` clause.",
+      "why": "Tenant isolation must be enforced structurally before tenant data exists, or every later query is a leak risk.",
+      "scope": "Add request-scoped tenant resolution and a Prisma extension that rejects queries on tenant-scoped models when `tenantId` is absent.",
       "tasks": [
-        "Implement `resolveTenant(req)` helper (subdomain + session)",
-        "Wrap the Prisma client with a tenant-guard extension",
-        "Expose `tenantContext` via AsyncLocalStorage",
-        "Unit tests: cross-tenant read throws; correct tenant passes",
-        "Document the pattern in `docs/MULTITENANCY.md`"
+        "Add `lib/tenant.ts`: implement `resolveTenant()` reading subdomain and session",
+        "Add `lib/prisma.ts`: add the tenant-guard extension",
+        "Add `lib/tenant-context.ts`: expose `tenantContext` via AsyncLocalStorage",
+        "Add `tests/tenant-isolation.test.ts` covering cross-tenant reads",
+        "Add `docs/MULTITENANCY.md`: document the pattern"
       ],
       "acceptance": [
-        "A cross-tenant query throws in test",
-        "A valid tenant query returns the expected row",
-        "All existing queries include `tenantId`",
-        "No raw `prisma.*.findMany()` without tenant scope"
+        "A cross-tenant query throws, verified by `pnpm test`",
+        "A correctly scoped query returns the expected row",
+        "No call site uses `prisma.*.findMany()` without a `tenantId` filter",
+        "`pnpm test` passes"
       ]
     },
     {
       "id": "auth-otp",
-      "title": "Auth with phone + OTP",
-      "why": "Phone-first login matches how the target market actually signs in, and everything owner-facing sits behind it.",
-      "scope": "Implement phone-number authentication with OTP through an SMS provider port. Normalize Nigerian numbers to E.164 (+234). Use signed HTTP-only session cookies.",
-      "non_goals": "Use a stubbed/faked SMS adapter in tests. Do not require live Termii credentials to pass CI.",
+      "title": "Auth with phone and OTP",
+      "why": "Phone-first login matches how the target market signs in, and every owner surface sits behind it.",
+      "scope": "Implement phone authentication with OTP through an SMS provider port. Normalize Nigerian numbers to E.164. Use signed HTTP-only session cookies.",
+      "non_goals": "Use the fake SMS adapter in tests. Live Termii credentials must not be required for CI.",
       "tasks": [
-        "Add a `SmsProvider` interface and a Termii adapter",
-        "Build `/login` and `/verify` routes",
-        "Implement OTP generation, storage, 5-minute expiry and rate limiting",
-        "Normalize `+234` phone numbers",
-        "Session cookie with rolling expiry",
-        "E2E tests: signup, login, logout"
+        "Add `lib/sms/provider.ts`: define the `SmsProvider` interface",
+        "Add `lib/sms/termii.ts`: add the Termii adapter and a fake in `lib/sms/fake.ts`",
+        "Add `app/(auth)/login/page.tsx`: build  and `app/(auth)/verify/page.tsx`",
+        "Add `lib/otp.ts`: implement OTP issue, 5-minute expiry and rate limiting",
+        "Add `lib/phone.ts`: normalize `+234` numbers",
+        "Add `tests/auth.test.ts` covering signup, login and logout"
       ],
       "acceptance": [
-        "A user can sign up and log in by phone + OTP",
-        "Expired or already-used OTP is rejected",
-        "Rate limiting blocks brute force",
-        "Session persists across reloads"
+        "A user completes signup and login by phone and OTP, verified by `pnpm test`",
+        "An expired or reused OTP is rejected with HTTP 401",
+        "Rate limiting blocks repeated attempts",
+        "`pnpm test` passes"
       ]
     }
   ]

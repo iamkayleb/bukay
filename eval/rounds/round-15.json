@@ -5,33 +5,35 @@
       "id": "qr-link",
       "title": "Booking link and QR generation",
       "why": "Merchants convert walk-in traffic by displaying a scannable link in the shop.",
-      "scope": "After tenant confirmation, generate a branded booking URL and a downloadable QR PNG/PDF for printing.",
+      "scope": "Generate a branded booking URL and a downloadable QR image and PDF.",
       "tasks": [
-        "QR generation endpoint",
-        "Branded PDF layout with the logo",
-        "Downloadable from the dashboard and sent over WhatsApp"
+        "Add `app/api/qr/[slug]/route.ts`: implement",
+        "Add `lib/qr-pdf.ts`: build the branded PDF",
+        "Add `app/(app)/settings/page.tsx`: add the download control"
       ],
       "acceptance": [
-        "The QR scans to the correct tenant page",
-        "The PDF prints cleanly at A5",
-        "The owner receives it over WhatsApp after setup"
+        "The generated code resolves to `/{slug}`, verified by `pnpm test`",
+        "`app/api/qr/[slug]/route.ts` returns HTTP 200 with a PDF body",
+        "The owner receives the file over WhatsApp after setup",
+        "`pnpm test` passes"
       ]
     },
     {
       "id": "no-show-tracking",
       "title": "No-show tracking",
       "why": "No-show data is the input to risk scoring and deposit gating.",
-      "scope": "Owner marks bookings as `no_show` from the dashboard or by replying to the booking WhatsApp notification. Updates aggregate client stats.",
+      "scope": "Owner marks bookings as no-show from the dashboard or by replying to the WhatsApp notification.",
       "tasks": [
-        "`status=no_show` transition",
-        "WhatsApp shortcut reply on the booking notification",
-        "Client no-show count and rate fields",
-        "Audit log entry"
+        "Add `lib/booking-status.ts`: add the `no_show` transition",
+        "Add `lib/whatsapp/routing.ts`: handle the reply shortcut",
+        "Add `prisma/schema.prisma`: add no-show counters to the `Client` model",
+        "Add `lib/audit.ts`: write an `AuditLog` row from"
       ],
       "acceptance": [
-        "Both surfaces correctly mark a no-show",
-        "The client profile reflects updated stats",
-        "A future booking cannot be marked as a no-show"
+        "Both surfaces set status `no_show`, verified by `pnpm test`",
+        "The counters on `Client` increment once per marking",
+        "Marking a future booking returns HTTP 400",
+        "`pnpm test` passes"
       ]
     }
   ]

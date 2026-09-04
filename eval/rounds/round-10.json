@@ -4,36 +4,38 @@
     {
       "id": "flutterwave",
       "title": "Flutterwave adapter",
-      "why": "A second provider proves the payment port is a real abstraction and unblocks non-Nigerian markets.",
-      "scope": "Second `PaymentProvider` implementation for Flutterwave. Tenant picks the provider at setup. Contract tests run against both providers in sandbox.",
+      "why": "A second provider proves the payment port is a real abstraction and unblocks other markets.",
+      "scope": "Second PaymentProvider implementation with tenant-level provider selection and shared contract tests.",
       "tasks": [
-        "Flutterwave adapter",
-        "Webhook handler with signature verification",
-        "Tenant setting `paymentProvider`",
-        "Provider-agnostic contract test suite"
+        "Add `lib/payments/flutterwave.ts`: add the adapter",
+        "Add `app/api/webhooks/flutterwave/route.ts`: implement  with signature checks",
+        "Add `prisma/schema.prisma`: add the `paymentProvider` column to the `Tenant` model",
+        "Add `tests/payment-contract.test.ts`: add the shared suite"
       ],
       "acceptance": [
-        "Both providers pass the same contract tests",
-        "A tenant can switch provider without data loss",
-        "Ledger writes are identical in shape"
+        "Both adapters pass `tests/payment-contract.test.ts`, verified by `pnpm test`",
+        "Switching provider preserves existing `LedgerEntry` rows",
+        "Ledger writes from both adapters have identical shape",
+        "`pnpm test` passes"
       ]
     },
     {
       "id": "whatsapp-port",
       "title": "WhatsApp provider abstraction",
-      "why": "Every messaging feature depends on this port, and isolating it keeps the rest testable without a live channel.",
-      "scope": "`WhatsAppProvider` port and Meta Cloud API adapter. Template message catalog for confirm, remind, cancel and reschedule. Document the template approval process.",
-      "non_goals": "Template approval and a live business number are human prerequisites. Build against the port with a fake adapter so tests pass without them.",
+      "why": "Every messaging feature depends on this port, and isolating it keeps the rest testable.",
+      "scope": "WhatsAppProvider port with a Meta Cloud API adapter and a template catalog.",
+      "non_goals": "Template approval and a live business number are human prerequisites; tests must use the fake adapter.",
       "tasks": [
-        "Port interface and Meta adapter",
-        "Template registry module",
-        "Sandbox send helper",
-        "Document the template approval process"
+        "Add `lib/whatsapp/provider.ts`: define the port",
+        "Add `lib/whatsapp/meta.ts`: add the adapter and a fake in `lib/whatsapp/fake.ts`",
+        "Add `lib/whatsapp/templates.ts`: add the template registry",
+        "Add `docs/WHATSAPP_TEMPLATES.md`: document approval steps"
       ],
       "acceptance": [
-        "A sandbox send returns 200 and a message ID",
-        "Templates are defined in code and documented",
-        "The adapter is swappable for tests"
+        "A sandbox send returns HTTP 200 with a message id, verified by `pnpm test`",
+        "Every template in `lib/whatsapp/templates.ts` is documented",
+        "`lib/whatsapp/fake.ts` substitutes for the adapter in tests",
+        "`pnpm test` passes"
       ]
     }
   ]

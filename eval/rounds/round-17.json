@@ -5,34 +5,36 @@
       "id": "weekly-digest",
       "title": "Weekly WhatsApp digest",
       "why": "A weekly summary keeps the merchant engaged and surfaces problems they would not otherwise notice.",
-      "scope": "Every Sunday at 18:00 tenant-local, send the owner a summary: bookings count, revenue, no-shows, top service and one actionable insight.",
+      "scope": "Send the owner a weekly summary of bookings, revenue, no-shows, top service and one actionable insight.",
       "tasks": [
-        "Cron job per tenant timezone",
-        "Summary computation module",
-        "Rule-based insight generator",
-        "Fixture-based unit tests"
+        "Add `scripts/digest-cron.ts`: add the job scheduled per tenant timezone",
+        "Add `lib/digest.ts`: implement aggregation",
+        "Add `lib/insights.ts`: implement the insight rules",
+        "Add `tests/digest.test.ts` with fixtures"
       ],
       "acceptance": [
-        "The digest is sent to every active tenant weekly",
-        "Numbers match the dashboard for the same period",
-        "The insight generator produces one actionable item per tenant"
+        "Every active tenant receives one digest per week, verified by `pnpm test`",
+        "Digest figures match `/app/payouts` for the same period",
+        "`lib/insights.ts` returns one actionable item per tenant",
+        "`pnpm test` passes"
       ]
     },
     {
       "id": "staff",
       "title": "Staff accounts and assignment",
       "why": "Multi-staff businesses are a large share of the target market and need per-staff calendars.",
-      "scope": "Multi-staff tenants: per-staff calendars, per-staff service eligibility, commission split on payout. Booking flow lets the client pick a staff member where enabled.",
+      "scope": "Per-staff calendars, service eligibility and commission splits, with a staff picker in the public flow.",
       "tasks": [
-        "`Staff` model with tenant scope",
-        "Staff-service mapping",
-        "Staff picker in the public flow",
-        "Commission field on Staff and payout split"
+        "Add `prisma/schema.prisma`: extend the `Staff` model with tenant scope",
+        "Add `prisma/schema.prisma`: add the staff-service mapping table",
+        "Add `app/[slug]/book/page.tsx`: add the picker",
+        "Add `lib/ledger.ts`: apply commission splits"
       ],
       "acceptance": [
-        "Staff see only their own bookings",
-        "Commission is reflected in the ledger",
-        "The double-book constraint applies per staff"
+        "A staff session sees only its own bookings, verified by `pnpm test`",
+        "Commission appears as a `LedgerEntry` row per booking",
+        "An overlapping booking for one staff member returns HTTP 409",
+        "`pnpm test` passes"
       ]
     }
   ]

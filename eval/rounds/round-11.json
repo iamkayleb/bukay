@@ -5,34 +5,36 @@
       "id": "lifecycle-notifications",
       "title": "Booking lifecycle notifications",
       "why": "Automatic confirmations and reminders are the feature merchants ask for first.",
-      "scope": "On booking create, confirm, cancel and reschedule, send WhatsApp to the client with SMS fallback. Owner receives aggregate events. Retry with exponential backoff and a dead-letter queue visible in admin.",
+      "scope": "Send WhatsApp with SMS fallback on create, confirm, cancel and reschedule, with retries and a dead-letter queue.",
       "tasks": [
-        "Event subscribers for each lifecycle event",
-        "WhatsApp-first, SMS-fallback dispatcher",
-        "Retry with backoff (2s, 8s, 30s, 2m, 10m)",
-        "Dead-letter table and admin UI"
+        "Add `lib/notifications/subscribers.ts`: add subscribers",
+        "Add `lib/notifications/dispatch.ts`: implement the dispatcher",
+        "Add `lib/notifications/retry.ts`: implement backoff",
+        "Add `prisma/schema.prisma`: add the `DeadLetter` model and a view in `app/(app)/admin/dlq/page.tsx`"
       ],
       "acceptance": [
-        "Messages send for all four lifecycle events",
-        "SMS fallback triggers when WhatsApp fails",
-        "The dead-letter queue shows permanently failed messages"
+        "All four lifecycle events dispatch a message, verified by `pnpm test`",
+        "A WhatsApp failure falls back to SMS",
+        "A permanently failed message appears in `DeadLetter`",
+        "`pnpm test` passes"
       ]
     },
     {
       "id": "reminders",
       "title": "Reminder scheduler",
       "why": "Reminders are the single highest-leverage lever on no-show rate.",
-      "scope": "T-24h and T-2h reminders per booking, with a per-tenant toggle. Cron-driven with a lease lock preventing duplicate sends across restarts or multiple workers.",
+      "scope": "T-24h and T-2h reminders per booking with a per-tenant toggle and duplicate-safe scheduling.",
       "tasks": [
-        "Cron job running every 5 minutes",
-        "Lease lock using Postgres advisory locks",
-        "Track `reminderSentAt` on the booking",
-        "Tenant setting to disable reminders"
+        "Add `scripts/reminder-cron.ts`: add the job running every 5 minutes",
+        "Add `lib/locks.ts`: take Postgres advisory locks",
+        "Add `prisma/schema.prisma`: add `reminderSentAt` to the `Booking` model",
+        "Add `app/(app)/settings/page.tsx`: add the tenant toggle"
       ],
       "acceptance": [
-        "No duplicate reminder across two parallel workers in test",
-        "Reminder windows are accurate to within 5 minutes",
-        "Turning the toggle off stops reminders immediately"
+        "Two parallel workers send exactly one reminder, verified by `pnpm test`",
+        "Reminder dispatch falls within 5 minutes of the target time",
+        "Disabling the toggle stops subsequent reminders",
+        "`pnpm test` passes"
       ]
     }
   ]

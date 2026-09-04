@@ -3,36 +3,38 @@
   "specs": [
     {
       "id": "setup-agent",
-      "title": "Onboarding intake (setup agent)",
-      "why": "Self-serve onboarding is what makes the product scale without hand-holding each merchant.",
-      "scope": "Single chat surface where the setup agent extracts business type, location, hours, services, payment provider and deposit policy, producing a draft tenant config.",
+      "title": "Onboarding intake agent",
+      "why": "Self-serve onboarding is what lets the product scale without hand-holding each merchant.",
+      "scope": "Chat surface extracting business type, location, hours, services, provider and deposit policy into a draft config.",
       "tasks": [
-        "Setup agent prompt with extraction tools",
-        "Web chat widget at `/start`",
-        "WhatsApp entry point for the same agent",
-        "Persist the draft config to `PendingTenant`"
+        "Add `lib/agent/setup-prompt.ts`: add the extraction prompt",
+        "Add `app/start/page.tsx`: build the widget",
+        "Add `lib/whatsapp/routing.ts`: route the WhatsApp entry point",
+        "Add `prisma/schema.prisma`: add the `PendingTenant` model"
       ],
       "acceptance": [
-        "A single descriptive message yields a complete draft config",
-        "Missing fields prompt follow-up questions",
-        "A dropped session can be recovered"
+        "A single descriptive message yields a complete draft, verified by `pnpm test`",
+        "A missing field triggers a follow-up question",
+        "A dropped session resumes from `PendingTenant`",
+        "`pnpm test` passes"
       ]
     },
     {
       "id": "config-confirm",
       "title": "Config preview and confirm",
-      "why": "The owner must be able to see and correct what the agent understood before a tenant is created.",
-      "scope": "Show the parsed tenant, services and hours to the owner. Owner edits in natural language. On confirm, create the tenant, provision the booking link and link the WhatsApp number where applicable.",
+      "why": "The owner must see and correct what the agent understood before a tenant is created.",
+      "scope": "Preview the parsed config, accept natural-language edits, and create the tenant on confirmation.",
       "tasks": [
-        "Preview card rendered in chat and web",
-        "Natural-language edit handler",
-        "Confirm handler creates the full tenant from the draft",
-        "Telemetry timer from start to confirm"
+        "Add `components/ConfigPreview.tsx`: build the preview card",
+        "Add `lib/agent/edit-config.ts`: implement the edit handler",
+        "Add `lib/tenant-provision.ts`: implement tenant creation",
+        "Add `lib/telemetry.ts`: record timings"
       ],
       "acceptance": [
-        "The round trip completes in under 5 minutes in a scripted test",
-        "Edits are applied correctly",
-        "Confirm creates tenant, services, hours and booking link"
+        "The scripted round trip completes in under 5 minutes, verified by `pnpm test`",
+        "A natural-language edit updates the draft in `PendingTenant`",
+        "Confirmation creates tenant, services, hours and booking link",
+        "`pnpm test` passes"
       ]
     }
   ]

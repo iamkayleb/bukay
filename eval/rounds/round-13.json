@@ -5,36 +5,38 @@
       "id": "agent-reschedule",
       "title": "Booking agent reschedule and cancel",
       "why": "Most real conversations are changes to existing bookings, not new ones.",
-      "scope": "Extend the agent with `find_booking`, `reschedule` and `cancel` tools. Refund behaviour respects the tenant cancellation policy.",
+      "scope": "Extend the agent with find, reschedule and cancel tools honouring the tenant cancellation policy.",
       "tasks": [
-        "Three new tools with tenant-scoped access",
-        "Policy evaluator for refund eligibility",
-        "Conversation flows for identifying the right booking",
-        "E2E tests for both actions"
+        "Add `lib/agent/tools/`: add the three tools",
+        "Add `lib/policy.ts`: implement the policy evaluator",
+        "Add `lib/agent/prompt.ts`: add disambiguation flows",
+        "Add `tests/agent-reschedule.test.ts`"
       ],
       "acceptance": [
-        "Cancelling inside the policy window triggers a refund",
-        "Cancelling outside the policy window keeps the deposit per rule",
-        "Rescheduling updates the booking and notifies the owner"
+        "Cancelling inside the policy window issues a refund, verified by `pnpm test`",
+        "Cancelling outside the window retains the deposit per `lib/policy.ts`",
+        "Rescheduling updates the booking and notifies the owner",
+        "`pnpm test` passes"
       ]
     },
     {
       "id": "agent-guardrails",
       "title": "Agent guardrails",
-      "why": "An agent with booking and payment tools on a public channel is an attack surface and needs hardening before exposure.",
-      "scope": "Defences against prompt injection, cross-tenant tool calls, abuse and runaway usage. Add a human-handoff command. Per-sender rate limiting.",
+      "why": "An agent with booking and payment tools on a public channel is an attack surface.",
+      "scope": "Defences against prompt injection, cross-tenant calls, abuse and runaway usage, with human handoff.",
       "tasks": [
-        "System prompt hardening",
-        "Tool-call tenant assertion",
-        "Rate limit per phone number (20 per minute)",
-        "Profanity and abuse filter",
-        "Handoff command routes to the owner's number",
-        "Red-team test suite"
+        "Add `lib/agent/prompt.ts`: harden the system prompt",
+        "Add `lib/agent/runtime.ts`: assert tenant scope before every tool call",
+        "Add `lib/rate-limit.ts`: add per-number rate limiting",
+        "Add `lib/agent/filters.ts`: add the abuse filter",
+        "Add `lib/agent/handoff.ts`: implement handoff",
+        "Add `tests/agent-redteam.test.ts`"
       ],
       "acceptance": [
-        "The red-team suite passes (injection, exfiltration, tool abuse)",
-        "Rate limiting blocks flooders",
-        "The handoff command stops the agent and alerts the owner"
+        "Every case in `tests/agent-redteam.test.ts` is blocked, verified by `pnpm test`",
+        "A flooding sender receives HTTP 429",
+        "The handoff command halts the agent and alerts the owner",
+        "`pnpm test` passes"
       ]
     }
   ]

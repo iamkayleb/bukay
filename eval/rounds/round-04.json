@@ -4,35 +4,37 @@
     {
       "id": "business-hours",
       "title": "Business hours and blackout dates",
-      "why": "The availability engine cannot compute slots without a source of truth for when the business is open.",
-      "scope": "Per-tenant weekly schedule (open/close per weekday, multiple windows) plus date-specific overrides for holidays and closures. Expose an availability helper `getOpenWindows(date)`.",
+      "why": "The availability engine cannot compute slots without a source of truth for opening times.",
+      "scope": "Per-tenant weekly schedule with multiple windows per weekday, plus date-specific overrides.",
       "tasks": [
-        "Add `BusinessHour` and `Blackout` models",
-        "UI to edit the weekly schedule and add blackouts",
-        "Implement `getOpenWindows(tenantId, date)`",
-        "Unit tests covering multi-window days and blackouts"
+        "Add `prisma/schema.prisma`: add `BusinessHour` and `Blackout` models",
+        "Add `app/(app)/settings/hours/page.tsx`: build the schedule editor",
+        "Add `lib/hours.ts`: implement `getOpenWindows()`",
+        "Add `tests/hours.test.ts` covering multi-window days and blackouts"
       ],
       "acceptance": [
-        "Owner can set different hours per weekday",
-        "Blackout dates return no windows",
-        "The helper is exported for the availability engine to consume"
+        "Different hours per weekday persist and are verified by `pnpm test`",
+        "A blackout date causes `getOpenWindows()` to return an empty array",
+        "`lib/hours.ts` exports `getOpenWindows` for the availability engine",
+        "`pnpm test` passes"
       ]
     },
     {
       "id": "manual-booking",
       "title": "Manual booking entry",
-      "why": "Owners need to record walk-ins and phone bookings from day one, and it forces the double-booking constraint early.",
-      "scope": "Owner can add a booking from the dashboard: pick or create a client, select service, select slot, add notes. Enforce no-double-book with a database constraint.",
+      "why": "Owners record walk-ins from day one, and it forces the double-booking constraint early.",
+      "scope": "Owner adds a booking from the dashboard, choosing or creating a client. A database constraint prevents overlaps.",
       "tasks": [
-        "Add a Postgres exclusion constraint on `(staffId, tstzrange)` for overlaps",
-        "Booking form with client search and inline create",
-        "API endpoint `POST /api/bookings/manual`",
-        "Write an audit log entry on create"
+        "Add `prisma/migrations/`: add a Postgres exclusion constraint on `(staffId, tstzrange)`",
+        "Add `app/(app)/bookings/new/page.tsx`: build the booking form",
+        "Add `app/api/bookings/manual/route.ts`: implement",
+        "Add `lib/audit.ts`: write an `AuditLog` row on create"
       ],
       "acceptance": [
-        "An overlapping booking for the same staff is rejected at the database",
-        "The created booking appears in the calendar immediately",
-        "The audit log shows `manual_booking_created`"
+        "An overlapping booking for the same staff is rejected, verified by `pnpm test`",
+        "The created booking appears in `/app/calendar` on reload",
+        "An `AuditLog` row records `manual_booking_created`",
+        "`pnpm test` passes"
       ]
     }
   ]

@@ -5,37 +5,38 @@
       "id": "paystack-charge",
       "title": "Paystack charge at booking",
       "why": "Taking payment at booking time is what makes deposits and no-show protection possible.",
-      "scope": "Integrate Paystack: initialize transaction, redirect to checkout, verify on callback. Use Paystack subaccounts for tenant-level split payout.",
-      "non_goals": "Implement against the port with a recorded/stubbed adapter so tests pass without live Paystack credentials.",
+      "scope": "Initialize a transaction, redirect to checkout and verify on callback, with tenant subaccount splits.",
+      "non_goals": "Use `lib/payments/fake.ts` in tests. Live Paystack credentials must not be required for CI.",
       "tasks": [
-        "`PaymentProvider` port and Paystack adapter",
-        "Initialize and verify flow",
-        "Subaccount creation during tenant setup",
-        "Booking transitions to `confirmed` on verified payment",
-        "Release the slot on failure after timeout"
+        "Add `lib/payments/provider.ts`: define the `PaymentProvider` port",
+        "Add `lib/payments/paystack.ts`: add the adapter and a fake in `lib/payments/fake.ts`",
+        "Add `app/api/payments/verify/route.ts`: implement the callback",
+        "Add `lib/payments/subaccount.ts`: create subaccounts during setup",
+        "Add `lib/slot-hold.ts`: release held slots on failure"
       ],
       "acceptance": [
-        "A test-mode payment flips the booking to `confirmed`",
+        "A test-mode payment moves the booking to `confirmed`, verified by `pnpm test`",
         "A failed payment releases the slot within 10 minutes",
-        "Subaccount split values are correct",
-        "No plaintext keys appear in logs"
+        "The subaccount split matches the configured percentage",
+        "No secret value appears in logs, verified by `pnpm test`"
       ]
     },
     {
       "id": "paystack-webhooks",
       "title": "Paystack webhooks",
       "why": "Payment state must converge even when the customer closes the tab, which only webhooks guarantee.",
-      "scope": "Handler for `charge.success`, `charge.failed` and `refund.processed`. Verify signature, deduplicate, and update booking and payment state idempotently.",
+      "scope": "Handle charge.success, charge.failed and refund.processed with signature verification and idempotency.",
       "tasks": [
-        "`POST /api/webhooks/paystack`",
-        "HMAC signature verification",
-        "Idempotency key store with a 7-day TTL",
-        "Dead-letter handling for unrecognized events"
+        "Add `app/api/webhooks/paystack/route.ts`: implement",
+        "Add `lib/payments/signature.ts`: verify HMAC signatures",
+        "Add `lib/idempotency.ts`: add the idempotency store with a 7-day TTL",
+        "Add `prisma/schema.prisma`: route unknown events to a dead letter table"
       ],
       "acceptance": [
-        "A signature mismatch returns 401",
-        "A replayed event is a no-op",
-        "All three event types update state correctly"
+        "A mismatched signature returns HTTP 401",
+        "A replayed event produces no state change, verified by `pnpm test`",
+        "All three event types update booking and payment state",
+        "`pnpm test` passes"
       ]
     }
   ]

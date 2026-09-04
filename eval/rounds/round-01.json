@@ -5,40 +5,41 @@
       "id": "scaffold",
       "title": "Scaffold product repo",
       "why": "Nothing else can be built until the app skeleton, database client and CI entry points exist.",
-      "scope": "Create a Next.js 14 (App Router) + TypeScript + Tailwind + Prisma + Postgres application in this repository. Add `.env.example`, a `/api/health` route, and baseline lint/format config (ESLint, Prettier).",
-      "non_goals": "Do not modify anything under `.github/` \u2014 CI and agent workflows are managed centrally and changing them mid-run breaks the pipeline that is running you.",
+      "scope": "Create a Next.js 14 (App Router) + TypeScript + Tailwind + Prisma + Postgres application in this repository.",
+      "non_goals": "Do not modify any file under `.github/` \u2014 those workflows are centrally managed.",
       "tasks": [
-        "Initialize Next.js app with TypeScript and Tailwind",
-        "Add Prisma with Postgres provider and empty schema",
-        "Create `/api/health` route returning `{ok: true, version}`",
-        "Add `.env.example` with `DATABASE_URL`, `NEXTAUTH_SECRET`",
-        "Configure ESLint, Prettier, `.editorconfig`",
-        "Add `pnpm dev`, `pnpm build`, `pnpm test` scripts"
+        "Initialize the app with `package.json`, `next.config.js` and `tsconfig.json`",
+        "Add `app/globals.css`: add Tailwind via `tailwind.config.ts` and",
+        "Add `prisma/schema.prisma`: add Prisma with a Postgres datasource",
+        "Add `/api/health`: create the  route in `app/api/health/route.ts` returning `{ok, version}`",
+        "Add `.env.example` declaring `DATABASE_URL` and `NEXTAUTH_SECRET`",
+        "Configure `.eslintrc.json`, `.prettierrc` and `.editorconfig`",
+        "Add `dev`, `build` and `test` scripts to `package.json`"
       ],
       "acceptance": [
-        "`pnpm dev` boots without errors",
-        "`GET /api/health` returns 200 with a JSON body",
-        "`pnpm build` succeeds",
-        "CI passes on this PR"
+        "`GET /api/health` returns HTTP 200 with a JSON body",
+        "`pnpm test` passes",
+        "`pnpm build` completes and `pnpm dev` starts the server",
+        "CI is green on this pull request"
       ]
     },
     {
       "id": "schema-v1",
       "title": "Database schema v1",
       "why": "Every later feature reads or writes these tables, so the model must land before feature work.",
-      "scope": "Define Prisma models for `Tenant`, `User`, `Service`, `Staff`, `BusinessHour`, `Client`, `Booking`, `Payment`, `AuditLog`. All tenant-owned rows carry `tenantId` with an index. Add a seed script creating one demo tenant with sample services.",
+      "scope": "Define Prisma models for Tenant, User, Service, Staff, BusinessHour, Client, Booking, Payment and AuditLog. All tenant-owned rows carry `tenantId` with an index.",
       "tasks": [
-        "Write Prisma models with relations and indexes",
-        "Add `tenantId` to all tenant-scoped tables",
-        "Create the initial migration",
-        "Write `prisma/seed.ts` with a demo tenant and 3 services",
-        "Document the schema in `docs/DATA_MODEL.md`"
+        "Add `prisma/schema.prisma`: define the nine models with relations",
+        "Add `@@index([tenantId])` to every tenant-scoped model",
+        "Add `prisma/migrations/`: generate the initial migration",
+        "Write `prisma/seed.ts` creating one demo tenant and 3 services",
+        "Add `docs/DATA_MODEL.md`: document the model"
       ],
       "acceptance": [
-        "`prisma migrate dev` runs clean",
-        "`prisma db seed` inserts the demo tenant",
-        "All tenant-scoped tables have `@@index([tenantId])`",
-        "Schema doc is checked in"
+        "`pnpm prisma migrate dev` applies without error",
+        "`pnpm prisma db seed` inserts the demo tenant, verified by query",
+        "Every tenant-scoped model in `prisma/schema.prisma` declares `@@index([tenantId])`",
+        "`pnpm test` passes"
       ]
     }
   ]

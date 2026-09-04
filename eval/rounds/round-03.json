@@ -5,39 +5,39 @@
       "id": "dashboard-shell",
       "title": "Dashboard shell",
       "why": "Owner-facing features need a consistent authenticated frame before they can be built independently.",
-      "scope": "Create the authenticated layout at `/app`: sidebar (Today, Calendar, Clients, Services, Settings), top bar with tenant name and logout, mobile-first responsive design with a drawer on small screens.",
+      "scope": "Create the authenticated layout at `/app` with sidebar, top bar and a mobile drawer.",
       "tasks": [
-        "Build the `(app)` route group with an auth guard",
-        "Implement the sidebar component with active state",
-        "Implement the top bar with a user menu",
-        "Mobile drawer behaviour",
-        "Empty-state placeholders for each section",
-        "Run a Lighthouse mobile audit"
+        "Add `app/(app)/layout.tsx`: create the route group layout with an auth guard",
+        "Add `components/Sidebar.tsx`: build the sidebar with active-state styling",
+        "Add `components/TopBar.tsx`: build the top bar with a user menu",
+        "Add `components/MobileDrawer.tsx`: implement drawer behaviour",
+        "Add `app/(app)/`: add empty-state placeholders",
+        "Add `tests/nav.test.ts` covering desktop and mobile navigation"
       ],
       "acceptance": [
-        "Unauthenticated users are redirected to `/login`",
-        "Navigation works on desktop and mobile",
+        "An unauthenticated request to `/app` returns HTTP 302 to `/login`",
+        "Navigation works on desktop and mobile, verified by `pnpm test`",
         "Lighthouse mobile score is 90 or above",
-        "A visual regression test is checked in"
+        "`pnpm test` passes"
       ]
     },
     {
       "id": "services-crud",
       "title": "Services CRUD",
       "why": "Services are the unit customers book, so they must exist before availability or booking work.",
-      "scope": "Owner can create, edit, archive and delete services. Fields: `name`, `durationMinutes`, `priceKobo`, `bufferMinutes`, `active`. Expose REST endpoints under `/api/services` and a `/app/services` UI.",
+      "scope": "Owner can create, edit, archive and delete services with fields name, durationMinutes, priceKobo, bufferMinutes and active.",
       "tasks": [
-        "Zod schemas for create and update",
-        "API routes with tenant scoping",
-        "List and form UI",
-        "Soft delete via `active=false`",
-        "Integration tests for all verbs"
+        "Add `lib/schemas/service.ts`: define Zod schemas",
+        "Add `app/api/services/route.ts`: implement tenant-scoped handlers",
+        "Add `app/(app)/services/page.tsx`: build the list and form UI",
+        "Add `prisma/schema.prisma`: implement soft delete via the `active` column",
+        "Add `tests/services.test.ts` covering create, read, update and archive"
       ],
       "acceptance": [
-        "All CRUD paths pass tests",
-        "Prices are stored in kobo as integers",
-        "Validation errors are shown inline",
-        "Archived services are hidden from booking surfaces"
+        "Every CRUD path is verified by `pnpm test`",
+        "Prices persist as integer kobo in the `Service` table",
+        "An invalid payload returns HTTP 400 with inline field errors",
+        "Archived services are absent from booking surfaces"
       ]
     }
   ]

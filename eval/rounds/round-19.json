@@ -5,35 +5,37 @@
       "id": "admin-backoffice",
       "title": "Admin backoffice",
       "why": "Operators need a supported way to investigate and reconcile without direct database access.",
-      "scope": "Internal-only `/admin` for operators: tenant search, audited impersonation, payout reconciliation and abuse reports. Role-gated, with every action audit-logged.",
+      "scope": "Internal console for tenant search, audited impersonation, reconciliation and abuse reports.",
       "tasks": [
-        "`internal_admin` role",
-        "Tenant search and detail view",
-        "Impersonation with a banner and audit log",
-        "Reconciliation view",
-        "Abuse report queue"
+        "Add `prisma/schema.prisma`: add the `internal_admin` role to the `User` model",
+        "Add `app/admin/page.tsx`: build search and detail",
+        "Add `lib/impersonate.ts`: implement impersonation with a banner component",
+        "Add `app/admin/reconcile/page.tsx`: build the reconciliation view",
+        "Add `app/admin/abuse/page.tsx`: build the abuse queue"
       ],
       "acceptance": [
-        "A non-admin user cannot reach `/admin`",
-        "Every admin action produces an audit log entry",
-        "Impersonation shows a banner in the target tenant session"
+        "A non-admin request to `/admin` returns HTTP 403, verified by `pnpm test`",
+        "Every admin action writes an `AuditLog` row",
+        "An impersonated session renders the banner component",
+        "`pnpm test` passes"
       ]
     },
     {
       "id": "ghana",
-      "title": "Ghana rollout (Flutterwave default, GHS)",
-      "why": "A second country validates that country-specific defaults are configuration rather than hard-coded assumptions.",
-      "scope": "Country support for Ghana behind a feature flag: GHS currency, +233 phone normalization, Flutterwave as default provider, Accra timezone default.",
+      "title": "Ghana rollout",
+      "why": "A second country validates that country defaults are configuration rather than hard-coded assumptions.",
+      "scope": "Country support for Ghana behind a feature flag with GHS currency, +233 numbers and Accra timezone.",
       "tasks": [
-        "Country field on Tenant",
-        "Currency, phone and timezone defaults per country",
-        "Feature flag `country=GH` gating signup",
-        "E2E booking and payment in GHS"
+        "Add `prisma/schema.prisma`: add the `country` column to the `Tenant` model",
+        "Add `lib/country.ts`: add per-country defaults",
+        "Add `lib/flags.ts`: gate signup with the flag",
+        "Add `tests/ghana.test.ts` covering booking and payment in GHS"
       ],
       "acceptance": [
-        "Signing up as a Ghana tenant yields the correct defaults",
-        "A full booking and payment E2E passes in GHS",
-        "No regressions in the Nigeria E2E suite"
+        "A Ghana tenant receives GHS, +233 and Accra defaults, verified by `pnpm test`",
+        "`tests/ghana.test.ts` completes a booking and payment in GHS",
+        "The Nigeria suite in `tests/` continues to pass",
+        "`pnpm test` passes"
       ]
     }
   ]

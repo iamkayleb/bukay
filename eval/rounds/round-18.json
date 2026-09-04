@@ -4,35 +4,37 @@
     {
       "id": "embed-widget",
       "title": "Embeddable booking widget",
-      "why": "Merchants with an existing website convert better booking in place than being sent elsewhere.",
-      "scope": "Script tag and iframe widget the business can embed on their own site. CSP-safe, theme-aware and responsive.",
+      "why": "Merchants with an existing site convert better booking in place than being sent elsewhere.",
+      "scope": "Script tag and iframe widget the business embeds on its own site.",
       "tasks": [
-        "`/embed/{slug}` iframe route",
-        "`widget.js` loader with automatic size resizing",
-        "Docs page with a copy-paste snippet",
-        "Accessibility audit"
+        "Add `app/embed/[slug]/page.tsx`: build the iframe route",
+        "Add `public/widget.js`: implement the loader with height messaging",
+        "Add `docs/EMBED.md`: document the snippet",
+        "Add `tests/embed.test.ts` including an accessibility pass"
       ],
       "acceptance": [
-        "It works on a plain HTML page",
-        "An Axe audit passes with zero critical issues",
-        "Height resizes to content"
+        "The widget renders on a plain HTML page, verified by `pnpm test`",
+        "The accessibility pass in `tests/embed.test.ts` reports zero critical issues",
+        "Iframe height tracks content height",
+        "`pnpm test` passes"
       ]
     },
     {
       "id": "observability",
       "title": "Observability",
-      "why": "Agent and payment failures are invisible without tracing, and invisible failures are what kill trust.",
-      "scope": "Structured logging, distributed tracing across agent tool calls, dashboards for booking conversion, message delivery, payment success rate and agent tool error rate. Runbook link attached to each alert.",
+      "why": "Agent and payment failures are invisible without tracing, and invisible failures erode trust.",
+      "scope": "Structured logging, tracing across agent tool calls, dashboards and alerts with runbook links.",
       "tasks": [
-        "JSON logger with request and tenant IDs",
-        "OpenTelemetry tracing wrapping agent tools",
-        "Dashboards for the four key metrics",
-        "Alerts with runbook links in `docs/runbooks/`"
+        "Add `lib/logger.ts`: implement the logger emitting request and tenant ids",
+        "Add `lib/agent/runtime.ts`: wrap tool calls with spans",
+        "Add `ops/dashboards.json`: define dashboards",
+        "Add `docs/runbooks/`: write runbooks"
       ],
       "acceptance": [
-        "Every log line has `requestId` and `tenantId`",
-        "An agent tool call appears as a span",
-        "At least one alert fires in a synthetic failure test"
+        "Every line from `lib/logger.ts` carries requestId and tenantId, verified by `pnpm test`",
+        "An agent tool call emits a span",
+        "A synthetic failure triggers an alert linking to `docs/runbooks/`",
+        "`pnpm test` passes"
       ]
     }
   ]

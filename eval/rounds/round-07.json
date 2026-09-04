@@ -5,37 +5,37 @@
       "id": "public-booking",
       "title": "Public booking flow",
       "why": "This is the revenue path: without it the product has no customer-facing function.",
-      "scope": "Multi-step booking on `/{slug}/book`: pick service, pick date, pick slot, enter client details (name, phone), confirm. Creates `Booking(status=pending_payment)` and holds the slot for 10 minutes.",
+      "scope": "Multi-step booking at `/{slug}/book` creating a pending booking and holding the slot for 10 minutes.",
       "tasks": [
-        "Step-based UI with state persistence",
-        "Phone number validation (Nigerian format)",
-        "Slot hold mechanism with expiry",
-        "`POST /api/public/bookings`",
-        "E2E test that books a slot end to end"
+        "Add `app/[slug]/book/page.tsx`: build the stepper",
+        "Add `lib/phone.ts`: validate Nigerian numbers with",
+        "Add `lib/slot-hold.ts`: implement the hold with a 10-minute expiry",
+        "Add `app/api/public/bookings/route.ts`: implement",
+        "Add `tests/public-booking.test.ts` covering the full path"
       ],
       "acceptance": [
-        "The booking is created with `status=pending_payment`",
-        "A held slot is blocked from other sessions",
-        "The hold auto-releases after 10 minutes",
-        "The E2E test passes"
+        "A completed flow creates a booking with status `pending_payment`, verified by `pnpm test`",
+        "A second session requesting the held slot receives HTTP 409",
+        "The hold releases after 10 minutes",
+        "`pnpm test` passes"
       ]
     },
     {
       "id": "booking-confirmation",
-      "title": "Booking confirmation page and notification stub",
-      "why": "Customers need proof of booking, and the domain event is the seam that later notification work plugs into.",
-      "scope": "After booking, show a confirmation screen with an `.ics` download and signed reschedule/cancel links. Emit a stub notification event.",
+      "title": "Booking confirmation and notification stub",
+      "why": "Customers need proof of booking, and the domain event is the seam later notification work plugs into.",
+      "scope": "Confirmation screen with an `.ics` download and signed reschedule and cancel links.",
       "tasks": [
-        "Confirmation page",
-        "Generate an `.ics` file",
-        "Signed tokens with 30-day expiry for reschedule and cancel",
-        "Emit a `booking.confirmed` domain event"
+        "Add `app/[slug]/book/confirmed/page.tsx`: build the page",
+        "Add `lib/ics.ts`: generate the calendar file",
+        "Add `lib/tokens.ts`: sign 30-day tokens",
+        "Add `lib/events.ts`: emit `booking.confirmed` from"
       ],
       "acceptance": [
-        "The `.ics` file imports into Google Calendar cleanly",
-        "A tampered token is rejected",
-        "An expired token is rejected",
-        "The event is emitted and logged"
+        "The generated file from `lib/ics.ts` imports into Google Calendar, verified by `pnpm test`",
+        "A tampered token returns HTTP 400",
+        "An expired token returns HTTP 410",
+        "`pnpm test` passes"
       ]
     }
   ]
