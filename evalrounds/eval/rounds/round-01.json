@@ -1,0 +1,45 @@
+{
+  "round": 1,
+  "specs": [
+    {
+      "id": "scaffold",
+      "title": "Scaffold product repo",
+      "why": "Nothing else can be built until the app skeleton, database client and CI entry points exist.",
+      "scope": "Create a Next.js 14 (App Router) + TypeScript + Tailwind + Prisma + Postgres application in this repository. Add `.env.example`, a `/api/health` route, and baseline lint/format config (ESLint, Prettier).",
+      "non_goals": "Do not modify anything under `.github/` \u2014 CI and agent workflows are managed centrally and changing them mid-run breaks the pipeline that is running you.",
+      "tasks": [
+        "Initialize Next.js app with TypeScript and Tailwind",
+        "Add Prisma with Postgres provider and empty schema",
+        "Create `/api/health` route returning `{ok: true, version}`",
+        "Add `.env.example` with `DATABASE_URL`, `NEXTAUTH_SECRET`",
+        "Configure ESLint, Prettier, `.editorconfig`",
+        "Add `pnpm dev`, `pnpm build`, `pnpm test` scripts"
+      ],
+      "acceptance": [
+        "`pnpm dev` boots without errors",
+        "`GET /api/health` returns 200 with a JSON body",
+        "`pnpm build` succeeds",
+        "CI passes on this PR"
+      ]
+    },
+    {
+      "id": "schema-v1",
+      "title": "Database schema v1",
+      "why": "Every later feature reads or writes these tables, so the model must land before feature work.",
+      "scope": "Define Prisma models for `Tenant`, `User`, `Service`, `Staff`, `BusinessHour`, `Client`, `Booking`, `Payment`, `AuditLog`. All tenant-owned rows carry `tenantId` with an index. Add a seed script creating one demo tenant with sample services.",
+      "tasks": [
+        "Write Prisma models with relations and indexes",
+        "Add `tenantId` to all tenant-scoped tables",
+        "Create the initial migration",
+        "Write `prisma/seed.ts` with a demo tenant and 3 services",
+        "Document the schema in `docs/DATA_MODEL.md`"
+      ],
+      "acceptance": [
+        "`prisma migrate dev` runs clean",
+        "`prisma db seed` inserts the demo tenant",
+        "All tenant-scoped tables have `@@index([tenantId])`",
+        "Schema doc is checked in"
+      ]
+    }
+  ]
+}

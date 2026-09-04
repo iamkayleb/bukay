@@ -1,0 +1,38 @@
+{
+  "round": 15,
+  "specs": [
+    {
+      "id": "qr-link",
+      "title": "Booking link and QR generation",
+      "why": "Merchants convert walk-in traffic by displaying a scannable link in the shop.",
+      "scope": "After tenant confirmation, generate a branded booking URL and a downloadable QR PNG/PDF for printing.",
+      "tasks": [
+        "QR generation endpoint",
+        "Branded PDF layout with the logo",
+        "Downloadable from the dashboard and sent over WhatsApp"
+      ],
+      "acceptance": [
+        "The QR scans to the correct tenant page",
+        "The PDF prints cleanly at A5",
+        "The owner receives it over WhatsApp after setup"
+      ]
+    },
+    {
+      "id": "no-show-tracking",
+      "title": "No-show tracking",
+      "why": "No-show data is the input to risk scoring and deposit gating.",
+      "scope": "Owner marks bookings as `no_show` from the dashboard or by replying to the booking WhatsApp notification. Updates aggregate client stats.",
+      "tasks": [
+        "`status=no_show` transition",
+        "WhatsApp shortcut reply on the booking notification",
+        "Client no-show count and rate fields",
+        "Audit log entry"
+      ],
+      "acceptance": [
+        "Both surfaces correctly mark a no-show",
+        "The client profile reflects updated stats",
+        "A future booking cannot be marked as a no-show"
+      ]
+    }
+  ]
+}

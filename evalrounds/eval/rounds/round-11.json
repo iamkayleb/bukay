@@ -1,0 +1,39 @@
+{
+  "round": 11,
+  "specs": [
+    {
+      "id": "lifecycle-notifications",
+      "title": "Booking lifecycle notifications",
+      "why": "Automatic confirmations and reminders are the feature merchants ask for first.",
+      "scope": "On booking create, confirm, cancel and reschedule, send WhatsApp to the client with SMS fallback. Owner receives aggregate events. Retry with exponential backoff and a dead-letter queue visible in admin.",
+      "tasks": [
+        "Event subscribers for each lifecycle event",
+        "WhatsApp-first, SMS-fallback dispatcher",
+        "Retry with backoff (2s, 8s, 30s, 2m, 10m)",
+        "Dead-letter table and admin UI"
+      ],
+      "acceptance": [
+        "Messages send for all four lifecycle events",
+        "SMS fallback triggers when WhatsApp fails",
+        "The dead-letter queue shows permanently failed messages"
+      ]
+    },
+    {
+      "id": "reminders",
+      "title": "Reminder scheduler",
+      "why": "Reminders are the single highest-leverage lever on no-show rate.",
+      "scope": "T-24h and T-2h reminders per booking, with a per-tenant toggle. Cron-driven with a lease lock preventing duplicate sends across restarts or multiple workers.",
+      "tasks": [
+        "Cron job running every 5 minutes",
+        "Lease lock using Postgres advisory locks",
+        "Track `reminderSentAt` on the booking",
+        "Tenant setting to disable reminders"
+      ],
+      "acceptance": [
+        "No duplicate reminder across two parallel workers in test",
+        "Reminder windows are accurate to within 5 minutes",
+        "Turning the toggle off stops reminders immediately"
+      ]
+    }
+  ]
+}

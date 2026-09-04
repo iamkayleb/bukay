@@ -1,0 +1,39 @@
+{
+  "round": 18,
+  "specs": [
+    {
+      "id": "embed-widget",
+      "title": "Embeddable booking widget",
+      "why": "Merchants with an existing website convert better booking in place than being sent elsewhere.",
+      "scope": "Script tag and iframe widget the business can embed on their own site. CSP-safe, theme-aware and responsive.",
+      "tasks": [
+        "`/embed/{slug}` iframe route",
+        "`widget.js` loader with automatic size resizing",
+        "Docs page with a copy-paste snippet",
+        "Accessibility audit"
+      ],
+      "acceptance": [
+        "It works on a plain HTML page",
+        "An Axe audit passes with zero critical issues",
+        "Height resizes to content"
+      ]
+    },
+    {
+      "id": "observability",
+      "title": "Observability",
+      "why": "Agent and payment failures are invisible without tracing, and invisible failures are what kill trust.",
+      "scope": "Structured logging, distributed tracing across agent tool calls, dashboards for booking conversion, message delivery, payment success rate and agent tool error rate. Runbook link attached to each alert.",
+      "tasks": [
+        "JSON logger with request and tenant IDs",
+        "OpenTelemetry tracing wrapping agent tools",
+        "Dashboards for the four key metrics",
+        "Alerts with runbook links in `docs/runbooks/`"
+      ],
+      "acceptance": [
+        "Every log line has `requestId` and `tenantId`",
+        "An agent tool call appears as a span",
+        "At least one alert fires in a synthetic failure test"
+      ]
+    }
+  ]
+}

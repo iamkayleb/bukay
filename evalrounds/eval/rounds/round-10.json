@@ -1,0 +1,40 @@
+{
+  "round": 10,
+  "specs": [
+    {
+      "id": "flutterwave",
+      "title": "Flutterwave adapter",
+      "why": "A second provider proves the payment port is a real abstraction and unblocks non-Nigerian markets.",
+      "scope": "Second `PaymentProvider` implementation for Flutterwave. Tenant picks the provider at setup. Contract tests run against both providers in sandbox.",
+      "tasks": [
+        "Flutterwave adapter",
+        "Webhook handler with signature verification",
+        "Tenant setting `paymentProvider`",
+        "Provider-agnostic contract test suite"
+      ],
+      "acceptance": [
+        "Both providers pass the same contract tests",
+        "A tenant can switch provider without data loss",
+        "Ledger writes are identical in shape"
+      ]
+    },
+    {
+      "id": "whatsapp-port",
+      "title": "WhatsApp provider abstraction",
+      "why": "Every messaging feature depends on this port, and isolating it keeps the rest testable without a live channel.",
+      "scope": "`WhatsAppProvider` port and Meta Cloud API adapter. Template message catalog for confirm, remind, cancel and reschedule. Document the template approval process.",
+      "non_goals": "Template approval and a live business number are human prerequisites. Build against the port with a fake adapter so tests pass without them.",
+      "tasks": [
+        "Port interface and Meta adapter",
+        "Template registry module",
+        "Sandbox send helper",
+        "Document the template approval process"
+      ],
+      "acceptance": [
+        "A sandbox send returns 200 and a message ID",
+        "Templates are defined in code and documented",
+        "The adapter is swappable for tests"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "round": 9,
+  "specs": [
+    {
+      "id": "deposits",
+      "title": "Deposits and no-show fees",
+      "why": "Deposits are the merchant's main defence against no-shows and a core selling point.",
+      "scope": "Per-service deposit as a percentage or flat kobo amount. Remaining balance captured at check-in or via a follow-up link. No-show fee chargeable from stored authorization.",
+      "tasks": [
+        "Deposit fields on `Service`",
+        "Split payment into deposit and balance records",
+        "Balance capture endpoint",
+        "No-show fee capture flow"
+      ],
+      "acceptance": [
+        "A deposit-only booking holds the slot as `confirmed_partial`",
+        "Balance capture succeeds and closes the booking",
+        "The no-show fee is recorded in the ledger"
+      ]
+    },
+    {
+      "id": "payout-ledger",
+      "title": "Payout ledger",
+      "why": "Money movement must be auditable and reconcilable, which requires an append-only record.",
+      "scope": "Immutable `LedgerEntry` table (gross, provider fee, platform fee, net, direction). Tenant-facing payout dashboard at `/app/payouts`.",
+      "tasks": [
+        "`LedgerEntry` model, append-only",
+        "Write entries on payment success, refund and payout",
+        "Payout dashboard with CSV export",
+        "Daily reconciliation job against the provider statement"
+      ],
+      "acceptance": [
+        "Ledger totals match the provider daily statement to the kobo",
+        "`UPDATE` and `DELETE` on `LedgerEntry` are rejected by constraint",
+        "CSV export downloads for any date range"
+      ]
+    }
+  ]
+}

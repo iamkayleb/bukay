@@ -1,0 +1,42 @@
+{
+  "round": 8,
+  "specs": [
+    {
+      "id": "paystack-charge",
+      "title": "Paystack charge at booking",
+      "why": "Taking payment at booking time is what makes deposits and no-show protection possible.",
+      "scope": "Integrate Paystack: initialize transaction, redirect to checkout, verify on callback. Use Paystack subaccounts for tenant-level split payout.",
+      "non_goals": "Implement against the port with a recorded/stubbed adapter so tests pass without live Paystack credentials.",
+      "tasks": [
+        "`PaymentProvider` port and Paystack adapter",
+        "Initialize and verify flow",
+        "Subaccount creation during tenant setup",
+        "Booking transitions to `confirmed` on verified payment",
+        "Release the slot on failure after timeout"
+      ],
+      "acceptance": [
+        "A test-mode payment flips the booking to `confirmed`",
+        "A failed payment releases the slot within 10 minutes",
+        "Subaccount split values are correct",
+        "No plaintext keys appear in logs"
+      ]
+    },
+    {
+      "id": "paystack-webhooks",
+      "title": "Paystack webhooks",
+      "why": "Payment state must converge even when the customer closes the tab, which only webhooks guarantee.",
+      "scope": "Handler for `charge.success`, `charge.failed` and `refund.processed`. Verify signature, deduplicate, and update booking and payment state idempotently.",
+      "tasks": [
+        "`POST /api/webhooks/paystack`",
+        "HMAC signature verification",
+        "Idempotency key store with a 7-day TTL",
+        "Dead-letter handling for unrecognized events"
+      ],
+      "acceptance": [
+        "A signature mismatch returns 401",
+        "A replayed event is a no-op",
+        "All three event types update state correctly"
+      ]
+    }
+  ]
+}

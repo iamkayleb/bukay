@@ -1,0 +1,41 @@
+{
+  "round": 12,
+  "specs": [
+    {
+      "id": "whatsapp-inbound",
+      "title": "Inbound WhatsApp webhook and routing",
+      "why": "Two-way messaging is the precondition for the conversational booking agent.",
+      "scope": "Receive inbound WhatsApp messages, identify the business phone number, route to the correct tenant, and persist conversation and message history per client.",
+      "tasks": [
+        "`POST /api/webhooks/whatsapp`",
+        "Route by `to` number to the tenant",
+        "`Conversation` and `Message` models",
+        "Greeting for unknown senders",
+        "Continuity for known clients by phone lookup"
+      ],
+      "acceptance": [
+        "An incoming message is persisted with the correct `tenantId`",
+        "An unknown number receives the greeting template",
+        "A known client is resumed without re-asking identity"
+      ]
+    },
+    {
+      "id": "booking-agent",
+      "title": "Booking agent happy path",
+      "why": "Conversational booking is the product's core differentiator.",
+      "scope": "LLM tool-using agent that books a service over WhatsApp. Tools: `list_services`, `check_availability`, `hold_slot`, `confirm_booking`, `send_payment_link`. Slot holds expire in 15 minutes.",
+      "tasks": [
+        "Agent runtime with a tool registry",
+        "Each tool implemented and tenant-scoped",
+        "Prompt and few-shot examples",
+        "E2E test: book haircut Saturday 2pm, payment link, confirmed",
+        "Save conversation transcripts for review"
+      ],
+      "acceptance": [
+        "The happy-path E2E passes in the test harness",
+        "Tool calls are tenant-scoped and cannot reach another tenant",
+        "A held slot releases after 15 minutes if unpaid"
+      ]
+    }
+  ]
+}
