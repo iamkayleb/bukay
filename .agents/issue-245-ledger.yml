@@ -6,8 +6,8 @@ tasks:
   - id: task-01
     title: Add `prisma/schema.prisma` defining the nine models with relations.
     status: done
-    started_at: '2026-09-07T13:08:01Z'
-    finished_at: '2026-09-07T13:08:10Z'
+    started_at: "2026-09-07T13:08:01Z"
+    finished_at: "2026-09-07T13:08:10Z"
     commit: 28dd2c4e2fec133e7af9d982255652823ccf1b1e
     notes: []
   - id: task-02
@@ -15,117 +15,117 @@ tasks:
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-03
     title: Add `prisma/migrations/` with the initial migration.
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-04
     title: Write `prisma/seed.ts` creating one demo tenant and 3 services.
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-05
     title: Add `docs/DATA_MODEL.md` documenting the model.
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-06
-    title: '`pnpm prisma migrate dev` applies without error.'
+    title: "`pnpm prisma migrate dev` applies without error."
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-07
-    title: '`pnpm prisma db seed` inserts the demo tenant, verified by query.'
+    title: "`pnpm prisma db seed` inserts the demo tenant, verified by query."
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-08
     title: Every tenant-scoped model in `prisma/schema.prisma` declares `@@index([tenantId])`.
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-09
-    title: '`pnpm test` passes.'
+    title: "`pnpm test` passes."
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-10
-    title: 'Add `prisma/schema.prisma`: define the nine models with relations'
+    title: "Add `prisma/schema.prisma`: define the nine models with relations"
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-11
     title: Add `@@index([tenantId])` to every tenant-scoped model
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-12
-    title: 'Add `prisma/migrations/`: generate the initial migration'
+    title: "Add `prisma/migrations/`: generate the initial migration"
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-13
     title: Write `prisma/seed.ts` creating one demo tenant and 3 services
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-14
-    title: 'Add `docs/DATA_MODEL.md`: document the model'
+    title: "Add `docs/DATA_MODEL.md`: document the model"
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-15
-    title: '`pnpm prisma migrate dev` applies without error'
+    title: "`pnpm prisma migrate dev` applies without error"
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-16
-    title: '`pnpm prisma db seed` inserts the demo tenant, verified by query'
+    title: "`pnpm prisma db seed` inserts the demo tenant, verified by query"
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-17
     title: Every tenant-scoped model in `prisma/schema.prisma` declares `@@index([tenantId])`
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-18
-    title: '`pnpm test` passes'
+    title: "`pnpm test` passes"
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
