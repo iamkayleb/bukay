@@ -20,6 +20,13 @@ on:
         required: false
         default: false
         type: boolean
+      base_branch:
+        description: >-
+          Optional base branch for the agent branch. Overrides the issue's
+          `<!-- base-branch: X -->` marker and the repository default.
+        required: false
+        default: ''
+        type: string
       orchestrator_skill_pack:
         description: >-
           Optional reference-pack name override for exported Orchestrator skill context on
@@ -76,6 +83,13 @@ on:
         required: false
         default: false
         type: boolean
+      base_branch:
+        description: >-
+          Optional base branch for the agent branch. Overrides the issue's
+          `<!-- base-branch: X -->` marker and the repository default.
+        required: false
+        default: ''
+        type: string
       orchestrator_skill_pack:
         description: >-
           Optional reference-pack name override for exported Orchestrator skill context on
@@ -96,7 +110,15 @@ permissions:
   actions: write
 
 concurrency:
-  group: codex-belt-dispatcher
+  # Keyed by the forced issue so per-issue dispatches run in parallel. A fixed
+  # group serialises the whole belt: with several issues dispatched at once,
+  # GitHub keeps one running plus one waiting and CANCELS the rest while they
+  # are still pending, which surfaces as a failed run with no jobs and no log.
+  # Auto-select runs (no force_issue) still share one lane, so the "pick the
+  # next issue" path cannot race itself into double-assignment.
+  group: >-
+    belt-dispatcher-${{ inputs.agent_key || 'codex' }}-${{
+      inputs.force_issue || 'auto-select' }}
   cancel-in-progress: false
 
 jobs:
@@ -292,11 +314,41 @@ jobs:
             ]);
 
             const { data: repoInfo } = await withRetry((client) => client.rest.repos.get({ owner, repo }));
-            const base = repoInfo.default_branch;
-            if (!base) {
+            const defaultBranch = repoInfo.default_branch;
+            if (!defaultBranch) {
               core.setFailed('Repository default branch not available');
               return;
             }
+
+            // Base resolution mirrors reusable-agents-issue-bridge.yml: an
+            // explicit input wins, then the issue's `<!-- base-branch: X -->`
+            // marker, then the repository default. Without the marker every
+            // agent branch is cut from the default branch, which silently
+            // defeats any per-lane workflow (evaluation lanes, release trains,
+            // long-lived feature bases).
+            let base = String(process.env.INPUT_BASE_BRANCH || '').trim();
+            let baseSource = base ? 'input' : '';
+            if (!base) {
+              try {
+                const { data: issueData } = await withRetry((client) =>
+                  client.rest.issues.get({ owner, repo, issue_number: issueNumber }));
+                const marker = String(issueData.body || '')
+                  .match(/<!--\s*base-branch:\s*([^\s>]+)\s*-->/);
+                if (marker) { base = marker[1].trim(); baseSource = 'issue-marker'; }
+              } catch (error) {
+                core.warning(`Could not read issue body for a base-branch marker: ${error.message}`);
+              }
+            }
+            if (!base) { base = defaultBranch; baseSource = 'default'; }
+            if (base !== defaultBranch) {
+              try {
+                await withRetry((client) => client.rest.repos.getBranch({ owner, repo, branch: base }));
+              } catch (error) {
+                core.warning(`Base branch '${base}' not found; falling back to '${defaultBranch}'.`);
+                base = defaultBranch; baseSource = 'default-fallback';
+              }
+            }
+            core.info(`Base branch: ${base} (source: ${baseSource})`);
 
             let branchPrefix = 'codex/issue-';
             try {
