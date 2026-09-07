@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: Create `package.json`, `next.config.js`, and `tsconfig.json` to initialize
       the app.
-    status: doing
+    status: done
     started_at: '2026-09-07T13:11:02Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-09-07T13:11:15Z'
+    commit: 8c529001608e7233975817b5781546b63bf43be6
     notes: []
   - id: task-02
     title: Add Tailwind configuration in `tailwind.config.ts` and `app/globals.css`.
