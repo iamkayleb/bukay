@@ -1,6 +1,14 @@
 # See docs/ci/AGENTS_POLICY.md for guardrails and override process.
 name: Agents Auto-Pilot
 
+# Correlating a run to its issue needs the issue number in the run title;
+# without it `gh run list` shows only the workflow name and no per-issue
+# history can be reconstructed.
+run-name: >-
+  Agents Auto-Pilot
+  #${{ github.event.issue.number || github.event.pull_request.number ||
+       inputs.issue_number }}
+
 # End-to-end automation: Issue → Format → Optimize → Apply → Agent → Keepalive → Merge
 # Triggered by:
 # 1. agents:auto-pilot label (initial trigger)
