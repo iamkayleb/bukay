@@ -1,0 +1,161 @@
+version: 1
+issue: 243
+base: main
+branch: claude/issue-243
+tasks:
+  - id: task-01
+    title: Create `package.json`, `next.config.js`, and `tsconfig.json` for the app.
+    status: doing
+    started_at: '2026-09-07T13:10:19Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: Add Tailwind configuration in `tailwind.config.ts` and `app/globals.css`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Add a Postgres Prisma datasource in `prisma/schema.prisma`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Create `app/api/health/route.ts` with `GET /api/health` returning `{ ok,
+      version }`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Add `.env.example` declaring `DATABASE_URL` and `NEXTAUTH_SECRET`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Configure `.eslintrc.json`, `.prettierrc`, and `.editorconfig`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Add `dev`, `build`, and `test` scripts to `package.json`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: '`GET /api/health` returns HTTP 200 with a JSON body.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: '`pnpm test` passes.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: '`pnpm build` completes and `pnpm dev` starts the server.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: CI is green on this pull request.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: Initialize the app with `package.json`, `next.config.js` and `tsconfig.json`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: 'Add `app/globals.css`: add Tailwind via `tailwind.config.ts` and'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: 'Add `prisma/schema.prisma`: add Prisma with a Postgres datasource'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: 'Add `/api/health`: create the  route in `app/api/health/route.ts` returning
+      `{ok, version}`'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: Add `.env.example` declaring `DATABASE_URL` and `NEXTAUTH_SECRET`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: Configure `.eslintrc.json`, `.prettierrc` and `.editorconfig`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: Add `dev`, `build` and `test` scripts to `package.json`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: '`GET /api/health` returns HTTP 200 with a JSON body'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-21
+    title: '`pnpm build` completes and `pnpm dev` starts the server'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-22
+    title: CI is green on this pull request
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
