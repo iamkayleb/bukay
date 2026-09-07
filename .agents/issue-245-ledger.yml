@@ -5,10 +5,10 @@ branch: claude/issue-245
 tasks:
   - id: task-01
     title: Add `prisma/schema.prisma` defining the nine models with relations.
-    status: doing
+    status: done
     started_at: '2026-09-07T13:08:01Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-09-07T13:08:10Z'
+    commit: 28dd2c4e2fec133e7af9d982255652823ccf1b1e
     notes: []
   - id: task-02
     title: Add `@@index([tenantId])` to every tenant-scoped model.
