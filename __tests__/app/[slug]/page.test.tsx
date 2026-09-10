@@ -109,23 +109,27 @@ describe("generateMetadata", () => {
 
     expect(metadata.title).toBe("Bukay Demo Salon | Book with Bukay");
     expect(metadata.description).toContain("Bukay Demo Salon");
+    expect(metadata.metadataBase).toEqual(new URL("http://localhost:3000"));
     expect(metadata.alternates?.canonical).toBe("/demo");
     expect(metadata.openGraph).toMatchObject({
       title: "Bukay Demo Salon | Book with Bukay",
+      url: "/demo",
       type: "website",
       siteName: "Bukay",
     });
     expect(metadata.twitter).toMatchObject({ card: "summary" });
   });
 
-  it("builds an absolute canonical URL when ROOT_HOST is set", async () => {
+  it("resolves canonical and og:url against ROOT_HOST when it is set", async () => {
     const previous = process.env.ROOT_HOST;
     process.env.ROOT_HOST = "bukay.app";
     state.findUnique.mockResolvedValue(tenant());
 
     const metadata = await generateMetadata({ params: { slug: "demo" } });
 
-    expect(metadata.alternates?.canonical).toBe("https://bukay.app/demo");
+    expect(metadata.metadataBase).toEqual(new URL("https://bukay.app"));
+    expect(metadata.alternates?.canonical).toBe("/demo");
+    expect(metadata.openGraph).toMatchObject({ url: "/demo" });
 
     process.env.ROOT_HOST = previous;
   });
