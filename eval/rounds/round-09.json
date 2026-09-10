@@ -8,9 +8,9 @@
       "scope": "Per-service deposit as percentage or flat amount, with balance capture and no-show fees.",
       "tasks": [
         "Add `prisma/schema.prisma`: add deposit columns to the `Service` model",
-        "Add `lib/payments/split.ts`: split deposit and balance records",
+        "Add `app/lib/payments/split.ts`: split deposit and balance records",
         "Add `app/api/payments/capture/route.ts`: implement",
-        "Add `lib/payments/no-show.ts`: implement the no-show fee path"
+        "Add `app/lib/payments/no-show.ts`: implement the no-show fee path"
       ],
       "acceptance": [
         "A deposit-only booking holds status `confirmed_partial`, verified by `pnpm test`",
@@ -26,7 +26,7 @@
       "scope": "Immutable ledger of gross, provider fee, platform fee, net and direction, with a tenant payout dashboard.",
       "tasks": [
         "Add `prisma/schema.prisma`: add the `LedgerEntry` model with an append-only trigger",
-        "Add `lib/ledger.ts`: write entries from  on payment, refund and payout",
+        "Add `app/lib/ledger.ts`: write entries from  on payment, refund and payout",
         "Add `app/(app)/payouts/page.tsx`: build the dashboard with CSV export",
         "Add `scripts/reconcile.ts`: add the reconciliation job"
       ],

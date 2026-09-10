@@ -8,9 +8,9 @@
       "scope": "Receive inbound messages, route by business number to the tenant, and persist conversation history.",
       "tasks": [
         "Add `app/api/webhooks/whatsapp/route.ts`: implement",
-        "Add `lib/whatsapp/routing.ts`: resolve the tenant by number",
+        "Add `app/lib/whatsapp/routing.ts`: resolve the tenant by number",
         "Add `prisma/schema.prisma`: add `Conversation` and `Message` models",
-        "Add `lib/whatsapp/templates.ts`: send the greeting template from  for unknown senders"
+        "Add `app/lib/whatsapp/templates.ts`: send the greeting template from  for unknown senders"
       ],
       "acceptance": [
         "An inbound message persists with the correct `tenantId`, verified by `pnpm test`",
@@ -25,10 +25,10 @@
       "why": "Conversational booking is the product's core differentiator.",
       "scope": "Tool-using agent that books a service over chat, with slot holds expiring in 15 minutes.",
       "tasks": [
-        "Add `lib/agent/runtime.ts`: add the runtime and registry",
-        "Add `lib/agent/tools/`: implement the five tools",
-        "Add `lib/agent/prompt.ts`: add the prompt",
-        "Add `tests/agent-booking.test.ts` covering the full path",
+        "Add `app/lib/agent/runtime.ts`: add the runtime and registry",
+        "Add `app/lib/agent/tools/`: implement the five tools",
+        "Add `app/lib/agent/prompt.ts`: add the prompt",
+        "Add `__tests__/agent-booking.test.ts` covering the full path",
         "Add `prisma/schema.prisma`: persist transcripts via the `Message` model"
       ],
       "acceptance": [

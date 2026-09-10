@@ -11,10 +11,14 @@ Reminders are the single highest-leverage lever on no-show rate.
 
 T-24h and T-2h reminders per booking with a per-tenant toggle and duplicate-safe scheduling.
 
+## Non-Goals
+
+Nothing beyond the scope above. Do not modify files under `.github/`.
+
 ## Tasks
 
 - [ ] Add `scripts/reminder-cron.ts`: add the job running every 5 minutes
-- [ ] Add `lib/locks.ts`: take Postgres advisory locks
+- [ ] Add `app/lib/locks.ts`: take Postgres advisory locks
 - [ ] Add `prisma/schema.prisma`: add `reminderSentAt` to the `Booking` model
 - [ ] Add `app/(app)/settings/page.tsx`: add the tenant toggle
 
@@ -24,3 +28,16 @@ T-24h and T-2h reminders per booking with a per-tenant toggle and duplicate-safe
 - [ ] Reminder dispatch falls within 5 minutes of the target time
 - [ ] Disabling the toggle stops subsequent reminders
 - [ ] `pnpm test` passes
+
+## Implementation Notes
+
+Seeded for the `cursor` evaluation lane. Work on the branch cut for this issue and open the pull request against `eval/cursor`. Keep changes limited to the files named in Tasks. This repository puts application code under `app/` (for example `app/lib/`) and tests under `__tests__/`; follow the existing layout rather than creating a parallel tree.
+
+<details>
+<summary>Original Issue</summary>
+
+```text
+Seeded from eval/rounds/round-11.json, spec `reminders`, agent `cursor`.
+```
+
+</details>

@@ -11,6 +11,10 @@ Services are the unit customers book, so they must exist before availability or 
 
 Owner can create, edit, archive and delete services with fields name, durationMinutes, priceKobo, bufferMinutes and active.
 
+## Non-Goals
+
+Nothing beyond the scope above. Do not modify files under `.github/`.
+
 ## Tasks
 
 - [ ] Add `lib/schemas/service.ts`: define Zod schemas
@@ -25,3 +29,16 @@ Owner can create, edit, archive and delete services with fields name, durationMi
 - [ ] Prices persist as integer kobo in the `Service` table
 - [ ] An invalid payload returns HTTP 400 with inline field errors
 - [ ] Archived services are absent from booking surfaces
+
+## Implementation Notes
+
+Seeded for the `codex` evaluation lane. Work on the branch cut for this issue and open the pull request against `eval/codex`. Keep changes limited to the files named in Tasks.
+
+<details>
+<summary>Original Issue</summary>
+
+```text
+Seeded from eval/rounds/round-03.json, spec `services-crud`, agent `codex`.
+```
+
+</details>

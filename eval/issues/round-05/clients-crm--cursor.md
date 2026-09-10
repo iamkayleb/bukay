@@ -11,6 +11,10 @@ Repeat business is the core value for these merchants, which requires client his
 
 Client list with search by name or phone, and a profile showing history, lifetime value, no-shows, tags and notes.
 
+## Non-Goals
+
+Nothing beyond the scope above. Do not modify files under `.github/`.
+
 ## Tasks
 
 - [ ] Add `app/(app)/clients/page.tsx`: build the searchable list
@@ -25,3 +29,16 @@ Client list with search by name or phone, and a profile showing history, lifetim
 - [ ] The profile lists every past booking for that client
 - [ ] Tags persist and filter the list
 - [ ] `pnpm test` passes
+
+## Implementation Notes
+
+Seeded for the `cursor` evaluation lane. Work on the branch cut for this issue and open the pull request against `eval/cursor`. Keep changes limited to the files named in Tasks.
+
+<details>
+<summary>Original Issue</summary>
+
+```text
+Seeded from eval/rounds/round-05.json, spec `clients-crm`, agent `cursor`.
+```
+
+</details>

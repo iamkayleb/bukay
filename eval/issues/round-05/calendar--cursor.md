@@ -11,6 +11,10 @@ The calendar is the owner's primary daily surface for seeing and moving work.
 
 Day and week calendar views with click-to-edit and drag-to-reschedule.
 
+## Non-Goals
+
+Nothing beyond the scope above. Do not modify files under `.github/`.
+
 ## Tasks
 
 - [ ] Add `app/(app)/calendar/page.tsx`: build day and week views
@@ -24,3 +28,16 @@ Day and week calendar views with click-to-edit and drag-to-reschedule.
 - [ ] An overlapping or out-of-hours drag reverts and returns HTTP 409
 - [ ] The `AuditLog` row records both previous and new times
 - [ ] `pnpm test` passes
+
+## Implementation Notes
+
+Seeded for the `cursor` evaluation lane. Work on the branch cut for this issue and open the pull request against `eval/cursor`. Keep changes limited to the files named in Tasks.
+
+<details>
+<summary>Original Issue</summary>
+
+```text
+Seeded from eval/rounds/round-05.json, spec `calendar`, agent `cursor`.
+```
+
+</details>

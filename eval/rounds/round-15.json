@@ -8,7 +8,7 @@
       "scope": "Generate a branded booking URL and a downloadable QR image and PDF.",
       "tasks": [
         "Add `app/api/qr/[slug]/route.ts`: implement",
-        "Add `lib/qr-pdf.ts`: build the branded PDF",
+        "Add `app/lib/qr-pdf.ts`: build the branded PDF",
         "Add `app/(app)/settings/page.tsx`: add the download control"
       ],
       "acceptance": [
@@ -24,10 +24,10 @@
       "why": "No-show data is the input to risk scoring and deposit gating.",
       "scope": "Owner marks bookings as no-show from the dashboard or by replying to the WhatsApp notification.",
       "tasks": [
-        "Add `lib/booking-status.ts`: add the `no_show` transition",
-        "Add `lib/whatsapp/routing.ts`: handle the reply shortcut",
+        "Add `app/lib/booking-status.ts`: add the `no_show` transition",
+        "Add `app/lib/whatsapp/routing.ts`: handle the reply shortcut",
         "Add `prisma/schema.prisma`: add no-show counters to the `Client` model",
-        "Add `lib/audit.ts`: write an `AuditLog` row from"
+        "Add `app/lib/audit.ts`: write an `AuditLog` row from"
       ],
       "acceptance": [
         "Both surfaces set status `no_show`, verified by `pnpm test`",

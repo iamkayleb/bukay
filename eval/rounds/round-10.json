@@ -7,13 +7,13 @@
       "why": "A second provider proves the payment port is a real abstraction and unblocks other markets.",
       "scope": "Second PaymentProvider implementation with tenant-level provider selection and shared contract tests.",
       "tasks": [
-        "Add `lib/payments/flutterwave.ts`: add the adapter",
+        "Add `app/lib/payments/flutterwave.ts`: add the adapter",
         "Add `app/api/webhooks/flutterwave/route.ts`: implement  with signature checks",
         "Add `prisma/schema.prisma`: add the `paymentProvider` column to the `Tenant` model",
-        "Add `tests/payment-contract.test.ts`: add the shared suite"
+        "Add `__tests__/payment-contract.test.ts`: add the shared suite"
       ],
       "acceptance": [
-        "Both adapters pass `tests/payment-contract.test.ts`, verified by `pnpm test`",
+        "Both adapters pass `__tests__/payment-contract.test.ts`, verified by `pnpm test`",
         "Switching provider preserves existing `LedgerEntry` rows",
         "Ledger writes from both adapters have identical shape",
         "`pnpm test` passes"
@@ -26,15 +26,15 @@
       "scope": "WhatsAppProvider port with a Meta Cloud API adapter and a template catalog.",
       "non_goals": "Template approval and a live business number are human prerequisites; tests must use the fake adapter.",
       "tasks": [
-        "Add `lib/whatsapp/provider.ts`: define the port",
-        "Add `lib/whatsapp/meta.ts`: add the adapter and a fake in `lib/whatsapp/fake.ts`",
-        "Add `lib/whatsapp/templates.ts`: add the template registry",
+        "Add `app/lib/whatsapp/provider.ts`: define the port",
+        "Add `app/lib/whatsapp/meta.ts`: add the adapter and a fake in `app/lib/whatsapp/fake.ts`",
+        "Add `app/lib/whatsapp/templates.ts`: add the template registry",
         "Add `docs/WHATSAPP_TEMPLATES.md`: document approval steps"
       ],
       "acceptance": [
         "A sandbox send returns HTTP 200 with a message id, verified by `pnpm test`",
-        "Every template in `lib/whatsapp/templates.ts` is documented",
-        "`lib/whatsapp/fake.ts` substitutes for the adapter in tests",
+        "Every template in `app/lib/whatsapp/templates.ts` is documented",
+        "`app/lib/whatsapp/fake.ts` substitutes for the adapter in tests",
         "`pnpm test` passes"
       ]
     }

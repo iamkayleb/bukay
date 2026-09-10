@@ -9,13 +9,14 @@
 # the `<!-- eval-spec: -->` + `<!-- eval-agent: -->` markers, so re-running is safe.
 set -uo pipefail
 REPO="${REPO:-iamkayleb/bukay}"
-ROUND="${1:?usage: create-round.sh <round> [--apply] [--agent <name>]}"
+ROUND="${1:?usage: create-round.sh <round> [--apply] [--agent <name>] [--spec <id>]}"
 shift || true
-APPLY=0; ONLY=""
+APPLY=0; ONLY=""; ONLYSPEC=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --apply) APPLY=1 ;;
     --agent) shift; ONLY="${1:-}" ;;
+    --spec)  shift; ONLYSPEC="${1:-}" ;;
   esac
   shift || true
 done
@@ -23,7 +24,7 @@ RD=$(printf 'round-%02d' "$ROUND")
 DIR="eval/issues/$RD"
 [ -d "$DIR" ] || { echo "no such directory: $DIR"; exit 1; }
 
-echo "repo=$REPO  round=$ROUND  mode=$([ $APPLY -eq 1 ] && echo APPLY || echo DRY-RUN)${ONLY:+  agent=$ONLY}"
+echo "repo=$REPO  round=$ROUND  mode=$([ $APPLY -eq 1 ] && echo APPLY || echo DRY-RUN)${ONLY:+  agent=$ONLY}${ONLYSPEC:+  spec=$ONLYSPEC}"
 echo
 
 # Existing markers for this round, so re-runs do not duplicate.
@@ -37,6 +38,7 @@ for f in "$DIR"/*.md; do
   spec="${base%%--*}"
   agent="${base##*--}"
   [ -n "$ONLY" ] && [ "$agent" != "$ONLY" ] && continue
+  [ -n "$ONLYSPEC" ] && [ "$spec" != "$ONLYSPEC" ] && continue
 
   # a matching issue needs BOTH markers present in the same round
   if gh issue list --repo "$REPO" --label "eval:round-$ROUND" --state all --limit 200 \

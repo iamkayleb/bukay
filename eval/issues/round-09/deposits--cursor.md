@@ -11,12 +11,16 @@ Deposits are the merchant's main defence against no-shows and a core selling poi
 
 Per-service deposit as percentage or flat amount, with balance capture and no-show fees.
 
+## Non-Goals
+
+Nothing beyond the scope above. Do not modify files under `.github/`.
+
 ## Tasks
 
 - [ ] Add `prisma/schema.prisma`: add deposit columns to the `Service` model
-- [ ] Add `lib/payments/split.ts`: split deposit and balance records
+- [ ] Add `app/lib/payments/split.ts`: split deposit and balance records
 - [ ] Add `app/api/payments/capture/route.ts`: implement
-- [ ] Add `lib/payments/no-show.ts`: implement the no-show fee path
+- [ ] Add `app/lib/payments/no-show.ts`: implement the no-show fee path
 
 ## Acceptance Criteria
 
@@ -24,3 +28,16 @@ Per-service deposit as percentage or flat amount, with balance capture and no-sh
 - [ ] Balance capture returns HTTP 200 and closes the booking
 - [ ] The no-show fee writes a `LedgerEntry` row
 - [ ] `pnpm test` passes
+
+## Implementation Notes
+
+Seeded for the `cursor` evaluation lane. Work on the branch cut for this issue and open the pull request against `eval/cursor`. Keep changes limited to the files named in Tasks. This repository puts application code under `app/` (for example `app/lib/`) and tests under `__tests__/`; follow the existing layout rather than creating a parallel tree.
+
+<details>
+<summary>Original Issue</summary>
+
+```text
+Seeded from eval/rounds/round-09.json, spec `deposits`, agent `cursor`.
+```
+
+</details>

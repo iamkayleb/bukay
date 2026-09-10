@@ -13,15 +13,15 @@ Initialize a transaction, redirect to checkout and verify on callback, with tena
 
 ## Non-Goals
 
-Use `lib/payments/fake.ts` in tests. Live Paystack credentials must not be required for CI.
+Use `app/lib/payments/fake.ts` in tests. Live Paystack credentials must not be required for CI.
 
 ## Tasks
 
-- [ ] Add `lib/payments/provider.ts`: define the `PaymentProvider` port
-- [ ] Add `lib/payments/paystack.ts`: add the adapter and a fake in `lib/payments/fake.ts`
+- [ ] Add `app/lib/payments/provider.ts`: define the `PaymentProvider` port
+- [ ] Add `app/lib/payments/paystack.ts`: add the adapter and a fake in `app/lib/payments/fake.ts`
 - [ ] Add `app/api/payments/verify/route.ts`: implement the callback
-- [ ] Add `lib/payments/subaccount.ts`: create subaccounts during setup
-- [ ] Add `lib/slot-hold.ts`: release held slots on failure
+- [ ] Add `app/lib/payments/subaccount.ts`: create subaccounts during setup
+- [ ] Add `app/lib/slot-hold.ts`: release held slots on failure
 
 ## Acceptance Criteria
 
@@ -29,3 +29,16 @@ Use `lib/payments/fake.ts` in tests. Live Paystack credentials must not be requi
 - [ ] A failed payment releases the slot within 10 minutes
 - [ ] The subaccount split matches the configured percentage
 - [ ] No secret value appears in logs, verified by `pnpm test`
+
+## Implementation Notes
+
+Seeded for the `codex` evaluation lane. Work on the branch cut for this issue and open the pull request against `eval/codex`. Keep changes limited to the files named in Tasks. This repository puts application code under `app/` (for example `app/lib/`) and tests under `__tests__/`; follow the existing layout rather than creating a parallel tree.
+
+<details>
+<summary>Original Issue</summary>
+
+```text
+Seeded from eval/rounds/round-08.json, spec `paystack-charge`, agent `codex`.
+```
+
+</details>

@@ -11,12 +11,16 @@ Two-way messaging is the precondition for the conversational booking agent.
 
 Receive inbound messages, route by business number to the tenant, and persist conversation history.
 
+## Non-Goals
+
+Nothing beyond the scope above. Do not modify files under `.github/`.
+
 ## Tasks
 
 - [ ] Add `app/api/webhooks/whatsapp/route.ts`: implement
-- [ ] Add `lib/whatsapp/routing.ts`: resolve the tenant by number
+- [ ] Add `app/lib/whatsapp/routing.ts`: resolve the tenant by number
 - [ ] Add `prisma/schema.prisma`: add `Conversation` and `Message` models
-- [ ] Add `lib/whatsapp/templates.ts`: send the greeting template from  for unknown senders
+- [ ] Add `app/lib/whatsapp/templates.ts`: send the greeting template from  for unknown senders
 
 ## Acceptance Criteria
 
@@ -24,3 +28,16 @@ Receive inbound messages, route by business number to the tenant, and persist co
 - [ ] An unknown number receives the greeting and returns HTTP 200
 - [ ] A known client resumes without re-identification
 - [ ] `pnpm test` passes
+
+## Implementation Notes
+
+Seeded for the `codex` evaluation lane. Work on the branch cut for this issue and open the pull request against `eval/codex`. Keep changes limited to the files named in Tasks. This repository puts application code under `app/` (for example `app/lib/`) and tests under `__tests__/`; follow the existing layout rather than creating a parallel tree.
+
+<details>
+<summary>Original Issue</summary>
+
+```text
+Seeded from eval/rounds/round-12.json, spec `whatsapp-inbound`, agent `codex`.
+```
+
+</details>

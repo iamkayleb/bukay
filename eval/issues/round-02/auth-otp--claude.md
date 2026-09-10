@@ -30,3 +30,16 @@ Use the fake SMS adapter in tests. Live Termii credentials must not be required 
 - [ ] An expired or reused OTP is rejected with HTTP 401
 - [ ] Rate limiting blocks repeated attempts
 - [ ] `pnpm test` passes
+
+## Implementation Notes
+
+Seeded for the `claude` evaluation lane. Work on the branch cut for this issue and open the pull request against `eval/claude`. Keep changes limited to the files named in Tasks.
+
+<details>
+<summary>Original Issue</summary>
+
+```text
+Seeded from eval/rounds/round-02.json, spec `auth-otp`, agent `claude`.
+```
+
+</details>

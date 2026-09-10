@@ -28,3 +28,16 @@ If object-storage credentials are unavailable, implement `lib/storage/local.ts` 
 - [ ] Logo and brand colour render on `/{slug}`
 - [ ] A duplicate slug returns HTTP 409 with a field-level message
 - [ ] `pnpm test` passes
+
+## Implementation Notes
+
+Seeded for the `codex` evaluation lane. Work on the branch cut for this issue and open the pull request against `eval/codex`. Keep changes limited to the files named in Tasks.
+
+<details>
+<summary>Original Issue</summary>
+
+```text
+Seeded from eval/rounds/round-05.json, spec `tenant-settings`, agent `codex`.
+```
+
+</details>

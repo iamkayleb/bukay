@@ -31,3 +31,16 @@ Do not modify any file under `.github/` — those workflows are centrally manage
 - [ ] `pnpm test` passes
 - [ ] `pnpm build` completes and `pnpm dev` starts the server
 - [ ] CI is green on this pull request
+
+## Implementation Notes
+
+Seeded for the `codex` evaluation lane. Work on the branch cut for this issue and open the pull request against `eval/codex`. Keep changes limited to the files named in Tasks.
+
+<details>
+<summary>Original Issue</summary>
+
+```text
+Seeded from eval/rounds/round-01.json, spec `scaffold`, agent `codex`.
+```
+
+</details>
