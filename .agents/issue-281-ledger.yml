@@ -1,0 +1,77 @@
+version: 1
+issue: 281
+base: main
+branch: codex/issue-281
+tasks:
+  - id: task-01
+    title: 'Add `app/lib/availability.ts`: implement `computeSlots()`'
+    status: doing
+    started_at: '2026-09-10T15:15:16Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Add `app/lib/availability.ts`: handle service duration plus buffer'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Add `app/lib/availability.ts`: handle lead time plus the max-advance window'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Add `__tests__/availability.test.ts`: add the slot fixtures'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Add `__tests__/availability.test.ts`: add the edge-case cases'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Add `__tests__/availability.bench.ts`: add a 1000-booking benchmark'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Branch coverage of `app/lib/availability.ts` is 95% or above, verified
+      by `pnpm test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Every fixture in `__tests__/availability.test.ts` returns the expected
+      slots
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: The benchmark completes in under 50ms
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
