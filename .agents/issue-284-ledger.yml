@@ -5,10 +5,10 @@ branch: codex/issue-284
 tasks:
   - id: task-01
     title: 'Add `app/[slug]/page.tsx`: build the SSR route'
-    status: doing
+    status: done
     started_at: '2026-09-10T15:15:10Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-09-10T15:15:22Z'
+    commit: dc697667700d92b2b94e23f525877e85850e0c01
     notes: []
   - id: task-02
     title: 'Add `app/[slug]/page.tsx`: return `notFound()` for missing or inactive
