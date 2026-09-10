@@ -1,0 +1,69 @@
+version: 1
+issue: 284
+base: main
+branch: codex/issue-284
+tasks:
+  - id: task-01
+    title: 'Add `app/[slug]/page.tsx`: build the SSR route'
+    status: doing
+    started_at: '2026-09-10T15:15:10Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Add `app/[slug]/page.tsx`: return `notFound()` for missing or inactive
+      tenants'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Add `app/[slug]/head.tsx`: add the SEO meta tags'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Add `app/[slug]/head.tsx`: add the Open Graph tags'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Set stale-while-revalidate headers in `next.config.js`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: A valid slug responds with HTTP 200 under 500ms TTFB
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: An unknown slug returns HTTP 404
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Lighthouse SEO score is 95 or above
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
