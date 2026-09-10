@@ -98,6 +98,41 @@ describe("computeSlots fixtures", () => {
     ]);
   });
 
+  it("skips past earlier bookings and still blocks later overlaps", () => {
+    const bookings: ExistingBooking[] = [
+      {
+        startsAt: "2026-07-27T08:00:00.000Z",
+        endsAt: "2026-07-27T08:30:00.000Z",
+      },
+      {
+        startsAt: "2026-07-27T10:30:00.000Z",
+        endsAt: "2026-07-27T11:00:00.000Z",
+      },
+      {
+        startsAt: "2026-07-27T13:00:00.000Z",
+        endsAt: "2026-07-27T14:00:00.000Z",
+      },
+    ];
+
+    const slots = computeSlots(
+      { durationMinutes: 30, slotIntervalMinutes: 30 },
+      {
+        start: "2026-07-27T09:00:00.000Z",
+        end: "2026-07-27T12:00:00.000Z",
+      },
+      bookings,
+      weekdayHours
+    );
+
+    expect(slotTimes(slots)).toEqual([
+      ["2026-07-27T09:00:00.000Z", "2026-07-27T09:30:00.000Z"],
+      ["2026-07-27T09:30:00.000Z", "2026-07-27T10:00:00.000Z"],
+      ["2026-07-27T10:00:00.000Z", "2026-07-27T10:30:00.000Z"],
+      ["2026-07-27T11:00:00.000Z", "2026-07-27T11:30:00.000Z"],
+      ["2026-07-27T11:30:00.000Z", "2026-07-27T12:00:00.000Z"],
+    ]);
+  });
+
   it("applies before and after buffers around candidate slots", () => {
     const bookings: ExistingBooking[] = [
       {

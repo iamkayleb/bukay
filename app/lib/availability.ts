@@ -143,13 +143,18 @@ function overlapsAnyBooking(
   bookings: Array<{ startsAt: number; endsAt: number }>
 ) {
   for (const booking of bookings) {
+    // Bookings are sorted by startsAt; once one begins at/after the blocked
+    // window ends, no later booking can overlap.
     if (booking.startsAt >= blockedEnd) {
       return false;
     }
 
-    if (booking.startsAt < blockedEnd && booking.endsAt > blockedStart) {
-      return true;
+    // Skip bookings that end at or before the blocked window starts.
+    if (booking.endsAt <= blockedStart) {
+      continue;
     }
+
+    return true;
   }
 
   return false;
