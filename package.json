@@ -12,6 +12,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "lighthouse:mobile": "lhci autorun --config=lighthouserc.json",
+    "lighthouse:shopfront": "node scripts/lighthouse-shopfront.mjs",
     "prisma:generate": "prisma generate",
     "postinstall": "prisma generate",
     "migrate:dev": "prisma migrate dev",
