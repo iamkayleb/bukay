@@ -189,8 +189,12 @@ workloop-state.md
 coverage.xml
 
 # Wrong package manager artifacts (defense-in-depth)
+# NOTE: pnpm-lock.yaml is NOT listed here — this repo's package manager is
+# pnpm (see pnpm-workspace.yaml, package.json), and ci.yml runs
+# `pnpm install --frozen-lockfile`, which requires the lockfile to be tracked.
 Pipfile.lock
 poetry.lock
+package-lock.json
 
 # Accidentally-committed dependency trees
 # ROOT-ANCHORED ON PURPOSE. A bare `node_modules/` matches at every depth and would swallow
