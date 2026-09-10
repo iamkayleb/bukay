@@ -5,10 +5,10 @@ branch: codex/issue-281
 tasks:
   - id: task-01
     title: 'Add `app/lib/availability.ts`: implement `computeSlots()`'
-    status: doing
+    status: done
     started_at: '2026-09-10T15:15:16Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-09-10T15:15:28Z'
+    commit: a18719be1ec11ffb67b29e46fc3f1bd4f0172b92
     notes: []
   - id: task-02
     title: 'Add `app/lib/availability.ts`: handle service duration plus buffer'
