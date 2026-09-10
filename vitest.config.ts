@@ -6,8 +6,17 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "node",
-    include: ["__tests__/**/*.test.ts", "__tests__/**/*.test.tsx", "test/**/*.test.ts"],
+    include: [
+      "__tests__/**/*.test.ts",
+      "__tests__/**/*.test.tsx",
+      "__tests__/**/*.bench.ts",
+      "test/**/*.test.ts",
+    ],
     testTimeout: 120_000,
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "text-summary"],
+    },
   },
   resolve: {
     alias: {
