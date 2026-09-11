@@ -9,7 +9,8 @@
       "tasks": [
         "Add `app/api/webhooks/whatsapp/route.ts`: implement",
         "Add `app/lib/whatsapp/routing.ts`: resolve the tenant by number",
-        "Add `prisma/schema.prisma`: add `Conversation` and `Message` models",
+        "Add `prisma/schema.prisma`: add the `Conversation` model",
+        "Add `prisma/schema.prisma`: add the `Message` model",
         "Add `app/lib/whatsapp/templates.ts`: send the greeting template from  for unknown senders"
       ],
       "acceptance": [
@@ -25,7 +26,8 @@
       "why": "Conversational booking is the product's core differentiator.",
       "scope": "Tool-using agent that books a service over chat, with slot holds expiring in 15 minutes.",
       "tasks": [
-        "Add `app/lib/agent/runtime.ts`: add the runtime and registry",
+        "Add `app/lib/agent/runtime.ts`: add the agent runtime",
+        "Add `app/lib/agent/runtime.ts`: add the tool registry",
         "Add `app/lib/agent/tools/`: implement the five tools",
         "Add `app/lib/agent/prompt.ts`: add the prompt",
         "Add `__tests__/agent-booking.test.ts` covering the full path",

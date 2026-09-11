@@ -13,11 +13,12 @@ Tool-using agent that books a service over chat, with slot holds expiring in 15 
 
 ## Non-Goals
 
-Nothing beyond the scope above. Do not modify files under `.github/`.
+Nothing beyond the scope above. Leave repository automation configuration untouched.
 
 ## Tasks
 
-- [ ] Add `app/lib/agent/runtime.ts`: add the runtime and registry
+- [ ] Add `app/lib/agent/runtime.ts`: add the agent runtime
+- [ ] Add `app/lib/agent/runtime.ts`: add the tool registry
 - [ ] Add `app/lib/agent/tools/`: implement the five tools
 - [ ] Add `app/lib/agent/prompt.ts`: add the prompt
 - [ ] Add `__tests__/agent-booking.test.ts` covering the full path
@@ -32,13 +33,13 @@ Nothing beyond the scope above. Do not modify files under `.github/`.
 
 ## Implementation Notes
 
-Seeded for the `cursor` evaluation lane. Work on the branch cut for this issue and open the pull request against `eval/cursor`. Keep changes limited to the files named in Tasks. This repository puts application code under `app/` (for example `app/lib/`) and tests under `__tests__/`; follow the existing layout rather than creating a parallel tree.
+Seeded for the cursor evaluation lane. Work on the branch cut for this issue and open the pull request against the cursor lane branch. Keep changes limited to the files named in Tasks. Application code lives under the app directory and tests under the repository test directory; follow the existing layout rather than starting a parallel tree.
 
 <details>
 <summary>Original Issue</summary>
 
 ```text
-Seeded from eval/rounds/round-12.json, spec `booking-agent`, agent `cursor`.
+Seeded from the round 12 specification, spec booking-agent, agent cursor.
 ```
 
 </details>

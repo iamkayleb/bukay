@@ -13,12 +13,13 @@ Per-service deposit as percentage or flat amount, with balance capture and no-sh
 
 ## Non-Goals
 
-Nothing beyond the scope above. Do not modify files under `.github/`.
+Nothing beyond the scope above. Leave repository automation configuration untouched.
 
 ## Tasks
 
 - [ ] Add `prisma/schema.prisma`: add deposit columns to the `Service` model
-- [ ] Add `app/lib/payments/split.ts`: split deposit and balance records
+- [ ] Add `app/lib/payments/split.ts`: write the deposit record
+- [ ] Add `app/lib/payments/split.ts`: write the balance record
 - [ ] Add `app/api/payments/capture/route.ts`: implement
 - [ ] Add `app/lib/payments/no-show.ts`: implement the no-show fee path
 
@@ -31,13 +32,13 @@ Nothing beyond the scope above. Do not modify files under `.github/`.
 
 ## Implementation Notes
 
-Seeded for the `claude` evaluation lane. Work on the branch cut for this issue and open the pull request against `eval/claude`. Keep changes limited to the files named in Tasks. This repository puts application code under `app/` (for example `app/lib/`) and tests under `__tests__/`; follow the existing layout rather than creating a parallel tree.
+Seeded for the claude evaluation lane. Work on the branch cut for this issue and open the pull request against the claude lane branch. Keep changes limited to the files named in Tasks. Application code lives under the app directory and tests under the repository test directory; follow the existing layout rather than starting a parallel tree.
 
 <details>
 <summary>Original Issue</summary>
 
 ```text
-Seeded from eval/rounds/round-09.json, spec `deposits`, agent `claude`.
+Seeded from the round 9 specification, spec deposits, agent claude.
 ```
 
 </details>

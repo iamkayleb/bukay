@@ -13,11 +13,12 @@ Structured logging, tracing across agent tool calls, dashboards and alerts with 
 
 ## Non-Goals
 
-Nothing beyond the scope above. Do not modify files under `.github/`.
+Nothing beyond the scope above. Leave repository automation configuration untouched.
 
 ## Tasks
 
-- [ ] Add `app/lib/logger.ts`: implement the logger emitting request and tenant ids
+- [ ] Add `app/lib/logger.ts`: emit a request id on every line
+- [ ] Add `app/lib/logger.ts`: emit a tenant id on every line
 - [ ] Add `app/lib/agent/runtime.ts`: wrap tool calls with spans
 - [ ] Add `ops/dashboards.json`: define dashboards
 - [ ] Add `docs/runbooks/`: write runbooks
@@ -31,13 +32,13 @@ Nothing beyond the scope above. Do not modify files under `.github/`.
 
 ## Implementation Notes
 
-Seeded for the `claude` evaluation lane. Work on the branch cut for this issue and open the pull request against `eval/claude`. Keep changes limited to the files named in Tasks. This repository puts application code under `app/` (for example `app/lib/`) and tests under `__tests__/`; follow the existing layout rather than creating a parallel tree.
+Seeded for the claude evaluation lane. Work on the branch cut for this issue and open the pull request against the claude lane branch. Keep changes limited to the files named in Tasks. Application code lives under the app directory and tests under the repository test directory; follow the existing layout rather than starting a parallel tree.
 
 <details>
 <summary>Original Issue</summary>
 
 ```text
-Seeded from eval/rounds/round-18.json, spec `observability`, agent `claude`.
+Seeded from the round 18 specification, spec observability, agent claude.
 ```
 
 </details>

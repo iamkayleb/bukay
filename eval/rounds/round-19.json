@@ -8,7 +8,8 @@
       "scope": "Internal console for tenant search, audited impersonation, reconciliation and abuse reports.",
       "tasks": [
         "Add `prisma/schema.prisma`: add the `internal_admin` role to the `User` model",
-        "Add `app/admin/page.tsx`: build search and detail",
+        "Add `app/admin/page.tsx`: build the tenant search view",
+        "Add `app/admin/page.tsx`: build the tenant detail view",
         "Add `app/lib/impersonate.ts`: implement impersonation with a banner component",
         "Add `app/admin/reconcile/page.tsx`: build the reconciliation view",
         "Add `app/admin/abuse/page.tsx`: build the abuse queue"
@@ -29,7 +30,8 @@
         "Add `prisma/schema.prisma`: add the `country` column to the `Tenant` model",
         "Add `app/lib/country.ts`: add per-country defaults",
         "Add `app/lib/flags.ts`: gate signup with the flag",
-        "Add `__tests__/ghana.test.ts` covering booking and payment in GHS"
+        "Add `__tests__/ghana.test.ts`: cover a GHS booking",
+        "Add `__tests__/ghana.test.ts`: cover a GHS payment"
       ],
       "acceptance": [
         "A Ghana tenant receives GHS, +233 and Accra defaults, verified by `pnpm test`",

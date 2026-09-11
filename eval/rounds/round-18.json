@@ -25,7 +25,8 @@
       "why": "Agent and payment failures are invisible without tracing, and invisible failures erode trust.",
       "scope": "Structured logging, tracing across agent tool calls, dashboards and alerts with runbook links.",
       "tasks": [
-        "Add `app/lib/logger.ts`: implement the logger emitting request and tenant ids",
+        "Add `app/lib/logger.ts`: emit a request id on every line",
+        "Add `app/lib/logger.ts`: emit a tenant id on every line",
         "Add `app/lib/agent/runtime.ts`: wrap tool calls with spans",
         "Add `ops/dashboards.json`: define dashboards",
         "Add `docs/runbooks/`: write runbooks"

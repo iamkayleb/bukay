@@ -32,13 +32,13 @@ Use `app/lib/payments/fake.ts` in tests. Live Paystack credentials must not be r
 
 ## Implementation Notes
 
-Seeded for the `cursor` evaluation lane. Work on the branch cut for this issue and open the pull request against `eval/cursor`. Keep changes limited to the files named in Tasks. This repository puts application code under `app/` (for example `app/lib/`) and tests under `__tests__/`; follow the existing layout rather than creating a parallel tree.
+Seeded for the cursor evaluation lane. Work on the branch cut for this issue and open the pull request against the cursor lane branch. Keep changes limited to the files named in Tasks. Application code lives under the app directory and tests under the repository test directory; follow the existing layout rather than starting a parallel tree.
 
 <details>
 <summary>Original Issue</summary>
 
 ```text
-Seeded from eval/rounds/round-08.json, spec `paystack-charge`, agent `cursor`.
+Seeded from the round 8 specification, spec paystack-charge, agent cursor.
 ```
 
 </details>

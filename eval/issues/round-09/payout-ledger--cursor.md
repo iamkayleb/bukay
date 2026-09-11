@@ -13,12 +13,14 @@ Immutable ledger of gross, provider fee, platform fee, net and direction, with a
 
 ## Non-Goals
 
-Nothing beyond the scope above. Do not modify files under `.github/`.
+Nothing beyond the scope above. Leave repository automation configuration untouched.
 
 ## Tasks
 
 - [ ] Add `prisma/schema.prisma`: add the `LedgerEntry` model with an append-only trigger
-- [ ] Add `app/lib/ledger.ts`: write entries from  on payment, refund and payout
+- [ ] Add `app/lib/ledger.ts`: write a ledger entry on payment success
+- [ ] Add `app/lib/ledger.ts`: write a ledger entry on refund
+- [ ] Add `app/lib/ledger.ts`: write a ledger entry on payout
 - [ ] Add `app/(app)/payouts/page.tsx`: build the dashboard with CSV export
 - [ ] Add `scripts/reconcile.ts`: add the reconciliation job
 
@@ -31,13 +33,13 @@ Nothing beyond the scope above. Do not modify files under `.github/`.
 
 ## Implementation Notes
 
-Seeded for the `cursor` evaluation lane. Work on the branch cut for this issue and open the pull request against `eval/cursor`. Keep changes limited to the files named in Tasks. This repository puts application code under `app/` (for example `app/lib/`) and tests under `__tests__/`; follow the existing layout rather than creating a parallel tree.
+Seeded for the cursor evaluation lane. Work on the branch cut for this issue and open the pull request against the cursor lane branch. Keep changes limited to the files named in Tasks. Application code lives under the app directory and tests under the repository test directory; follow the existing layout rather than starting a parallel tree.
 
 <details>
 <summary>Original Issue</summary>
 
 ```text
-Seeded from eval/rounds/round-09.json, spec `payout-ledger`, agent `cursor`.
+Seeded from the round 9 specification, spec payout-ledger, agent cursor.
 ```
 
 </details>

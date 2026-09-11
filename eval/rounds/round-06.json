@@ -9,7 +9,8 @@
       "tasks": [
         "Add `app/[slug]/page.tsx`: build the SSR route",
         "Add `app/[slug]/page.tsx`: return `notFound()` for missing or inactive tenants",
-        "Add `app/[slug]/head.tsx`: add SEO and Open Graph tags",
+        "Add `app/[slug]/head.tsx`: add the SEO meta tags",
+        "Add `app/[slug]/head.tsx`: add the Open Graph tags",
         "Set stale-while-revalidate headers in `next.config.js`"
       ],
       "acceptance": [
@@ -26,8 +27,10 @@
       "scope": "Pure function returning open slots from service, date range, existing bookings, hours, buffers, lead time and max advance.",
       "tasks": [
         "Add `app/lib/availability.ts`: implement `computeSlots()`",
-        "Add `app/lib/availability.ts`: handle duration, buffer, lead time and max-advance",
-        "Add `__tests__/availability.test.ts`: add fixtures and edge cases",
+        "Add `app/lib/availability.ts`: handle service duration plus buffer",
+        "Add `app/lib/availability.ts`: handle lead time plus the max-advance window",
+        "Add `__tests__/availability.test.ts`: add the slot fixtures",
+        "Add `__tests__/availability.test.ts`: add the edge-case cases",
         "Add `__tests__/availability.bench.ts`: add a 1000-booking benchmark"
       ],
       "acceptance": [

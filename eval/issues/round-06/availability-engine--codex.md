@@ -13,13 +13,15 @@ Pure function returning open slots from service, date range, existing bookings, 
 
 ## Non-Goals
 
-Nothing beyond the scope above. Do not modify files under `.github/`.
+Nothing beyond the scope above. Leave repository automation configuration untouched.
 
 ## Tasks
 
 - [ ] Add `app/lib/availability.ts`: implement `computeSlots()`
-- [ ] Add `app/lib/availability.ts`: handle duration, buffer, lead time and max-advance
-- [ ] Add `__tests__/availability.test.ts`: add fixtures and edge cases
+- [ ] Add `app/lib/availability.ts`: handle service duration plus buffer
+- [ ] Add `app/lib/availability.ts`: handle lead time plus the max-advance window
+- [ ] Add `__tests__/availability.test.ts`: add the slot fixtures
+- [ ] Add `__tests__/availability.test.ts`: add the edge-case cases
 - [ ] Add `__tests__/availability.bench.ts`: add a 1000-booking benchmark
 
 ## Acceptance Criteria
@@ -31,13 +33,13 @@ Nothing beyond the scope above. Do not modify files under `.github/`.
 
 ## Implementation Notes
 
-Seeded for the `codex` evaluation lane. Work on the branch cut for this issue and open the pull request against `eval/codex`. Keep changes limited to the files named in Tasks. This repository puts application code under `app/` (for example `app/lib/`) and tests under `__tests__/`; follow the existing layout rather than creating a parallel tree.
+Seeded for the codex evaluation lane. Work on the branch cut for this issue and open the pull request against the codex lane branch. Keep changes limited to the files named in Tasks. Application code lives under the app directory and tests under the repository test directory; follow the existing layout rather than starting a parallel tree.
 
 <details>
 <summary>Original Issue</summary>
 
 ```text
-Seeded from eval/rounds/round-06.json, spec `availability-engine`, agent `codex`.
+Seeded from the round 6 specification, spec availability-engine, agent codex.
 ```
 
 </details>
