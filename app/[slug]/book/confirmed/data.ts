@@ -23,7 +23,7 @@ export async function getConfirmedBooking(
     return { ok: false, status: 400 };
   }
 
-  const verified = verifyBookingToken(token);
+  const verified = await verifyBookingToken(token);
   if (!verified.ok) {
     return { ok: false, status: verified.status };
   }

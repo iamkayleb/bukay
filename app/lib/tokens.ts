@@ -1,6 +1,11 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+// Uses the Web Crypto API (globalThis.crypto.subtle) instead of node:crypto
+// so this module works unmodified in Next.js Middleware (Edge runtime),
+// which is where token verification needs to run to produce real HTTP
+// 400/410 responses for the booking confirmation link.
 
 export const BOOKING_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+const HMAC_ALGORITHM = { name: "HMAC", hash: "SHA-256" };
 
 export type BookingTokenPayload = {
   bookingId: string;
@@ -13,13 +18,23 @@ export type BookingTokenVerifyResult =
   | { ok: false; status: 400; reason: "malformed" | "tampered" }
   | { ok: false; status: 410; reason: "expired" };
 
-function b64urlEncode(buf: Buffer): string {
-  return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-function b64urlDecode(input: string): Buffer {
+function base64UrlToBytes(input: string): Uint8Array<ArrayBuffer> {
   const pad = input.length % 4 === 0 ? 0 : 4 - (input.length % 4);
-  return Buffer.from(input.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat(pad), "base64");
+  const base64 = input.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat(pad);
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
 
 function getSecret(secret?: string): string {
@@ -30,18 +45,35 @@ function getSecret(secret?: string): string {
   return s;
 }
 
-export function signBookingTokenPayload(payload: BookingTokenPayload, secret?: string): string {
-  const body = b64urlEncode(Buffer.from(JSON.stringify(payload)));
-  const sig = createHmac("sha256", getSecret(secret)).update(body).digest();
-  return `${body}.${b64urlEncode(sig)}`;
+function importHmacKey(secret: string, usages: KeyUsage[]): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    HMAC_ALGORITHM,
+    false,
+    usages
+  );
 }
 
-export function signBookingToken(bookingId: string, secret?: string): string {
+export async function signBookingTokenPayload(
+  payload: BookingTokenPayload,
+  secret?: string
+): Promise<string> {
+  const body = bytesToBase64Url(new TextEncoder().encode(JSON.stringify(payload)));
+  const key = await importHmacKey(getSecret(secret), ["sign"]);
+  const sig = await crypto.subtle.sign(HMAC_ALGORITHM, key, new TextEncoder().encode(body));
+  return `${body}.${bytesToBase64Url(new Uint8Array(sig))}`;
+}
+
+export async function signBookingToken(bookingId: string, secret?: string): Promise<string> {
   const now = Date.now();
   return signBookingTokenPayload({ bookingId, iat: now, exp: now + BOOKING_TOKEN_TTL_MS }, secret);
 }
 
-export function verifyBookingToken(token: string, secret?: string): BookingTokenVerifyResult {
+export async function verifyBookingToken(
+  token: string | undefined,
+  secret?: string
+): Promise<BookingTokenVerifyResult> {
   if (!token || typeof token !== "string") {
     return { ok: false, status: 400, reason: "malformed" };
   }
@@ -54,22 +86,28 @@ export function verifyBookingToken(token: string, secret?: string): BookingToken
   const body = token.slice(0, dot);
   const sigPart = token.slice(dot + 1);
 
-  let expected: Buffer;
-  let provided: Buffer;
+  let sigBytes: Uint8Array<ArrayBuffer>;
   try {
-    expected = createHmac("sha256", getSecret(secret)).update(body).digest();
-    provided = b64urlDecode(sigPart);
+    sigBytes = base64UrlToBytes(sigPart);
   } catch {
     return { ok: false, status: 400, reason: "malformed" };
   }
 
-  if (expected.length !== provided.length || !timingSafeEqual(expected, provided)) {
+  const key = await importHmacKey(getSecret(secret), ["verify"]);
+  const valid = await crypto.subtle.verify(
+    HMAC_ALGORITHM,
+    key,
+    sigBytes,
+    new TextEncoder().encode(body)
+  );
+
+  if (!valid) {
     return { ok: false, status: 400, reason: "tampered" };
   }
 
   let payload: BookingTokenPayload;
   try {
-    payload = JSON.parse(b64urlDecode(body).toString("utf8")) as BookingTokenPayload;
+    payload = JSON.parse(new TextDecoder().decode(base64UrlToBytes(body))) as BookingTokenPayload;
   } catch {
     return { ok: false, status: 400, reason: "malformed" };
   }

@@ -61,7 +61,7 @@ describe("getConfirmedBooking", () => {
   });
 
   it("returns HTTP 400 for a tampered token", async () => {
-    const token = signBookingToken("booking-1");
+    const token = await signBookingToken("booking-1");
     const tampered = token.slice(0, -2) + "aa";
 
     const result = await getConfirmedBooking("demo", tampered);
@@ -70,7 +70,7 @@ describe("getConfirmedBooking", () => {
 
   it("returns HTTP 410 for an expired token", async () => {
     const past = Date.now() - 10_000;
-    const token = signBookingTokenPayload({
+    const token = await signBookingTokenPayload({
       bookingId: "booking-1",
       iat: past - BOOKING_TOKEN_TTL_MS,
       exp: past,
@@ -81,14 +81,14 @@ describe("getConfirmedBooking", () => {
   });
 
   it("returns HTTP 404 when the booking does not belong to the tenant slug", async () => {
-    const token = signBookingToken("booking-1");
+    const token = await signBookingToken("booking-1");
 
     const result = await getConfirmedBooking("someone-else", token);
     expect(result).toEqual({ ok: false, status: 404 });
   });
 
   it("returns the booking details for a valid token", async () => {
-    const token = signBookingToken("booking-1");
+    const token = await signBookingToken("booking-1");
 
     const result = await getConfirmedBooking("demo", token);
     expect(result).toEqual({
