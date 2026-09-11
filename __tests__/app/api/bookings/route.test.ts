@@ -57,6 +57,7 @@ vi.mock("@/app/db/prisma", () => ({
 }));
 
 import { PATCH } from "@/app/api/bookings/[id]/route";
+import { __resetDomainEventsForTests, onBookingConfirmed } from "@/app/lib/events";
 
 function booking(overrides: Partial<BookingRow> = {}): BookingRow {
   return {
@@ -159,6 +160,7 @@ beforeEach(() => {
       ) ?? null
   );
   state.findBlackoutDateFirst.mockResolvedValue(null);
+  __resetDomainEventsForTests();
 });
 
 describe("PATCH /api/bookings/:id", () => {
@@ -254,5 +256,38 @@ describe("PATCH /api/bookings/:id", () => {
       take: 1,
     });
     expect(state.updateBooking).not.toHaveBeenCalled();
+  });
+
+  it("emits booking.confirmed when a pending booking is confirmed", async () => {
+    state.bookings = [booking({ status: "pending" })];
+    const handler = vi.fn();
+    onBookingConfirmed(handler);
+
+    const res = await PATCH(request("/api/bookings/booking-1", { status: "confirmed" }), {
+      params: { id: "booking-1" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenCalledWith({
+      bookingId: "booking-1",
+      tenantId: "tenant-1",
+      staffId: "staff-1",
+      startsAt: new Date("2026-07-27T10:00:00.000Z"),
+      endsAt: new Date("2026-07-27T11:00:00.000Z"),
+    });
+  });
+
+  it("does not re-emit booking.confirmed when a booking is already confirmed", async () => {
+    state.bookings = [booking({ status: "confirmed" })];
+    const handler = vi.fn();
+    onBookingConfirmed(handler);
+
+    const res = await PATCH(request("/api/bookings/booking-1", { status: "confirmed" }), {
+      params: { id: "booking-1" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(handler).not.toHaveBeenCalled();
   });
 });
