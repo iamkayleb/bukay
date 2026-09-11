@@ -2888,11 +2888,52 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo
             }));
-            const baseBranch = repoInfo.default_branch;
-            if (!baseBranch) {
+            const defaultBranch = repoInfo.default_branch;
+            if (!defaultBranch) {
               core.setFailed('Repository default branch not available');
               return;
             }
+
+            // Resolve the pull request base the same way the issue bridge and the
+            // belt dispatcher do: the issue's `<!-- base-branch: X -->` marker
+            // wins over the repository default. Auto-pilot opens the pull request
+            // itself, so without this the marker is honoured when the branch is
+            // cut and then ignored when the PR is opened — the PR lands on the
+            // default branch and any per-lane workflow silently collapses.
+            let baseBranch = defaultBranch;
+            let baseSource = 'default';
+            try {
+              const { data: baseIssue } = await withRetry((client) =>
+                client.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                }));
+              const marker = String(baseIssue.body || '')
+                .match(/<!--\s*base-branch:\s*([^\s>]+)\s*-->/);
+              if (marker) {
+                const candidate = marker[1].trim();
+                if (candidate && candidate !== defaultBranch) {
+                  try {
+                    await withRetry((client) => client.rest.repos.getBranch({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      branch: candidate,
+                    }));
+                    baseBranch = candidate;
+                    baseSource = 'issue-marker';
+                  } catch (branchError) {
+                    core.warning(
+                      `Base branch '${candidate}' from the issue marker was not found; ` +
+                      `falling back to '${defaultBranch}'.`);
+                    baseSource = 'default-fallback';
+                  }
+                }
+              }
+            } catch (markerError) {
+              core.warning(`Could not read issue #${issueNumber} for a base-branch marker: ${markerError.message}`);
+            }
+            core.info(`Base branch: ${baseBranch} (source: ${baseSource})`);
 
             // If a PR already exists for this branch, stop create-pr loop
             try {
@@ -3759,11 +3800,52 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo
             }));
-            const baseBranch = repoInfo.default_branch;
-            if (!baseBranch) {
+            const defaultBranch = repoInfo.default_branch;
+            if (!defaultBranch) {
               core.setFailed('Repository default branch not available');
               return;
             }
+
+            // Resolve the pull request base the same way the issue bridge and the
+            // belt dispatcher do: the issue's `<!-- base-branch: X -->` marker
+            // wins over the repository default. Auto-pilot opens the pull request
+            // itself, so without this the marker is honoured when the branch is
+            // cut and then ignored when the PR is opened — the PR lands on the
+            // default branch and any per-lane workflow silently collapses.
+            let baseBranch = defaultBranch;
+            let baseSource = 'default';
+            try {
+              const { data: baseIssue } = await withRetry((client) =>
+                client.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                }));
+              const marker = String(baseIssue.body || '')
+                .match(/<!--\s*base-branch:\s*([^\s>]+)\s*-->/);
+              if (marker) {
+                const candidate = marker[1].trim();
+                if (candidate && candidate !== defaultBranch) {
+                  try {
+                    await withRetry((client) => client.rest.repos.getBranch({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      branch: candidate,
+                    }));
+                    baseBranch = candidate;
+                    baseSource = 'issue-marker';
+                  } catch (branchError) {
+                    core.warning(
+                      `Base branch '${candidate}' from the issue marker was not found; ` +
+                      `falling back to '${defaultBranch}'.`);
+                    baseSource = 'default-fallback';
+                  }
+                }
+              }
+            } catch (markerError) {
+              core.warning(`Could not read issue #${issueNumber} for a base-branch marker: ${markerError.message}`);
+            }
+            core.info(`Base branch: ${baseBranch} (source: ${baseSource})`);
 
             const scriptsPath = process.env.WORKFLOWS_SCRIPTS_PATH || process.env.GITHUB_WORKSPACE;
             const { redispatchForceStep } = require(
