@@ -16,7 +16,7 @@ vi.mock("@/app/db/prisma", () => ({
 }));
 
 import { POST } from "@/app/api/public/bookings/route";
-import { slotHolds } from "@/app/lib/slot-hold";
+import { SLOT_HOLD_DURATION_MS, slotHolds } from "@/app/lib/slot-hold";
 
 const bookingRequest = (sessionId: string) =>
   new NextRequest("http://app.test/api/public/bookings", {
@@ -47,7 +47,7 @@ beforeEach(() => {
 });
 
 describe("POST /api/public/bookings", () => {
-  it("creates a pending-payment booking, blocks another session, and releases the hold after ten minutes", async () => {
+  it("creates a pending-payment booking and blocks another session while its hold is active", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-14T09:00:00.000Z"));
 
@@ -60,7 +60,18 @@ describe("POST /api/public/bookings", () => {
 
     expect((await POST(bookingRequest("session-b"))).status).toBe(409);
 
-    vi.advanceTimersByTime(10 * 60 * 1_000);
+    vi.useRealTimers();
+  });
+
+  it("releases a held slot at the ten-minute expiry boundary", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-14T09:00:00.000Z"));
+
+    expect((await POST(bookingRequest("session-a"))).status).toBe(201);
+    vi.advanceTimersByTime(SLOT_HOLD_DURATION_MS - 1);
+    expect((await POST(bookingRequest("session-b"))).status).toBe(409);
+
+    vi.advanceTimersByTime(1);
     expect((await POST(bookingRequest("session-b"))).status).toBe(201);
     vi.useRealTimers();
   });

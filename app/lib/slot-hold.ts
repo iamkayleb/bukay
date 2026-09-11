@@ -16,7 +16,12 @@ export class SlotHoldStore {
 
   acquire(slot: string, sessionId: string, now = Date.now()): boolean {
     const existing = this.holds.get(slot);
-    if (existing && existing.expiresAt > now && existing.sessionId !== sessionId) {
+    if (existing && existing.expiresAt <= now) {
+      this.holds.delete(slot);
+    }
+
+    const activeHold = this.holds.get(slot);
+    if (activeHold && activeHold.sessionId !== sessionId) {
       return false;
     }
 
