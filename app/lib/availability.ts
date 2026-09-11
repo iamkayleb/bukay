@@ -62,6 +62,43 @@ function overlaps(start: number, end: number, booking: AvailabilityBooking): boo
   return start < booking.endsAt.getTime() && booking.startsAt.getTime() < end;
 }
 
+interface BusyInterval {
+  start: number;
+  end: number;
+}
+
+function mergeBusyIntervals(bookings: readonly AvailabilityBooking[]): {
+  intervals: BusyInterval[];
+  unusualBookings: AvailabilityBooking[];
+} {
+  const intervals: BusyInterval[] = [];
+  const unusualBookings: AvailabilityBooking[] = [];
+
+  for (const booking of bookings) {
+    const start = booking.startsAt.getTime();
+    const end = booking.endsAt.getTime();
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
+      unusualBookings.push(booking);
+    } else {
+      intervals.push({ start, end });
+    }
+  }
+
+  intervals.sort((left, right) => left.start - right.start || left.end - right.end);
+
+  const merged: BusyInterval[] = [];
+  for (const interval of intervals) {
+    const previous = merged.at(-1);
+    if (previous && interval.start <= previous.end) {
+      previous.end = Math.max(previous.end, interval.end);
+    } else {
+      merged.push({ ...interval });
+    }
+  }
+
+  return { intervals: merged, unusualBookings };
+}
+
 /**
  * Return each available appointment start in the requested UTC date range.
  *
@@ -107,6 +144,8 @@ export function computeSlots({
     maxAdvanceDays === undefined
       ? Number.POSITIVE_INFINITY
       : now.getTime() + maxAdvanceDays * DAY_MS;
+  const { intervals: busyIntervals, unusualBookings } = mergeBusyIntervals(bookings);
+  let nextBusyInterval = 0;
   const slots: Date[] = [];
 
   for (let dayStart = rangeStart; dayStart <= rangeEnd; dayStart += DAY_MS) {
@@ -125,10 +164,18 @@ export function computeSlots({
       startsAt += intervalMs
     ) {
       const endsAt = startsAt + occupiedDurationMs;
+      while (
+        nextBusyInterval < busyIntervals.length &&
+        busyIntervals[nextBusyInterval].end <= startsAt
+      ) {
+        nextBusyInterval += 1;
+      }
+      const nextBooking = busyIntervals[nextBusyInterval];
       if (
         startsAt >= firstAllowedStart &&
         startsAt <= lastAllowedStart &&
-        !bookings.some((booking) => overlaps(startsAt, endsAt, booking))
+        !(nextBooking && nextBooking.start < endsAt) &&
+        !unusualBookings.some((booking) => overlaps(startsAt, endsAt, booking))
       ) {
         slots.push(new Date(startsAt));
       }
