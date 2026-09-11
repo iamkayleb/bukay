@@ -1,6 +1,8 @@
 /** A bookable service expressed in minutes. */
 export interface AvailabilityService {
   durationMinutes: number;
+  /** Time reserved after an appointment before the next one may begin. */
+  bufferMinutes?: number;
 }
 
 /** A previously reserved interval. `endsAt` is exclusive. */
@@ -31,7 +33,11 @@ export interface ComputeSlotsInput {
   hours: readonly AvailabilityHours[];
   /** Slot spacing in minutes. Defaults to 30. */
   slotIntervalMinutes?: number;
-  /** Supplied so the public API remains deterministic as it grows. */
+  /** Minimum notice required before an appointment can start. Defaults to zero. */
+  leadTimeMinutes?: number;
+  /** Number of calendar days from `now` that may be booked. */
+  maxAdvanceDays?: number;
+  /** The reference time for lead-time and advance-window filtering. */
   now: Date;
 }
 
@@ -60,7 +66,8 @@ function overlaps(start: number, end: number, booking: AvailabilityBooking): boo
  * Return each available appointment start in the requested UTC date range.
  *
  * A slot is placed at each interval after opening and is returned only when its
- * full service duration fits before closing and does not overlap a booking.
+ * full service duration and buffer fit before closing and do not overlap a
+ * booking. Lead-time and maximum-advance limits are measured from `now`.
  * The function does not mutate its inputs or consult the system clock.
  */
 export function computeSlots({
@@ -69,17 +76,21 @@ export function computeSlots({
   bookings,
   hours,
   slotIntervalMinutes = 30,
-  now: _now,
+  leadTimeMinutes = 0,
+  maxAdvanceDays,
+  now,
 }: ComputeSlotsInput): Date[] {
-  // `now` is intentionally part of the first version of the contract. Lead
-  // time and maximum-advance filtering will use this supplied value.
-  void _now;
-
   if (
     !Number.isFinite(service.durationMinutes) ||
     service.durationMinutes <= 0 ||
+    (service.bufferMinutes !== undefined &&
+      (!Number.isFinite(service.bufferMinutes) || service.bufferMinutes < 0)) ||
     !Number.isFinite(slotIntervalMinutes) ||
-    slotIntervalMinutes <= 0
+    slotIntervalMinutes <= 0 ||
+    !Number.isFinite(leadTimeMinutes) ||
+    leadTimeMinutes < 0 ||
+    (maxAdvanceDays !== undefined &&
+      (!Number.isFinite(maxAdvanceDays) || maxAdvanceDays < 0 || Number.isNaN(now.getTime())))
   ) {
     return [];
   }
@@ -89,8 +100,13 @@ export function computeSlots({
   if (Number.isNaN(rangeStart) || Number.isNaN(rangeEnd) || rangeEnd < rangeStart) return [];
 
   const hoursByDay = new Map(hours.map((hour) => [hour.dayOfWeek, hour]));
-  const durationMs = service.durationMinutes * MINUTE_MS;
+  const occupiedDurationMs = (service.durationMinutes + (service.bufferMinutes ?? 0)) * MINUTE_MS;
   const intervalMs = slotIntervalMinutes * MINUTE_MS;
+  const firstAllowedStart = now.getTime() + leadTimeMinutes * MINUTE_MS;
+  const lastAllowedStart =
+    maxAdvanceDays === undefined
+      ? Number.POSITIVE_INFINITY
+      : now.getTime() + maxAdvanceDays * DAY_MS;
   const slots: Date[] = [];
 
   for (let dayStart = rangeStart; dayStart <= rangeEnd; dayStart += DAY_MS) {
@@ -103,9 +119,17 @@ export function computeSlots({
 
     const opensAt = dayStart + opensMinutes * MINUTE_MS;
     const closesAt = dayStart + closesMinutes * MINUTE_MS;
-    for (let startsAt = opensAt; startsAt + durationMs <= closesAt; startsAt += intervalMs) {
-      const endsAt = startsAt + durationMs;
-      if (!bookings.some((booking) => overlaps(startsAt, endsAt, booking))) {
+    for (
+      let startsAt = opensAt;
+      startsAt + occupiedDurationMs <= closesAt;
+      startsAt += intervalMs
+    ) {
+      const endsAt = startsAt + occupiedDurationMs;
+      if (
+        startsAt >= firstAllowedStart &&
+        startsAt <= lastAllowedStart &&
+        !bookings.some((booking) => overlaps(startsAt, endsAt, booking))
+      ) {
         slots.push(new Date(startsAt));
       }
     }
