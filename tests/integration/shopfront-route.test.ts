@@ -11,12 +11,17 @@ const BASE_URL = `http://127.0.0.1:${PORT}`;
 const START_TIMEOUT_MS = 90_000;
 const MAX_TTFB_MS = 500;
 
-function nextBinary(): string | null {
+function nextBinary(): string {
   const candidates = [
     join(process.cwd(), "node_modules", ".bin", "next"),
     join(process.cwd(), "node_modules", "next", "dist", "bin", "next"),
   ];
-  return candidates.find((candidate) => existsSync(candidate)) ?? null;
+  const binary = candidates.find((candidate) => existsSync(candidate));
+  if (!binary) {
+    throw new Error("Next.js is not installed. Run pnpm install before running integration tests.");
+  }
+
+  return binary;
 }
 
 function requestWithTtfb(pathname: string): Promise<{ status: number; ttfbMs: number; body: string }> {
@@ -42,9 +47,8 @@ function requestWithTtfb(pathname: string): Promise<{ status: number; ttfbMs: nu
 }
 
 const bin = nextBinary();
-const suite = bin ? describe : describe.skip;
 
-suite("GET /[slug] (integration)", () => {
+describe("GET /[slug] (integration)", () => {
   let server: ChildProcess | undefined;
 
   beforeAll(async () => {
@@ -57,6 +61,8 @@ suite("GET /[slug] (integration)", () => {
     const deadline = Date.now() + START_TIMEOUT_MS;
     while (Date.now() < deadline) {
       try {
+        // Compile the shopfront before measuring it so the TTFB assertion
+        // captures request performance rather than development-server startup.
         const response = await fetch(`${BASE_URL}/demo`);
         if (response.ok) return;
       } catch {
