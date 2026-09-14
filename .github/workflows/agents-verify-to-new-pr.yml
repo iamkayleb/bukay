@@ -237,6 +237,23 @@ jobs:
 
             fs.writeFileSync('original_issue.txt', originalIssueBody);
 
+            // --- Base-branch propagation ---
+            // Carry the merged PR's base forward when it is NOT the default
+            // branch (evaluation lanes such as eval/claude). Without this the
+            // follow-up PR targets the default branch and the fix escapes the
+            // lane it belongs to. The bridge reads this marker back.
+            const prBaseRef = context.payload.pull_request.base?.ref || '';
+            const repoDefaultBranch =
+              context.payload.repository?.default_branch || '';
+            const nonDefaultBase =
+              prBaseRef && prBaseRef !== repoDefaultBranch ? prBaseRef : '';
+            if (nonDefaultBase) {
+              core.info(
+                `PR base '${nonDefaultBase}' is non-default; follow-up will target it.`,
+              );
+            }
+            core.setOutput('pr_base_ref', nonDefaultBase);
+
             // --- Chain depth tracking (P0) ---
             // Extract follow-up-depth from original issue body or PR body
             // Format: <!-- follow-up-depth: N -->
@@ -598,6 +615,7 @@ jobs:
           ORIGINAL_ISSUE_TITLE: ${{ steps.collect.outputs.original_issue_title }}
           PR_NUMBER: ${{ steps.check-merged.outputs.pr_number }}
           FOLLOW_UP_DEPTH: ${{ steps.chain-check.outputs.next_depth }}
+          PR_BASE_REF: ${{ steps.collect.outputs.pr_base_ref }}
         run: |
           # Generate using Python script
           python scripts/langchain/followup_issue_generator.py \
@@ -612,6 +630,11 @@ jobs:
           # Inject chain depth marker into generated body
           depth="${FOLLOW_UP_DEPTH:-1}"
           marker="<!-- follow-up-depth: ${depth} -->"
+          # Preserve a non-default base (evaluation lanes) so the follow-up PR
+          # targets the same branch the originating PR merged into.
+          if [ -n "${PR_BASE_REF:-}" ]; then
+            marker="$(printf '%s\n%s' "$marker" "<!-- base-branch: ${PR_BASE_REF} -->")"
+          fi
           jq --arg marker "$marker" \
             '.body = $marker + "\n" + .body' \
             followup_issue.json > followup_issue_tmp.json
@@ -639,11 +662,13 @@ jobs:
         env:
           FOLLOW_UP_DEPTH: ${{ steps.chain-check.outputs.next_depth }}
           EXTRACTED_VERDICT: ${{ steps.extract-verdict.outputs.verdict }}
+          PR_BASE_REF: ${{ steps.collect.outputs.pr_base_ref }}
         with:
           github-token: ${{ steps.select-token.outputs.token }}
           script: |
             // Fallback to structured extraction if Python script fails
             const fs = require('fs');
+            const prBaseRef = process.env.PR_BASE_REF || '';
             const prNumber = context.payload.pull_request.number;
             const prUrl = context.payload.pull_request.html_url;
             const depth = process.env.FOLLOW_UP_DEPTH || '1';
@@ -764,6 +789,7 @@ jobs:
 
             const issueBody = [
               `<!-- follow-up-depth: ${depth} -->`,
+              ...(prBaseRef ? [`<!-- base-branch: ${prBaseRef} -->`] : []),
               '## Why',
               '',
               `PR #${prNumber} was verified with verdict **${verdict}**. ` +
