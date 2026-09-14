@@ -11,6 +11,7 @@ let port = Number(process.env.SHOPFRONT_TEST_PORT);
 let baseUrl: string;
 const START_TIMEOUT_MS = 90_000;
 const MAX_TTFB_MS = 500;
+const REQUEST_TIMEOUT_MS = 10_000;
 
 async function findAvailablePort(): Promise<number> {
   const reservation = createServer();
@@ -48,7 +49,9 @@ function nextBinary(): string {
   return binary;
 }
 
-function requestWithTtfb(pathname: string): Promise<{ status: number; ttfbMs: number; body: string }> {
+function requestWithTtfb(
+  pathname: string
+): Promise<{ status: number; ttfbMs: number; contentType: string; body: string }> {
   return new Promise((resolve, reject) => {
     const startedAt = performance.now();
     const req = request(`${baseUrl}${pathname}`, (response) => {
@@ -60,12 +63,17 @@ function requestWithTtfb(pathname: string): Promise<{ status: number; ttfbMs: nu
         resolve({
           status: response.statusCode ?? 0,
           ttfbMs,
+          contentType: response.headers["content-type"] ?? "",
           body: Buffer.concat(chunks).toString("utf8"),
         });
       });
+      response.on("error", reject);
     });
 
     req.on("error", reject);
+    req.setTimeout(REQUEST_TIMEOUT_MS, () => {
+      req.destroy(new Error(`Request to ${pathname} did not complete within ${REQUEST_TIMEOUT_MS}ms.`));
+    });
     req.end();
   });
 }
@@ -136,6 +144,7 @@ describe("GET /[slug] (integration)", () => {
 
     expect(response.status).toBe(200);
     expect(response.ttfbMs).toBeLessThan(MAX_TTFB_MS);
+    expect(response.contentType).toContain("text/html");
     expect(response.body).toContain("Bukay Demo Salon");
     expect(response.body).toContain('<meta name="description"');
     expect(response.body).toContain('property="og:title"');
