@@ -2,14 +2,38 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import { request } from "node:http";
+import { createServer } from "node:net";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { setTimeout as sleep } from "node:timers/promises";
 
-const PORT = process.env.SHOPFRONT_TEST_PORT ?? "31474";
-const BASE_URL = `http://127.0.0.1:${PORT}`;
+let port = Number(process.env.SHOPFRONT_TEST_PORT);
+let baseUrl: string;
 const START_TIMEOUT_MS = 90_000;
 const MAX_TTFB_MS = 500;
+
+async function findAvailablePort(): Promise<number> {
+  const reservation = createServer();
+
+  return new Promise((resolve, reject) => {
+    reservation.once("error", reject);
+    reservation.listen(0, "127.0.0.1", () => {
+      const address = reservation.address();
+      if (!address || typeof address === "string") {
+        reservation.close(() => reject(new Error("Could not reserve a local test port.")));
+        return;
+      }
+
+      reservation.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(address.port);
+      });
+    });
+  });
+}
 
 function nextBinary(): string {
   const candidates = [
@@ -27,7 +51,7 @@ function nextBinary(): string {
 function requestWithTtfb(pathname: string): Promise<{ status: number; ttfbMs: number; body: string }> {
   return new Promise((resolve, reject) => {
     const startedAt = performance.now();
-    const req = request(`${BASE_URL}${pathname}`, (response) => {
+    const req = request(`${baseUrl}${pathname}`, (response) => {
       const ttfbMs = performance.now() - startedAt;
       const chunks: Buffer[] = [];
 
@@ -53,7 +77,15 @@ describe("GET /[slug] (integration)", () => {
   let serverOutput = "";
 
   beforeAll(async () => {
-    server = spawn(bin!, ["dev", "-p", PORT], {
+    // A fixed port makes this suite vulnerable to accidentally testing an
+    // unrelated already-running Next server. CI can still supply a port when
+    // its network policy requires one.
+    if (!Number.isInteger(port) || port <= 0) {
+      port = await findAvailablePort();
+    }
+    baseUrl = `http://127.0.0.1:${port}`;
+
+    server = spawn(bin!, ["dev", "-p", String(port)], {
       cwd: process.cwd(),
       env: { ...process.env, NODE_ENV: "development" },
       stdio: ["ignore", "pipe", "pipe"],
@@ -74,7 +106,7 @@ describe("GET /[slug] (integration)", () => {
       try {
         // Compile the shopfront before measuring it so the TTFB assertion
         // captures request performance rather than development-server startup.
-        const response = await fetch(`${BASE_URL}/demo`);
+        const response = await fetch(`${baseUrl}/demo`);
         if (response.ok) return;
       } catch {
         // The server has not started yet.
