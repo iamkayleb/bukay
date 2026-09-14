@@ -146,6 +146,7 @@ describe("GET /[slug] (integration)", () => {
     expect(response.ttfbMs).toBeLessThan(MAX_TTFB_MS);
     expect(response.contentType).toContain("text/html");
     expect(response.body).toContain("Bukay Demo Salon");
+    expect(response.body).toContain("<title>Book appointments online | Bukay</title>");
     expect(response.body).toContain('<meta name="description"');
     expect(response.body).toContain('property="og:title"');
     expect(response.body).toContain('property="og:description"');
