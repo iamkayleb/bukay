@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { setTimeout as sleep } from "node:timers/promises";
 
-let port = Number(process.env.SHOPFRONT_TEST_PORT);
+let port: number;
 let baseUrl: string;
 const START_TIMEOUT_MS = 90_000;
 const MAX_TTFB_MS = 500;
@@ -85,15 +85,12 @@ describe("GET /[slug] (integration)", () => {
   let serverOutput = "";
 
   beforeAll(async () => {
-    // A fixed port makes this suite vulnerable to accidentally testing an
-    // unrelated already-running Next server. CI can still supply a port when
-    // its network policy requires one.
-    if (!Number.isInteger(port) || port <= 0) {
-      port = await findAvailablePort();
-    }
+    // Always reserve an ephemeral port. Accepting an externally supplied port
+    // could make this suite pass against an unrelated already-running server.
+    port = await findAvailablePort();
     baseUrl = `http://127.0.0.1:${port}`;
 
-    server = spawn(bin!, ["dev", "-p", String(port)], {
+    server = spawn(bin!, ["dev", "-H", "127.0.0.1", "-p", String(port)], {
       cwd: process.cwd(),
       env: { ...process.env, NODE_ENV: "development" },
       stdio: ["ignore", "pipe", "pipe"],
