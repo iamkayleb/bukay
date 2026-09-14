@@ -45,7 +45,7 @@ const bin = nextBinary();
 const suite = bin ? describe : describe.skip;
 
 suite("GET /[slug] (integration)", () => {
-  let server: ChildProcess;
+  let server: ChildProcess | undefined;
 
   beforeAll(async () => {
     server = spawn(bin!, ["dev", "-p", PORT], {
@@ -67,9 +67,16 @@ suite("GET /[slug] (integration)", () => {
     throw new Error(`Next dev server did not become ready within ${START_TIMEOUT_MS}ms`);
   }, START_TIMEOUT_MS + 5_000);
 
-  afterAll(() => {
-    if (server && !server.killed) {
-      server.kill("SIGTERM");
+  afterAll(async () => {
+    if (!server || server.exitCode !== null) return;
+
+    const exited = new Promise<void>((resolve) => server!.once("exit", () => resolve()));
+    server.kill("SIGTERM");
+    await Promise.race([exited, sleep(5_000)]);
+
+    if (server.exitCode === null) {
+      server.kill("SIGKILL");
+      await exited;
     }
   });
 
@@ -79,6 +86,10 @@ suite("GET /[slug] (integration)", () => {
     expect(response.status).toBe(200);
     expect(response.ttfbMs).toBeLessThan(MAX_TTFB_MS);
     expect(response.body).toContain("Bukay Demo Salon");
+    expect(response.body).toContain('<meta name="description"');
+    expect(response.body).toContain('property="og:title"');
+    expect(response.body).toContain('property="og:description"');
+    expect(response.body).toContain('property="og:image"');
   });
 
   it("returns 404 for an unknown shopfront", async () => {

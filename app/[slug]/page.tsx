@@ -1,6 +1,18 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 
 const DEMO_SHOPFRONT_SLUG = "demo";
+
+export const metadata: Metadata = {
+  title: "Book appointments online | Bukay",
+  description: "Browse services, choose a time, and book your next appointment with Bukay.",
+  openGraph: {
+    title: "Book appointments online | Bukay",
+    description: "Browse services, choose a time, and book your next appointment with Bukay.",
+    images: ["/favicon.ico"],
+    type: "website",
+  },
+};
 
 type ShopfrontPageProps = {
   params: { slug: string };
