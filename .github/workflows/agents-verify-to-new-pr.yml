@@ -29,6 +29,9 @@ jobs:
   create-new-pr:
     if: github.event.label.name == 'verify:create-new-pr'
     runs-on: ubuntu-latest
+    env:
+      WORKFLOWS_APP_ID: ${{ secrets.WORKFLOWS_APP_ID || '' }}
+      WORKFLOWS_APP_PRIVATE_KEY: ${{ secrets.WORKFLOWS_APP_PRIVATE_KEY || '' }}
     steps:
       - name: Check PR is merged
         id: check-merged
@@ -45,21 +48,44 @@ jobs:
             core.setOutput('pr_number', pr.number);
             core.setOutput('pr_title', pr.title);
 
+      - name: Mint GitHub App token
+        id: app_token
+        if: >-
+          steps.check-merged.outputs.merged == 'true' &&
+          env.WORKFLOWS_APP_ID != '' && env.WORKFLOWS_APP_PRIVATE_KEY != ''
+        continue-on-error: true
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ env.WORKFLOWS_APP_ID }}
+          private-key: ${{ env.WORKFLOWS_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
       - name: Select GitHub token
         id: select-token
         if: steps.check-merged.outputs.merged == 'true'
         env:
+          APP_TOKEN: ${{ steps.app_token.outputs.token }}
           OWNER_PR_PAT: ${{ secrets.OWNER_PR_PAT }}
           SERVICE_BOT_PAT: ${{ secrets.SERVICE_BOT_PAT }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          if [ -n "$OWNER_PR_PAT" ]; then
+          # Prefer an App installation token. Issues and labels created with
+          # GITHUB_TOKEN raise no events for other workflows (GitHub's loop
+          # guard), so a follow-up issue created that way is never picked up by
+          # auto-pilot and waits until a human re-applies its label by hand.
+          if [ -n "$APP_TOKEN" ]; then
+            echo "token=$APP_TOKEN" >> "$GITHUB_OUTPUT"
+            echo "source=workflows-app" >> "$GITHUB_OUTPUT"
+          elif [ -n "$OWNER_PR_PAT" ]; then
             echo "token=$OWNER_PR_PAT" >> "$GITHUB_OUTPUT"
             echo "source=owner-pat" >> "$GITHUB_OUTPUT"
           elif [ -n "$SERVICE_BOT_PAT" ]; then
             echo "token=$SERVICE_BOT_PAT" >> "$GITHUB_OUTPUT"
             echo "source=service-bot" >> "$GITHUB_OUTPUT"
           else
+            echo "::warning::No App token or PAT; using GITHUB_TOKEN."
+            echo "::warning::The follow-up issue will NOT trigger auto-pilot."
+            echo "::warning::Set WORKFLOWS_APP_ID + _PRIVATE_KEY, or SERVICE_BOT_PAT."
             echo "token=$GITHUB_TOKEN" >> "$GITHUB_OUTPUT"
             echo "source=github-token" >> "$GITHUB_OUTPUT"
           fi
