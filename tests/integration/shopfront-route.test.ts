@@ -50,6 +50,7 @@ const bin = nextBinary();
 
 describe("GET /[slug] (integration)", () => {
   let server: ChildProcess | undefined;
+  let serverOutput = "";
 
   beforeAll(async () => {
     server = spawn(bin!, ["dev", "-p", PORT], {
@@ -57,9 +58,19 @@ describe("GET /[slug] (integration)", () => {
       env: { ...process.env, NODE_ENV: "development" },
       stdio: ["ignore", "pipe", "pipe"],
     });
+    server.stdout?.on("data", (chunk: Buffer) => {
+      serverOutput += chunk.toString();
+    });
+    server.stderr?.on("data", (chunk: Buffer) => {
+      serverOutput += chunk.toString();
+    });
 
     const deadline = Date.now() + START_TIMEOUT_MS;
     while (Date.now() < deadline) {
+      if (server.exitCode !== null) {
+        throw new Error(`Next dev server exited before becoming ready:\n${serverOutput}`);
+      }
+
       try {
         // Compile the shopfront before measuring it so the TTFB assertion
         // captures request performance rather than development-server startup.
@@ -70,7 +81,9 @@ describe("GET /[slug] (integration)", () => {
       }
       await sleep(500);
     }
-    throw new Error(`Next dev server did not become ready within ${START_TIMEOUT_MS}ms`);
+    throw new Error(
+      `Next dev server did not become ready within ${START_TIMEOUT_MS}ms:\n${serverOutput}`
+    );
   }, START_TIMEOUT_MS + 5_000);
 
   afterAll(async () => {
