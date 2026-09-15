@@ -26,6 +26,36 @@ EXPECTED_TENANT_SCOPED_MODELS = {
 # Models the scope requires to exist at all.
 REQUIRED_MODELS = EXPECTED_TENANT_SCOPED_MODELS | {"Tenant"}
 
+# Relation fields the suite asserts so schema drift cannot drop FK wiring.
+EXPECTED_RELATIONS = {
+    "User": (("tenant", "Tenant"),),
+    "Service": (("tenant", "Tenant"),),
+    "Staff": (("tenant", "Tenant"),),
+    "BusinessHour": (("tenant", "Tenant"),),
+    "Client": (("tenant", "Tenant"),),
+    "Booking": (
+        ("tenant", "Tenant"),
+        ("client", "Client"),
+        ("service", "Service"),
+        ("staff", "Staff?"),
+    ),
+    "Payment": (
+        ("tenant", "Tenant"),
+        ("booking", "Booking"),
+    ),
+    "AuditLog": (("tenant", "Tenant"),),
+    "Tenant": (
+        ("users", "User[]"),
+        ("services", "Service[]"),
+        ("staff", "Staff[]"),
+        ("businessHours", "BusinessHour[]"),
+        ("clients", "Client[]"),
+        ("bookings", "Booking[]"),
+        ("payments", "Payment[]"),
+        ("auditLogs", "AuditLog[]"),
+    ),
+}
+
 
 def _model_blocks(schema_text: str) -> dict[str, str]:
     """Return a {model_name: body_text} map from a Prisma schema."""
@@ -48,8 +78,29 @@ def _has_tenant_id_index(model_body: str) -> bool:
     return re.search(r"@@index\(\[\s*tenantId\s*(?:,|\])", model_body) is not None
 
 
+def _has_relation_field(model_body: str, field_name: str, type_name: str) -> bool:
+    # Optional (`Type?`) and list (`Type[]`) suffixes are part of the declared type.
+    # Avoid trailing `\b`: `?` / `]` are non-word chars, so `\b` would fail to match.
+    return (
+        re.search(
+            rf"^\s*{re.escape(field_name)}\s+{re.escape(type_name)}(?:\s|$)",
+            model_body,
+            re.MULTILINE,
+        )
+        is not None
+    )
+
+
 def test_schema_file_exists() -> None:
     assert SCHEMA_PATH.exists(), f"missing prisma schema at {SCHEMA_PATH}"
+
+
+def test_schema_defines_exactly_nine_models() -> None:
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    assert len(blocks) == 9, f"expected exactly 9 Prisma models, found {sorted(blocks)}"
+    assert (
+        set(blocks) == REQUIRED_MODELS
+    ), f"schema models {sorted(blocks)} do not match required set {sorted(REQUIRED_MODELS)}"
 
 
 def test_all_required_models_present() -> None:
@@ -68,11 +119,23 @@ def test_expected_tenant_scoped_models_have_tenant_id_column() -> None:
 def test_every_tenant_scoped_model_has_tenant_index() -> None:
     blocks = _model_blocks(SCHEMA_PATH.read_text())
     scoped_models = _tenant_scoped_models(blocks)
-    assert scoped_models, "schema has no tenant-scoped models"
+    assert (
+        scoped_models == EXPECTED_TENANT_SCOPED_MODELS
+    ), f"unexpected tenant-scoped models: {sorted(scoped_models)}"
 
     for name in scoped_models:
         body = blocks[name]
         assert _has_tenant_id_index(body), f"model {name} is missing `@@index([tenantId])`"
+
+
+def test_required_model_relations_are_declared() -> None:
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    for model_name, relations in EXPECTED_RELATIONS.items():
+        body = blocks[model_name]
+        for field_name, type_name in relations:
+            assert _has_relation_field(
+                body, field_name, type_name
+            ), f"model {model_name} is missing relation `{field_name} {type_name}`"
 
 
 def test_tenant_model_has_no_tenant_id() -> None:

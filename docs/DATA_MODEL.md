@@ -28,6 +28,14 @@ The tenant-owned models are:
 cascades to its owned rows through the Prisma relations. `Booking` restricts deletion of referenced
 clients and services, and sets `staffId` to null when a referenced staff row is deleted.
 
+## Tenant-scoped indexing
+
+Every tenant-owned model declares a required `tenantId` foreign key and `@@index([tenantId])` in
+the same model block. The index exists so list and filter queries that always constrain by tenant
+(`WHERE tenantId = ?`) can seek directly rather than scanning the full table. Composite indexes that
+start with `tenantId` (for example `@@index([tenantId, startsAt])` on `Booking`) remain compatible
+with that access pattern while also accelerating calendar-style reads.
+
 ## Model Details
 
 ### Tenant

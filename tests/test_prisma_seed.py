@@ -184,9 +184,23 @@ def test_prisma_db_seed_creates_demo_tenant_on_clean_database(tmp_path: Path) ->
 
     db_path = prisma_dir / "dev.db"
     with sqlite3.connect(db_path) as conn:
-        demo_tenant_count = conn.execute(
-            'SELECT COUNT(*) FROM "Tenant" WHERE "slug" = ?',
+        tenant_count = conn.execute('SELECT COUNT(*) FROM "Tenant"').fetchone()[0]
+        demo_tenant = conn.execute(
+            'SELECT "id" FROM "Tenant" WHERE "slug" = ?',
             ("demo",),
+        ).fetchone()
+        assert demo_tenant is not None, "prisma db seed did not create Tenant.slug = 'demo'"
+        demo_tenant_id = demo_tenant[0]
+        service_count = conn.execute(
+            'SELECT COUNT(*) FROM "Service" WHERE "tenantId" = ?',
+            (demo_tenant_id,),
         ).fetchone()[0]
+        total_service_count = conn.execute('SELECT COUNT(*) FROM "Service"').fetchone()[0]
 
-    assert demo_tenant_count == 1, "prisma db seed did not create Tenant.slug = 'demo'"
+    assert tenant_count == 1, f"expected exactly one tenant after seed, found {tenant_count}"
+    assert (
+        service_count == 3
+    ), f"expected exactly three services for demo tenant, found {service_count}"
+    assert (
+        total_service_count == 3
+    ), f"expected exactly three services overall after seed, found {total_service_count}"
