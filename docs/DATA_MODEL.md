@@ -83,6 +83,10 @@ paid timestamp, and audit timestamps.
 `AuditLog` stores action history with optional actor and entity references. `metadata` is stored as a
 string so callers can serialize structured context when needed.
 
+### SlotHold
+
+Stores a short-lived reservation for a service start time during public booking. It belongs to a tenant and service and expires when the booking window closes.
+
 ## Running Migrations
 
 The schema uses SQLite with `url = "file:./dev.db"`, so local migrations create

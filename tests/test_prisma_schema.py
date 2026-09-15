@@ -27,6 +27,7 @@ EXPECTED_TENANT_SCOPED_MODELS = {
     "Booking",
     "Payment",
     "AuditLog",
+    "SlotHold",
 }
 
 # Models the scope requires to exist at all.
@@ -50,6 +51,10 @@ EXPECTED_RELATIONS = {
         ("booking", "Booking"),
     ),
     "AuditLog": (("tenant", "Tenant"),),
+    "SlotHold": (
+        ("tenant", "Tenant"),
+        ("service", "Service"),
+    ),
     "Tenant": (
         ("users", "User[]"),
         ("services", "Service[]"),
@@ -59,6 +64,7 @@ EXPECTED_RELATIONS = {
         ("bookings", "Booking[]"),
         ("payments", "Payment[]"),
         ("auditLogs", "AuditLog[]"),
+        ("slotHolds", "SlotHold[]"),
     ),
 }
 
@@ -171,7 +177,7 @@ def test_schema_is_syntactically_valid_via_prisma_validate(tmp_path: Path) -> No
 
 def test_schema_defines_exactly_nine_models() -> None:
     blocks = _model_blocks(SCHEMA_PATH.read_text())
-    assert len(blocks) == 9, f"expected exactly 9 Prisma models, found {sorted(blocks)}"
+    assert len(blocks) == 10, f"expected exactly 10 Prisma models, found {sorted(blocks)}"
     assert (
         set(blocks) == REQUIRED_MODELS
     ), f"schema models {sorted(blocks)} do not match required set {sorted(REQUIRED_MODELS)}"
@@ -206,7 +212,7 @@ def test_required_model_relations_are_declared() -> None:
     blocks = _model_blocks(SCHEMA_PATH.read_text())
     for model_name, relations in EXPECTED_RELATIONS.items():
         body = blocks[model_name]
-        for field_name, type_name in relations:
+        for field_name, type_name in relations.items():
             assert _has_relation_field(
                 body, field_name, type_name
             ), f"model {model_name} is missing relation `{field_name} {type_name}`"
@@ -247,6 +253,7 @@ EXPECTED_RELATIONS: dict[str, dict[str, str]] = {
     },
     "Payment": {"tenant": "Tenant", "booking": "Booking"},
     "AuditLog": {"tenant": "Tenant"},
+    "SlotHold": {"tenant": "Tenant", "service": "Service"},
 }
 
 
