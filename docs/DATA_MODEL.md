@@ -65,6 +65,11 @@ relations.
 `Booking` links a client, service, optional staff member, start and end timestamps, status string, and
 optional notes. The tenant/start index supports calendar views.
 
+### SlotHold
+
+`SlotHold` stores a durable, tenant-scoped public-booking hold for a service start time, including the
+session identifier and expiration timestamp.
+
 ### Payment
 
 `Payment` links to a booking and stores amount, currency, provider metadata, status string, optional

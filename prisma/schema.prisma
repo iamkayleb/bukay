@@ -125,7 +125,7 @@ model Booking {
   status    String    @default("pending")
   notes     String?
   /// Non-null for active (non-cancelled) bookings. Unique per tenant so the DB
-  /// enforces one live reservation per slot. Format: `${serviceId}|${startsAt ISO}`.
+  /// enforces one live reservation per slot.
   slotLock  String?
   payments  Payment[]
   createdAt DateTime  @default(now())
@@ -193,4 +193,3 @@ model AuditLog {
   @@index([tenantId])
   @@index([tenantId, entityType, entityId])
 }
-
