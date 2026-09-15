@@ -16,7 +16,7 @@ import shlex
 import sys
 import tomllib
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, TypeAlias, cast
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_PATH = REPO_ROOT / "src"
@@ -33,7 +33,7 @@ except ImportError as exc:  # pragma: no cover - exercised via CLI messaging.
 else:
     TOMLKIT_ERROR = None
 
-type PytestIniConfig = tuple[Path, tuple[str, ...]]
+PytestIniConfig: TypeAlias = tuple[Path, tuple[str, ...]]
 PYPROJECT_FILE = Path("pyproject.toml")
 PYTEST_TOML_FILES = (
     Path("pytest.toml"),
