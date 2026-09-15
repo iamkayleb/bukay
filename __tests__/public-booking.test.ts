@@ -110,6 +110,27 @@ beforeEach(async () => {
 });
 
 describe("POST /api/public/bookings", () => {
+  it("rejects an invalid start date before querying or writing to the database", async () => {
+    const request = new NextRequest("http://app.test/api/public/bookings", {
+      method: "POST",
+      body: JSON.stringify({
+        slug: "demo",
+        serviceId: "service-1",
+        startsAt: "14-09-2026 10:00",
+        name: "Ada Okafor",
+        phone: "08031234567",
+        sessionId: "session-a",
+      }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "INVALID_BOOKING_REQUEST" });
+    expect(state.findFirst).not.toHaveBeenCalled();
+    expect(state.transaction).not.toHaveBeenCalled();
+  });
+
   it("creates a pending-payment booking and blocks another session while its hold is active", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-14T09:00:00.000Z"));
