@@ -117,6 +117,13 @@ def test_package_json_wires_seed_script() -> None:
     )
 
 
+def test_package_lock_json_is_absent() -> None:
+    """Keep dependency management on pnpm — do not commit an npm lockfile."""
+    assert not (
+        ROOT / "package-lock.json"
+    ).exists(), "package-lock.json must not be present; use pnpm-lock.yaml instead"
+
+
 def test_prisma_db_seed_creates_demo_tenant_on_clean_database(tmp_path: Path) -> None:
     """Acceptance check: `prisma db seed` creates a tenant with slug `demo`."""
     project_dir = tmp_path / "project"

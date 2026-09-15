@@ -90,14 +90,14 @@ The schema uses SQLite with `url = "file:./dev.db"`, so local migrations create
 
 ```bash
 # Install dependencies and generate the Prisma client.
-npm install
-npm run prisma:generate
+pnpm install
+pnpm run prisma:generate
 
 # Apply migrations to the local SQLite database.
-npm run migrate:dev -- --schema prisma/schema.prisma
+pnpm run migrate:dev -- --schema prisma/schema.prisma
 
 # Seed the demo tenant and sample data.
-npm run db:seed -- --schema prisma/schema.prisma
+pnpm run db:seed -- --schema prisma/schema.prisma
 ```
 
 The seed script is configured in `package.json` as `tsx prisma/seed.ts`. It is idempotent: it upserts
