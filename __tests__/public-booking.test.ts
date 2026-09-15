@@ -5,6 +5,10 @@ const state = vi.hoisted(() => ({
   findFirst: vi.fn(),
   upsert: vi.fn(),
   create: vi.fn(),
+  holdCreate: vi.fn(),
+  holdDeleteMany: vi.fn(),
+  holdFindUnique: vi.fn(),
+  holdUpdate: vi.fn(),
 }));
 
 vi.mock("@/app/db/prisma", () => ({
@@ -12,6 +16,12 @@ vi.mock("@/app/db/prisma", () => ({
     service: { findFirst: state.findFirst },
     client: { upsert: state.upsert },
     booking: { create: state.create },
+    slotHold: {
+      create: state.holdCreate,
+      deleteMany: state.holdDeleteMany,
+      findUnique: state.holdFindUnique,
+      update: state.holdUpdate,
+    },
   },
 }));
 
@@ -31,11 +41,48 @@ const bookingRequest = (sessionId: string) =>
     }),
   });
 
-beforeEach(() => {
-  slotHolds.clear();
+beforeEach(async () => {
   state.findFirst.mockReset();
   state.upsert.mockReset();
   state.create.mockReset();
+  state.holdCreate.mockReset();
+  state.holdDeleteMany.mockReset();
+  state.holdFindUnique.mockReset();
+  state.holdUpdate.mockReset();
+
+  const holds = new Map<string, { expiresAt: Date; sessionId: string }>();
+  state.holdDeleteMany.mockImplementation(({ where }: { where: Record<string, unknown> }) => {
+    if (!where.slotKey) {
+      holds.clear();
+    } else {
+      const slotKey = where.slotKey as string;
+      const hold = holds.get(slotKey);
+      if (hold && hold.expiresAt <= (where.expiresAt as { lte: Date }).lte) {
+        holds.delete(slotKey);
+      }
+    }
+    return Promise.resolve({ count: 0 });
+  });
+  state.holdCreate.mockImplementation(
+    ({ data }: { data: { expiresAt: Date; sessionId: string; slotKey: string } }) => {
+      if (holds.has(data.slotKey)) {
+        return Promise.reject({ code: "P2002" });
+      }
+      holds.set(data.slotKey, data);
+      return Promise.resolve(data);
+    }
+  );
+  state.holdFindUnique.mockImplementation(({ where }: { where: { slotKey: string } }) =>
+    Promise.resolve(holds.get(where.slotKey) ?? null)
+  );
+  state.holdUpdate.mockImplementation(
+    ({ data, where }: { data: { expiresAt: Date }; where: { slotKey: string } }) => {
+      const hold = holds.get(where.slotKey);
+      if (hold) holds.set(where.slotKey, { ...hold, ...data });
+      return Promise.resolve(hold);
+    }
+  );
+  await slotHolds.clear();
   state.findFirst.mockResolvedValue({
     id: "service-1",
     tenantId: "tenant-1",

@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
   const startsAt = new Date(parsed.data.startsAt);
   const endsAt = new Date(startsAt.getTime() + service.durationMinutes * 60_000);
   const slot = `${service.tenantId}:${service.id}:${startsAt.toISOString()}`;
-  if (!slotHolds.acquire(slot, parsed.data.sessionId)) {
+  if (!(await slotHolds.acquire(slot, service.tenantId, parsed.data.sessionId))) {
     return NextResponse.json({ error: "SLOT_HELD" }, { status: 409 });
   }
 
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    slotHolds.release(slot, parsed.data.sessionId);
+    await slotHolds.release(slot, parsed.data.sessionId);
     throw error;
   }
 }

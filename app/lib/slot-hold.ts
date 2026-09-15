@@ -1,42 +1,71 @@
+import { prisma } from "@/app/db/prisma";
+
 export const SLOT_HOLD_DURATION_MS = 10 * 60 * 1_000;
 
-type SlotHold = {
-  expiresAt: number;
+type SlotHoldRecord = {
   sessionId: string;
 };
 
+type SlotHoldDelegate = {
+  create(args: unknown): Promise<unknown>;
+  deleteMany(args: unknown): Promise<unknown>;
+  findUnique(args: unknown): Promise<SlotHoldRecord | null>;
+  update(args: unknown): Promise<unknown>;
+};
+
 /**
- * In-memory protection for the short period between checkout and payment.
+ * Durable protection for the interval between checkout and payment.
  *
- * The store is deliberately small and synchronous: acquiring a slot either
- * succeeds for one session or reports that another live session owns it.
+ * `slotKey` is unique in storage, making the create operation the conflict
+ * arbiter even when requests are handled by separate server instances.
  */
 export class SlotHoldStore {
-  private readonly holds = new Map<string, SlotHold>();
+  constructor(private readonly holds: SlotHoldDelegate = prisma.slotHold) {}
 
-  acquire(slot: string, sessionId: string, now = Date.now()): boolean {
-    const existing = this.holds.get(slot);
-    if (existing && existing.expiresAt <= now) {
-      this.holds.delete(slot);
+  async acquire(
+    slotKey: string,
+    tenantId: string,
+    sessionId: string,
+    now = new Date()
+  ): Promise<boolean> {
+    await this.holds.deleteMany({
+      where: { slotKey, expiresAt: { lte: now } },
+    });
+
+    try {
+      await this.holds.create({
+        data: {
+          tenantId,
+          slotKey,
+          sessionId,
+          expiresAt: new Date(now.getTime() + SLOT_HOLD_DURATION_MS),
+        },
+      });
+      return true;
+    } catch (error) {
+      if ((error as { code?: unknown })?.code !== "P2002") {
+        throw error;
+      }
     }
 
-    const activeHold = this.holds.get(slot);
-    if (activeHold && activeHold.sessionId !== sessionId) {
+    const existing = await this.holds.findUnique({ where: { slotKey } });
+    if (existing?.sessionId !== sessionId) {
       return false;
     }
 
-    this.holds.set(slot, { sessionId, expiresAt: now + SLOT_HOLD_DURATION_MS });
+    await this.holds.update({
+      where: { slotKey },
+      data: { expiresAt: new Date(now.getTime() + SLOT_HOLD_DURATION_MS) },
+    });
     return true;
   }
 
-  release(slot: string, sessionId: string): void {
-    if (this.holds.get(slot)?.sessionId === sessionId) {
-      this.holds.delete(slot);
-    }
+  async release(slotKey: string, sessionId: string): Promise<void> {
+    await this.holds.deleteMany({ where: { slotKey, sessionId } });
   }
 
-  clear(): void {
-    this.holds.clear();
+  async clear(): Promise<void> {
+    await this.holds.deleteMany({ where: {} });
   }
 }
 
