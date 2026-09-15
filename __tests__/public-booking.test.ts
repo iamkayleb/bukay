@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
   holdDeleteMany: vi.fn(),
   holdFindUnique: vi.fn(),
   holdUpdate: vi.fn(),
+  transaction: vi.fn(),
 }));
 
 vi.mock("@/app/db/prisma", () => ({
@@ -16,6 +17,7 @@ vi.mock("@/app/db/prisma", () => ({
     service: { findFirst: state.findFirst },
     client: { upsert: state.upsert },
     booking: { create: state.create },
+    $transaction: state.transaction,
     slotHold: {
       create: state.holdCreate,
       deleteMany: state.holdDeleteMany,
@@ -49,6 +51,7 @@ beforeEach(async () => {
   state.holdDeleteMany.mockReset();
   state.holdFindUnique.mockReset();
   state.holdUpdate.mockReset();
+  state.transaction.mockReset();
 
   const holds = new Map<string, { expiresAt: Date; sessionId: string }>();
   state.holdDeleteMany.mockImplementation(({ where }: { where: Record<string, unknown> }) => {
@@ -91,6 +94,19 @@ beforeEach(async () => {
   });
   state.upsert.mockResolvedValue({ id: "client-1" });
   state.create.mockResolvedValue({ id: "booking-1", status: "pending_payment" });
+  state.transaction.mockImplementation(
+    (callback: (transaction: Record<string, unknown>) => unknown) =>
+      callback({
+        client: { upsert: state.upsert },
+        booking: { create: state.create },
+        slotHold: {
+          create: state.holdCreate,
+          deleteMany: state.holdDeleteMany,
+          findUnique: state.holdFindUnique,
+          update: state.holdUpdate,
+        },
+      })
+  );
 });
 
 describe("POST /api/public/bookings", () => {
@@ -104,6 +120,7 @@ describe("POST /api/public/bookings", () => {
     expect(state.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: "pending_payment" }) })
     );
+    expect(state.transaction).toHaveBeenCalledTimes(1);
 
     expect((await POST(bookingRequest("session-b"))).status).toBe(409);
 
