@@ -10,6 +10,7 @@ These tests assert both invariants without needing a live database.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -54,11 +55,35 @@ def _package_version(package: str) -> str:
     return spec
 
 
-def _prisma_command() -> list[str]:
-    prisma_bin = ROOT / "node_modules" / ".bin" / "prisma"
-    if prisma_bin.exists():
-        return [str(prisma_bin)]
-    return ["npx", "--yes", "--package", f"prisma@{_package_version('prisma')}", "prisma"]
+def _prepare_node_modules(project_dir: Path) -> Path:
+    """Install (or reuse) a local prisma CLI so migrate doesn't hang on npx downloads."""
+    node_modules = project_dir / "node_modules"
+    root_node_modules = ROOT / "node_modules"
+    if root_node_modules.exists():
+        node_modules.symlink_to(root_node_modules, target_is_directory=True)
+        return node_modules / ".bin" / "prisma"
+
+    install = subprocess.run(
+        [
+            "npm",
+            "install",
+            "--no-audit",
+            "--no-fund",
+            "--ignore-scripts",
+            f"prisma@{_package_version('prisma')}",
+            f"@prisma/client@{_package_version('@prisma/client')}",
+        ],
+        cwd=project_dir,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=120,
+        check=False,
+    )
+    assert install.returncode == 0, install.stdout
+    prisma_bin = node_modules / ".bin" / "prisma"
+    assert prisma_bin.exists(), f"prisma CLI missing after npm install:\n{install.stdout}"
+    return prisma_bin
 
 
 def test_migration_lock_present() -> None:
@@ -74,24 +99,37 @@ def test_initial_migration_exists() -> None:
 
 def test_prisma_migrate_dev_runs_on_clean_database(tmp_path: Path) -> None:
     """Acceptance check: `prisma migrate dev` must succeed on a clean database."""
-    prisma_dir = tmp_path / "prisma"
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    prisma_dir = project_dir / "prisma"
     shutil.copytree(ROOT / "prisma", prisma_dir)
+    (project_dir / "package.json").write_text(
+        json.dumps({"name": "bukay-prisma-migrate-test", "private": True}),
+        encoding="utf-8",
+    )
+
+    prisma_bin = _prepare_node_modules(project_dir)
+    env = {
+        **os.environ,
+        "PATH": f"{project_dir / 'node_modules' / '.bin'}{os.pathsep}{os.environ['PATH']}",
+    }
 
     result = subprocess.run(
         [
-            *_prisma_command(),
+            str(prisma_bin),
             "migrate",
             "dev",
             "--schema",
-            str(prisma_dir / "schema.prisma"),
+            "prisma/schema.prisma",
             "--skip-seed",
             "--skip-generate",
         ],
-        cwd=ROOT,
+        cwd=project_dir,
+        env=env,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        timeout=60,
+        timeout=120,
         check=False,
     )
 

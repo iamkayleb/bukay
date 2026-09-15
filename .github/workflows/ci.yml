@@ -29,6 +29,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Prisma migrate
+        run: pnpm exec prisma migrate deploy --schema prisma/schema.prisma
+
+      - name: Prisma seed
+        run: pnpm exec prisma db seed --schema prisma/schema.prisma
+
       - name: Format check
         run: pnpm format:check
 

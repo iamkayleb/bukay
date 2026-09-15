@@ -7,10 +7,16 @@ every tenant-owned model must carry a `tenantId` column AND declare
 
 from __future__ import annotations
 
+import json
+import os
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
-SCHEMA_PATH = Path(__file__).resolve().parent.parent / "prisma" / "schema.prisma"
+ROOT = Path(__file__).resolve().parent.parent
+SCHEMA_PATH = ROOT / "prisma" / "schema.prisma"
+PACKAGE_JSON = ROOT / "package.json"
 
 EXPECTED_TENANT_SCOPED_MODELS = {
     "User",
@@ -25,6 +31,36 @@ EXPECTED_TENANT_SCOPED_MODELS = {
 
 # Models the scope requires to exist at all.
 REQUIRED_MODELS = EXPECTED_TENANT_SCOPED_MODELS | {"Tenant"}
+
+# Relation fields the suite asserts so schema drift cannot drop FK wiring.
+EXPECTED_RELATIONS = {
+    "User": (("tenant", "Tenant"),),
+    "Service": (("tenant", "Tenant"),),
+    "Staff": (("tenant", "Tenant"),),
+    "BusinessHour": (("tenant", "Tenant"),),
+    "Client": (("tenant", "Tenant"),),
+    "Booking": (
+        ("tenant", "Tenant"),
+        ("client", "Client"),
+        ("service", "Service"),
+        ("staff", "Staff?"),
+    ),
+    "Payment": (
+        ("tenant", "Tenant"),
+        ("booking", "Booking"),
+    ),
+    "AuditLog": (("tenant", "Tenant"),),
+    "Tenant": (
+        ("users", "User[]"),
+        ("services", "Service[]"),
+        ("staff", "Staff[]"),
+        ("businessHours", "BusinessHour[]"),
+        ("clients", "Client[]"),
+        ("bookings", "Booking[]"),
+        ("payments", "Payment[]"),
+        ("auditLogs", "AuditLog[]"),
+    ),
+}
 
 
 def _model_blocks(schema_text: str) -> dict[str, str]:
@@ -48,8 +84,97 @@ def _has_tenant_id_index(model_body: str) -> bool:
     return re.search(r"@@index\(\[\s*tenantId\s*(?:,|\])", model_body) is not None
 
 
+def _has_relation_field(model_body: str, field_name: str, type_name: str) -> bool:
+    # Optional (`Type?`) and list (`Type[]`) suffixes are part of the declared type.
+    # Avoid trailing `\b`: `?` / `]` are non-word chars, so `\b` would fail to match.
+    return (
+        re.search(
+            rf"^\s*{re.escape(field_name)}\s+{re.escape(type_name)}(?:\s|$)",
+            model_body,
+            re.MULTILINE,
+        )
+        is not None
+    )
+
+
+def _package_version(package: str) -> str:
+    pkg = json.loads(PACKAGE_JSON.read_text())
+    spec = pkg.get("dependencies", {}).get(package) or pkg.get("devDependencies", {}).get(package)
+    assert spec, f"could not find {package} version in {PACKAGE_JSON}"
+    return spec
+
+
+def _prepare_prisma_bin(project_dir: Path) -> Path:
+    """Install (or reuse) a local prisma CLI so validate doesn't hang on npx downloads."""
+    node_modules = project_dir / "node_modules"
+    root_node_modules = ROOT / "node_modules"
+    if root_node_modules.exists():
+        node_modules.symlink_to(root_node_modules, target_is_directory=True)
+        return node_modules / ".bin" / "prisma"
+
+    install = subprocess.run(
+        [
+            "npm",
+            "install",
+            "--no-audit",
+            "--no-fund",
+            "--ignore-scripts",
+            f"prisma@{_package_version('prisma')}",
+        ],
+        cwd=project_dir,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=120,
+        check=False,
+    )
+    assert install.returncode == 0, install.stdout
+    prisma_bin = node_modules / ".bin" / "prisma"
+    assert prisma_bin.exists(), f"prisma CLI missing after npm install:\n{install.stdout}"
+    return prisma_bin
+
+
 def test_schema_file_exists() -> None:
     assert SCHEMA_PATH.exists(), f"missing prisma schema at {SCHEMA_PATH}"
+
+
+def test_schema_is_syntactically_valid_via_prisma_validate(tmp_path: Path) -> None:
+    """Acceptance check: Prisma must parse schema.prisma without errors."""
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    prisma_dir = project_dir / "prisma"
+    prisma_dir.mkdir()
+    shutil.copy(SCHEMA_PATH, prisma_dir / "schema.prisma")
+    (project_dir / "package.json").write_text(
+        json.dumps({"name": "bukay-prisma-validate-test", "private": True}),
+        encoding="utf-8",
+    )
+
+    prisma_bin = _prepare_prisma_bin(project_dir)
+    env = {
+        **os.environ,
+        "PATH": f"{project_dir / 'node_modules' / '.bin'}{os.pathsep}{os.environ['PATH']}",
+    }
+    result = subprocess.run(
+        [str(prisma_bin), "validate", "--schema", "prisma/schema.prisma"],
+        cwd=project_dir,
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout
+    assert re.search(r"\bis valid\b", result.stdout, re.IGNORECASE), result.stdout
+
+
+def test_schema_defines_exactly_nine_models() -> None:
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    assert len(blocks) == 9, f"expected exactly 9 Prisma models, found {sorted(blocks)}"
+    assert (
+        set(blocks) == REQUIRED_MODELS
+    ), f"schema models {sorted(blocks)} do not match required set {sorted(REQUIRED_MODELS)}"
 
 
 def test_all_required_models_present() -> None:
@@ -68,11 +193,23 @@ def test_expected_tenant_scoped_models_have_tenant_id_column() -> None:
 def test_every_tenant_scoped_model_has_tenant_index() -> None:
     blocks = _model_blocks(SCHEMA_PATH.read_text())
     scoped_models = _tenant_scoped_models(blocks)
-    assert scoped_models, "schema has no tenant-scoped models"
+    assert (
+        scoped_models == EXPECTED_TENANT_SCOPED_MODELS
+    ), f"unexpected tenant-scoped models: {sorted(scoped_models)}"
 
     for name in scoped_models:
         body = blocks[name]
         assert _has_tenant_id_index(body), f"model {name} is missing `@@index([tenantId])`"
+
+
+def test_required_model_relations_are_declared() -> None:
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    for model_name, relations in EXPECTED_RELATIONS.items():
+        body = blocks[model_name]
+        for field_name, type_name in relations:
+            assert _has_relation_field(
+                body, field_name, type_name
+            ), f"model {model_name} is missing relation `{field_name} {type_name}`"
 
 
 def test_tenant_model_has_no_tenant_id() -> None:
