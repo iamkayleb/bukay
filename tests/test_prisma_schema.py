@@ -81,3 +81,55 @@ def test_tenant_model_has_no_tenant_id() -> None:
     assert not re.search(
         r"^\s*tenantId\s+", body, re.MULTILINE
     ), "Tenant model must not carry its own tenantId column"
+
+
+# Expected Prisma relation fields per model (field name -> related model type
+# prefix). Keeps the "nine models with relations" scope from drifting silently.
+EXPECTED_RELATIONS: dict[str, dict[str, str]] = {
+    "Tenant": {
+        "users": "User",
+        "services": "Service",
+        "staff": "Staff",
+        "businessHours": "BusinessHour",
+        "clients": "Client",
+        "bookings": "Booking",
+        "payments": "Payment",
+        "auditLogs": "AuditLog",
+    },
+    "User": {"tenant": "Tenant"},
+    "Service": {"tenant": "Tenant", "bookings": "Booking"},
+    "Staff": {"tenant": "Tenant", "bookings": "Booking"},
+    "BusinessHour": {"tenant": "Tenant"},
+    "Client": {"tenant": "Tenant", "bookings": "Booking"},
+    "Booking": {
+        "tenant": "Tenant",
+        "client": "Client",
+        "service": "Service",
+        "staff": "Staff",
+        "payments": "Payment",
+    },
+    "Payment": {"tenant": "Tenant", "booking": "Booking"},
+    "AuditLog": {"tenant": "Tenant"},
+}
+
+
+def _has_relation_field(model_body: str, field_name: str, related_type: str) -> bool:
+    """True when the model declares `fieldName RelatedType` or `RelatedType[]`."""
+    pattern = re.compile(
+        rf"^\s*{re.escape(field_name)}\s+{re.escape(related_type)}\??(?:\[\])?",
+        re.MULTILINE,
+    )
+    return pattern.search(model_body) is not None
+
+
+def test_nine_models_declare_expected_relations() -> None:
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    assert set(blocks) >= REQUIRED_MODELS
+
+    for model_name, relations in EXPECTED_RELATIONS.items():
+        body = blocks[model_name]
+        for field_name, related_type in relations.items():
+            assert _has_relation_field(body, field_name, related_type), (
+                f"model {model_name} is missing relation "
+                f"`{field_name} {related_type}` (or {related_type}[])"
+            )
