@@ -4,11 +4,7 @@
     "spec": "scaffold",
     "agent": "claude",
     "title": "[eval r1] Scaffold product repo (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-1"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-1"],
     "file": "eval/issues/round-01/scaffold--claude.md"
   },
   {
@@ -16,11 +12,7 @@
     "spec": "scaffold",
     "agent": "codex",
     "title": "[eval r1] Scaffold product repo (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-1"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-1"],
     "file": "eval/issues/round-01/scaffold--codex.md"
   },
   {
@@ -28,11 +20,7 @@
     "spec": "scaffold",
     "agent": "cursor",
     "title": "[eval r1] Scaffold product repo (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-1"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-1"],
     "file": "eval/issues/round-01/scaffold--cursor.md"
   },
   {
@@ -40,11 +28,7 @@
     "spec": "schema-v1",
     "agent": "claude",
     "title": "[eval r1] Database schema v1 (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-1"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-1"],
     "file": "eval/issues/round-01/schema-v1--claude.md"
   },
   {
@@ -52,11 +36,7 @@
     "spec": "schema-v1",
     "agent": "codex",
     "title": "[eval r1] Database schema v1 (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-1"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-1"],
     "file": "eval/issues/round-01/schema-v1--codex.md"
   },
   {
@@ -64,11 +44,7 @@
     "spec": "schema-v1",
     "agent": "cursor",
     "title": "[eval r1] Database schema v1 (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-1"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-1"],
     "file": "eval/issues/round-01/schema-v1--cursor.md"
   },
   {
@@ -76,11 +52,7 @@
     "spec": "multitenancy",
     "agent": "claude",
     "title": "[eval r2] Multi-tenancy middleware (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-2"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-2"],
     "file": "eval/issues/round-02/multitenancy--claude.md"
   },
   {
@@ -88,11 +60,7 @@
     "spec": "multitenancy",
     "agent": "codex",
     "title": "[eval r2] Multi-tenancy middleware (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-2"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-2"],
     "file": "eval/issues/round-02/multitenancy--codex.md"
   },
   {
@@ -100,11 +68,7 @@
     "spec": "multitenancy",
     "agent": "cursor",
     "title": "[eval r2] Multi-tenancy middleware (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-2"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-2"],
     "file": "eval/issues/round-02/multitenancy--cursor.md"
   },
   {
@@ -112,11 +76,7 @@
     "spec": "auth-otp",
     "agent": "claude",
     "title": "[eval r2] Auth with phone and OTP (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-2"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-2"],
     "file": "eval/issues/round-02/auth-otp--claude.md"
   },
   {
@@ -124,11 +84,7 @@
     "spec": "auth-otp",
     "agent": "codex",
     "title": "[eval r2] Auth with phone and OTP (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-2"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-2"],
     "file": "eval/issues/round-02/auth-otp--codex.md"
   },
   {
@@ -136,11 +92,7 @@
     "spec": "auth-otp",
     "agent": "cursor",
     "title": "[eval r2] Auth with phone and OTP (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-2"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-2"],
     "file": "eval/issues/round-02/auth-otp--cursor.md"
   },
   {
@@ -148,11 +100,7 @@
     "spec": "dashboard-shell",
     "agent": "claude",
     "title": "[eval r3] Dashboard shell (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-3"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-3"],
     "file": "eval/issues/round-03/dashboard-shell--claude.md"
   },
   {
@@ -160,11 +108,7 @@
     "spec": "dashboard-shell",
     "agent": "codex",
     "title": "[eval r3] Dashboard shell (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-3"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-3"],
     "file": "eval/issues/round-03/dashboard-shell--codex.md"
   },
   {
@@ -172,11 +116,7 @@
     "spec": "dashboard-shell",
     "agent": "cursor",
     "title": "[eval r3] Dashboard shell (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-3"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-3"],
     "file": "eval/issues/round-03/dashboard-shell--cursor.md"
   },
   {
@@ -184,11 +124,7 @@
     "spec": "services-crud",
     "agent": "claude",
     "title": "[eval r3] Services CRUD (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-3"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-3"],
     "file": "eval/issues/round-03/services-crud--claude.md"
   },
   {
@@ -196,11 +132,7 @@
     "spec": "services-crud",
     "agent": "codex",
     "title": "[eval r3] Services CRUD (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-3"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-3"],
     "file": "eval/issues/round-03/services-crud--codex.md"
   },
   {
@@ -208,11 +140,7 @@
     "spec": "services-crud",
     "agent": "cursor",
     "title": "[eval r3] Services CRUD (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-3"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-3"],
     "file": "eval/issues/round-03/services-crud--cursor.md"
   },
   {
@@ -220,11 +148,7 @@
     "spec": "business-hours",
     "agent": "claude",
     "title": "[eval r4] Business hours and blackout dates (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-4"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-4"],
     "file": "eval/issues/round-04/business-hours--claude.md"
   },
   {
@@ -232,11 +156,7 @@
     "spec": "business-hours",
     "agent": "codex",
     "title": "[eval r4] Business hours and blackout dates (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-4"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-4"],
     "file": "eval/issues/round-04/business-hours--codex.md"
   },
   {
@@ -244,11 +164,7 @@
     "spec": "business-hours",
     "agent": "cursor",
     "title": "[eval r4] Business hours and blackout dates (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-4"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-4"],
     "file": "eval/issues/round-04/business-hours--cursor.md"
   },
   {
@@ -256,11 +172,7 @@
     "spec": "manual-booking",
     "agent": "claude",
     "title": "[eval r4] Manual booking entry (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-4"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-4"],
     "file": "eval/issues/round-04/manual-booking--claude.md"
   },
   {
@@ -268,11 +180,7 @@
     "spec": "manual-booking",
     "agent": "codex",
     "title": "[eval r4] Manual booking entry (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-4"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-4"],
     "file": "eval/issues/round-04/manual-booking--codex.md"
   },
   {
@@ -280,11 +188,7 @@
     "spec": "manual-booking",
     "agent": "cursor",
     "title": "[eval r4] Manual booking entry (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-4"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-4"],
     "file": "eval/issues/round-04/manual-booking--cursor.md"
   },
   {
@@ -292,11 +196,7 @@
     "spec": "calendar",
     "agent": "claude",
     "title": "[eval r5] Calendar view (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-5"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-5"],
     "file": "eval/issues/round-05/calendar--claude.md"
   },
   {
@@ -304,11 +204,7 @@
     "spec": "calendar",
     "agent": "codex",
     "title": "[eval r5] Calendar view (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-5"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-5"],
     "file": "eval/issues/round-05/calendar--codex.md"
   },
   {
@@ -316,11 +212,7 @@
     "spec": "calendar",
     "agent": "cursor",
     "title": "[eval r5] Calendar view (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-5"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-5"],
     "file": "eval/issues/round-05/calendar--cursor.md"
   },
   {
@@ -328,11 +220,7 @@
     "spec": "clients-crm",
     "agent": "claude",
     "title": "[eval r5] Clients CRM (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-5"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-5"],
     "file": "eval/issues/round-05/clients-crm--claude.md"
   },
   {
@@ -340,11 +228,7 @@
     "spec": "clients-crm",
     "agent": "codex",
     "title": "[eval r5] Clients CRM (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-5"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-5"],
     "file": "eval/issues/round-05/clients-crm--codex.md"
   },
   {
@@ -352,11 +236,7 @@
     "spec": "clients-crm",
     "agent": "cursor",
     "title": "[eval r5] Clients CRM (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-5"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-5"],
     "file": "eval/issues/round-05/clients-crm--cursor.md"
   },
   {
@@ -364,11 +244,7 @@
     "spec": "tenant-settings",
     "agent": "claude",
     "title": "[eval r5] Tenant settings (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-5"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-5"],
     "file": "eval/issues/round-05/tenant-settings--claude.md"
   },
   {
@@ -376,11 +252,7 @@
     "spec": "tenant-settings",
     "agent": "codex",
     "title": "[eval r5] Tenant settings (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-5"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-5"],
     "file": "eval/issues/round-05/tenant-settings--codex.md"
   },
   {
@@ -388,11 +260,7 @@
     "spec": "tenant-settings",
     "agent": "cursor",
     "title": "[eval r5] Tenant settings (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-5"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-5"],
     "file": "eval/issues/round-05/tenant-settings--cursor.md"
   },
   {
@@ -400,11 +268,7 @@
     "spec": "public-page",
     "agent": "claude",
     "title": "[eval r6] Slug and public tenant page (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-6"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-6"],
     "file": "eval/issues/round-06/public-page--claude.md"
   },
   {
@@ -412,11 +276,7 @@
     "spec": "public-page",
     "agent": "codex",
     "title": "[eval r6] Slug and public tenant page (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-6"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-6"],
     "file": "eval/issues/round-06/public-page--codex.md"
   },
   {
@@ -424,11 +284,7 @@
     "spec": "public-page",
     "agent": "cursor",
     "title": "[eval r6] Slug and public tenant page (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-6"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-6"],
     "file": "eval/issues/round-06/public-page--cursor.md"
   },
   {
@@ -436,11 +292,7 @@
     "spec": "availability-engine",
     "agent": "claude",
     "title": "[eval r6] Availability engine (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-6"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-6"],
     "file": "eval/issues/round-06/availability-engine--claude.md"
   },
   {
@@ -448,11 +300,7 @@
     "spec": "availability-engine",
     "agent": "codex",
     "title": "[eval r6] Availability engine (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-6"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-6"],
     "file": "eval/issues/round-06/availability-engine--codex.md"
   },
   {
@@ -460,11 +308,7 @@
     "spec": "availability-engine",
     "agent": "cursor",
     "title": "[eval r6] Availability engine (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-6"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-6"],
     "file": "eval/issues/round-06/availability-engine--cursor.md"
   },
   {
@@ -472,11 +316,7 @@
     "spec": "public-booking",
     "agent": "claude",
     "title": "[eval r7] Public booking flow (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-7"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-7"],
     "file": "eval/issues/round-07/public-booking--claude.md"
   },
   {
@@ -484,11 +324,7 @@
     "spec": "public-booking",
     "agent": "codex",
     "title": "[eval r7] Public booking flow (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-7"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-7"],
     "file": "eval/issues/round-07/public-booking--codex.md"
   },
   {
@@ -496,11 +332,7 @@
     "spec": "public-booking",
     "agent": "cursor",
     "title": "[eval r7] Public booking flow (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-7"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-7"],
     "file": "eval/issues/round-07/public-booking--cursor.md"
   },
   {
@@ -508,11 +340,7 @@
     "spec": "booking-confirmation",
     "agent": "claude",
     "title": "[eval r7] Booking confirmation and notification stub (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-7"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-7"],
     "file": "eval/issues/round-07/booking-confirmation--claude.md"
   },
   {
@@ -520,11 +348,7 @@
     "spec": "booking-confirmation",
     "agent": "codex",
     "title": "[eval r7] Booking confirmation and notification stub (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-7"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-7"],
     "file": "eval/issues/round-07/booking-confirmation--codex.md"
   },
   {
@@ -532,11 +356,7 @@
     "spec": "booking-confirmation",
     "agent": "cursor",
     "title": "[eval r7] Booking confirmation and notification stub (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-7"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-7"],
     "file": "eval/issues/round-07/booking-confirmation--cursor.md"
   },
   {
@@ -544,11 +364,7 @@
     "spec": "paystack-charge",
     "agent": "claude",
     "title": "[eval r8] Paystack charge at booking (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-8"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-8"],
     "file": "eval/issues/round-08/paystack-charge--claude.md"
   },
   {
@@ -556,11 +372,7 @@
     "spec": "paystack-charge",
     "agent": "codex",
     "title": "[eval r8] Paystack charge at booking (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-8"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-8"],
     "file": "eval/issues/round-08/paystack-charge--codex.md"
   },
   {
@@ -568,11 +380,7 @@
     "spec": "paystack-charge",
     "agent": "cursor",
     "title": "[eval r8] Paystack charge at booking (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-8"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-8"],
     "file": "eval/issues/round-08/paystack-charge--cursor.md"
   },
   {
@@ -580,11 +388,7 @@
     "spec": "paystack-webhooks",
     "agent": "claude",
     "title": "[eval r8] Paystack webhooks (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-8"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-8"],
     "file": "eval/issues/round-08/paystack-webhooks--claude.md"
   },
   {
@@ -592,11 +396,7 @@
     "spec": "paystack-webhooks",
     "agent": "codex",
     "title": "[eval r8] Paystack webhooks (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-8"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-8"],
     "file": "eval/issues/round-08/paystack-webhooks--codex.md"
   },
   {
@@ -604,11 +404,7 @@
     "spec": "paystack-webhooks",
     "agent": "cursor",
     "title": "[eval r8] Paystack webhooks (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-8"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-8"],
     "file": "eval/issues/round-08/paystack-webhooks--cursor.md"
   },
   {
@@ -616,11 +412,7 @@
     "spec": "deposits",
     "agent": "claude",
     "title": "[eval r9] Deposits and no-show fees (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-9"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-9"],
     "file": "eval/issues/round-09/deposits--claude.md"
   },
   {
@@ -628,11 +420,7 @@
     "spec": "deposits",
     "agent": "codex",
     "title": "[eval r9] Deposits and no-show fees (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-9"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-9"],
     "file": "eval/issues/round-09/deposits--codex.md"
   },
   {
@@ -640,11 +428,7 @@
     "spec": "deposits",
     "agent": "cursor",
     "title": "[eval r9] Deposits and no-show fees (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-9"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-9"],
     "file": "eval/issues/round-09/deposits--cursor.md"
   },
   {
@@ -652,11 +436,7 @@
     "spec": "payout-ledger",
     "agent": "claude",
     "title": "[eval r9] Payout ledger (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-9"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-9"],
     "file": "eval/issues/round-09/payout-ledger--claude.md"
   },
   {
@@ -664,11 +444,7 @@
     "spec": "payout-ledger",
     "agent": "codex",
     "title": "[eval r9] Payout ledger (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-9"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-9"],
     "file": "eval/issues/round-09/payout-ledger--codex.md"
   },
   {
@@ -676,11 +452,7 @@
     "spec": "payout-ledger",
     "agent": "cursor",
     "title": "[eval r9] Payout ledger (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-9"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-9"],
     "file": "eval/issues/round-09/payout-ledger--cursor.md"
   },
   {
@@ -688,11 +460,7 @@
     "spec": "flutterwave",
     "agent": "claude",
     "title": "[eval r10] Flutterwave adapter (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-10"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-10"],
     "file": "eval/issues/round-10/flutterwave--claude.md"
   },
   {
@@ -700,11 +468,7 @@
     "spec": "flutterwave",
     "agent": "codex",
     "title": "[eval r10] Flutterwave adapter (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-10"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-10"],
     "file": "eval/issues/round-10/flutterwave--codex.md"
   },
   {
@@ -712,11 +476,7 @@
     "spec": "flutterwave",
     "agent": "cursor",
     "title": "[eval r10] Flutterwave adapter (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-10"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-10"],
     "file": "eval/issues/round-10/flutterwave--cursor.md"
   },
   {
@@ -724,11 +484,7 @@
     "spec": "whatsapp-port",
     "agent": "claude",
     "title": "[eval r10] WhatsApp provider abstraction (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-10"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-10"],
     "file": "eval/issues/round-10/whatsapp-port--claude.md"
   },
   {
@@ -736,11 +492,7 @@
     "spec": "whatsapp-port",
     "agent": "codex",
     "title": "[eval r10] WhatsApp provider abstraction (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-10"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-10"],
     "file": "eval/issues/round-10/whatsapp-port--codex.md"
   },
   {
@@ -748,11 +500,7 @@
     "spec": "whatsapp-port",
     "agent": "cursor",
     "title": "[eval r10] WhatsApp provider abstraction (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-10"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-10"],
     "file": "eval/issues/round-10/whatsapp-port--cursor.md"
   },
   {
@@ -760,11 +508,7 @@
     "spec": "lifecycle-notifications",
     "agent": "claude",
     "title": "[eval r11] Booking lifecycle notifications (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-11"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-11"],
     "file": "eval/issues/round-11/lifecycle-notifications--claude.md"
   },
   {
@@ -772,11 +516,7 @@
     "spec": "lifecycle-notifications",
     "agent": "codex",
     "title": "[eval r11] Booking lifecycle notifications (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-11"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-11"],
     "file": "eval/issues/round-11/lifecycle-notifications--codex.md"
   },
   {
@@ -784,11 +524,7 @@
     "spec": "lifecycle-notifications",
     "agent": "cursor",
     "title": "[eval r11] Booking lifecycle notifications (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-11"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-11"],
     "file": "eval/issues/round-11/lifecycle-notifications--cursor.md"
   },
   {
@@ -796,11 +532,7 @@
     "spec": "reminders",
     "agent": "claude",
     "title": "[eval r11] Reminder scheduler (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-11"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-11"],
     "file": "eval/issues/round-11/reminders--claude.md"
   },
   {
@@ -808,11 +540,7 @@
     "spec": "reminders",
     "agent": "codex",
     "title": "[eval r11] Reminder scheduler (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-11"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-11"],
     "file": "eval/issues/round-11/reminders--codex.md"
   },
   {
@@ -820,11 +548,7 @@
     "spec": "reminders",
     "agent": "cursor",
     "title": "[eval r11] Reminder scheduler (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-11"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-11"],
     "file": "eval/issues/round-11/reminders--cursor.md"
   },
   {
@@ -832,11 +556,7 @@
     "spec": "whatsapp-inbound",
     "agent": "claude",
     "title": "[eval r12] Inbound WhatsApp webhook and routing (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-12"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-12"],
     "file": "eval/issues/round-12/whatsapp-inbound--claude.md"
   },
   {
@@ -844,11 +564,7 @@
     "spec": "whatsapp-inbound",
     "agent": "codex",
     "title": "[eval r12] Inbound WhatsApp webhook and routing (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-12"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-12"],
     "file": "eval/issues/round-12/whatsapp-inbound--codex.md"
   },
   {
@@ -856,11 +572,7 @@
     "spec": "whatsapp-inbound",
     "agent": "cursor",
     "title": "[eval r12] Inbound WhatsApp webhook and routing (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-12"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-12"],
     "file": "eval/issues/round-12/whatsapp-inbound--cursor.md"
   },
   {
@@ -868,11 +580,7 @@
     "spec": "booking-agent",
     "agent": "claude",
     "title": "[eval r12] Booking agent happy path (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-12"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-12"],
     "file": "eval/issues/round-12/booking-agent--claude.md"
   },
   {
@@ -880,11 +588,7 @@
     "spec": "booking-agent",
     "agent": "codex",
     "title": "[eval r12] Booking agent happy path (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-12"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-12"],
     "file": "eval/issues/round-12/booking-agent--codex.md"
   },
   {
@@ -892,11 +596,7 @@
     "spec": "booking-agent",
     "agent": "cursor",
     "title": "[eval r12] Booking agent happy path (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-12"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-12"],
     "file": "eval/issues/round-12/booking-agent--cursor.md"
   },
   {
@@ -904,11 +604,7 @@
     "spec": "agent-reschedule",
     "agent": "claude",
     "title": "[eval r13] Booking agent reschedule and cancel (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-13"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-13"],
     "file": "eval/issues/round-13/agent-reschedule--claude.md"
   },
   {
@@ -916,11 +612,7 @@
     "spec": "agent-reschedule",
     "agent": "codex",
     "title": "[eval r13] Booking agent reschedule and cancel (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-13"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-13"],
     "file": "eval/issues/round-13/agent-reschedule--codex.md"
   },
   {
@@ -928,11 +620,7 @@
     "spec": "agent-reschedule",
     "agent": "cursor",
     "title": "[eval r13] Booking agent reschedule and cancel (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-13"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-13"],
     "file": "eval/issues/round-13/agent-reschedule--cursor.md"
   },
   {
@@ -940,11 +628,7 @@
     "spec": "agent-guardrails",
     "agent": "claude",
     "title": "[eval r13] Agent guardrails (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-13"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-13"],
     "file": "eval/issues/round-13/agent-guardrails--claude.md"
   },
   {
@@ -952,11 +636,7 @@
     "spec": "agent-guardrails",
     "agent": "codex",
     "title": "[eval r13] Agent guardrails (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-13"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-13"],
     "file": "eval/issues/round-13/agent-guardrails--codex.md"
   },
   {
@@ -964,11 +644,7 @@
     "spec": "agent-guardrails",
     "agent": "cursor",
     "title": "[eval r13] Agent guardrails (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-13"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-13"],
     "file": "eval/issues/round-13/agent-guardrails--cursor.md"
   },
   {
@@ -976,11 +652,7 @@
     "spec": "setup-agent",
     "agent": "claude",
     "title": "[eval r14] Onboarding intake agent (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-14"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-14"],
     "file": "eval/issues/round-14/setup-agent--claude.md"
   },
   {
@@ -988,11 +660,7 @@
     "spec": "setup-agent",
     "agent": "codex",
     "title": "[eval r14] Onboarding intake agent (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-14"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-14"],
     "file": "eval/issues/round-14/setup-agent--codex.md"
   },
   {
@@ -1000,11 +668,7 @@
     "spec": "setup-agent",
     "agent": "cursor",
     "title": "[eval r14] Onboarding intake agent (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-14"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-14"],
     "file": "eval/issues/round-14/setup-agent--cursor.md"
   },
   {
@@ -1012,11 +676,7 @@
     "spec": "config-confirm",
     "agent": "claude",
     "title": "[eval r14] Config preview and confirm (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-14"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-14"],
     "file": "eval/issues/round-14/config-confirm--claude.md"
   },
   {
@@ -1024,11 +684,7 @@
     "spec": "config-confirm",
     "agent": "codex",
     "title": "[eval r14] Config preview and confirm (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-14"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-14"],
     "file": "eval/issues/round-14/config-confirm--codex.md"
   },
   {
@@ -1036,11 +692,7 @@
     "spec": "config-confirm",
     "agent": "cursor",
     "title": "[eval r14] Config preview and confirm (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-14"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-14"],
     "file": "eval/issues/round-14/config-confirm--cursor.md"
   },
   {
@@ -1048,11 +700,7 @@
     "spec": "qr-link",
     "agent": "claude",
     "title": "[eval r15] Booking link and QR generation (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-15"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-15"],
     "file": "eval/issues/round-15/qr-link--claude.md"
   },
   {
@@ -1060,11 +708,7 @@
     "spec": "qr-link",
     "agent": "codex",
     "title": "[eval r15] Booking link and QR generation (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-15"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-15"],
     "file": "eval/issues/round-15/qr-link--codex.md"
   },
   {
@@ -1072,11 +716,7 @@
     "spec": "qr-link",
     "agent": "cursor",
     "title": "[eval r15] Booking link and QR generation (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-15"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-15"],
     "file": "eval/issues/round-15/qr-link--cursor.md"
   },
   {
@@ -1084,11 +724,7 @@
     "spec": "no-show-tracking",
     "agent": "claude",
     "title": "[eval r15] No-show tracking (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-15"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-15"],
     "file": "eval/issues/round-15/no-show-tracking--claude.md"
   },
   {
@@ -1096,11 +732,7 @@
     "spec": "no-show-tracking",
     "agent": "codex",
     "title": "[eval r15] No-show tracking (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-15"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-15"],
     "file": "eval/issues/round-15/no-show-tracking--codex.md"
   },
   {
@@ -1108,11 +740,7 @@
     "spec": "no-show-tracking",
     "agent": "cursor",
     "title": "[eval r15] No-show tracking (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-15"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-15"],
     "file": "eval/issues/round-15/no-show-tracking--cursor.md"
   },
   {
@@ -1120,11 +748,7 @@
     "spec": "risk-score",
     "agent": "claude",
     "title": "[eval r16] Risk score and deposit gating (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-16"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-16"],
     "file": "eval/issues/round-16/risk-score--claude.md"
   },
   {
@@ -1132,11 +756,7 @@
     "spec": "risk-score",
     "agent": "codex",
     "title": "[eval r16] Risk score and deposit gating (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-16"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-16"],
     "file": "eval/issues/round-16/risk-score--codex.md"
   },
   {
@@ -1144,11 +764,7 @@
     "spec": "risk-score",
     "agent": "cursor",
     "title": "[eval r16] Risk score and deposit gating (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-16"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-16"],
     "file": "eval/issues/round-16/risk-score--cursor.md"
   },
   {
@@ -1156,11 +772,7 @@
     "spec": "waitlist",
     "agent": "claude",
     "title": "[eval r16] Waitlist auto-fill (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-16"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-16"],
     "file": "eval/issues/round-16/waitlist--claude.md"
   },
   {
@@ -1168,11 +780,7 @@
     "spec": "waitlist",
     "agent": "codex",
     "title": "[eval r16] Waitlist auto-fill (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-16"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-16"],
     "file": "eval/issues/round-16/waitlist--codex.md"
   },
   {
@@ -1180,11 +788,7 @@
     "spec": "waitlist",
     "agent": "cursor",
     "title": "[eval r16] Waitlist auto-fill (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-16"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-16"],
     "file": "eval/issues/round-16/waitlist--cursor.md"
   },
   {
@@ -1192,11 +796,7 @@
     "spec": "weekly-digest",
     "agent": "claude",
     "title": "[eval r17] Weekly WhatsApp digest (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-17"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-17"],
     "file": "eval/issues/round-17/weekly-digest--claude.md"
   },
   {
@@ -1204,11 +804,7 @@
     "spec": "weekly-digest",
     "agent": "codex",
     "title": "[eval r17] Weekly WhatsApp digest (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-17"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-17"],
     "file": "eval/issues/round-17/weekly-digest--codex.md"
   },
   {
@@ -1216,11 +812,7 @@
     "spec": "weekly-digest",
     "agent": "cursor",
     "title": "[eval r17] Weekly WhatsApp digest (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-17"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-17"],
     "file": "eval/issues/round-17/weekly-digest--cursor.md"
   },
   {
@@ -1228,11 +820,7 @@
     "spec": "staff",
     "agent": "claude",
     "title": "[eval r17] Staff accounts and assignment (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-17"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-17"],
     "file": "eval/issues/round-17/staff--claude.md"
   },
   {
@@ -1240,11 +828,7 @@
     "spec": "staff",
     "agent": "codex",
     "title": "[eval r17] Staff accounts and assignment (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-17"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-17"],
     "file": "eval/issues/round-17/staff--codex.md"
   },
   {
@@ -1252,11 +836,7 @@
     "spec": "staff",
     "agent": "cursor",
     "title": "[eval r17] Staff accounts and assignment (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-17"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-17"],
     "file": "eval/issues/round-17/staff--cursor.md"
   },
   {
@@ -1264,11 +844,7 @@
     "spec": "embed-widget",
     "agent": "claude",
     "title": "[eval r18] Embeddable booking widget (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-18"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-18"],
     "file": "eval/issues/round-18/embed-widget--claude.md"
   },
   {
@@ -1276,11 +852,7 @@
     "spec": "embed-widget",
     "agent": "codex",
     "title": "[eval r18] Embeddable booking widget (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-18"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-18"],
     "file": "eval/issues/round-18/embed-widget--codex.md"
   },
   {
@@ -1288,11 +860,7 @@
     "spec": "embed-widget",
     "agent": "cursor",
     "title": "[eval r18] Embeddable booking widget (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-18"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-18"],
     "file": "eval/issues/round-18/embed-widget--cursor.md"
   },
   {
@@ -1300,11 +868,7 @@
     "spec": "observability",
     "agent": "claude",
     "title": "[eval r18] Observability (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-18"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-18"],
     "file": "eval/issues/round-18/observability--claude.md"
   },
   {
@@ -1312,11 +876,7 @@
     "spec": "observability",
     "agent": "codex",
     "title": "[eval r18] Observability (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-18"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-18"],
     "file": "eval/issues/round-18/observability--codex.md"
   },
   {
@@ -1324,11 +884,7 @@
     "spec": "observability",
     "agent": "cursor",
     "title": "[eval r18] Observability (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-18"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-18"],
     "file": "eval/issues/round-18/observability--cursor.md"
   },
   {
@@ -1336,11 +892,7 @@
     "spec": "admin-backoffice",
     "agent": "claude",
     "title": "[eval r19] Admin backoffice (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-19"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-19"],
     "file": "eval/issues/round-19/admin-backoffice--claude.md"
   },
   {
@@ -1348,11 +900,7 @@
     "spec": "admin-backoffice",
     "agent": "codex",
     "title": "[eval r19] Admin backoffice (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-19"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-19"],
     "file": "eval/issues/round-19/admin-backoffice--codex.md"
   },
   {
@@ -1360,11 +908,7 @@
     "spec": "admin-backoffice",
     "agent": "cursor",
     "title": "[eval r19] Admin backoffice (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-19"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-19"],
     "file": "eval/issues/round-19/admin-backoffice--cursor.md"
   },
   {
@@ -1372,11 +916,7 @@
     "spec": "ghana",
     "agent": "claude",
     "title": "[eval r19] Ghana rollout (claude)",
-    "labels": [
-      "agent:claude",
-      "agents:auto-pilot",
-      "eval:round-19"
-    ],
+    "labels": ["agent:claude", "agents:auto-pilot", "eval:round-19"],
     "file": "eval/issues/round-19/ghana--claude.md"
   },
   {
@@ -1384,11 +924,7 @@
     "spec": "ghana",
     "agent": "codex",
     "title": "[eval r19] Ghana rollout (codex)",
-    "labels": [
-      "agent:codex",
-      "agents:auto-pilot",
-      "eval:round-19"
-    ],
+    "labels": ["agent:codex", "agents:auto-pilot", "eval:round-19"],
     "file": "eval/issues/round-19/ghana--codex.md"
   },
   {
@@ -1396,11 +932,7 @@
     "spec": "ghana",
     "agent": "cursor",
     "title": "[eval r19] Ghana rollout (cursor)",
-    "labels": [
-      "agent:cursor",
-      "agents:auto-pilot",
-      "eval:round-19"
-    ],
+    "labels": ["agent:cursor", "agents:auto-pilot", "eval:round-19"],
     "file": "eval/issues/round-19/ghana--cursor.md"
   }
 ]
