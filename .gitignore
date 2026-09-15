@@ -240,3 +240,6 @@ tsconfig.tsbuildinfo
 
 # Patch files (e.g. verifier diffs)
 *.patch
+langsmith-fleet-worker-attempt.json
+langsmith-fleet-worker-attempt.json
+langsmith-fleet-worker-attempt.json
