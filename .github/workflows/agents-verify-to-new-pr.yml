@@ -900,21 +900,69 @@ jobs:
               _defaultAgent =
                 loadAgentRegistry('./.github/agents/registry.yml').default_agent || 'codex';
             } catch (_) {}
-            let agentKey = _defaultAgent;
-            try {
-              const { resolveAgentFromLabels } = require('./.github/scripts/agent_registry.js');
-              const labels =
-                (context.payload.pull_request && context.payload.pull_request.labels) || [];
-              agentKey = resolveAgentFromLabels(labels, {
-                registryPath: './.github/agents/registry.yml',
-              });
-            } catch (err) {
-              core.warning(
-                `Failed to resolve agent from PR labels; defaulting to ${_defaultAgent}: ` +
-                  err.message
-              );
-              agentKey = _defaultAgent;
+            // Resolution order: the PR's own agent:* label, then the parent
+            // issue's, then the registry default.
+            //
+            // The plain registry default is wrong for a follow-up: a follow-up
+            // remediates ONE agent's work, so guessing sends another agent to fix
+            // code it did not write and silently destroys per-agent attribution.
+            // resolveAgentFromLabels throws when a PR carries zero or several
+            // agent:* labels — which is exactly what stall rotation leaves behind —
+            // so the old catch turned every such case into the default agent.
+            const { resolveAgentFromLabels } = require('./.github/scripts/agent_registry.js');
+            const registryPath = './.github/agents/registry.yml';
+            const agentFrom = (labels) => {
+              try {
+                const key = resolveAgentFromLabels(labels || [], { registryPath });
+                return key ? String(key).trim().toLowerCase() : '';
+              } catch (_) {
+                // Fall back to a single unambiguous agent:* label if present.
+                const names = (labels || [])
+                  .map((l) => (typeof l === 'string' ? l : l && l.name) || '')
+                  .filter((n) => n.startsWith('agent:'))
+                  .map((n) => n.slice('agent:'.length).trim().toLowerCase());
+                const unique = [...new Set(names)];
+                return unique.length === 1 ? unique[0] : '';
+              }
+            };
+
+            let agentKey = agentFrom(
+              (context.payload.pull_request && context.payload.pull_request.labels) || []);
+            let agentSource = agentKey ? 'pr-label' : '';
+
+            if (!agentKey) {
+              // The PR body carries `<!-- meta:issue:N -->` / `Closes #N`; the
+              // parent issue is the authoritative record of who was assigned.
+              const prBody = String(
+                (context.payload.pull_request && context.payload.pull_request.body) || '');
+              const m = prBody.match(/<!--\s*meta:issue:(\d+)\s*-->/) ||
+                        prBody.match(/(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*#(\d+)/i);
+              if (m) {
+                try {
+                  const { data: parent } = await withRetry((client) =>
+                    (client || github).rest.issues.get({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: Number(m[1]),
+                    }));
+                  agentKey = agentFrom(parent.labels || []);
+                  if (agentKey) agentSource = `parent-issue-#${m[1]}`;
+                } catch (err) {
+                  core.warning(`Could not read parent issue #${m[1]}: ${err.message}`);
+                }
+              }
             }
+
+            if (!agentKey) {
+              agentKey = _defaultAgent;
+              agentSource = 'registry-default';
+              core.warning(
+                `Could not determine which agent produced this PR from its labels or its ` +
+                `parent issue; falling back to '${_defaultAgent}'. The follow-up may be ` +
+                `routed to an agent that did not write the code — check the label before ` +
+                `letting it run.`);
+            }
+            core.info(`Follow-up agent: ${agentKey} (source: ${agentSource})`);
             const normalized =
               String(agentKey || _defaultAgent).trim().toLowerCase() || _defaultAgent;
             const agentLabel = `agent:${normalized}`;
