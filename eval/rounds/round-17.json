@@ -8,14 +8,14 @@
       "scope": "Send the owner a weekly summary of bookings, revenue, no-shows, top service and one actionable insight.",
       "tasks": [
         "Add `scripts/digest-cron.ts`: add the job scheduled per tenant timezone",
-        "Add `lib/digest.ts`: implement aggregation",
-        "Add `lib/insights.ts`: implement the insight rules",
-        "Add `tests/digest.test.ts` with fixtures"
+        "Add `app/lib/digest.ts`: implement aggregation",
+        "Add `app/lib/insights.ts`: implement the insight rules",
+        "Add `__tests__/digest.test.ts` with fixtures"
       ],
       "acceptance": [
         "Every active tenant receives one digest per week, verified by `pnpm test`",
         "Digest figures match `/app/payouts` for the same period",
-        "`lib/insights.ts` returns one actionable item per tenant",
+        "`app/lib/insights.ts` returns one actionable item per tenant",
         "`pnpm test` passes"
       ]
     },
@@ -28,7 +28,7 @@
         "Add `prisma/schema.prisma`: extend the `Staff` model with tenant scope",
         "Add `prisma/schema.prisma`: add the staff-service mapping table",
         "Add `app/[slug]/book/page.tsx`: add the picker",
-        "Add `lib/ledger.ts`: apply commission splits"
+        "Add `app/lib/ledger.ts`: apply commission splits"
       ],
       "acceptance": [
         "A staff session sees only its own bookings, verified by `pnpm test`",

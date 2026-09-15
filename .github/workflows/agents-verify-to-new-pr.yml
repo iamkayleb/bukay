@@ -29,6 +29,9 @@ jobs:
   create-new-pr:
     if: github.event.label.name == 'verify:create-new-pr'
     runs-on: ubuntu-latest
+    env:
+      WORKFLOWS_APP_ID: ${{ secrets.WORKFLOWS_APP_ID || '' }}
+      WORKFLOWS_APP_PRIVATE_KEY: ${{ secrets.WORKFLOWS_APP_PRIVATE_KEY || '' }}
     steps:
       - name: Check PR is merged
         id: check-merged
@@ -45,21 +48,44 @@ jobs:
             core.setOutput('pr_number', pr.number);
             core.setOutput('pr_title', pr.title);
 
+      - name: Mint GitHub App token
+        id: app_token
+        if: >-
+          steps.check-merged.outputs.merged == 'true' &&
+          env.WORKFLOWS_APP_ID != '' && env.WORKFLOWS_APP_PRIVATE_KEY != ''
+        continue-on-error: true
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ env.WORKFLOWS_APP_ID }}
+          private-key: ${{ env.WORKFLOWS_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
       - name: Select GitHub token
         id: select-token
         if: steps.check-merged.outputs.merged == 'true'
         env:
+          APP_TOKEN: ${{ steps.app_token.outputs.token }}
           OWNER_PR_PAT: ${{ secrets.OWNER_PR_PAT }}
           SERVICE_BOT_PAT: ${{ secrets.SERVICE_BOT_PAT }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          if [ -n "$OWNER_PR_PAT" ]; then
+          # Prefer an App installation token. Issues and labels created with
+          # GITHUB_TOKEN raise no events for other workflows (GitHub's loop
+          # guard), so a follow-up issue created that way is never picked up by
+          # auto-pilot and waits until a human re-applies its label by hand.
+          if [ -n "$APP_TOKEN" ]; then
+            echo "token=$APP_TOKEN" >> "$GITHUB_OUTPUT"
+            echo "source=workflows-app" >> "$GITHUB_OUTPUT"
+          elif [ -n "$OWNER_PR_PAT" ]; then
             echo "token=$OWNER_PR_PAT" >> "$GITHUB_OUTPUT"
             echo "source=owner-pat" >> "$GITHUB_OUTPUT"
           elif [ -n "$SERVICE_BOT_PAT" ]; then
             echo "token=$SERVICE_BOT_PAT" >> "$GITHUB_OUTPUT"
             echo "source=service-bot" >> "$GITHUB_OUTPUT"
           else
+            echo "::warning::No App token or PAT; using GITHUB_TOKEN."
+            echo "::warning::The follow-up issue will NOT trigger auto-pilot."
+            echo "::warning::Set WORKFLOWS_APP_ID + _PRIVATE_KEY, or SERVICE_BOT_PAT."
             echo "token=$GITHUB_TOKEN" >> "$GITHUB_OUTPUT"
             echo "source=github-token" >> "$GITHUB_OUTPUT"
           fi
@@ -210,6 +236,23 @@ jobs:
             }
 
             fs.writeFileSync('original_issue.txt', originalIssueBody);
+
+            // --- Base-branch propagation ---
+            // Carry the merged PR's base forward when it is NOT the default
+            // branch (evaluation lanes such as eval/claude). Without this the
+            // follow-up PR targets the default branch and the fix escapes the
+            // lane it belongs to. The bridge reads this marker back.
+            const prBaseRef = context.payload.pull_request.base?.ref || '';
+            const repoDefaultBranch =
+              context.payload.repository?.default_branch || '';
+            const nonDefaultBase =
+              prBaseRef && prBaseRef !== repoDefaultBranch ? prBaseRef : '';
+            if (nonDefaultBase) {
+              core.info(
+                `PR base '${nonDefaultBase}' is non-default; follow-up will target it.`,
+              );
+            }
+            core.setOutput('pr_base_ref', nonDefaultBase);
 
             // --- Chain depth tracking (P0) ---
             // Extract follow-up-depth from original issue body or PR body
@@ -572,6 +615,7 @@ jobs:
           ORIGINAL_ISSUE_TITLE: ${{ steps.collect.outputs.original_issue_title }}
           PR_NUMBER: ${{ steps.check-merged.outputs.pr_number }}
           FOLLOW_UP_DEPTH: ${{ steps.chain-check.outputs.next_depth }}
+          PR_BASE_REF: ${{ steps.collect.outputs.pr_base_ref }}
         run: |
           # Generate using Python script
           python scripts/langchain/followup_issue_generator.py \
@@ -586,6 +630,11 @@ jobs:
           # Inject chain depth marker into generated body
           depth="${FOLLOW_UP_DEPTH:-1}"
           marker="<!-- follow-up-depth: ${depth} -->"
+          # Preserve a non-default base (evaluation lanes) so the follow-up PR
+          # targets the same branch the originating PR merged into.
+          if [ -n "${PR_BASE_REF:-}" ]; then
+            marker="$(printf '%s\n%s' "$marker" "<!-- base-branch: ${PR_BASE_REF} -->")"
+          fi
           jq --arg marker "$marker" \
             '.body = $marker + "\n" + .body' \
             followup_issue.json > followup_issue_tmp.json
@@ -613,11 +662,13 @@ jobs:
         env:
           FOLLOW_UP_DEPTH: ${{ steps.chain-check.outputs.next_depth }}
           EXTRACTED_VERDICT: ${{ steps.extract-verdict.outputs.verdict }}
+          PR_BASE_REF: ${{ steps.collect.outputs.pr_base_ref }}
         with:
           github-token: ${{ steps.select-token.outputs.token }}
           script: |
             // Fallback to structured extraction if Python script fails
             const fs = require('fs');
+            const prBaseRef = process.env.PR_BASE_REF || '';
             const prNumber = context.payload.pull_request.number;
             const prUrl = context.payload.pull_request.html_url;
             const depth = process.env.FOLLOW_UP_DEPTH || '1';
@@ -738,6 +789,7 @@ jobs:
 
             const issueBody = [
               `<!-- follow-up-depth: ${depth} -->`,
+              ...(prBaseRef ? [`<!-- base-branch: ${prBaseRef} -->`] : []),
               '## Why',
               '',
               `PR #${prNumber} was verified with verdict **${verdict}**. ` +
@@ -848,21 +900,69 @@ jobs:
               _defaultAgent =
                 loadAgentRegistry('./.github/agents/registry.yml').default_agent || 'codex';
             } catch (_) {}
-            let agentKey = _defaultAgent;
-            try {
-              const { resolveAgentFromLabels } = require('./.github/scripts/agent_registry.js');
-              const labels =
-                (context.payload.pull_request && context.payload.pull_request.labels) || [];
-              agentKey = resolveAgentFromLabels(labels, {
-                registryPath: './.github/agents/registry.yml',
-              });
-            } catch (err) {
-              core.warning(
-                `Failed to resolve agent from PR labels; defaulting to ${_defaultAgent}: ` +
-                  err.message
-              );
-              agentKey = _defaultAgent;
+            // Resolution order: the PR's own agent:* label, then the parent
+            // issue's, then the registry default.
+            //
+            // The plain registry default is wrong for a follow-up: a follow-up
+            // remediates ONE agent's work, so guessing sends another agent to fix
+            // code it did not write and silently destroys per-agent attribution.
+            // resolveAgentFromLabels throws when a PR carries zero or several
+            // agent:* labels — which is exactly what stall rotation leaves behind —
+            // so the old catch turned every such case into the default agent.
+            const { resolveAgentFromLabels } = require('./.github/scripts/agent_registry.js');
+            const registryPath = './.github/agents/registry.yml';
+            const agentFrom = (labels) => {
+              try {
+                const key = resolveAgentFromLabels(labels || [], { registryPath });
+                return key ? String(key).trim().toLowerCase() : '';
+              } catch (_) {
+                // Fall back to a single unambiguous agent:* label if present.
+                const names = (labels || [])
+                  .map((l) => (typeof l === 'string' ? l : l && l.name) || '')
+                  .filter((n) => n.startsWith('agent:'))
+                  .map((n) => n.slice('agent:'.length).trim().toLowerCase());
+                const unique = [...new Set(names)];
+                return unique.length === 1 ? unique[0] : '';
+              }
+            };
+
+            let agentKey = agentFrom(
+              (context.payload.pull_request && context.payload.pull_request.labels) || []);
+            let agentSource = agentKey ? 'pr-label' : '';
+
+            if (!agentKey) {
+              // The PR body carries `<!-- meta:issue:N -->` / `Closes #N`; the
+              // parent issue is the authoritative record of who was assigned.
+              const prBody = String(
+                (context.payload.pull_request && context.payload.pull_request.body) || '');
+              const m = prBody.match(/<!--\s*meta:issue:(\d+)\s*-->/) ||
+                        prBody.match(/(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*#(\d+)/i);
+              if (m) {
+                try {
+                  const { data: parent } = await withRetry((client) =>
+                    (client || github).rest.issues.get({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: Number(m[1]),
+                    }));
+                  agentKey = agentFrom(parent.labels || []);
+                  if (agentKey) agentSource = `parent-issue-#${m[1]}`;
+                } catch (err) {
+                  core.warning(`Could not read parent issue #${m[1]}: ${err.message}`);
+                }
+              }
             }
+
+            if (!agentKey) {
+              agentKey = _defaultAgent;
+              agentSource = 'registry-default';
+              core.warning(
+                `Could not determine which agent produced this PR from its labels or its ` +
+                `parent issue; falling back to '${_defaultAgent}'. The follow-up may be ` +
+                `routed to an agent that did not write the code — check the label before ` +
+                `letting it run.`);
+            }
+            core.info(`Follow-up agent: ${agentKey} (source: ${agentSource})`);
             const normalized =
               String(agentKey || _defaultAgent).trim().toLowerCase() || _defaultAgent;
             const agentLabel = `agent:${normalized}`;

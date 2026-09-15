@@ -7,9 +7,9 @@
       "why": "Automatic confirmations and reminders are the feature merchants ask for first.",
       "scope": "Send WhatsApp with SMS fallback on create, confirm, cancel and reschedule, with retries and a dead-letter queue.",
       "tasks": [
-        "Add `lib/notifications/subscribers.ts`: add subscribers",
-        "Add `lib/notifications/dispatch.ts`: implement the dispatcher",
-        "Add `lib/notifications/retry.ts`: implement backoff",
+        "Add `app/lib/notifications/subscribers.ts`: add subscribers",
+        "Add `app/lib/notifications/dispatch.ts`: implement the dispatcher",
+        "Add `app/lib/notifications/retry.ts`: implement backoff",
         "Add `prisma/schema.prisma`: add the `DeadLetter` model and a view in `app/(app)/admin/dlq/page.tsx`"
       ],
       "acceptance": [
@@ -26,7 +26,7 @@
       "scope": "T-24h and T-2h reminders per booking with a per-tenant toggle and duplicate-safe scheduling.",
       "tasks": [
         "Add `scripts/reminder-cron.ts`: add the job running every 5 minutes",
-        "Add `lib/locks.ts`: take Postgres advisory locks",
+        "Add `app/lib/locks.ts`: take Postgres advisory locks",
         "Add `prisma/schema.prisma`: add `reminderSentAt` to the `Booking` model",
         "Add `app/(app)/settings/page.tsx`: add the tenant toggle"
       ],
