@@ -77,6 +77,7 @@ async function main() {
   // bookings (and payments referencing them) must be cleared first.
   await prisma.payment.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.booking.deleteMany({ where: { tenantId: tenant.id } });
+  await prisma.slotHold.deleteMany({ where: { tenantId: tenant.id } });
   await prisma.auditLog.deleteMany({ where: { tenantId: tenant.id } });
 
   // Wipe and reinsert demo services so the count stays at three on re-seed.
@@ -148,6 +149,7 @@ async function main() {
       endsAt,
       status: "confirmed",
       notes: "Seeded demo appointment.",
+      slotLock: `${haircut.id}|${startsAt.toISOString()}`,
     },
   });
   console.log(`Booking ready: ${booking.id} (${booking.startsAt.toISOString()})`);

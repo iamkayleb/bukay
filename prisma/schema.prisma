@@ -27,6 +27,7 @@ model Tenant {
   bookings      Booking[]
   payments      Payment[]
   auditLogs     AuditLog[]
+  slotHolds     SlotHold[]
 }
 
 model User {
@@ -44,18 +45,19 @@ model User {
 }
 
 model Service {
-  id              String    @id @default(cuid())
+  id              String     @id @default(cuid())
   tenantId        String
-  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant          Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name            String
   description     String?
   durationMinutes Int
   priceCents      Int
-  currency        String    @default("NGN")
-  active          Boolean   @default(true)
+  currency        String     @default("NGN")
+  active          Boolean    @default(true)
   bookings        Booking[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  slotHolds       SlotHold[]
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
   @@unique([tenantId, name])
   @@index([tenantId])
@@ -122,15 +124,39 @@ model Booking {
   endsAt    DateTime
   status    String    @default("pending")
   notes     String?
+  /// Non-null for active (non-cancelled) bookings. Unique per tenant so the DB
+  /// enforces one live reservation per slot. Format: `${serviceId}|${startsAt ISO}`.
+  slotLock  String?
   payments  Payment[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
+  @@unique([tenantId, slotLock])
   @@index([tenantId])
   @@index([tenantId, startsAt])
   @@index([clientId])
   @@index([serviceId])
   @@index([staffId])
+}
+
+/// Durable public-booking slot hold. Source of truth for the 10-minute hold window.
+model SlotHold {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  serviceId String
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  startsAt  DateTime
+  sessionId String
+  bookingId String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, serviceId, startsAt])
+  @@index([tenantId])
+  @@index([expiresAt])
+  @@index([tenantId, expiresAt])
 }
 
 model Payment {

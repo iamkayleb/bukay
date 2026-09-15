@@ -16,6 +16,7 @@ import {
   type BookingValidationStore,
   type BusinessHourRecord,
 } from "@/services/bookingValidation";
+import { emitBookingConfirmed } from "@/app/lib/events";
 
 export const dynamic = "force-dynamic";
 
@@ -172,6 +173,16 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         where: { id: existingBooking.id },
         data: updateData,
       });
+
+      if (updateData.status === "confirmed" && existingBooking.status !== "confirmed") {
+        emitBookingConfirmed({
+          bookingId: booking.id,
+          tenantId,
+          staffId: booking.staffId,
+          startsAt: booking.startsAt,
+          endsAt: booking.endsAt,
+        });
+      }
 
       return NextResponse.json({ ok: true, booking: serializeBooking(booking) });
     } catch (error) {
