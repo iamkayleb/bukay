@@ -28,12 +28,8 @@ export async function generateMetadata({ params }: ShopfrontPageProps): Promise<
           .map((service) => service.name)
           .join(", ")} and more with ${tenant.name} on Bukay.`
       : `Book an appointment with ${tenant.name} on Bukay.`;
-
   const path = `/${tenant.slug}`;
   const rootHost = process.env.ROOT_HOST?.trim();
-  // Open Graph requires an absolute og:url, and Lighthouse's canonical audit
-  // flags relative canonicals, so resolve both against metadataBase instead
-  // of emitting a bare path when ROOT_HOST isn't configured.
   const metadataBase = new URL(rootHost ? `https://${rootHost}` : "http://localhost:3000");
 
   return {
@@ -47,11 +43,13 @@ export async function generateMetadata({ params }: ShopfrontPageProps): Promise<
       url: path,
       siteName: "Bukay",
       type: "website",
+      images: [{ url: "/favicon.ico" }],
     },
     twitter: {
       card: "summary",
       title,
       description,
+      images: ["/favicon.ico"],
     },
   };
 }

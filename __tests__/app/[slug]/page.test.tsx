@@ -38,6 +38,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import ShopfrontPage, { generateMetadata } from "@/app/[slug]/page";
+import ShopfrontHead from "@/app/[slug]/head";
 
 function tenant(overrides: Partial<TenantRow> = {}): TenantRow {
   return {
@@ -131,7 +132,11 @@ describe("generateMetadata", () => {
     expect(metadata.alternates?.canonical).toBe("/demo");
     expect(metadata.openGraph).toMatchObject({ url: "/demo" });
 
-    process.env.ROOT_HOST = previous;
+    if (previous === undefined) {
+      delete process.env.ROOT_HOST;
+    } else {
+      process.env.ROOT_HOST = previous;
+    }
   });
 
   it("falls back to a generic title when the tenant is missing", async () => {
@@ -140,5 +145,21 @@ describe("generateMetadata", () => {
     const metadata = await generateMetadata({ params: { slug: "missing" } });
 
     expect(metadata.title).toBe("Shop not found");
+  });
+});
+
+describe("ShopfrontHead", () => {
+  it("renders title, description, and Open Graph metadata including an image", async () => {
+    state.findUnique.mockResolvedValue(tenant());
+
+    const result = await ShopfrontHead({ params: { slug: "demo" } });
+    const markup = JSON.stringify(result);
+
+    expect(markup).toContain("Bukay Demo Salon | Book with Bukay");
+    expect(markup).toContain("Book Classic Haircut and more with Bukay Demo Salon on Bukay.");
+    expect(markup).toContain("og:title");
+    expect(markup).toContain("og:description");
+    expect(markup).toContain("og:image");
+    expect(markup).toContain("http://localhost:3000/favicon.ico");
   });
 });
