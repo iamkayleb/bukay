@@ -5,7 +5,11 @@ import { NextRequest } from "next/server";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { prisma } from "@/app/db/prisma";
-import { POST, createPublicBooking, PUBLIC_BOOKING_STATUS } from "@/app/api/public/bookings/route";
+import { POST } from "@/app/api/public/bookings/route";
+import {
+  createPublicBooking,
+  PUBLIC_BOOKING_STATUS,
+} from "@/app/api/public/bookings/create-public-booking";
 import { isValidNigerianPhone, validateNigerianPhone } from "@/app/lib/phone";
 import {
   SLOT_HOLD_TTL_MS,

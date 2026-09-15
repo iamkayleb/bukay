@@ -4,7 +4,7 @@
  * source of truth.
  */
 
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 
 import { isUniqueConstraintError } from "@/app/api/services/_helpers";
 
@@ -31,10 +31,40 @@ export interface Clock {
   now(): number;
 }
 
-type SlotHoldDelegate = PrismaClient["slotHold"];
+type SlotHoldRow = {
+  id: string;
+  tenantId: string;
+  serviceId: string;
+  startsAt: Date;
+  sessionId: string;
+  bookingId: string | null;
+  expiresAt: Date;
+};
 
+/** Minimal slot-hold delegate compatible with Prisma client and `$transaction` clients. */
 export type SlotHoldDb = {
-  slotHold: SlotHoldDelegate;
+  slotHold: {
+    deleteMany(args: { where: Prisma.SlotHoldWhereInput }): Promise<{ count: number }>;
+    findFirst(args: { where: Prisma.SlotHoldWhereInput }): Promise<SlotHoldRow | null>;
+    create(args: {
+      data: {
+        tenantId: string;
+        serviceId: string;
+        startsAt: Date;
+        sessionId: string;
+        bookingId: string | null;
+        expiresAt: Date;
+      };
+    }): Promise<SlotHoldRow>;
+    updateMany(args: {
+      where: Prisma.SlotHoldWhereInput;
+      data: {
+        sessionId?: string;
+        bookingId?: string | null;
+        expiresAt?: Date;
+      };
+    }): Promise<{ count: number }>;
+  };
 };
 
 const defaultClock: Clock = { now: () => Date.now() };
@@ -152,7 +182,11 @@ export async function tryAcquireHold(
 
   const existing = await findHoldRow(db, key);
 
-  if (existing && existing.expiresAt.getTime() > now.getTime() && existing.sessionId !== sessionId) {
+  if (
+    existing &&
+    existing.expiresAt.getTime() > now.getTime() &&
+    existing.sessionId !== sessionId
+  ) {
     return {
       ok: false,
       reason: "held",
