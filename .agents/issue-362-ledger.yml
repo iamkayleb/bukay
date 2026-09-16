@@ -7,55 +7,63 @@ tasks:
     title: 'Add `app/api/webhooks/paystack/route.ts`: implement'
     status: done
     started_at: '2026-09-16T12:00:37Z'
-    finished_at: '2026-09-16T12:00:50Z'
-    commit: 09ef5b5c10c0935f30bc017e59a1d3c482de4c91
-    notes: []
+    finished_at: '2026-09-16T12:12:00Z'
+    commit: '062f95eda2fe73a0d6695a00b52736fa72652285'
+    notes:
+      - 'Implemented Paystack webhook POST handler with signature, idempotency, and dead-letter routing.'
   - id: task-02
     title: 'Add `app/lib/payments/signature.ts`: verify HMAC signatures'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-16T12:06:00Z'
+    finished_at: '2026-09-16T12:12:00Z'
+    commit: '062f95eda2fe73a0d6695a00b52736fa72652285'
+    notes:
+      - 'HMAC-SHA512 verification with timing-safe compare.'
   - id: task-03
     title: 'Add `app/lib/idempotency.ts`: add the idempotency store with a 7-day TTL'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-16T12:06:00Z'
+    finished_at: '2026-09-16T12:12:00Z'
+    commit: '062f95eda2fe73a0d6695a00b52736fa72652285'
+    notes:
+      - 'In-memory IdempotencyStore with IDEMPOTENCY_TTL_MS = 7 days.'
   - id: task-04
     title: 'Add `prisma/schema.prisma`: route unknown events to a dead letter table'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-16T12:06:00Z'
+    finished_at: '2026-09-16T12:12:00Z'
+    commit: '062f95eda2fe73a0d6695a00b52736fa72652285'
+    notes:
+      - 'Added DeadLetter model; unknown events written from the webhook route.'
   - id: task-05
     title: A mismatched signature returns HTTP 401
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-16T12:09:00Z'
+    finished_at: '2026-09-16T12:12:00Z'
+    commit: '062f95eda2fe73a0d6695a00b52736fa72652285'
+    notes:
+      - 'Verified by __tests__/app/api/webhooks/paystack/route.test.ts'
   - id: task-06
     title: A replayed event produces no state change, verified by `pnpm test`
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-16T12:09:00Z'
+    finished_at: '2026-09-16T12:12:00Z'
+    commit: '062f95eda2fe73a0d6695a00b52736fa72652285'
+    notes:
+      - 'Replay test asserts payment/booking updates are not re-applied.'
   - id: task-07
     title: All three event types update booking and payment state
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-16T12:09:00Z'
+    finished_at: '2026-09-16T12:12:00Z'
+    commit: '062f95eda2fe73a0d6695a00b52736fa72652285'
+    notes:
+      - 'charge.success / charge.failed / refund.processed covered by tests.'
   - id: task-08
     title: '`pnpm test` passes'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-16T12:09:00Z'
+    finished_at: '2026-09-16T12:12:00Z'
+    commit: '062f95eda2fe73a0d6695a00b52736fa72652285'
+    notes:
+      - 'pnpm test: 217 passed'

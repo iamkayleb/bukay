@@ -28,6 +28,7 @@ model Tenant {
   payments      Payment[]
   auditLogs     AuditLog[]
   slotHolds     SlotHold[]
+  deadLetters   DeadLetter[]
 }
 
 model User {
@@ -192,5 +193,22 @@ model AuditLog {
 
   @@index([tenantId])
   @@index([tenantId, entityType, entityId])
+}
+
+/// Unknown / unhandled webhook (and similar) events land here for inspection.
+model DeadLetter {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  source    String
+  eventType String
+  payload   String
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([source])
+  @@index([eventType])
+  @@index([createdAt])
+  @@index([tenantId])
 }
 
