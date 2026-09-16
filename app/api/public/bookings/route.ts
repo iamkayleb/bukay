@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/app/db/prisma";
 import { normalizeNigerianPhone } from "@/app/lib/phone";
-import { slotHolds } from "@/app/lib/slot-hold";
+import { SlotHoldStore } from "@/app/lib/slot-hold";
 
 const bookingRequestSchema = z.object({
   slug: z.string().trim().min(1),
@@ -25,13 +25,19 @@ const serviceDelegate = prisma.service as unknown as {
   findFirst(args: unknown): Promise<PublicService | null>;
 };
 
-const clientDelegate = prisma.client as unknown as {
-  upsert(args: unknown): Promise<{ id: string }>;
+type BookingTransaction = {
+  client: {
+    upsert(args: unknown): Promise<{ id: string }>;
+  };
+  booking: {
+    create(args: unknown): Promise<{ id: string; status: string }>;
+  };
+  slotHold: ConstructorParameters<typeof SlotHoldStore>[0];
 };
 
-const bookingDelegate = prisma.booking as unknown as {
-  create(args: unknown): Promise<{ id: string; status: string }>;
-};
+const bookingTransaction = prisma.$transaction as unknown as <T>(
+  callback: (transaction: BookingTransaction) => Promise<T>
+) => Promise<T>;
 
 export async function POST(request: NextRequest) {
   const body: unknown = await request.json().catch(() => null);
@@ -67,17 +73,18 @@ export async function POST(request: NextRequest) {
   const startsAt = new Date(parsed.data.startsAt);
   const endsAt = new Date(startsAt.getTime() + service.durationMinutes * 60_000);
   const slot = `${service.tenantId}:${service.id}:${startsAt.toISOString()}`;
-  if (!(await slotHolds.acquire(slot, service.tenantId, parsed.data.sessionId))) {
-    return NextResponse.json({ error: "SLOT_HELD" }, { status: 409 });
-  }
+  const booking = await bookingTransaction(async (transaction) => {
+    const transactionSlotHolds = new SlotHoldStore(transaction.slotHold);
+    if (!(await transactionSlotHolds.acquire(slot, service.tenantId, parsed.data.sessionId))) {
+      return null;
+    }
 
-  try {
-    const client = await clientDelegate.upsert({
+    const client = await transaction.client.upsert({
       where: { tenantId_phone: { tenantId: service.tenantId, phone } },
       update: { name: parsed.data.name },
       create: { tenantId: service.tenantId, name: parsed.data.name, phone },
     });
-    const booking = await bookingDelegate.create({
+    return transaction.booking.create({
       data: {
         tenantId: service.tenantId,
         clientId: client.id,
@@ -87,13 +94,14 @@ export async function POST(request: NextRequest) {
         status: "pending_payment",
       },
     });
+  });
 
-    return NextResponse.json(
-      { booking: { id: booking.id, status: booking.status, startsAt: startsAt.toISOString() } },
-      { status: 201 }
-    );
-  } catch (error) {
-    await slotHolds.release(slot, parsed.data.sessionId);
-    throw error;
+  if (!booking) {
+    return NextResponse.json({ error: "SLOT_HELD" }, { status: 409 });
   }
+
+  return NextResponse.json(
+    { booking: { id: booking.id, status: booking.status, startsAt: startsAt.toISOString() } },
+    { status: 201 }
+  );
 }
