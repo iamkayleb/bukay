@@ -274,6 +274,24 @@ export async function releaseHold(db: SlotHoldDb, key: SlotHoldKey): Promise<boo
   return result.count > 0;
 }
 
+/**
+ * Release any active hold attached to a booking (e.g. after payment failure).
+ * Holds also self-expire via `expiresAt` within {@link SLOT_HOLD_TTL_MS} (10 minutes).
+ */
+export async function releaseHoldForBooking(
+  db: SlotHoldDb,
+  tenantId: string,
+  bookingId: string
+): Promise<boolean> {
+  const result = await db.slotHold.deleteMany({
+    where: {
+      tenantId,
+      bookingId,
+    },
+  });
+  return result.count > 0;
+}
+
 export async function attachBookingToHold(
   db: SlotHoldDb,
   key: SlotHoldKey,
