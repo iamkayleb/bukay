@@ -5,10 +5,10 @@ branch: codex/issue-361
 tasks:
   - id: task-01
     title: 'Add `app/api/webhooks/paystack/route.ts`: implement'
-    status: doing
+    status: done
     started_at: '2026-09-16T11:59:34Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-09-16T11:59:47Z'
+    commit: 73611e535dc133224586c2fe866b78f8fc9999b3
     notes: []
   - id: task-02
     title: 'Add `app/lib/payments/signature.ts`: verify HMAC signatures'
