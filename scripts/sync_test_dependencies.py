@@ -16,7 +16,7 @@ import shlex
 import sys
 import tomllib
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, TypeAlias, cast
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_PATH = REPO_ROOT / "src"
@@ -33,7 +33,12 @@ except ImportError as exc:  # pragma: no cover - exercised via CLI messaging.
 else:
     TOMLKIT_ERROR = None
 
-type PytestIniConfig = tuple[Path, tuple[str, ...]]
+# This repo targets py312 and its ruff config asks for the PEP 695 `type X = ...`
+# statement (UP040), but that syntax does not parse at all on 3.11, and this file
+# syncs verbatim into consumers that still run 3.11. A consumer cannot fix it
+# locally either — the next sync overwrites the file. Keep the 3.11-compatible
+# annotation and suppress UP040 here rather than shipping a syntax error.
+PytestIniConfig: TypeAlias = tuple[Path, tuple[str, ...]]  # noqa: UP040
 PYPROJECT_FILE = Path("pyproject.toml")
 PYTEST_TOML_FILES = (
     Path("pytest.toml"),
