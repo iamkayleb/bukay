@@ -7,55 +7,74 @@ tasks:
     title: 'Add `app/api/webhooks/paystack/route.ts`: implement'
     status: done
     started_at: '2026-09-16T11:59:23Z'
-    finished_at: '2026-09-16T11:59:34Z'
-    commit: 6421e1e9681e3c1ffaaa9cca8421e6a4abd65aa3
-    notes: []
+    finished_at: '2026-09-16T12:20:00Z'
+    commit: 888238a
+    notes:
+      - 'Prior finish at 2026-09-16T11:59:34Z only updated this ledger; no route
+        file existed on disk. Re-verified and completed for real in 888238a.'
   - id: task-02
     title: 'Add `app/lib/payments/signature.ts`: verify HMAC signatures'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-16T12:00:00Z'
+    finished_at: '2026-09-16T12:20:00Z'
+    commit: 888238a
+    notes:
+      - HMAC-SHA512 over the raw body, compared with timingSafeEqual; covered
+        by __tests__/app/lib/payments/signature.test.ts.
   - id: task-03
     title: 'Add `app/lib/idempotency.ts`: add the idempotency store with a 7-day TTL'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-16T12:00:00Z'
+    finished_at: '2026-09-16T12:20:00Z'
+    commit: 888238a
+    notes:
+      - In-memory Map keyed by event+reference (falls back to a body hash),
+        lazily purged past IDEMPOTENCY_TTL_MS (7 days). Not durable across
+        process restarts; flagged as a known limitation, not fixed here since
+        no persistence layer was in scope.
   - id: task-04
     title: 'Add `prisma/schema.prisma`: route unknown events to a dead letter table'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-16T12:00:00Z'
+    finished_at: '2026-09-16T12:20:00Z'
+    commit: 888238a
+    notes:
+      - Added DeadLetterEvent model. No new migration was generated (task
+        scope was limited to schema.prisma); `pnpm migrate:dev` still needs
+        to run before this ships to an environment with a real database.
   - id: task-05
     title: A mismatched signature returns HTTP 401
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-16T12:00:00Z'
+    finished_at: '2026-09-16T12:20:00Z'
+    commit: 888238a
+    notes:
+      - Verified by the "returns 401 for a mismatched signature" and
+        "returns 401 when the signature header is missing" cases in
+        __tests__/app/api/webhooks/paystack/route.test.ts.
   - id: task-06
     title: A replayed event produces no state change, verified by `pnpm test`
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-16T12:00:00Z'
+    finished_at: '2026-09-16T12:20:00Z'
+    commit: 888238a
+    notes:
+      - Verified by "produces no state change when the same event is
+        replayed"; update mocks assert call counts stay at 1 after a replay.
   - id: task-07
     title: All three event types update booking and payment state
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-16T12:00:00Z'
+    finished_at: '2026-09-16T12:20:00Z'
+    commit: 888238a
+    notes:
+      - charge.success/charge.failed/refund.processed each covered by a
+        dedicated test asserting Payment and Booking status transitions.
   - id: task-08
     title: '`pnpm test` passes'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-16T12:00:00Z'
+    finished_at: '2026-09-16T12:20:00Z'
+    commit: 888238a
+    notes:
+      - 'Full suite green: 36 files, 227 tests passed.'
