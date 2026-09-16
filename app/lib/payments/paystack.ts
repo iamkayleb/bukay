@@ -6,6 +6,8 @@ import {
   PaymentVerificationStatus,
   VerifyPaymentInput,
   VerifyPaymentResult,
+  assertInitializePaymentInput,
+  assertVerifyPaymentInput,
   redactSecrets,
 } from "./provider";
 
@@ -88,18 +90,7 @@ export class PaystackProvider implements PaymentProvider {
   }
 
   async initialize(input: InitializePaymentInput): Promise<InitializePaymentResult> {
-    if (!input.email) {
-      throw new PaymentProviderError(this.name, "Payment email is required");
-    }
-    if (!Number.isFinite(input.amountCents) || input.amountCents <= 0) {
-      throw new PaymentProviderError(this.name, "Payment amountCents must be a positive integer");
-    }
-    if (!input.reference) {
-      throw new PaymentProviderError(this.name, "Payment reference is required");
-    }
-    if (!input.callbackUrl) {
-      throw new PaymentProviderError(this.name, "Payment callbackUrl is required");
-    }
+    assertInitializePaymentInput(this.name, input);
 
     const payload: Record<string, unknown> = {
       email: input.email,
@@ -179,9 +170,7 @@ export class PaystackProvider implements PaymentProvider {
   }
 
   async verify(input: VerifyPaymentInput): Promise<VerifyPaymentResult> {
-    if (!input.reference) {
-      throw new PaymentProviderError(this.name, "Payment reference is required");
-    }
+    assertVerifyPaymentInput(this.name, input);
 
     const url = `${this.baseUrl}/transaction/verify/${encodeURIComponent(input.reference)}`;
     let response: Response;

@@ -78,6 +78,47 @@ export class PaymentProviderError extends Error {
 }
 
 /**
+ * Shared initialize validation for every PaymentProvider adapter.
+ * Keeps Fake and Paystack on the same contract before any network I/O.
+ */
+export function assertInitializePaymentInput(
+  provider: string,
+  input: InitializePaymentInput,
+  options: { requireCallbackUrl?: boolean } = {}
+): void {
+  if (!input.email) {
+    throw new PaymentProviderError(provider, "Payment email is required");
+  }
+  if (!Number.isFinite(input.amountCents) || input.amountCents <= 0) {
+    throw new PaymentProviderError(provider, "Payment amountCents must be a positive integer");
+  }
+  if (!input.reference) {
+    throw new PaymentProviderError(provider, "Payment reference is required");
+  }
+  if (options.requireCallbackUrl !== false && !input.callbackUrl) {
+    throw new PaymentProviderError(provider, "Payment callbackUrl is required");
+  }
+  if (
+    input.platformSplitPercentage !== undefined &&
+    (!Number.isFinite(input.platformSplitPercentage) ||
+      input.platformSplitPercentage < 0 ||
+      input.platformSplitPercentage > 100)
+  ) {
+    throw new PaymentProviderError(
+      provider,
+      "platformSplitPercentage must be a number between 0 and 100"
+    );
+  }
+}
+
+/** Shared verify validation for every PaymentProvider adapter. */
+export function assertVerifyPaymentInput(provider: string, input: VerifyPaymentInput): void {
+  if (!input.reference) {
+    throw new PaymentProviderError(provider, "Payment reference is required");
+  }
+}
+
+/**
  * Replace known secret values in a string before writing to logs.
  * Empty / short placeholders are ignored so they cannot blank out the message.
  */

@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 
 import {
   PaymentProviderError,
+  assertInitializePaymentInput,
+  assertVerifyPaymentInput,
   redactSecrets,
   type PaymentProvider,
   type InitializePaymentInput,
@@ -30,6 +32,27 @@ describe("PaymentProvider port", () => {
     expect(redactSecrets("status=ok", [""])).toBe("status=ok");
   });
 
+  it("assertInitializePaymentInput rejects invalid amounts and splits", () => {
+    const base: InitializePaymentInput = {
+      amountCents: 500_000,
+      currency: "NGN",
+      email: "guest@example.com",
+      reference: "bk_ref_1",
+      callbackUrl: "https://example.com/api/payments/verify",
+    };
+    expect(() => assertInitializePaymentInput("contract", base)).not.toThrow();
+    expect(() => assertInitializePaymentInput("contract", { ...base, email: "" })).toThrow(
+      /email is required/
+    );
+    expect(() => assertInitializePaymentInput("contract", { ...base, amountCents: 0 })).toThrow(
+      /amountCents/
+    );
+    expect(() =>
+      assertInitializePaymentInput("contract", { ...base, platformSplitPercentage: 150 })
+    ).toThrow(/platformSplitPercentage/);
+    expect(() => assertVerifyPaymentInput("contract", { reference: "" })).toThrow(/reference/);
+  });
+
   it("accepts a structural PaymentProvider implementation", async () => {
     const input: InitializePaymentInput = {
       amountCents: 500_000,
@@ -44,6 +67,7 @@ describe("PaymentProvider port", () => {
     const provider: PaymentProvider = {
       name: "contract",
       async initialize(req) {
+        assertInitializePaymentInput(this.name, req);
         expect(req).toEqual(input);
         return {
           provider: "contract",
@@ -53,6 +77,7 @@ describe("PaymentProvider port", () => {
         };
       },
       async verify({ reference }) {
+        assertVerifyPaymentInput(this.name, { reference });
         const result: VerifyPaymentResult = {
           provider: "contract",
           reference,

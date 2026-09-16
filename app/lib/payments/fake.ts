@@ -6,6 +6,8 @@ import {
   PaymentVerificationStatus,
   VerifyPaymentInput,
   VerifyPaymentResult,
+  assertInitializePaymentInput,
+  assertVerifyPaymentInput,
 } from "./provider";
 
 export type FakePaymentRecord = {
@@ -29,15 +31,8 @@ export class FakePaymentProvider implements PaymentProvider {
   defaultStatus: PaymentVerificationStatus = "pending";
 
   async initialize(input: InitializePaymentInput): Promise<InitializePaymentResult> {
-    if (!input.email) {
-      throw new PaymentProviderError(this.name, "Payment email is required");
-    }
-    if (!Number.isFinite(input.amountCents) || input.amountCents <= 0) {
-      throw new PaymentProviderError(this.name, "Payment amountCents must be a positive integer");
-    }
-    if (!input.reference) {
-      throw new PaymentProviderError(this.name, "Payment reference is required");
-    }
+    // Fake checkout URLs do not need a live callback host during unit tests.
+    assertInitializePaymentInput(this.name, input, { requireCallbackUrl: false });
 
     this.counter += 1;
     const accessCode = `fake_access_${this.counter}`;
@@ -60,9 +55,7 @@ export class FakePaymentProvider implements PaymentProvider {
   }
 
   async verify(input: VerifyPaymentInput): Promise<VerifyPaymentResult> {
-    if (!input.reference) {
-      throw new PaymentProviderError(this.name, "Payment reference is required");
-    }
+    assertVerifyPaymentInput(this.name, input);
     const record = this.charges.get(input.reference);
     if (!record) {
       throw new PaymentProviderError(this.name, `Unknown reference ${input.reference}`, {
