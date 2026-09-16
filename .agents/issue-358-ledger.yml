@@ -5,10 +5,10 @@ branch: codex/issue-358
 tasks:
   - id: task-01
     title: 'Add `app/lib/payments/provider.ts`: define the `PaymentProvider` port'
-    status: doing
+    status: done
     started_at: '2026-09-16T11:59:48Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-09-16T11:59:58Z'
+    commit: 49cbf5999de870a47bfbe903f72b111ba38275bb
     notes: []
   - id: task-02
     title: 'Add `app/lib/payments/paystack.ts`: add the adapter and a fake in `app/lib/payments/fake.ts`'
