@@ -47,6 +47,9 @@ describe("PaymentProvider port", () => {
     expect(() => assertInitializePaymentInput("contract", { ...base, amountCents: 0 })).toThrow(
       /amountCents/
     );
+    expect(() => assertInitializePaymentInput("contract", { ...base, amountCents: 10.5 })).toThrow(
+      /amountCents/
+    );
     expect(() =>
       assertInitializePaymentInput("contract", { ...base, platformSplitPercentage: 150 })
     ).toThrow(/platformSplitPercentage/);

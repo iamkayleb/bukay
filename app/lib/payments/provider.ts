@@ -89,7 +89,7 @@ export function assertInitializePaymentInput(
   if (!input.email) {
     throw new PaymentProviderError(provider, "Payment email is required");
   }
-  if (!Number.isFinite(input.amountCents) || input.amountCents <= 0) {
+  if (!Number.isSafeInteger(input.amountCents) || input.amountCents <= 0) {
     throw new PaymentProviderError(provider, "Payment amountCents must be a positive integer");
   }
   if (!input.reference) {
