@@ -70,6 +70,12 @@ optional notes. The tenant/start index supports calendar views.
 `Payment` links to a booking and stores amount, currency, provider metadata, status string, optional
 paid timestamp, and audit timestamps.
 
+### DeadLetterEvent
+
+`DeadLetterEvent` is not tenant-scoped. It records provider webhook events (e.g. failed payment
+callbacks) that could not be processed, storing the provider, event type, raw payload, and an
+optional failure reason for later inspection.
+
 ### AuditLog
 
 `AuditLog` stores action history with optional actor and entity references. `metadata` is stored as a
