@@ -25,42 +25,14 @@ EXPECTED_TENANT_SCOPED_MODELS = {
     "BusinessHour",
     "Client",
     "Booking",
+    "SlotHold",
     "Payment",
     "AuditLog",
+    "DeadLetter",
 }
 
 # Models the scope requires to exist at all.
 REQUIRED_MODELS = EXPECTED_TENANT_SCOPED_MODELS | {"Tenant"}
-
-# Relation fields the suite asserts so schema drift cannot drop FK wiring.
-EXPECTED_RELATIONS = {
-    "User": (("tenant", "Tenant"),),
-    "Service": (("tenant", "Tenant"),),
-    "Staff": (("tenant", "Tenant"),),
-    "BusinessHour": (("tenant", "Tenant"),),
-    "Client": (("tenant", "Tenant"),),
-    "Booking": (
-        ("tenant", "Tenant"),
-        ("client", "Client"),
-        ("service", "Service"),
-        ("staff", "Staff?"),
-    ),
-    "Payment": (
-        ("tenant", "Tenant"),
-        ("booking", "Booking"),
-    ),
-    "AuditLog": (("tenant", "Tenant"),),
-    "Tenant": (
-        ("users", "User[]"),
-        ("services", "Service[]"),
-        ("staff", "Staff[]"),
-        ("businessHours", "BusinessHour[]"),
-        ("clients", "Client[]"),
-        ("bookings", "Booking[]"),
-        ("payments", "Payment[]"),
-        ("auditLogs", "AuditLog[]"),
-    ),
-}
 
 
 def _model_blocks(schema_text: str) -> dict[str, str]:
@@ -82,19 +54,6 @@ def _tenant_scoped_models(blocks: dict[str, str]) -> set[str]:
 
 def _has_tenant_id_index(model_body: str) -> bool:
     return re.search(r"@@index\(\[\s*tenantId\s*(?:,|\])", model_body) is not None
-
-
-def _has_relation_field(model_body: str, field_name: str, type_name: str) -> bool:
-    # Optional (`Type?`) and list (`Type[]`) suffixes are part of the declared type.
-    # Avoid trailing `\b`: `?` / `]` are non-word chars, so `\b` would fail to match.
-    return (
-        re.search(
-            rf"^\s*{re.escape(field_name)}\s+{re.escape(type_name)}(?:\s|$)",
-            model_body,
-            re.MULTILINE,
-        )
-        is not None
-    )
 
 
 def _package_version(package: str) -> str:
@@ -169,9 +128,11 @@ def test_schema_is_syntactically_valid_via_prisma_validate(tmp_path: Path) -> No
     assert re.search(r"\bis valid\b", result.stdout, re.IGNORECASE), result.stdout
 
 
-def test_schema_defines_exactly_nine_models() -> None:
+def test_schema_defines_exactly_required_models() -> None:
     blocks = _model_blocks(SCHEMA_PATH.read_text())
-    assert len(blocks) == 9, f"expected exactly 9 Prisma models, found {sorted(blocks)}"
+    assert len(blocks) == len(
+        REQUIRED_MODELS
+    ), f"expected exactly {len(REQUIRED_MODELS)} Prisma models, found {sorted(blocks)}"
     assert (
         set(blocks) == REQUIRED_MODELS
     ), f"schema models {sorted(blocks)} do not match required set {sorted(REQUIRED_MODELS)}"
@@ -202,16 +163,6 @@ def test_every_tenant_scoped_model_has_tenant_index() -> None:
         assert _has_tenant_id_index(body), f"model {name} is missing `@@index([tenantId])`"
 
 
-def test_required_model_relations_are_declared() -> None:
-    blocks = _model_blocks(SCHEMA_PATH.read_text())
-    for model_name, relations in EXPECTED_RELATIONS.items():
-        body = blocks[model_name]
-        for field_name, type_name in relations:
-            assert _has_relation_field(
-                body, field_name, type_name
-            ), f"model {model_name} is missing relation `{field_name} {type_name}`"
-
-
 def test_tenant_model_has_no_tenant_id() -> None:
     blocks = _model_blocks(SCHEMA_PATH.read_text())
     body = blocks["Tenant"]
@@ -221,7 +172,7 @@ def test_tenant_model_has_no_tenant_id() -> None:
 
 
 # Expected Prisma relation fields per model (field name -> related model type
-# prefix). Keeps the "nine models with relations" scope from drifting silently.
+# prefix). Keeps relation wiring from drifting silently.
 EXPECTED_RELATIONS: dict[str, dict[str, str]] = {
     "Tenant": {
         "users": "User",
@@ -232,9 +183,11 @@ EXPECTED_RELATIONS: dict[str, dict[str, str]] = {
         "bookings": "Booking",
         "payments": "Payment",
         "auditLogs": "AuditLog",
+        "slotHolds": "SlotHold",
+        "deadLetters": "DeadLetter",
     },
     "User": {"tenant": "Tenant"},
-    "Service": {"tenant": "Tenant", "bookings": "Booking"},
+    "Service": {"tenant": "Tenant", "bookings": "Booking", "slotHolds": "SlotHold"},
     "Staff": {"tenant": "Tenant", "bookings": "Booking"},
     "BusinessHour": {"tenant": "Tenant"},
     "Client": {"tenant": "Tenant", "bookings": "Booking"},
@@ -245,8 +198,10 @@ EXPECTED_RELATIONS: dict[str, dict[str, str]] = {
         "staff": "Staff",
         "payments": "Payment",
     },
+    "SlotHold": {"tenant": "Tenant", "service": "Service"},
     "Payment": {"tenant": "Tenant", "booking": "Booking"},
     "AuditLog": {"tenant": "Tenant"},
+    "DeadLetter": {"tenant": "Tenant"},
 }
 
 
@@ -259,7 +214,7 @@ def _has_relation_field(model_body: str, field_name: str, related_type: str) -> 
     return pattern.search(model_body) is not None
 
 
-def test_nine_models_declare_expected_relations() -> None:
+def test_required_model_relations_are_declared() -> None:
     blocks = _model_blocks(SCHEMA_PATH.read_text())
     assert set(blocks) >= REQUIRED_MODELS
 
