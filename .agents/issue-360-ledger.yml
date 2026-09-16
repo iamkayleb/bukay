@@ -5,10 +5,10 @@ branch: claude/issue-360
 tasks:
   - id: task-01
     title: 'Add `app/api/webhooks/paystack/route.ts`: implement'
-    status: doing
+    status: done
     started_at: '2026-09-16T11:59:23Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-09-16T11:59:34Z'
+    commit: 6421e1e9681e3c1ffaaa9cca8421e6a4abd65aa3
     notes: []
   - id: task-02
     title: 'Add `app/lib/payments/signature.ts`: verify HMAC signatures'
