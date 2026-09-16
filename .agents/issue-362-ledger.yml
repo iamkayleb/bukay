@@ -5,10 +5,10 @@ branch: cursor/issue-362
 tasks:
   - id: task-01
     title: 'Add `app/api/webhooks/paystack/route.ts`: implement'
-    status: doing
+    status: done
     started_at: '2026-09-16T12:00:37Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-09-16T12:00:50Z'
+    commit: 09ef5b5c10c0935f30bc017e59a1d3c482de4c91
     notes: []
   - id: task-02
     title: 'Add `app/lib/payments/signature.ts`: verify HMAC signatures'
