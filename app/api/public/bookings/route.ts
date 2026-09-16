@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/app/db/prisma";
 import { normalizeNigerianPhone } from "@/app/lib/phone";
-import { SlotHoldStore } from "@/app/lib/slot-hold";
+import { SlotHoldStore, slotHolds } from "@/app/lib/slot-hold";
 
 const bookingRequestSchema = z.object({
   slug: z.string().trim().min(1),
@@ -73,28 +73,36 @@ export async function POST(request: NextRequest) {
   const startsAt = new Date(parsed.data.startsAt);
   const endsAt = new Date(startsAt.getTime() + service.durationMinutes * 60_000);
   const slot = `${service.tenantId}:${service.id}:${startsAt.toISOString()}`;
-  const booking = await bookingTransaction(async (transaction) => {
-    const transactionSlotHolds = new SlotHoldStore(transaction.slotHold);
-    if (!(await transactionSlotHolds.acquire(slot, service.tenantId, parsed.data.sessionId))) {
-      return null;
-    }
+  let booking: { id: string; status: string } | null;
+  try {
+    booking = await bookingTransaction(async (transaction) => {
+      const transactionSlotHolds = new SlotHoldStore(transaction.slotHold);
+      if (!(await transactionSlotHolds.acquire(slot, service.tenantId, parsed.data.sessionId))) {
+        return null;
+      }
 
-    const client = await transaction.client.upsert({
-      where: { tenantId_phone: { tenantId: service.tenantId, phone } },
-      update: { name: parsed.data.name },
-      create: { tenantId: service.tenantId, name: parsed.data.name, phone },
+      const client = await transaction.client.upsert({
+        where: { tenantId_phone: { tenantId: service.tenantId, phone } },
+        update: { name: parsed.data.name },
+        create: { tenantId: service.tenantId, name: parsed.data.name, phone },
+      });
+      return transaction.booking.create({
+        data: {
+          tenantId: service.tenantId,
+          clientId: client.id,
+          serviceId: service.id,
+          startsAt,
+          endsAt,
+          status: "pending_payment",
+        },
+      });
     });
-    return transaction.booking.create({
-      data: {
-        tenantId: service.tenantId,
-        clientId: client.id,
-        serviceId: service.id,
-        startsAt,
-        endsAt,
-        status: "pending_payment",
-      },
-    });
-  });
+  } catch (error) {
+    // A database rollback normally removes this hold too. Explicit cleanup
+    // also covers payment/setup failures outside a fully rolled-back request.
+    await slotHolds.releaseAfterFailure(slot, parsed.data.sessionId);
+    throw error;
+  }
 
   if (!booking) {
     return NextResponse.json({ error: "SLOT_HELD" }, { status: 409 });

@@ -21,6 +21,7 @@ The tenant-owned models are:
 | `BusinessHour` | Weekly opening hours by day of week | `@@unique([tenantId, dayOfWeek])`, `@@index([tenantId])` |
 | `Client` | Customer profile scoped to a tenant | `@@unique([tenantId, phone])`, `@@index([tenantId])` |
 | `Booking` | Appointment linking client, service, and optional staff | `@@index([tenantId])`, `@@index([tenantId, startsAt])` |
+| `SlotHold` | Temporary reservation of an available booking slot | `@unique(slotKey)`, `@@index([tenantId])`, `@@index([expiresAt])` |
 | `Payment` | Payment ledger row for a booking | `@@index([tenantId])`, `@@index([bookingId])`, `@@index([providerRef])` |
 | `AuditLog` | Append-only tenant activity record | `@@index([tenantId])`, `@@index([tenantId, entityType, entityId])` |
 
@@ -64,6 +65,12 @@ relations.
 
 `Booking` links a client, service, optional staff member, start and end timestamps, status string, and
 optional notes. The tenant/start index supports calendar views.
+
+### SlotHold
+
+`SlotHold` temporarily reserves a booking slot for a session until `expiresAt`. `slotKey` is globally
+unique, preventing concurrent sessions from holding the same slot; expired holds can be located via
+the expiry index.
 
 ### Payment
 

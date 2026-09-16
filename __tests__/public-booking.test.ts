@@ -60,7 +60,8 @@ beforeEach(async () => {
     } else {
       const slotKey = where.slotKey as string;
       const hold = holds.get(slotKey);
-      if (hold && hold.expiresAt <= (where.expiresAt as { lte: Date }).lte) {
+      const expiry = where.expiresAt as { lte: Date } | undefined;
+      if (hold && (!expiry || hold.expiresAt <= expiry.lte)) {
         holds.delete(slotKey);
       }
     }
@@ -159,5 +160,18 @@ describe("POST /api/public/bookings", () => {
     vi.advanceTimersByTime(1);
     expect((await POST(bookingRequest("session-b"))).status).toBe(201);
     vi.useRealTimers();
+  });
+
+  it("releases the failed session's hold so another session can book immediately", async () => {
+    state.create.mockRejectedValueOnce(new Error("payment setup failed"));
+
+    await expect(POST(bookingRequest("session-a"))).rejects.toThrow("payment setup failed");
+
+    expect((await POST(bookingRequest("session-b"))).status).toBe(201);
+    expect(state.holdDeleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ sessionId: "session-a" }),
+      })
+    );
   });
 });

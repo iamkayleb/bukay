@@ -60,8 +60,21 @@ export class SlotHoldStore {
     return true;
   }
 
+  /**
+   * Release the hold owned by a failed checkout session.
+   *
+   * The session predicate is important: cleanup from an older failed request
+   * must never remove a hold refreshed by a different customer.
+   */
+  async releaseAfterFailure(slotKey: string, sessionId: string): Promise<boolean> {
+    const result = (await this.holds.deleteMany({ where: { slotKey, sessionId } })) as {
+      count?: number;
+    };
+    return (result.count ?? 0) > 0;
+  }
+
   async release(slotKey: string, sessionId: string): Promise<void> {
-    await this.holds.deleteMany({ where: { slotKey, sessionId } });
+    await this.releaseAfterFailure(slotKey, sessionId);
   }
 
   async clear(): Promise<void> {
