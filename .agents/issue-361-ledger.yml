@@ -1,0 +1,61 @@
+version: 1
+issue: 361
+base: eval/codex
+branch: codex/issue-361
+tasks:
+  - id: task-01
+    title: 'Add `app/api/webhooks/paystack/route.ts`: implement'
+    status: doing
+    started_at: '2026-09-16T11:59:34Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Add `app/lib/payments/signature.ts`: verify HMAC signatures'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Add `app/lib/idempotency.ts`: add the idempotency store with a 7-day TTL'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Add `prisma/schema.prisma`: route unknown events to a dead letter table'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: A mismatched signature returns HTTP 401
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: A replayed event produces no state change, verified by `pnpm test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: All three event types update booking and payment state
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
