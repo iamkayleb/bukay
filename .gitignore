@@ -243,3 +243,10 @@ tsconfig.tsbuildinfo
 langsmith-fleet-worker-attempt.json
 langsmith-fleet-worker-attempt.json
 langsmith-fleet-worker-attempt.json
+/eval*.tar.gz
+/eval*.sh
+/codex*.sh
+/gatejobs.sh
+/dumpbody.sh
+/evalissues/
+*.sh.bak
