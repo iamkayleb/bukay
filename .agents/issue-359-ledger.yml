@@ -5,10 +5,10 @@ branch: cursor/issue-359
 tasks:
   - id: task-01
     title: 'Add `app/lib/payments/provider.ts`: define the `PaymentProvider` port'
-    status: doing
+    status: done
     started_at: '2026-09-16T11:59:17Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-09-16T11:59:28Z'
+    commit: a17c1353521c75568a2a4dee32193aec70504e49
     notes: []
   - id: task-02
     title: 'Add `app/lib/payments/paystack.ts`: add the adapter and a fake in `app/lib/payments/fake.ts`'
