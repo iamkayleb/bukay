@@ -7,9 +7,9 @@
       "why": "Self-serve onboarding is what lets the product scale without hand-holding each merchant.",
       "scope": "Chat surface extracting business type, location, hours, services, provider and deposit policy into a draft config.",
       "tasks": [
-        "Add `lib/agent/setup-prompt.ts`: add the extraction prompt",
+        "Add `app/lib/agent/setup-prompt.ts`: add the extraction prompt",
         "Add `app/start/page.tsx`: build the widget",
-        "Add `lib/whatsapp/routing.ts`: route the WhatsApp entry point",
+        "Add `app/lib/whatsapp/routing.ts`: route the WhatsApp entry point",
         "Add `prisma/schema.prisma`: add the `PendingTenant` model"
       ],
       "acceptance": [
@@ -26,9 +26,9 @@
       "scope": "Preview the parsed config, accept natural-language edits, and create the tenant on confirmation.",
       "tasks": [
         "Add `components/ConfigPreview.tsx`: build the preview card",
-        "Add `lib/agent/edit-config.ts`: implement the edit handler",
-        "Add `lib/tenant-provision.ts`: implement tenant creation",
-        "Add `lib/telemetry.ts`: record timings"
+        "Add `app/lib/agent/edit-config.ts`: implement the edit handler",
+        "Add `app/lib/tenant-provision.ts`: implement tenant creation",
+        "Add `app/lib/telemetry.ts`: record timings"
       ],
       "acceptance": [
         "The scripted round trip completes in under 5 minutes, verified by `pnpm test`",

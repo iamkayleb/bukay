@@ -684,6 +684,15 @@ jobs:
             needs.evaluate.outputs.action != 'conflict' }}
       prompt_file: ${{ needs.evaluate.outputs.prompt_file }}
       mode: keepalive
+      # Codex sandboxes with bubblewrap under `workspace-write`, and bwrap cannot
+      # create a loopback interface on a GitHub-hosted runner:
+      #   bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted
+      # Every shell command then fails before it runs, so Codex correctly refuses
+      # the task and reports "Blocked" having executed 0 commands and written 0
+      # files — which reads as the agent producing nothing. The runner is an
+      # ephemeral, single-tenant VM that is already the isolation boundary, so
+      # dropping Codex's inner sandbox costs nothing here.
+      sandbox: danger-full-access
       pr_number: ${{ needs.evaluate.outputs.pr_number }}
       pr_ref: ${{ needs.evaluate.outputs.pr_ref }}
       appendix: ${{ needs.evaluate.outputs.task_appendix }}
@@ -1653,6 +1662,8 @@ jobs:
     with:
       prompt_file: .github/codex/prompts/autofix_from_ci_failure.md
       mode: autofix
+      # Same bubblewrap failure as run-codex; see the note there.
+      sandbox: danger-full-access
       pr_number: ${{ needs.prepare.outputs.pr_number }}
       pr_ref: ${{ needs.prepare.outputs.head_ref }}
       appendix: ${{ needs.prepare.outputs.appendix }}
