@@ -48,6 +48,7 @@ const paystackEventSchema = z
     event: z.string().min(1),
     data: z
       .object({
+        id: z.union([z.string().min(1), z.number().int()]).optional(),
         reference: z.string().min(1).optional(),
         metadata: z.record(z.unknown()).nullable().optional(),
         transaction: z
@@ -78,6 +79,14 @@ const BOOKING_STATUS_BY_EVENT: Record<string, string> = {
 
 function extractReference(data: PaystackEvent["data"]): string | undefined {
   return data.reference?.trim() || data.transaction?.reference?.trim() || undefined;
+}
+
+function extractEventId(data: PaystackEvent["data"]): string | undefined {
+  if (typeof data.id === "number") {
+    return String(data.id);
+  }
+
+  return data.id?.trim() || undefined;
 }
 
 function extractTenantId(data: PaystackEvent["data"]): string | undefined {
@@ -118,7 +127,11 @@ export async function POST(req: NextRequest) {
 
   const { event, data } = parsed.data;
   const reference = extractReference(data);
-  const idempotencyKey = `paystack:${event}:${reference ?? createHash("sha256").update(rawBody).digest("hex")}`;
+  // Paystack includes an event/transaction identifier on production payloads.
+  // Prefer it over the payment reference so distinct events for one payment do
+  // not suppress each other; keep the reference/body fallbacks for payloads
+  // that omit it.
+  const idempotencyKey = `paystack:${event}:${extractEventId(data) ?? reference ?? createHash("sha256").update(rawBody).digest("hex")}`;
 
   if (hasProcessed(idempotencyKey)) {
     return NextResponse.json({ ok: true, replayed: true });
