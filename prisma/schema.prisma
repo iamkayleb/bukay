@@ -154,6 +154,17 @@ model Payment {
   @@index([providerRef])
 }
 
+model DeadLetterEvent {
+  id        String   @id @default(cuid())
+  provider  String
+  eventType String
+  payload   String
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([provider, eventType])
+}
+
 model AuditLog {
   id         String   @id @default(cuid())
   tenantId   String
