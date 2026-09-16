@@ -8,7 +8,7 @@ tasks:
     status: done
     started_at: '2026-09-16T12:00:37Z'
     finished_at: '2026-09-16T12:12:00Z'
-    commit: '062f95eda2fe73a0d6695a00b52736fa72652285'
+    commit: 'e364087f6fb1e7f994fbacb80ac0855867652902'
     notes:
       - 'Implemented Paystack webhook POST handler with signature, idempotency, and dead-letter routing.'
   - id: task-02
@@ -16,7 +16,7 @@ tasks:
     status: done
     started_at: '2026-09-16T12:06:00Z'
     finished_at: '2026-09-16T12:12:00Z'
-    commit: '062f95eda2fe73a0d6695a00b52736fa72652285'
+    commit: 'e364087f6fb1e7f994fbacb80ac0855867652902'
     notes:
       - 'HMAC-SHA512 verification with timing-safe compare.'
   - id: task-03
@@ -24,7 +24,7 @@ tasks:
     status: done
     started_at: '2026-09-16T12:06:00Z'
     finished_at: '2026-09-16T12:12:00Z'
-    commit: '062f95eda2fe73a0d6695a00b52736fa72652285'
+    commit: 'e364087f6fb1e7f994fbacb80ac0855867652902'
     notes:
       - 'In-memory IdempotencyStore with IDEMPOTENCY_TTL_MS = 7 days.'
   - id: task-04
@@ -32,7 +32,7 @@ tasks:
     status: done
     started_at: '2026-09-16T12:06:00Z'
     finished_at: '2026-09-16T12:12:00Z'
-    commit: '062f95eda2fe73a0d6695a00b52736fa72652285'
+    commit: 'e364087f6fb1e7f994fbacb80ac0855867652902'
     notes:
       - 'Added DeadLetter model; unknown events written from the webhook route.'
   - id: task-05
@@ -40,7 +40,7 @@ tasks:
     status: done
     started_at: '2026-09-16T12:09:00Z'
     finished_at: '2026-09-16T12:12:00Z'
-    commit: '062f95eda2fe73a0d6695a00b52736fa72652285'
+    commit: 'e364087f6fb1e7f994fbacb80ac0855867652902'
     notes:
       - 'Verified by __tests__/app/api/webhooks/paystack/route.test.ts'
   - id: task-06
@@ -48,7 +48,7 @@ tasks:
     status: done
     started_at: '2026-09-16T12:09:00Z'
     finished_at: '2026-09-16T12:12:00Z'
-    commit: '062f95eda2fe73a0d6695a00b52736fa72652285'
+    commit: 'e364087f6fb1e7f994fbacb80ac0855867652902'
     notes:
       - 'Replay test asserts payment/booking updates are not re-applied.'
   - id: task-07
@@ -56,7 +56,7 @@ tasks:
     status: done
     started_at: '2026-09-16T12:09:00Z'
     finished_at: '2026-09-16T12:12:00Z'
-    commit: '062f95eda2fe73a0d6695a00b52736fa72652285'
+    commit: 'e364087f6fb1e7f994fbacb80ac0855867652902'
     notes:
       - 'charge.success / charge.failed / refund.processed covered by tests.'
   - id: task-08
@@ -64,6 +64,6 @@ tasks:
     status: done
     started_at: '2026-09-16T12:09:00Z'
     finished_at: '2026-09-16T12:12:00Z'
-    commit: '062f95eda2fe73a0d6695a00b52736fa72652285'
+    commit: 'e364087f6fb1e7f994fbacb80ac0855867652902'
     notes:
       - 'pnpm test: 217 passed'
