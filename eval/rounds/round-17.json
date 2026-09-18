@@ -17,6 +17,15 @@
         "Digest figures match `/app/payouts` for the same period",
         "`app/lib/insights.ts` returns one actionable item per tenant",
         "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`__tests__/**`",
+        "`app/lib/**`",
+        "`scripts/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
       ]
     },
     {
@@ -35,6 +44,15 @@
         "Commission appears as a `LedgerEntry` row per booking",
         "An overlapping booking for one staff member returns HTTP 409",
         "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`app/[slug]/book/**`",
+        "`app/lib/**`",
+        "`prisma/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
       ]
     }
   ]

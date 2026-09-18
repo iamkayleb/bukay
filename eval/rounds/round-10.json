@@ -17,6 +17,16 @@
         "Switching provider preserves existing `LedgerEntry` rows",
         "Ledger writes from both adapters have identical shape",
         "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`__tests__/**`",
+        "`app/api/webhooks/flutterwave/**`",
+        "`app/lib/payments/**`",
+        "`prisma/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
       ]
     },
     {
@@ -27,7 +37,8 @@
       "non_goals": "Template approval and a live business number are human prerequisites; tests must use the fake adapter.",
       "tasks": [
         "Add `app/lib/whatsapp/provider.ts`: define the port",
-        "Add `app/lib/whatsapp/meta.ts`: add the adapter and a fake in `app/lib/whatsapp/fake.ts`",
+        "Add `app/lib/whatsapp/meta.ts`: implement the live adapter",
+        "Add `app/lib/whatsapp/fake.ts`: implement the test double",
         "Add `app/lib/whatsapp/templates.ts`: add the template registry",
         "Add `docs/WHATSAPP_TEMPLATES.md`: document approval steps"
       ],
@@ -36,6 +47,14 @@
         "Every template in `app/lib/whatsapp/templates.ts` is documented",
         "`app/lib/whatsapp/fake.ts` substitutes for the adapter in tests",
         "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`app/lib/whatsapp/**`",
+        "`docs/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
       ]
     }
   ]

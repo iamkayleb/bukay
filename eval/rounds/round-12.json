@@ -18,6 +18,15 @@
         "An unknown number receives the greeting and returns HTTP 200",
         "A known client resumes without re-identification",
         "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`app/api/webhooks/whatsapp/**`",
+        "`app/lib/whatsapp/**`",
+        "`prisma/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
       ]
     },
     {
@@ -38,6 +47,15 @@
         "A tool call for another tenant returns HTTP 403",
         "An unpaid hold releases after 15 minutes",
         "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`__tests__/**`",
+        "`app/lib/agent/**`",
+        "`prisma/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
       ]
     }
   ]

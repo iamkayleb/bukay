@@ -18,6 +18,15 @@
         "Balance capture returns HTTP 200 and closes the booking",
         "The no-show fee writes a `LedgerEntry` row",
         "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`app/api/payments/capture/**`",
+        "`app/lib/payments/**`",
+        "`prisma/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
       ]
     },
     {
@@ -38,6 +47,16 @@
         "An UPDATE or DELETE against `LedgerEntry` is rejected by the database",
         "CSV export returns HTTP 200 for any date range",
         "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`app/(app)/payouts/**`",
+        "`app/lib/**`",
+        "`prisma/**`",
+        "`scripts/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
       ]
     }
   ]

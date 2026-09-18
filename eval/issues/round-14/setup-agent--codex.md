@@ -11,6 +11,17 @@ Self-serve onboarding is what lets the product scale without hand-holding each m
 
 Chat surface extracting business type, location, hours, services, provider and deposit policy into a draft config.
 
+**Allowed paths:**
+
+- `app/lib/agent/**`
+- `app/lib/whatsapp/**`
+- `app/start/**`
+- `prisma/**`
+- `__tests__/**` and `tests/**` for the tests that prove the criteria
+- `prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support
+- `docs/**` for documentation the change makes stale
+- `.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output
+
 ## Non-Goals
 
 Nothing beyond the scope above. Leave repository automation configuration untouched.
@@ -31,7 +42,7 @@ Nothing beyond the scope above. Leave repository automation configuration untouc
 
 ## Implementation Notes
 
-Seeded for the codex evaluation lane. Work on the branch cut for this issue and open the pull request against the codex lane branch. Keep changes limited to the files named in Tasks. Application code lives under the app directory and tests under the repository test directory; follow the existing layout rather than starting a parallel tree.
+Seeded for the codex evaluation lane. Work on the branch cut for this issue and open the pull request against the codex lane branch. Keep changes within the allowed paths listed under Scope; the acceptance verifier reports anything outside them as out of scope. Application code lives under the app directory and tests under the repository test directory; follow the existing layout rather than starting a parallel tree.
 
 <details>
 <summary>Original Issue</summary>

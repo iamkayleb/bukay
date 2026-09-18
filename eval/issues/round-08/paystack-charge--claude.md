@@ -11,6 +11,16 @@ Taking payment at booking time is what makes deposits and no-show protection pos
 
 Initialize a transaction, redirect to checkout and verify on callback, with tenant subaccount splits.
 
+**Allowed paths:**
+
+- `app/api/payments/verify/**`
+- `app/lib/**`
+- `app/lib/payments/**`
+- `__tests__/**` and `tests/**` for the tests that prove the criteria
+- `prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support
+- `docs/**` for documentation the change makes stale
+- `.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output
+
 ## Non-Goals
 
 Use `app/lib/payments/fake.ts` in tests. Live Paystack credentials must not be required for CI.
@@ -18,7 +28,8 @@ Use `app/lib/payments/fake.ts` in tests. Live Paystack credentials must not be r
 ## Tasks
 
 - [ ] Add `app/lib/payments/provider.ts`: define the `PaymentProvider` port
-- [ ] Add `app/lib/payments/paystack.ts`: add the adapter and a fake in `app/lib/payments/fake.ts`
+- [ ] Add `app/lib/payments/paystack.ts`: implement the live adapter
+- [ ] Add `app/lib/payments/fake.ts`: implement the test double
 - [ ] Add `app/api/payments/verify/route.ts`: implement the callback
 - [ ] Add `app/lib/payments/subaccount.ts`: create subaccounts during setup
 - [ ] Add `app/lib/slot-hold.ts`: release held slots on failure
@@ -32,7 +43,7 @@ Use `app/lib/payments/fake.ts` in tests. Live Paystack credentials must not be r
 
 ## Implementation Notes
 
-Seeded for the claude evaluation lane. Work on the branch cut for this issue and open the pull request against the claude lane branch. Keep changes limited to the files named in Tasks. Application code lives under the app directory and tests under the repository test directory; follow the existing layout rather than starting a parallel tree.
+Seeded for the claude evaluation lane. Work on the branch cut for this issue and open the pull request against the claude lane branch. Keep changes within the allowed paths listed under Scope; the acceptance verifier reports anything outside them as out of scope. Application code lives under the app directory and tests under the repository test directory; follow the existing layout rather than starting a parallel tree.
 
 <details>
 <summary>Original Issue</summary>

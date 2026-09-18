@@ -40,8 +40,17 @@ ensure_label() {
 }
 ensure_label "eval:round-$ROUND" "BFD4F2" "Evaluation round $ROUND"
 ensure_label "agents:auto-pilot" "0E8A16" "Auto-pilot drives this issue end to end"
-for a in claude codex cursor; do
+ALL_AGENTS="claude codex cursor gemini"
+for a in $ALL_AGENTS; do
   ensure_label "agent:$a" "5319E7" "Route this work to $a"
+  # Lane isolation. On a stall the auto-pilot rotates the issue to the next
+  # untried agent in registry order (agent_stall_rotation.js), which silently
+  # puts another agent's work on this lane's branch and rewrites the agent:*
+  # label the scoring reads. Pre-marking every OTHER agent as tried leaves the
+  # rotation no candidate, so a stall escalates to needs-human instead of
+  # crossing lanes. Observed on bukay #363: a Cursor-lane PR carrying a commit
+  # authored by Codex and a keepalive report attributed to Claude.
+  ensure_label "agents:tried-$a" "D4C5F9" "Records an agent already tried during bounded stall rotation"
 done
 
 echo "repo=$REPO  round=$ROUND  mode=$([ $APPLY -eq 1 ] && echo APPLY || echo DRY-RUN)${ONLY:+  agent=$ONLY}${ONLYSPEC:+  spec=$ONLYSPEC}"
@@ -77,7 +86,15 @@ rows=json.load(open('eval/issues/index.json'))
 print(next(r['title'] for r in rows if r['round']==$ROUND and r['spec']=='$spec' and r['agent']=='$agent'))
 " 2>/dev/null) || title="[eval r$ROUND] $spec ($agent)"
 
-  echo "  create  $spec / $agent  -> base eval/$agent"
+  # Every agent except this lane's, marked tried, so stall rotation cannot
+  # hand the issue to another lane's agent.
+  tried_flags=""
+  for a in $ALL_AGENTS; do
+    [ "$a" = "$agent" ] && continue
+    tried_flags="$tried_flags --label agents:tried-$a"
+  done
+
+  echo "  create  $spec / $agent  -> base eval/$agent  (rotation pinned)"
   if [ "$APPLY" -eq 1 ]; then
     gh issue create --repo "$REPO" \
       --title "$title" \
@@ -85,6 +102,7 @@ print(next(r['title'] for r in rows if r['round']==$ROUND and r['spec']=='$spec'
       --label "agent:$agent" \
       --label "agents:auto-pilot" \
       --label "eval:round-$ROUND" \
+      $tried_flags \
       || echo "    ! failed"
     sleep 3
   fi

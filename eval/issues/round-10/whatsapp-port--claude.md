@@ -11,6 +11,15 @@ Every messaging feature depends on this port, and isolating it keeps the rest te
 
 WhatsAppProvider port with a Meta Cloud API adapter and a template catalog.
 
+**Allowed paths:**
+
+- `app/lib/whatsapp/**`
+- `docs/**`
+- `__tests__/**` and `tests/**` for the tests that prove the criteria
+- `prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support
+- `docs/**` for documentation the change makes stale
+- `.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output
+
 ## Non-Goals
 
 Template approval and a live business number are human prerequisites; tests must use the fake adapter.
@@ -18,7 +27,8 @@ Template approval and a live business number are human prerequisites; tests must
 ## Tasks
 
 - [ ] Add `app/lib/whatsapp/provider.ts`: define the port
-- [ ] Add `app/lib/whatsapp/meta.ts`: add the adapter and a fake in `app/lib/whatsapp/fake.ts`
+- [ ] Add `app/lib/whatsapp/meta.ts`: implement the live adapter
+- [ ] Add `app/lib/whatsapp/fake.ts`: implement the test double
 - [ ] Add `app/lib/whatsapp/templates.ts`: add the template registry
 - [ ] Add `docs/WHATSAPP_TEMPLATES.md`: document approval steps
 
@@ -31,7 +41,7 @@ Template approval and a live business number are human prerequisites; tests must
 
 ## Implementation Notes
 
-Seeded for the claude evaluation lane. Work on the branch cut for this issue and open the pull request against the claude lane branch. Keep changes limited to the files named in Tasks. Application code lives under the app directory and tests under the repository test directory; follow the existing layout rather than starting a parallel tree.
+Seeded for the claude evaluation lane. Work on the branch cut for this issue and open the pull request against the claude lane branch. Keep changes within the allowed paths listed under Scope; the acceptance verifier reports anything outside them as out of scope. Application code lives under the app directory and tests under the repository test directory; follow the existing layout rather than starting a parallel tree.
 
 <details>
 <summary>Original Issue</summary>

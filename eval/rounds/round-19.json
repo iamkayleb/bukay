@@ -19,6 +19,17 @@
         "Every admin action writes an `AuditLog` row",
         "An impersonated session renders the banner component",
         "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`app/admin/**`",
+        "`app/admin/abuse/**`",
+        "`app/admin/reconcile/**`",
+        "`app/lib/**`",
+        "`prisma/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
       ]
     },
     {
@@ -38,6 +49,15 @@
         "`__tests__/ghana.test.ts` completes a booking and payment in GHS",
         "The Nigeria suite in `__tests__/` continues to pass",
         "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`__tests__/**`",
+        "`app/lib/**`",
+        "`prisma/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
       ]
     }
   ]
