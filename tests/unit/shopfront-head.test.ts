@@ -150,6 +150,22 @@ describe("shopfront head", () => {
     expect(markup).toContain('<meta property="og:type" content="website"/>');
   });
 
+  it("renders every required explicit head tag with a non-empty value", async () => {
+    const markup = renderToStaticMarkup(await Head({ params: { slug: "head-test-salon" } }));
+
+    const requiredTags = [
+      /<title>([^<]+)<\/title>/,
+      /<meta name="description" content="([^"]+)"\/>/,
+      /<meta property="og:title" content="([^"]+)"\/>/,
+      /<meta property="og:description" content="([^"]+)"\/>/,
+      /<meta property="og:image" content="([^"]+)"\/>/,
+    ];
+
+    for (const tag of requiredTags) {
+      expect(markup.match(tag)?.[1].trim()).not.toBe("");
+    }
+  });
+
   it("exports complete structured route metadata for Next head composition", async () => {
     const metadata = await generateMetadata({ params: { slug: "head-test-salon" } });
 
