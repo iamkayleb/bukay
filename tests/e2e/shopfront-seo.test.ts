@@ -161,7 +161,8 @@ describe("shopfront SEO (end-to-end)", () => {
   });
 
   it("renders the shopfront in headless Chrome with an SEO score of at least 95", async () => {
-    const result = await lighthouse(`${baseUrl}/seo-audit`, {
+    const shopfrontUrl = `${baseUrl}/seo-audit`;
+    const result = await lighthouse(shopfrontUrl, {
       port: chromePort,
       onlyCategories: ["seo"],
       output: "json",
@@ -169,6 +170,10 @@ describe("shopfront SEO (end-to-end)", () => {
     });
     const seoScore = result?.lhr.categories.seo.score;
 
+    // Lighthouse follows redirects. Require the final audited document to be
+    // the seeded shopfront so a redirect to a different SEO-complete page
+    // cannot satisfy this route-level acceptance check.
+    expect(result?.lhr.finalDisplayedUrl).toBe(shopfrontUrl);
     expect(seoScore).not.toBeNull();
     expect(seoScore).toBeGreaterThanOrEqual(0.95);
   }, 120_000);
