@@ -25,7 +25,10 @@ async function waitForServer(url: string): Promise<void> {
   const deadline = Date.now() + START_TIMEOUT_MS;
   while (Date.now() < deadline) {
     try {
-      if ((await fetch(url)).status < 500) return;
+      // A 404 can be returned before the development server has finished
+      // compiling this dynamic route. Wait for the known seeded shopfront
+      // itself so the test does not begin against a partially ready app.
+      if ((await fetch(url)).ok) return;
     } catch {
       // The Next.js server is still starting.
     }
