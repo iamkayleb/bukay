@@ -128,6 +128,21 @@ describe("shopfront head", () => {
     expect(ogImageUrl?.toString().trim()).not.toBe("");
   });
 
+  it("keeps route title and description non-empty at the head boundary", () => {
+    const metadata = getShopfrontHeadMetadata({
+      title: "   ",
+      description: "\n",
+      pageUrl: "http://localhost:3000/resilient-shopfront",
+      imageUrl: "http://localhost:3000/resilient-shopfront/opengraph-image",
+      imageAlt: "Resilient shopfront booking page on Bukay",
+    });
+
+    expect(metadata.title).toBe("Bukay Shopfront | Book with Bukay");
+    expect(metadata.description).toBe("Book an appointment with Bukay on Bukay.");
+    expect(metadata.openGraph.title).toBe(metadata.title);
+    expect(metadata.openGraph.description).toBe(metadata.description);
+  });
+
   it("renders title, description, and Open Graph image metadata for a shopfront", async () => {
     const markup = renderToStaticMarkup(await Head({ params: { slug: "head-test-salon" } }));
 

@@ -21,16 +21,29 @@ export type ShopfrontHeadMetadata = Pick<ShopfrontMetadata, "description" | "tit
   };
 };
 
+function nonEmptyMetadataValue(value: string, fallback: string): string {
+  return value.trim() || fallback;
+}
+
 // This exported contract is deliberately separate from the JSX below so route
 // metadata can be verified without depending on React's server renderer.
 export function getShopfrontHeadMetadata(metadata: ShopfrontMetadata): ShopfrontHeadMetadata {
+  // Keep this boundary defensive. Even if a future metadata source supplies
+  // blank display text, the route must continue to emit the required SEO tags
+  // with meaningful title and description values.
+  const title = nonEmptyMetadataValue(metadata.title, "Bukay Shopfront | Book with Bukay");
+  const description = nonEmptyMetadataValue(
+    metadata.description,
+    "Book an appointment with Bukay on Bukay."
+  );
+
   return {
-    title: metadata.title,
-    description: metadata.description,
+    title,
+    description,
     canonicalUrl: metadata.pageUrl,
     openGraph: {
-      title: metadata.title,
-      description: metadata.description,
+      title,
+      description,
       url: metadata.pageUrl,
       type: "website",
       locale: "en_NG",
