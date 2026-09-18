@@ -5,6 +5,11 @@ const state = vi.hoisted(() => ({
   findFirst: vi.fn(),
   upsert: vi.fn(),
   create: vi.fn(),
+  holdCreate: vi.fn(),
+  holdDeleteMany: vi.fn(),
+  holdFindUnique: vi.fn(),
+  holdUpdate: vi.fn(),
+  transaction: vi.fn(),
 }));
 
 vi.mock("@/app/db/prisma", () => ({
@@ -12,6 +17,13 @@ vi.mock("@/app/db/prisma", () => ({
     service: { findFirst: state.findFirst },
     client: { upsert: state.upsert },
     booking: { create: state.create },
+    $transaction: state.transaction,
+    slotHold: {
+      create: state.holdCreate,
+      deleteMany: state.holdDeleteMany,
+      findUnique: state.holdFindUnique,
+      update: state.holdUpdate,
+    },
   },
 }));
 
@@ -31,11 +43,50 @@ const bookingRequest = (sessionId: string) =>
     }),
   });
 
-beforeEach(() => {
-  slotHolds.clear();
+beforeEach(async () => {
   state.findFirst.mockReset();
   state.upsert.mockReset();
   state.create.mockReset();
+  state.holdCreate.mockReset();
+  state.holdDeleteMany.mockReset();
+  state.holdFindUnique.mockReset();
+  state.holdUpdate.mockReset();
+  state.transaction.mockReset();
+
+  const holds = new Map<string, { expiresAt: Date; sessionId: string }>();
+  state.holdDeleteMany.mockImplementation(({ where }: { where: Record<string, unknown> }) => {
+    if (!where.slotKey) {
+      holds.clear();
+    } else {
+      const slotKey = where.slotKey as string;
+      const hold = holds.get(slotKey);
+      const expiry = where.expiresAt as { lte: Date } | undefined;
+      if (hold && (!expiry || hold.expiresAt <= expiry.lte)) {
+        holds.delete(slotKey);
+      }
+    }
+    return Promise.resolve({ count: 0 });
+  });
+  state.holdCreate.mockImplementation(
+    ({ data }: { data: { expiresAt: Date; sessionId: string; slotKey: string } }) => {
+      if (holds.has(data.slotKey)) {
+        return Promise.reject({ code: "P2002" });
+      }
+      holds.set(data.slotKey, data);
+      return Promise.resolve(data);
+    }
+  );
+  state.holdFindUnique.mockImplementation(({ where }: { where: { slotKey: string } }) =>
+    Promise.resolve(holds.get(where.slotKey) ?? null)
+  );
+  state.holdUpdate.mockImplementation(
+    ({ data, where }: { data: { expiresAt: Date }; where: { slotKey: string } }) => {
+      const hold = holds.get(where.slotKey);
+      if (hold) holds.set(where.slotKey, { ...hold, ...data });
+      return Promise.resolve(hold);
+    }
+  );
+  await slotHolds.clear();
   state.findFirst.mockResolvedValue({
     id: "service-1",
     tenantId: "tenant-1",
@@ -44,9 +95,43 @@ beforeEach(() => {
   });
   state.upsert.mockResolvedValue({ id: "client-1" });
   state.create.mockResolvedValue({ id: "booking-1", status: "pending_payment" });
+  state.transaction.mockImplementation(
+    (callback: (transaction: Record<string, unknown>) => unknown) =>
+      callback({
+        client: { upsert: state.upsert },
+        booking: { create: state.create },
+        slotHold: {
+          create: state.holdCreate,
+          deleteMany: state.holdDeleteMany,
+          findUnique: state.holdFindUnique,
+          update: state.holdUpdate,
+        },
+      })
+  );
 });
 
 describe("POST /api/public/bookings", () => {
+  it("rejects an invalid start date before querying or writing to the database", async () => {
+    const request = new NextRequest("http://app.test/api/public/bookings", {
+      method: "POST",
+      body: JSON.stringify({
+        slug: "demo",
+        serviceId: "service-1",
+        startsAt: "14-09-2026 10:00",
+        name: "Ada Okafor",
+        phone: "08031234567",
+        sessionId: "session-a",
+      }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "INVALID_BOOKING_REQUEST" });
+    expect(state.findFirst).not.toHaveBeenCalled();
+    expect(state.transaction).not.toHaveBeenCalled();
+  });
+
   it("creates a pending-payment booking and blocks another session while its hold is active", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-14T09:00:00.000Z"));
@@ -57,6 +142,7 @@ describe("POST /api/public/bookings", () => {
     expect(state.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: "pending_payment" }) })
     );
+    expect(state.transaction).toHaveBeenCalledTimes(1);
 
     expect((await POST(bookingRequest("session-b"))).status).toBe(409);
 
@@ -74,5 +160,18 @@ describe("POST /api/public/bookings", () => {
     vi.advanceTimersByTime(1);
     expect((await POST(bookingRequest("session-b"))).status).toBe(201);
     vi.useRealTimers();
+  });
+
+  it("releases the failed session's hold so another session can book immediately", async () => {
+    state.create.mockRejectedValueOnce(new Error("payment setup failed"));
+
+    await expect(POST(bookingRequest("session-a"))).rejects.toThrow("payment setup failed");
+
+    expect((await POST(bookingRequest("session-b"))).status).toBe(201);
+    expect(state.holdDeleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ sessionId: "session-a" }),
+      })
+    );
   });
 });
