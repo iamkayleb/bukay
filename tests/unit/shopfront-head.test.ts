@@ -50,6 +50,8 @@ describe("shopfront head", () => {
     expect(metadata.title).toBe("Head Test Salon | Book with Bukay");
     expect(metadata.description).toBe("Book Haircut and more with Head Test Salon on Bukay.");
     expect(metadata.openGraph).toEqual({
+      title: "Head Test Salon | Book with Bukay",
+      description: "Book Haircut and more with Head Test Salon on Bukay.",
       url: "http://localhost:3000/head-test-salon",
       type: "website",
       siteName: "Bukay",

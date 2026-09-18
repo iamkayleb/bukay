@@ -11,8 +11,10 @@ type ShopfrontHeadProps = {
 export type ShopfrontHeadMetadata = Pick<ShopfrontMetadata, "description" | "title"> & {
   canonicalUrl: string;
   openGraph: {
+    description: string;
     image: { alt: string; height: number; type: string; url: string; width: number };
     siteName: string;
+    title: string;
     type: string;
     url: string;
   };
@@ -26,6 +28,8 @@ export function getShopfrontHeadMetadata(metadata: ShopfrontMetadata): Shopfront
     description: metadata.description,
     canonicalUrl: metadata.pageUrl,
     openGraph: {
+      title: metadata.title,
+      description: metadata.description,
       url: metadata.pageUrl,
       type: "website",
       siteName: "Bukay",
@@ -56,8 +60,8 @@ export function getShopfrontRouteMetadata(metadata: ShopfrontMetadata): Metadata
     description: head.description,
     alternates: { canonical: head.canonicalUrl },
     openGraph: {
-      title: head.title,
-      description: head.description,
+      title: head.openGraph.title,
+      description: head.openGraph.description,
       url: head.openGraph.url,
       type: "website",
       siteName: head.openGraph.siteName,
@@ -88,8 +92,8 @@ export default async function Head({ params }: ShopfrontHeadProps) {
       <title>{metadata.title}</title>
       <meta name="description" content={metadata.description} />
       <link rel="canonical" href={metadata.canonicalUrl} />
-      <meta property="og:title" content={metadata.title} />
-      <meta property="og:description" content={metadata.description} />
+      <meta property="og:title" content={metadata.openGraph.title} />
+      <meta property="og:description" content={metadata.openGraph.description} />
       <meta property="og:url" content={metadata.openGraph.url} />
       <meta property="og:type" content={metadata.openGraph.type} />
       <meta property="og:site_name" content={metadata.openGraph.siteName} />
