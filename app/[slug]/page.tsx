@@ -1,8 +1,6 @@
 import { notFound } from "next/navigation";
-import type { Metadata } from "next";
 
 import { getShopfrontTenant } from "./data";
-import { asNextMetadata, getShopfrontMetadata } from "./metadata";
 
 export const revalidate = 60;
 
@@ -12,11 +10,6 @@ type ShopfrontPageProps = {
 
 function formatPrice(priceCents: number, currency: string): string {
   return new Intl.NumberFormat("en-NG", { style: "currency", currency }).format(priceCents / 100);
-}
-
-export async function generateMetadata({ params }: ShopfrontPageProps): Promise<Metadata> {
-  const tenant = await getShopfrontTenant(params.slug);
-  return asNextMetadata(getShopfrontMetadata(tenant, params.slug));
 }
 
 export default async function ShopfrontPage({ params }: ShopfrontPageProps) {

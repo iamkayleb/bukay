@@ -42,6 +42,9 @@ describe("shopfront head", () => {
     expect(markup).toContain(
       '<meta property="og:image:alt" content="Head Test Salon booking page on Bukay"/>',
     );
+    expect(markup).toContain('<link rel="canonical" href="http://localhost:3000/head-test-salon"/>');
+    expect(markup).toContain('<meta property="og:url" content="http://localhost:3000/head-test-salon"/>');
+    expect(markup).toContain('<meta property="og:type" content="website"/>');
   });
 
   it("does not render fallback metadata for an unknown shopfront", async () => {

@@ -1,5 +1,3 @@
-import type { Metadata } from "next";
-
 import type { ShopfrontTenant } from "./data";
 
 export function metadataBase(): URL {
@@ -55,27 +53,5 @@ export function getShopfrontMetadata(
     imageAlt: `${shopfrontName} booking page on Bukay`,
     pageUrl,
     imageUrl,
-  };
-}
-
-export function asNextMetadata(metadata: ShopfrontMetadata): Metadata {
-  return {
-    title: metadata.title,
-    description: metadata.description,
-    alternates: { canonical: metadata.pageUrl },
-    openGraph: {
-      title: metadata.title,
-      description: metadata.description,
-      url: metadata.pageUrl,
-      type: "website",
-      siteName: "Bukay",
-      images: [{ url: metadata.imageUrl, alt: metadata.imageAlt }],
-    },
-    twitter: {
-      card: "summary",
-      title: metadata.title,
-      description: metadata.description,
-      images: [metadata.imageUrl],
-    },
   };
 }
