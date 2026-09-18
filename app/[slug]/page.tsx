@@ -34,7 +34,15 @@ export async function generateMetadata({ params }: ShopfrontPageProps): Promise<
       url: metadata.pageUrl,
       type: "website",
       siteName: "Bukay",
-      images: [{ url: metadata.imageUrl, alt: metadata.imageAlt }],
+      images: [
+        {
+          url: metadata.imageUrl,
+          alt: metadata.imageAlt,
+          type: "image/png",
+          width: 1200,
+          height: 630,
+        },
+      ],
     },
     twitter: {
       card: "summary",

@@ -67,6 +67,9 @@ describe("shopfront head", () => {
       {
         url: "http://localhost:3000/head-test-salon/opengraph-image",
         alt: "Head Test Salon booking page on Bukay",
+        type: "image/png",
+        width: 1200,
+        height: 630,
       },
     ]);
   });
