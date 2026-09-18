@@ -38,4 +38,21 @@ describe("shopfront metadata", () => {
 
     expect(metadataBase().toString()).toBe("https://shops.bukay.test/");
   });
+
+  it("encodes a shopfront slug when building canonical and Open Graph URLs", () => {
+    process.env.ROOT_HOST = "https://shops.bukay.test";
+
+    const metadata = getShopfrontMetadata(
+      {
+        id: "tenant-id",
+        name: "Test Salon",
+        slug: "test salon",
+        currency: "NGN",
+        services: [],
+      },
+      "test salon",
+    );
+
+    expect(metadata.pageUrl).toBe("https://shops.bukay.test/test%20salon");
+  });
 });
