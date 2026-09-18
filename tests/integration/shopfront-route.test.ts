@@ -2,13 +2,12 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import http from "node:http";
+import net from "node:net";
 import { once } from "node:events";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { PrismaClient } from "@prisma/client";
 
-const PORT = 31474;
-const BASE_URL = `http://127.0.0.1:${PORT}`;
 const SLUG = "shopfront-route-test";
 const START_TIMEOUT_MS = 90_000;
 const prisma = new PrismaClient();
@@ -19,6 +18,22 @@ function localBinary(name: string): string {
     throw new Error(`${name} is not installed; run pnpm install before running integration tests.`);
   }
   return binary;
+}
+
+async function availablePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const listener = net.createServer();
+    listener.once("error", reject);
+    listener.listen(0, "127.0.0.1", () => {
+      const address = listener.address();
+      if (!address || typeof address === "string") {
+        listener.close();
+        reject(new Error("Could not reserve a port for the Next.js integration server."));
+        return;
+      }
+      listener.close((error) => (error ? reject(error) : resolve(address.port)));
+    });
+  });
 }
 
 async function waitForServer(url: string): Promise<void> {
@@ -103,6 +118,7 @@ async function stop(server: ChildProcess | undefined): Promise<void> {
 
 describe("shopfront route (integration)", () => {
   let server: ChildProcess;
+  let baseUrl: string;
 
   beforeAll(async () => {
     const prismaPush = spawn(localBinary("prisma"), ["db", "push", "--skip-generate"], {
@@ -128,17 +144,19 @@ describe("shopfront route (integration)", () => {
       },
     });
 
-    server = spawn(localBinary("next"), ["dev", "--port", String(PORT)], {
+    const port = await availablePort();
+    baseUrl = `http://127.0.0.1:${port}`;
+    server = spawn(localBinary("next"), ["dev", "--port", String(port)], {
       cwd: process.cwd(),
       env: {
         ...process.env,
         NODE_ENV: "development",
-        ROOT_HOST: BASE_URL,
+        ROOT_HOST: baseUrl,
       },
       stdio: "ignore",
     });
-    await waitForServer(`${BASE_URL}/${SLUG}`);
-    await request(`${BASE_URL}/${SLUG}`);
+    await waitForServer(`${baseUrl}/${SLUG}`);
+    await request(`${baseUrl}/${SLUG}`);
   }, START_TIMEOUT_MS + 30_000);
 
   afterAll(async () => {
@@ -149,7 +167,7 @@ describe("shopfront route (integration)", () => {
   });
 
   it("serves a valid shopfront with its route metadata in under 500ms TTFB", async () => {
-    const response = await request(`${BASE_URL}/${SLUG}`);
+    const response = await request(`${baseUrl}/${SLUG}`);
 
     expect(response.status).toBe(200);
     expect(response.ttfbMs).toBeLessThan(500);
@@ -175,14 +193,14 @@ describe("shopfront route (integration)", () => {
       "Book Integration Test Service and more with Integration Test Salon on Bukay.",
     );
     expect(metaContent(head, "property", "og:image")).toBe(
-      `${BASE_URL}/${SLUG}/opengraph-image`,
+      `${baseUrl}/${SLUG}/opengraph-image`,
     );
     expect(metaContent(head, "property", "og:image:alt")).toBe(
       "Integration Test Salon booking page on Bukay",
     );
-    expect(metaContent(head, "property", "og:url")).toBe(`${BASE_URL}/${SLUG}`);
+    expect(metaContent(head, "property", "og:url")).toBe(`${baseUrl}/${SLUG}`);
     expect(metaContent(head, "property", "og:type")).toBe("website");
-    expect(linkHref(head, "canonical")).toBe(`${BASE_URL}/${SLUG}`);
+    expect(linkHref(head, "canonical")).toBe(`${baseUrl}/${SLUG}`);
 
     // Next composes metadata from the route. Each primary tag must be emitted once,
     // so a second metadata surface cannot silently produce conflicting SEO values.
@@ -194,13 +212,13 @@ describe("shopfront route (integration)", () => {
   });
 
   it("returns 404 for an unknown shopfront slug", async () => {
-    const response = await request(`${BASE_URL}/shopfront-route-test-missing`);
+    const response = await request(`${baseUrl}/shopfront-route-test-missing`);
 
     expect(response.status).toBe(404);
   });
 
   it("serves a PNG Open Graph image for the shopfront", async () => {
-    const shopfront = await request(`${BASE_URL}/${SLUG}`);
+    const shopfront = await request(`${baseUrl}/${SLUG}`);
     const imageUrl = metaContent(headContent(shopfront.body), "property", "og:image");
 
     // Crawl the URL that the rendered document actually advertises. This keeps
