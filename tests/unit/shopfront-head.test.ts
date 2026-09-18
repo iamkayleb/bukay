@@ -158,6 +158,22 @@ describe("shopfront head", () => {
     expect(metadata.openGraph.image.alt).toBe("Bukay shopfront booking page");
   });
 
+  it("normalizes whitespace around route metadata URLs", () => {
+    const metadata = getShopfrontHeadMetadata({
+      title: "Whitespace URL Salon | Book with Bukay",
+      description: "Book a whitespace URL shopfront on Bukay.",
+      pageUrl: " \nhttp://localhost:3000/whitespace-url-salon\t ",
+      imageUrl: " \nhttp://localhost:3000/whitespace-url-salon/opengraph-image\t ",
+      imageAlt: "Whitespace URL Salon booking page on Bukay",
+    });
+
+    expect(metadata.canonicalUrl).toBe("http://localhost:3000/whitespace-url-salon");
+    expect(metadata.openGraph.url).toBe(metadata.canonicalUrl);
+    expect(metadata.openGraph.image.url).toBe(
+      "http://localhost:3000/whitespace-url-salon/opengraph-image",
+    );
+  });
+
   it("renders title, description, and Open Graph image metadata for a shopfront", async () => {
     const markup = renderToStaticMarkup(await Head({ params: { slug: "head-test-salon" } }));
 

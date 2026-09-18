@@ -26,8 +26,13 @@ function nonEmptyMetadataValue(value: string, fallback: string): string {
 }
 
 function webUrlOrFallback(value: string, fallback: string): string {
+  // URL() accepts leading and trailing ASCII whitespace. Metadata attributes
+  // should publish a canonical URL, never the unnormalised source value.
+  const normalizedValue = value.trim();
+  if (!normalizedValue) return fallback;
+
   try {
-    const url = new URL(value);
+    const url = new URL(normalizedValue);
     return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : fallback;
   } catch {
     return fallback;
