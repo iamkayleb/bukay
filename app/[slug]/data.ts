@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { prisma } from "@/app/db/prisma";
 
 export type ShopfrontService = {
@@ -16,7 +18,10 @@ export type ShopfrontTenant = {
   services: ShopfrontService[];
 };
 
-export async function getShopfrontTenant(slug: string): Promise<ShopfrontTenant | null> {
+// Next resolves route metadata and page content independently. Memoizing this
+// loader within a render avoids duplicate tenant queries before the response's
+// first byte is sent.
+export const getShopfrontTenant = cache(async (slug: string): Promise<ShopfrontTenant | null> => {
   return prisma.tenant.findUnique({
     where: { slug },
     select: {
@@ -37,4 +42,4 @@ export async function getShopfrontTenant(slug: string): Promise<ShopfrontTenant 
       },
     },
   });
-}
+});
