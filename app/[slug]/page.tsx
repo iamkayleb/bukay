@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { getShopfrontTenant } from "./data";
+import { getShopfrontRouteMetadata } from "./head";
 import { getShopfrontMetadata } from "./metadata";
 
 export const revalidate = 60;
@@ -20,35 +21,7 @@ export async function generateMetadata({ params }: ShopfrontPageProps): Promise<
     notFound();
   }
 
-  const metadata = getShopfrontMetadata(tenant, params.slug);
-
-  return {
-    title: metadata.title,
-    description: metadata.description,
-    alternates: { canonical: metadata.pageUrl },
-    openGraph: {
-      title: metadata.title,
-      description: metadata.description,
-      url: metadata.pageUrl,
-      type: "website",
-      siteName: "Bukay",
-      images: [
-        {
-          url: metadata.imageUrl,
-          alt: metadata.imageAlt,
-          type: "image/png",
-          width: 1200,
-          height: 630,
-        },
-      ],
-    },
-    twitter: {
-      card: "summary",
-      title: metadata.title,
-      description: metadata.description,
-      images: [metadata.imageUrl],
-    },
-  };
+  return getShopfrontRouteMetadata(getShopfrontMetadata(tenant, params.slug));
 }
 
 function formatPrice(priceCents: number, currency: string): string {

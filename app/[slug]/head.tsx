@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 
 import { getShopfrontTenant } from "./data";
 import { getShopfrontMetadata, type ShopfrontMetadata } from "./metadata";
@@ -35,6 +36,34 @@ export function getShopfrontHeadMetadata(metadata: ShopfrontMetadata): Shopfront
         width: 1200,
         height: 630,
       },
+    },
+  };
+}
+
+// The App Router consumes this structured metadata at runtime, while the
+// default export below keeps the route's explicit HTML tag contract available.
+// Keeping both forms derived from this one route contract prevents SEO values
+// from diverging between server-rendered HTML and Next's metadata composition.
+export function getShopfrontRouteMetadata(metadata: ShopfrontMetadata): Metadata {
+  const head = getShopfrontHeadMetadata(metadata);
+
+  return {
+    title: head.title,
+    description: head.description,
+    alternates: { canonical: head.canonicalUrl },
+    openGraph: {
+      title: head.title,
+      description: head.description,
+      url: head.openGraph.url,
+      type: "website",
+      siteName: head.openGraph.siteName,
+      images: [head.openGraph.image],
+    },
+    twitter: {
+      card: "summary",
+      title: head.title,
+      description: head.description,
+      images: [head.openGraph.image.url],
     },
   };
 }

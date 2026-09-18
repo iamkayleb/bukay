@@ -10,7 +10,7 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-import Head, { getShopfrontHeadMetadata } from "@/app/[slug]/head";
+import Head, { getShopfrontHeadMetadata, getShopfrontRouteMetadata } from "@/app/[slug]/head";
 import { getShopfrontMetadata } from "@/app/[slug]/metadata";
 import { generateMetadata } from "@/app/[slug]/page";
 
@@ -59,6 +59,38 @@ describe("shopfront head", () => {
         type: "image/png",
         width: 1200,
         height: 630,
+      },
+    });
+  });
+
+  it("derives Next runtime metadata from the explicit shopfront head contract", () => {
+    const routeMetadata = getShopfrontRouteMetadata(
+      getShopfrontMetadata(
+        {
+          id: "tenant-id",
+          name: "Head Test Salon",
+          slug: "head-test-salon",
+          currency: "NGN",
+          services: [],
+        },
+        "head-test-salon",
+      ),
+    );
+
+    expect(routeMetadata).toMatchObject({
+      title: "Head Test Salon | Book with Bukay",
+      description: "Book an appointment with Head Test Salon on Bukay.",
+      alternates: { canonical: "http://localhost:3000/head-test-salon" },
+      openGraph: {
+        title: "Head Test Salon | Book with Bukay",
+        description: "Book an appointment with Head Test Salon on Bukay.",
+        url: "http://localhost:3000/head-test-salon",
+        images: [
+          {
+            url: "http://localhost:3000/head-test-salon/opengraph-image",
+            alt: "Head Test Salon booking page on Bukay",
+          },
+        ],
       },
     });
   });
