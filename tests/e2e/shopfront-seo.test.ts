@@ -1,9 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
 import { once } from "node:events";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
+import { tmpdir } from "node:os";
 import lighthouse from "lighthouse";
 import { PrismaClient } from "@prisma/client";
 
@@ -51,6 +53,23 @@ async function waitForServer(url: string): Promise<void> {
   throw new Error(`Next.js server did not become ready within ${START_TIMEOUT_MS}ms.`);
 }
 
+async function waitForChrome(): Promise<void> {
+  const endpoint = `http://127.0.0.1:${CHROME_PORT}/json/version`;
+  const deadline = Date.now() + START_TIMEOUT_MS;
+
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(endpoint);
+      const details = (await response.json()) as { webSocketDebuggerUrl?: string };
+      if (response.ok && details.webSocketDebuggerUrl) return;
+    } catch {
+      // Chrome has not finished exposing its DevTools endpoint yet.
+    }
+    await sleep(250);
+  }
+  throw new Error(`Chrome did not become ready within ${START_TIMEOUT_MS}ms.`);
+}
+
 async function stop(process: ChildProcess | undefined): Promise<void> {
   if (!process || process.exitCode !== null) return;
 
@@ -62,6 +81,7 @@ async function stop(process: ChildProcess | undefined): Promise<void> {
 describe("shopfront SEO (end-to-end)", () => {
   let server: ChildProcess;
   let chrome: ChildProcess;
+  let chromeDataDir: string | undefined;
 
   beforeAll(async () => {
     const prismaPush = spawn(localBinary("prisma"), ["db", "push", "--skip-generate"], {
@@ -94,20 +114,25 @@ describe("shopfront SEO (end-to-end)", () => {
     });
     await waitForServer(`${BASE_URL}/seo-audit`);
 
+    // An isolated profile prevents a concurrently running local Chrome from
+    // taking over this process and closing its DevTools connection mid-audit.
+    chromeDataDir = await mkdtemp(join(tmpdir(), "bukay-lighthouse-"));
     chrome = spawn(chromeBinary(), [
       "--headless=new",
       "--no-sandbox",
       "--disable-gpu",
       "--disable-dev-shm-usage",
       `--remote-debugging-port=${CHROME_PORT}`,
+      `--user-data-dir=${chromeDataDir}`,
       "about:blank",
     ]);
-    await waitForServer(`http://127.0.0.1:${CHROME_PORT}/json/version`);
+    await waitForChrome();
   }, START_TIMEOUT_MS + 30_000);
 
   afterAll(async () => {
     await stop(chrome);
     await stop(server);
+    if (chromeDataDir) await rm(chromeDataDir, { force: true, recursive: true });
     await prisma.service.deleteMany({ where: { tenant: { slug: "seo-audit" } } });
     await prisma.tenant.deleteMany({ where: { slug: "seo-audit" } });
     await prisma.$disconnect();

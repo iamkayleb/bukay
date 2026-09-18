@@ -5,7 +5,16 @@ export function metadataBase(): URL {
   if (!rootHost) return new URL("http://localhost:3000");
 
   try {
-    return new URL(/^https?:\/\//i.test(rootHost) ? rootHost : `https://${rootHost}`);
+    const base = new URL(
+      /^[a-z][a-z\d+.-]*:\/\//i.test(rootHost) ? rootHost : `https://${rootHost}`
+    );
+    // Canonical and Open Graph URLs must be fetchable web URLs.  Accepting a
+    // syntactically valid non-HTTP scheme here (for example, ftp:) would emit
+    // unusable metadata for every shopfront in that deployment.
+    if (base.protocol !== "http:" && base.protocol !== "https:") {
+      return new URL("http://localhost:3000");
+    }
+    return base;
   } catch {
     // Invalid deployment configuration must not turn an otherwise valid
     // shopfront into a 500 response or omit its required metadata.
@@ -23,7 +32,7 @@ export type ShopfrontMetadata = {
 
 export function getShopfrontMetadata(
   tenant: ShopfrontTenant | null,
-  slug: string,
+  slug: string
 ): ShopfrontMetadata {
   const base = metadataBase();
   // Slugs are route segments. Encoding them here preserves the one-segment

@@ -59,6 +59,25 @@ describe("shopfront metadata", () => {
     expect(metadata.imageUrl).toBe("http://localhost:3000/test-salon/opengraph-image");
   });
 
+  it("falls back to the local origin when ROOT_HOST uses a non-web URL scheme", () => {
+    process.env.ROOT_HOST = "ftp://shops.bukay.test";
+
+    const metadata = getShopfrontMetadata(
+      {
+        id: "tenant-id",
+        name: "Test Salon",
+        slug: "test-salon",
+        currency: "NGN",
+        services: [],
+      },
+      "test-salon",
+    );
+
+    expect(metadataBase().toString()).toBe("http://localhost:3000/");
+    expect(metadata.pageUrl).toBe("http://localhost:3000/test-salon");
+    expect(metadata.imageUrl).toBe("http://localhost:3000/test-salon/opengraph-image");
+  });
+
   it("encodes a shopfront slug when building canonical and Open Graph URLs", () => {
     process.env.ROOT_HOST = "https://shops.bukay.test";
 
