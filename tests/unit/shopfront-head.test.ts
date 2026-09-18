@@ -78,6 +78,7 @@ describe("shopfront head", () => {
     );
 
     expect(routeMetadata).toMatchObject({
+      metadataBase: new URL("http://localhost:3000"),
       title: "Head Test Salon | Book with Bukay",
       description: "Book an appointment with Head Test Salon on Bukay.",
       alternates: { canonical: "http://localhost:3000/head-test-salon" },

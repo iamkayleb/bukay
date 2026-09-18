@@ -46,8 +46,12 @@ export function getShopfrontHeadMetadata(metadata: ShopfrontMetadata): Shopfront
 // from diverging between server-rendered HTML and Next's metadata composition.
 export function getShopfrontRouteMetadata(metadata: ShopfrontMetadata): Metadata {
   const head = getShopfrontHeadMetadata(metadata);
+  const canonicalUrl = new URL(head.canonicalUrl);
 
   return {
+    // Declare the origin alongside the absolute URLs below so this remains a
+    // complete App Router metadata contract if a future field is relative.
+    metadataBase: new URL(canonicalUrl.origin),
     title: head.title,
     description: head.description,
     alternates: { canonical: head.canonicalUrl },
