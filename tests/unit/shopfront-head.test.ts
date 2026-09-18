@@ -37,6 +37,9 @@ describe("shopfront head", () => {
       '<meta property="og:description" content="Book Haircut and more with Head Test Salon on Bukay."/>',
     );
     expect(markup).toContain('<meta property="og:image" content="http://localhost:3000/favicon.ico"/>');
+    expect(markup).toContain(
+      '<meta property="og:image:alt" content="Head Test Salon booking page on Bukay"/>',
+    );
   });
 
   it("does not render fallback metadata for an unknown shopfront", async () => {
