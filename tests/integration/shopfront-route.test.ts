@@ -203,6 +203,10 @@ describe("shopfront route (integration)", () => {
     expect(metaContent(head, "property", "og:url")).toBe(`${baseUrl}/${SLUG}`);
     expect(metaContent(head, "property", "og:type")).toBe("website");
     expect(metaContent(head, "property", "og:locale")).toBe("en_NG");
+    expect(metaContent(head, "property", "og:site_name")).toBe("Bukay");
+    expect(metaContent(head, "property", "og:image:type")).toBe("image/png");
+    expect(metaContent(head, "property", "og:image:width")).toBe("1200");
+    expect(metaContent(head, "property", "og:image:height")).toBe("630");
     expect(linkHref(head, "canonical")).toBe(`${baseUrl}/${SLUG}`);
 
     // Next composes metadata from the route. Each primary tag must be emitted once,
