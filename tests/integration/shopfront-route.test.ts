@@ -153,6 +153,7 @@ describe("shopfront route (integration)", () => {
 
     expect(response.status).toBe(200);
     expect(response.ttfbMs).toBeLessThan(500);
+    expect(response.contentType).toContain("text/html");
     const head = headContent(response.body);
 
     // Check the HTTP response itself for the minimum non-empty SEO contract,
@@ -199,7 +200,13 @@ describe("shopfront route (integration)", () => {
   });
 
   it("serves a PNG Open Graph image for the shopfront", async () => {
-    const response = await request(`${BASE_URL}/${SLUG}/opengraph-image`);
+    const shopfront = await request(`${BASE_URL}/${SLUG}`);
+    const imageUrl = metaContent(headContent(shopfront.body), "property", "og:image");
+
+    // Crawl the URL that the rendered document actually advertises. This keeps
+    // the tag and generated image route from drifting apart unnoticed.
+    expect(imageUrl).toBeTruthy();
+    const response = await request(imageUrl!);
 
     expect(response.status).toBe(200);
     expect(response.contentType).toContain("image/png");
