@@ -57,7 +57,9 @@ async function request(
 ): Promise<{ body: string; contentType: string | undefined; status: number; ttfbMs: number }> {
   return new Promise((resolve, reject) => {
     const startedAt = performance.now();
-    const req = http.get(url, (response) => {
+    // Use a fresh connection for each request. A reused keep-alive socket can
+    // hide connection and first-byte latency in the TTFB acceptance check.
+    const req = http.get(url, { agent: false }, (response) => {
       const ttfbMs = performance.now() - startedAt;
       const chunks: Buffer[] = [];
 
