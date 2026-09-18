@@ -65,6 +65,12 @@ function metaContent(html: string, attribute: "name" | "property", value: string
   return match?.[1];
 }
 
+function headContent(html: string): string {
+  const match = html.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+  if (!match) throw new Error("The shopfront response did not include a document head.");
+  return match[1];
+}
+
 function linkHref(html: string, rel: string): string | undefined {
   const escapedRel = rel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = html.match(
@@ -133,25 +139,27 @@ describe("shopfront route (integration)", () => {
 
     expect(response.status).toBe(200);
     expect(response.ttfbMs).toBeLessThan(500);
-    expect(response.body).toContain("<title>Integration Test Salon | Book with Bukay</title>");
-    expect(metaContent(response.body, "name", "description")).toBe(
+    const head = headContent(response.body);
+
+    expect(head).toContain("<title>Integration Test Salon | Book with Bukay</title>");
+    expect(metaContent(head, "name", "description")).toBe(
       "Book Integration Test Service and more with Integration Test Salon on Bukay.",
     );
-    expect(metaContent(response.body, "property", "og:title")).toBe(
+    expect(metaContent(head, "property", "og:title")).toBe(
       "Integration Test Salon | Book with Bukay",
     );
-    expect(metaContent(response.body, "property", "og:description")).toBe(
+    expect(metaContent(head, "property", "og:description")).toBe(
       "Book Integration Test Service and more with Integration Test Salon on Bukay.",
     );
-    expect(metaContent(response.body, "property", "og:image")).toBe(
+    expect(metaContent(head, "property", "og:image")).toBe(
       `${BASE_URL}/favicon.ico`,
     );
-    expect(metaContent(response.body, "property", "og:image:alt")).toBe(
+    expect(metaContent(head, "property", "og:image:alt")).toBe(
       "Integration Test Salon booking page on Bukay",
     );
-    expect(metaContent(response.body, "property", "og:url")).toBe(`${BASE_URL}/${SLUG}`);
-    expect(metaContent(response.body, "property", "og:type")).toBe("website");
-    expect(linkHref(response.body, "canonical")).toBe(`${BASE_URL}/${SLUG}`);
+    expect(metaContent(head, "property", "og:url")).toBe(`${BASE_URL}/${SLUG}`);
+    expect(metaContent(head, "property", "og:type")).toBe("website");
+    expect(linkHref(head, "canonical")).toBe(`${BASE_URL}/${SLUG}`);
   });
 
   it("returns 404 for an unknown shopfront slug", async () => {
