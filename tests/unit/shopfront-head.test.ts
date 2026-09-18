@@ -143,6 +143,21 @@ describe("shopfront head", () => {
     expect(metadata.openGraph.description).toBe(metadata.description);
   });
 
+  it("keeps canonical and Open Graph image URLs usable at the head boundary", () => {
+    const metadata = getShopfrontHeadMetadata({
+      title: "Resilient Shopfront | Book with Bukay",
+      description: "Book a resilient shopfront on Bukay.",
+      pageUrl: "not a URL",
+      imageUrl: "javascript:alert(1)",
+      imageAlt: "   ",
+    });
+
+    expect(metadata.canonicalUrl).toBe("http://localhost:3000/");
+    expect(metadata.openGraph.url).toBe(metadata.canonicalUrl);
+    expect(metadata.openGraph.image.url).toBe("http://localhost:3000/opengraph-image");
+    expect(metadata.openGraph.image.alt).toBe("Bukay shopfront booking page");
+  });
+
   it("renders title, description, and Open Graph image metadata for a shopfront", async () => {
     const markup = renderToStaticMarkup(await Head({ params: { slug: "head-test-salon" } }));
 

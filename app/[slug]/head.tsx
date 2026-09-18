@@ -25,6 +25,15 @@ function nonEmptyMetadataValue(value: string, fallback: string): string {
   return value.trim() || fallback;
 }
 
+function webUrlOrFallback(value: string, fallback: string): string {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 // This exported contract is deliberately separate from the JSX below so route
 // metadata can be verified without depending on React's server renderer.
 export function getShopfrontHeadMetadata(metadata: ShopfrontMetadata): ShopfrontHeadMetadata {
@@ -36,21 +45,24 @@ export function getShopfrontHeadMetadata(metadata: ShopfrontMetadata): Shopfront
     metadata.description,
     "Book an appointment with Bukay on Bukay."
   );
+  const canonicalUrl = webUrlOrFallback(metadata.pageUrl, "http://localhost:3000/");
+  const imageUrl = webUrlOrFallback(metadata.imageUrl, "http://localhost:3000/opengraph-image");
+  const imageAlt = nonEmptyMetadataValue(metadata.imageAlt, "Bukay shopfront booking page");
 
   return {
     title,
     description,
-    canonicalUrl: metadata.pageUrl,
+    canonicalUrl,
     openGraph: {
       title,
       description,
-      url: metadata.pageUrl,
+      url: canonicalUrl,
       type: "website",
       locale: "en_NG",
       siteName: "Bukay",
       image: {
-        url: metadata.imageUrl,
-        alt: metadata.imageAlt,
+        url: imageUrl,
+        alt: imageAlt,
         type: "image/png",
         width: 1200,
         height: 630,
