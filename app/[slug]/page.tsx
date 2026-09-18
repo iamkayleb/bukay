@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { getShopfrontTenant } from "./data";
+import { asNextMetadata, getShopfrontMetadata } from "./metadata";
 
 export const revalidate = 60;
 
@@ -13,52 +14,9 @@ function formatPrice(priceCents: number, currency: string): string {
   return new Intl.NumberFormat("en-NG", { style: "currency", currency }).format(priceCents / 100);
 }
 
-function metadataBase(): URL {
-  const rootHost = process.env.ROOT_HOST?.trim();
-  return new URL(rootHost ? `https://${rootHost}` : "http://localhost:3000");
-}
-
 export async function generateMetadata({ params }: ShopfrontPageProps): Promise<Metadata> {
   const tenant = await getShopfrontTenant(params.slug);
-
-  if (!tenant) {
-    return {
-      title: "Shop not found | Bukay",
-      description: "The requested Bukay shopfront could not be found.",
-    };
-  }
-
-  const title = `${tenant.name} | Book with Bukay`;
-  const description =
-    tenant.services.length > 0
-      ? `Book ${tenant.services
-          .slice(0, 3)
-          .map((service) => service.name)
-          .join(", ")} and more with ${tenant.name} on Bukay.`
-      : `Book an appointment with ${tenant.name} on Bukay.`;
-  const base = metadataBase();
-  const pageUrl = new URL(`/${tenant.slug}`, base);
-  const imageUrl = new URL("/favicon.ico", base);
-
-  return {
-    title,
-    description,
-    alternates: { canonical: pageUrl },
-    openGraph: {
-      title,
-      description,
-      url: pageUrl,
-      type: "website",
-      siteName: "Bukay",
-      images: [{ url: imageUrl }],
-    },
-    twitter: {
-      card: "summary",
-      title,
-      description,
-      images: [imageUrl],
-    },
-  };
+  return asNextMetadata(getShopfrontMetadata(tenant, params.slug));
 }
 
 export default async function ShopfrontPage({ params }: ShopfrontPageProps) {
