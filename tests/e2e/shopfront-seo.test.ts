@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import { once } from "node:events";
 import { join } from "node:path";
@@ -18,6 +18,22 @@ function localBinary(name: string): string {
   if (!existsSync(binary)) {
     throw new Error(`${name} is not installed; run pnpm install before running the SEO audit.`);
   }
+  return binary;
+}
+
+function chromeBinary(): string {
+  const candidates = [process.env.CHROME_PATH, "google-chrome", "chromium", "chromium-browser"];
+  const binary = candidates.find(
+    (candidate): candidate is string =>
+      Boolean(candidate) && spawnSync(candidate, ["--version"], { stdio: "ignore" }).status === 0,
+  );
+
+  if (!binary) {
+    throw new Error(
+      "Chrome or Chromium is not installed; set CHROME_PATH or install google-chrome/chromium for the SEO audit.",
+    );
+  }
+
   return binary;
 }
 
@@ -77,10 +93,11 @@ describe("shopfront SEO (end-to-end)", () => {
     });
     await waitForServer(`${BASE_URL}/seo-audit`);
 
-    chrome = spawn("google-chrome", [
+    chrome = spawn(chromeBinary(), [
       "--headless=new",
       "--no-sandbox",
       "--disable-gpu",
+      "--disable-dev-shm-usage",
       `--remote-debugging-port=${CHROME_PORT}`,
       "about:blank",
     ]);
