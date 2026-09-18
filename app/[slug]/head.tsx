@@ -40,7 +40,8 @@ function webUrlOrFallback(value: string, fallback: string): string {
       (url.protocol !== "http:" && url.protocol !== "https:") ||
       url.username ||
       url.password ||
-      url.hash
+      url.hash ||
+      url.search
     ) {
       return fallback;
     }

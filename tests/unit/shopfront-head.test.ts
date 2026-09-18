@@ -172,6 +172,20 @@ describe("shopfront head", () => {
     expect(metadata.openGraph.image.url).toBe("http://localhost:3000/opengraph-image");
   });
 
+  it("does not publish query-string URLs as canonical or Open Graph metadata", () => {
+    const metadata = getShopfrontHeadMetadata({
+      title: "Query String Salon | Book with Bukay",
+      description: "Book with Query String Salon on Bukay.",
+      pageUrl: "https://shops.bukay.test/query-string-salon?ref=tracking",
+      imageUrl: "https://shops.bukay.test/query-string-salon/opengraph-image?ref=tracking",
+      imageAlt: "Query String Salon booking page on Bukay",
+    });
+
+    expect(metadata.canonicalUrl).toBe("http://localhost:3000/");
+    expect(metadata.openGraph.url).toBe(metadata.canonicalUrl);
+    expect(metadata.openGraph.image.url).toBe("http://localhost:3000/opengraph-image");
+  });
+
   it("normalizes whitespace around route metadata URLs", () => {
     const metadata = getShopfrontHeadMetadata({
       title: "Whitespace URL Salon | Book with Bukay",
