@@ -74,6 +74,39 @@ describe("shopfront head", () => {
     ]);
   });
 
+  it("keeps the explicit head tags aligned with Next's runtime metadata", async () => {
+    getShopfrontTenant.mockResolvedValueOnce({
+      id: "tenant-id",
+      name: "Metadata Consistency Salon",
+      slug: "metadata-consistency-salon",
+      currency: "NGN",
+      services: [{ name: "Consultation" }],
+    });
+    const markup = renderToStaticMarkup(
+      await Head({ params: { slug: "metadata-consistency-salon" } }),
+    );
+
+    getShopfrontTenant.mockResolvedValueOnce({
+      id: "tenant-id",
+      name: "Metadata Consistency Salon",
+      slug: "metadata-consistency-salon",
+      currency: "NGN",
+      services: [{ name: "Consultation" }],
+    });
+    const metadata = await generateMetadata({
+      params: { slug: "metadata-consistency-salon" },
+    });
+    const ogImages = metadata.openGraph?.images;
+    const ogImage = Array.isArray(ogImages) ? ogImages[0] : ogImages;
+    const ogImageUrl =
+      typeof ogImage === "string" || ogImage instanceof URL ? ogImage.toString() : ogImage?.url;
+
+    expect(markup).toContain(`<title>${metadata.title}</title>`);
+    expect(markup).toContain(`content="${metadata.description}"`);
+    expect(markup).toContain(`content="${metadata.openGraph?.url}"`);
+    expect(markup).toContain(`content="${ogImageUrl}"`);
+  });
+
   it("does not render fallback metadata for an unknown shopfront", async () => {
     getShopfrontTenant.mockResolvedValueOnce(null);
 

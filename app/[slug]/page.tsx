@@ -10,14 +10,12 @@ type ShopfrontPageProps = {
   params: { slug: string };
 };
 
-// `head.tsx` remains the explicit metadata surface for this route, while this
-// API is what Next uses when composing the document head for a dynamic segment.
+// `head.tsx` provides an explicit tag-level contract for this route. Next's
+// metadata API is the runtime source used to compose the App Router document
+// head for dynamic shopfronts.
 export async function generateMetadata({ params }: ShopfrontPageProps): Promise<Metadata> {
   const tenant = await getShopfrontTenant(params.slug);
 
-  // Metadata is resolved before the page is rendered. Stop here for an
-  // unknown slug so Next emits its 404 document instead of route metadata
-  // describing a shopfront that does not exist.
   if (!tenant) {
     notFound();
   }
