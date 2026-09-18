@@ -215,6 +215,9 @@ describe("shopfront route (integration)", () => {
     const response = await request(`${baseUrl}/shopfront-route-test-missing`);
 
     expect(response.status).toBe(404);
+    // A not-found response must not retain metadata from the seeded shopfront
+    // that was rendered earlier in this server process.
+    expect(headContent(response.body)).not.toContain("Integration Test Salon | Book with Bukay");
   });
 
   it("serves a PNG Open Graph image for the shopfront", async () => {
