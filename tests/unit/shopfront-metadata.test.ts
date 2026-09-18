@@ -55,4 +55,22 @@ describe("shopfront metadata", () => {
 
     expect(metadata.pageUrl).toBe("https://shops.bukay.test/test%20salon");
   });
+
+  it("keeps required metadata non-empty when tenant display fields are blank", () => {
+    const metadata = getShopfrontMetadata(
+      {
+        id: "tenant-id",
+        name: "   ",
+        slug: "empty-details",
+        currency: "NGN",
+        services: [{ name: " " }],
+      },
+      "empty-details",
+    );
+
+    expect(metadata.title).toBe("Bukay Shopfront | Book with Bukay");
+    expect(metadata.description).toBe("Book an appointment with Bukay Shopfront on Bukay.");
+    expect(metadata.imageAlt).toBe("Bukay Shopfront booking page on Bukay");
+    expect(metadata.imageUrl).not.toBe("");
+  });
 });

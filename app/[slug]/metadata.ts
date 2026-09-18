@@ -37,16 +37,19 @@ export function getShopfrontMetadata(
     };
   }
 
+  const shopfrontName = tenant.name.trim() || "Bukay Shopfront";
+  const serviceNames = tenant.services
+    .map((service) => service.name.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+
   return {
-    title: `${tenant.name} | Book with Bukay`,
+    title: `${shopfrontName} | Book with Bukay`,
     description:
-      tenant.services.length > 0
-        ? `Book ${tenant.services
-            .slice(0, 3)
-            .map((service) => service.name)
-            .join(", ")} and more with ${tenant.name} on Bukay.`
-        : `Book an appointment with ${tenant.name} on Bukay.`,
-    imageAlt: `${tenant.name} booking page on Bukay`,
+      serviceNames.length > 0
+        ? `Book ${serviceNames.join(", ")} and more with ${shopfrontName} on Bukay.`
+        : `Book an appointment with ${shopfrontName} on Bukay.`,
+    imageAlt: `${shopfrontName} booking page on Bukay`,
     pageUrl,
     imageUrl,
   };
