@@ -10,7 +10,8 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-import Head from "@/app/[slug]/head";
+import Head, { getShopfrontHeadMetadata } from "@/app/[slug]/head";
+import { getShopfrontMetadata } from "@/app/[slug]/metadata";
 import { generateMetadata } from "@/app/[slug]/page";
 
 describe("shopfront head", () => {
@@ -21,6 +22,44 @@ describe("shopfront head", () => {
       slug: "head-test-salon",
       currency: "NGN",
       services: [{ name: "Haircut" }],
+    });
+  });
+
+  it("exports the complete shopfront route metadata contract", () => {
+    const metadata = getShopfrontHeadMetadata(
+      getShopfrontMetadata(
+        {
+          id: "tenant-id",
+          name: "Head Test Salon",
+          slug: "head-test-salon",
+          currency: "NGN",
+          services: [
+            {
+              id: "service-id",
+              name: "Haircut",
+              description: null,
+              durationMinutes: 30,
+              priceCents: 5000,
+            },
+          ],
+        },
+        "head-test-salon",
+      ),
+    );
+
+    expect(metadata.title).toBe("Head Test Salon | Book with Bukay");
+    expect(metadata.description).toBe("Book Haircut and more with Head Test Salon on Bukay.");
+    expect(metadata.openGraph).toEqual({
+      url: "http://localhost:3000/head-test-salon",
+      type: "website",
+      siteName: "Bukay",
+      image: {
+        url: "http://localhost:3000/head-test-salon/opengraph-image",
+        alt: "Head Test Salon booking page on Bukay",
+        type: "image/png",
+        width: 1200,
+        height: 630,
+      },
     });
   });
 
