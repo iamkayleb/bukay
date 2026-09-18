@@ -39,6 +39,16 @@ describe("shopfront metadata", () => {
     expect(metadataBase().toString()).toBe("https://shops.bukay.test/");
   });
 
+  it("normalizes ROOT_HOST to a public origin without user info", () => {
+    process.env.ROOT_HOST = "https://shops.bukay.test/deployment-preview";
+
+    expect(metadataBase().toString()).toBe("https://shops.bukay.test/");
+
+    process.env.ROOT_HOST = "https://deploy-user@shops.bukay.test";
+
+    expect(metadataBase().toString()).toBe("http://localhost:3000/");
+  });
+
   it("falls back to the local origin when ROOT_HOST is malformed", () => {
     process.env.ROOT_HOST = "http://[invalid-host";
 

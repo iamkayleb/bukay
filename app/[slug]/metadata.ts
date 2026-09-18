@@ -14,7 +14,13 @@ export function metadataBase(): URL {
     if (base.protocol !== "http:" && base.protocol !== "https:") {
       return new URL("http://localhost:3000");
     }
-    return base;
+    // ROOT_HOST identifies the public origin, not a page URL. Drop a
+    // mistakenly supplied path and reject user info so canonical and Open
+    // Graph URLs cannot publish deployment-only URL components.
+    if (base.username || base.password) {
+      return new URL("http://localhost:3000");
+    }
+    return new URL(base.origin);
   } catch {
     // Invalid deployment configuration must not turn an otherwise valid
     // shopfront into a 500 response or omit its required metadata.
