@@ -109,7 +109,10 @@ describe("shopfront SEO (end-to-end)", () => {
 
     server = spawn(localBinary("next"), ["dev", "--port", String(PORT)], {
       cwd: process.cwd(),
-      env: { ...process.env, NODE_ENV: "development" },
+      // Metadata URLs must describe the same public origin that Lighthouse is
+      // auditing. Without this, the test can pass while canonical and Open
+      // Graph tags incorrectly point at the local development default.
+      env: { ...process.env, NODE_ENV: "development", ROOT_HOST: BASE_URL },
       stdio: "ignore",
     });
     await waitForServer(`${BASE_URL}/seo-audit`);
