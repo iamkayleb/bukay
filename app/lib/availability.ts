@@ -1,127 +1,186 @@
-const MS_PER_MINUTE = 60_000;
-const MINUTES_PER_DAY = 24 * 60;
-const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+/** A bookable service expressed in minutes. */
+export interface AvailabilityService {
+  durationMinutes: number;
+  /** Time reserved after an appointment before the next one may begin. */
+  bufferMinutes?: number;
+}
 
-export interface BusinessHours {
-  /** 0 = Sunday .. 6 = Saturday, matching `Date#getUTCDay()`. */
+/** A previously reserved interval. `endsAt` is exclusive. */
+export interface AvailabilityBooking {
+  startsAt: Date;
+  endsAt: Date;
+}
+
+/** Opening hours for a UTC weekday, where 0 is Sunday and 6 is Saturday. */
+export interface AvailabilityHours {
   dayOfWeek: number;
-  /** 24-hour "HH:MM" wall-clock time. */
   opensAt: string;
-  /** 24-hour "HH:MM" wall-clock time. */
   closesAt: string;
   isClosed?: boolean;
 }
 
-export interface ExistingBooking {
-  startsAt: Date;
-  endsAt: Date;
-  /** Buffer already attached to this booking's own service, if any. */
-  bufferMinutes?: number;
-}
-
-export interface ComputeSlotsInput {
-  /** Any instant on the calendar day to compute slots for. */
-  date: Date;
-  businessHours: BusinessHours[];
-  durationMinutes: number;
-  bufferMinutes?: number;
-  existingBookings?: ExistingBooking[];
-  /** Spacing between candidate slot start times. Defaults to 15 minutes. */
-  slotIntervalMinutes?: number;
-  /** Reference "current" instant. Defaults to `new Date()`. */
-  now?: Date;
-  /** Minimum notice required before a slot can start. Defaults to 0. */
-  leadTimeMinutes?: number;
-  /** Furthest a slot may start, in days from `now`. Defaults to unbounded. */
-  maxAdvanceDays?: number;
-}
-
-export interface Slot {
+export interface AvailabilityRange {
+  /** Inclusive lower date bound. */
   start: Date;
+  /** Inclusive upper date bound. */
   end: Date;
 }
 
+export interface ComputeSlotsInput {
+  service: AvailabilityService;
+  dateRange: AvailabilityRange;
+  bookings: readonly AvailabilityBooking[];
+  hours: readonly AvailabilityHours[];
+  /** Slot spacing in minutes. Defaults to 30. */
+  slotIntervalMinutes?: number;
+  /** Minimum notice required before an appointment can start. Defaults to zero. */
+  leadTimeMinutes?: number;
+  /** Number of calendar days from `now` that may be booked. */
+  maxAdvanceDays?: number;
+  /** The reference time for lead-time and advance-window filtering. */
+  now: Date;
+}
+
+const MINUTE_MS = 60_000;
+const DAY_MS = 24 * 60 * MINUTE_MS;
+
+function minutesSinceMidnight(value: string): number | null {
+  const match = /^(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return null;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+function startOfUtcDay(value: Date): number {
+  return Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate());
+}
+
+function overlaps(start: number, end: number, booking: AvailabilityBooking): boolean {
+  return start < booking.endsAt.getTime() && booking.startsAt.getTime() < end;
+}
+
+interface BusyInterval {
+  start: number;
+  end: number;
+}
+
+function mergeBusyIntervals(bookings: readonly AvailabilityBooking[]): {
+  intervals: BusyInterval[];
+  unusualBookings: AvailabilityBooking[];
+} {
+  const intervals: BusyInterval[] = [];
+  const unusualBookings: AvailabilityBooking[] = [];
+
+  for (const booking of bookings) {
+    const start = booking.startsAt.getTime();
+    const end = booking.endsAt.getTime();
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
+      unusualBookings.push(booking);
+    } else {
+      intervals.push({ start, end });
+    }
+  }
+
+  intervals.sort((left, right) => left.start - right.start || left.end - right.end);
+
+  const merged: BusyInterval[] = [];
+  for (const interval of intervals) {
+    const previous = merged.at(-1);
+    if (previous && interval.start <= previous.end) {
+      previous.end = Math.max(previous.end, interval.end);
+    } else {
+      merged.push({ ...interval });
+    }
+  }
+
+  return { intervals: merged, unusualBookings };
+}
+
 /**
- * All Date inputs/outputs are treated as instants in a single shared
- * reference frame (the caller resolves tenant timezone beforehand); this
- * function only does UTC-based wall-clock arithmetic so results are
- * deterministic regardless of host timezone.
+ * Return each available appointment start in the requested UTC date range.
+ *
+ * A slot is placed at each interval after opening and is returned only when its
+ * full service duration and buffer fit before closing and do not overlap a
+ * booking. Lead-time and maximum-advance limits are measured from `now`.
+ * The function does not mutate its inputs or consult the system clock.
  */
-export function computeSlots(input: ComputeSlotsInput): Slot[] {
-  const {
-    date,
-    businessHours,
-    durationMinutes,
-    bufferMinutes = 0,
-    existingBookings = [],
-    slotIntervalMinutes = 15,
-    now = new Date(),
-    leadTimeMinutes = 0,
-    maxAdvanceDays,
-  } = input;
-
-  if (slotIntervalMinutes <= 0) {
-    throw new RangeError("slotIntervalMinutes must be greater than 0");
-  }
-
-  const hours = businessHours.find((entry) => entry.dayOfWeek === date.getUTCDay());
-  if (!hours || hours.isClosed) {
+export function computeSlots({
+  service,
+  dateRange,
+  bookings,
+  hours,
+  slotIntervalMinutes = 30,
+  leadTimeMinutes = 0,
+  maxAdvanceDays,
+  now,
+}: ComputeSlotsInput): Date[] {
+  if (
+    !Number.isFinite(service.durationMinutes) ||
+    service.durationMinutes <= 0 ||
+    (service.bufferMinutes !== undefined &&
+      (!Number.isFinite(service.bufferMinutes) || service.bufferMinutes < 0)) ||
+    !Number.isFinite(slotIntervalMinutes) ||
+    slotIntervalMinutes <= 0 ||
+    !Number.isFinite(leadTimeMinutes) ||
+    leadTimeMinutes < 0 ||
+    (maxAdvanceDays !== undefined &&
+      (!Number.isFinite(maxAdvanceDays) || maxAdvanceDays < 0 || Number.isNaN(now.getTime())))
+  ) {
     return [];
   }
 
-  const openTime = combineDateAndTime(date, hours.opensAt);
-  const closeTime = combineDateAndTime(date, hours.closesAt);
-  if (closeTime.getTime() <= openTime.getTime()) {
-    return [];
-  }
+  const rangeStart = startOfUtcDay(dateRange.start);
+  const rangeEnd = startOfUtcDay(dateRange.end);
+  if (Number.isNaN(rangeStart) || Number.isNaN(rangeEnd) || rangeEnd < rangeStart) return [];
 
-  const earliestStartMs = now.getTime() + leadTimeMinutes * MS_PER_MINUTE;
-  const latestStartMs =
+  const hoursByDay = new Map(hours.map((hour) => [hour.dayOfWeek, hour]));
+  const occupiedDurationMs = (service.durationMinutes + (service.bufferMinutes ?? 0)) * MINUTE_MS;
+  const intervalMs = slotIntervalMinutes * MINUTE_MS;
+  const firstAllowedStart = now.getTime() + leadTimeMinutes * MINUTE_MS;
+  const lastAllowedStart =
     maxAdvanceDays === undefined
-      ? undefined
-      : now.getTime() + maxAdvanceDays * MINUTES_PER_DAY * MS_PER_MINUTE;
+      ? Number.POSITIVE_INFINITY
+      : now.getTime() + maxAdvanceDays * DAY_MS;
+  const { intervals: busyIntervals, unusualBookings } = mergeBusyIntervals(bookings);
+  let nextBusyInterval = 0;
+  const slots: Date[] = [];
 
-  const durationMs = durationMinutes * MS_PER_MINUTE;
-  const bufferMs = bufferMinutes * MS_PER_MINUTE;
-  const stepMs = slotIntervalMinutes * MS_PER_MINUTE;
-  const closeTimeMs = closeTime.getTime();
+  for (let dayStart = rangeStart; dayStart <= rangeEnd; dayStart += DAY_MS) {
+    const businessHours = hoursByDay.get(new Date(dayStart).getUTCDay());
+    if (!businessHours || businessHours.isClosed) continue;
 
-  const busyRanges = existingBookings.map((booking) => ({
-    start: booking.startsAt.getTime(),
-    end: booking.endsAt.getTime() + (booking.bufferMinutes ?? 0) * MS_PER_MINUTE,
-  }));
+    const opensMinutes = minutesSinceMidnight(businessHours.opensAt);
+    const closesMinutes = minutesSinceMidnight(businessHours.closesAt);
+    if (opensMinutes === null || closesMinutes === null || closesMinutes <= opensMinutes) continue;
 
-  const slots: Slot[] = [];
-
-  for (let start = openTime.getTime(); start + durationMs <= closeTimeMs; start += stepMs) {
-    if (latestStartMs !== undefined && start > latestStartMs) {
-      break;
+    const opensAt = dayStart + opensMinutes * MINUTE_MS;
+    const closesAt = dayStart + closesMinutes * MINUTE_MS;
+    for (
+      let startsAt = opensAt;
+      startsAt + occupiedDurationMs <= closesAt;
+      startsAt += intervalMs
+    ) {
+      const endsAt = startsAt + occupiedDurationMs;
+      while (
+        nextBusyInterval < busyIntervals.length &&
+        busyIntervals[nextBusyInterval].end <= startsAt
+      ) {
+        nextBusyInterval += 1;
+      }
+      const nextBooking = busyIntervals[nextBusyInterval];
+      if (
+        startsAt >= firstAllowedStart &&
+        startsAt <= lastAllowedStart &&
+        !(nextBooking && nextBooking.start < endsAt) &&
+        !unusualBookings.some((booking) => overlaps(startsAt, endsAt, booking))
+      ) {
+        slots.push(new Date(startsAt));
+      }
     }
-    if (start < earliestStartMs) {
-      continue;
-    }
-
-    const end = start + durationMs;
-    const busyEnd = end + bufferMs;
-    const overlapsExisting = busyRanges.some((range) => start < range.end && busyEnd > range.start);
-    if (overlapsExisting) {
-      continue;
-    }
-
-    slots.push({ start: new Date(start), end: new Date(end) });
   }
 
   return slots;
-}
-
-function combineDateAndTime(date: Date, time: string): Date {
-  const match = TIME_PATTERN.exec(time);
-  if (!match) {
-    throw new RangeError(`Invalid time string: ${time}`);
-  }
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  return new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), hours, minutes)
-  );
 }

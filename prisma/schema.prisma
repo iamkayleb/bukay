@@ -26,6 +26,7 @@ model Tenant {
   businessHours BusinessHour[]
   clients       Client[]
   bookings      Booking[]
+  slotHolds     SlotHold[]
   payments      Payment[]
   auditLogs     AuditLog[]
 }
@@ -134,6 +135,20 @@ model Booking {
   @@index([staffId])
 }
 
+model SlotHold {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  slotKey   String   @unique
+  sessionId String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([expiresAt])
+}
+
 model Payment {
   id          String    @id @default(cuid())
   tenantId    String
@@ -179,4 +194,3 @@ model AuditLog {
   @@index([tenantId])
   @@index([tenantId, entityType, entityId])
 }
-

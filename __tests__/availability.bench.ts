@@ -1,46 +1,37 @@
+import { performance } from "node:perf_hooks";
+
 import { describe, expect, it } from "vitest";
 
-import { computeSlots, type BusinessHours, type ExistingBooking } from "@/app/lib/availability";
+import { computeSlots } from "@/app/lib/availability";
 
-const WEDNESDAY = new Date("2026-09-09T00:00:00.000Z");
-
-const STANDARD_HOURS: BusinessHours[] = [{ dayOfWeek: 3, opensAt: "09:00", closesAt: "17:00" }];
-
-function buildExistingBookings(count: number): ExistingBooking[] {
-  const bookings: ExistingBooking[] = [];
-  const oneDayMs = 24 * 60 * 60_000;
-  const baseDay = Date.UTC(2026, 7, 1, 9, 0);
-  for (let i = 0; i < count; i += 1) {
-    // One booking per day across ~2.7 years of tenant history, so the
-    // overlap check still scans all 1000 entries without blanketing the
-    // single target day under test.
-    const start = baseDay + i * oneDayMs;
-    bookings.push({
-      startsAt: new Date(start),
-      endsAt: new Date(start + 30 * 60_000),
-      bufferMinutes: 10,
+describe("computeSlots benchmark", () => {
+  it("processes 1,000 bookings in under 50ms", () => {
+    const now = new Date("2026-09-01T00:00:00.000Z");
+    const firstBooking = new Date("2026-09-14T00:00:00.000Z").getTime();
+    const bookings = Array.from({ length: 1_000 }, (_, index) => {
+      const startsAt = new Date(firstBooking + index * 5 * 60_000);
+      return { startsAt, endsAt: new Date(startsAt.getTime() + 3 * 60_000) };
     });
-  }
-  return bookings;
-}
 
-describe("computeSlots — benchmark", () => {
-  it("computes a day of slots against 1000 existing bookings in under 50ms", () => {
-    const existingBookings = buildExistingBookings(1000);
-
-    const start = performance.now();
+    const startedAt = performance.now();
     const slots = computeSlots({
-      date: WEDNESDAY,
-      businessHours: STANDARD_HOURS,
-      durationMinutes: 30,
-      bufferMinutes: 10,
-      slotIntervalMinutes: 15,
-      existingBookings,
-      now: new Date("2026-09-01T00:00:00.000Z"),
+      service: { durationMinutes: 15 },
+      dateRange: {
+        start: new Date("2026-09-14T00:00:00.000Z"),
+        end: new Date("2026-09-20T00:00:00.000Z"),
+      },
+      bookings,
+      hours: Array.from({ length: 7 }, (_, dayOfWeek) => ({
+        dayOfWeek,
+        opensAt: "00:00",
+        closesAt: "23:59",
+      })),
+      slotIntervalMinutes: 1,
+      now,
     });
-    const elapsed = performance.now() - start;
+    const elapsedMs = performance.now() - startedAt;
 
-    expect(slots.length).toBeGreaterThan(0);
-    expect(elapsed).toBeLessThan(50);
+    expect(slots).toHaveLength(5_022);
+    expect(elapsedMs).toBeLessThan(50);
   });
 });

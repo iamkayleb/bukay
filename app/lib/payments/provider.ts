@@ -1,73 +1,70 @@
 /**
- * Provider-neutral payment boundary. Amounts are represented in the currency's
- * smallest unit (kobo for NGN) so adapters never need to round money values.
+ * The provider-neutral representation of a payment in the smallest unit of
+ * its currency. Keeping this at the boundary prevents callers from depending
+ * on Paystack's response shape or field names.
  */
-export type PaymentStatus = "pending" | "success" | "failed";
+export type PaymentStatus = "pending" | "succeeded" | "failed";
 
-export type PaymentInitializeInput = {
+export type InitializePaymentInput = {
+  /** A unique, application-generated reference used to reconcile callbacks. */
   reference: string;
-  amount: number;
+  /** Amount in the currency's minor unit (for example, kobo for NGN). */
+  amountCents: number;
   currency: string;
-  customer: {
-    email: string;
-    name?: string;
-    phone?: string;
-  };
+  customerEmail: string;
   callbackUrl: string;
   metadata?: Record<string, string>;
   subaccountCode?: string;
+  /** Percentage of the charge that should be settled to the subaccount. */
+  subaccountPercentage?: number;
 };
 
-export type PaymentInitializeResult = {
-  provider: string;
+export type InitializedPayment = {
   reference: string;
   authorizationUrl: string;
 };
 
-export type PaymentVerification = {
-  provider: string;
+export type VerifiedPayment = {
   reference: string;
   status: PaymentStatus;
-  amount: number;
+  amountCents: number;
   currency: string;
-  paidAt: Date | null;
+  paidAt?: Date;
 };
 
-export type SubaccountCreateInput = {
-  name: string;
+export type CreateSubaccountInput = {
+  businessName: string;
   settlementBank: string;
   accountNumber: string;
+  /** Percentage of each transaction to settle to this subaccount. */
   percentageCharge: number;
-  currency: string;
 };
 
-export type SubaccountCreateResult = {
-  provider: string;
+export type CreatedSubaccount = {
   code: string;
   percentageCharge: number;
 };
 
+/**
+ * Payment boundary used by booking flows. Implementations must not expose
+ * provider credentials or provider-specific response objects to callers.
+ */
 export interface PaymentProvider {
   readonly name: string;
-  initialize(input: PaymentInitializeInput): Promise<PaymentInitializeResult>;
-  verify(reference: string): Promise<PaymentVerification>;
-  createSubaccount(input: SubaccountCreateInput): Promise<SubaccountCreateResult>;
+
+  initialize(input: InitializePaymentInput): Promise<InitializedPayment>;
+  verify(reference: string): Promise<VerifiedPayment>;
+  createSubaccount(input: CreateSubaccountInput): Promise<CreatedSubaccount>;
 }
 
 export class PaymentProviderError extends Error {
   readonly provider: string;
   readonly status?: number;
-  readonly cause?: unknown;
 
-  constructor(
-    provider: string,
-    message: string,
-    options: { status?: number; cause?: unknown } = {}
-  ) {
+  constructor(provider: string, message: string, options: { status?: number } = {}) {
     super(message);
     this.name = "PaymentProviderError";
     this.provider = provider;
     this.status = options.status;
-    this.cause = options.cause;
   }
 }

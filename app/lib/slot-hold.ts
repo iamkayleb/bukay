@@ -1,82 +1,85 @@
-import { randomUUID } from "node:crypto";
+import { prisma } from "@/app/db/prisma";
 
-export const SLOT_HOLD_TTL_MS = 10 * 60 * 1000;
+export const SLOT_HOLD_DURATION_MS = 10 * 60 * 1_000;
 
-export type SlotHoldKey = {
-  tenantId: string;
-  serviceId: string;
-  staffId: string | null;
-  startsAt: Date;
+type SlotHoldRecord = {
+  sessionId: string;
 };
 
-export type AcquireResult =
-  | { ok: true; holdId: string; expiresAt: number }
-  | { ok: false; reason: "held"; expiresAt: number };
-
-type HoldRecord = {
-  holdId: string;
-  expiresAt: number;
+type SlotHoldDelegate = {
+  create(args: unknown): Promise<unknown>;
+  deleteMany(args: unknown): Promise<unknown>;
+  findUnique(args: unknown): Promise<SlotHoldRecord | null>;
+  update(args: unknown): Promise<unknown>;
 };
-
-export interface Clock {
-  now(): number;
-}
-
-const defaultClock: Clock = { now: () => Date.now() };
-
-function keyFor({ tenantId, serviceId, staffId, startsAt }: SlotHoldKey): string {
-  return `${tenantId}:${serviceId}:${staffId ?? "any"}:${startsAt.toISOString()}`;
-}
 
 /**
- * In-memory only, mirroring OtpStore (app/lib/auth/otp.ts) — acceptable here
- * because a hold is a short-lived (10 min) soft lock, not the booking record
- * of truth. It does not survive a process restart or coordinate across
- * multiple server instances.
+ * Durable protection for the interval between checkout and payment.
+ *
+ * `slotKey` is unique in storage, making the create operation the conflict
+ * arbiter even when requests are handled by separate server instances.
  */
 export class SlotHoldStore {
-  private readonly holds = new Map<string, HoldRecord>();
-  private readonly clock: Clock;
+  constructor(private readonly holds: SlotHoldDelegate = prisma.slotHold) {}
 
-  constructor(clock: Clock = defaultClock) {
-    this.clock = clock;
-  }
+  async acquire(
+    slotKey: string,
+    tenantId: string,
+    sessionId: string,
+    now = new Date()
+  ): Promise<boolean> {
+    await this.holds.deleteMany({
+      where: { slotKey, expiresAt: { lte: now } },
+    });
 
-  acquire(key: SlotHoldKey, ttlMs: number = SLOT_HOLD_TTL_MS): AcquireResult {
-    const now = this.clock.now();
-    const k = keyFor(key);
-    const existing = this.holds.get(k);
-
-    if (existing && existing.expiresAt > now) {
-      return { ok: false, reason: "held", expiresAt: existing.expiresAt };
+    try {
+      await this.holds.create({
+        data: {
+          tenantId,
+          slotKey,
+          sessionId,
+          expiresAt: new Date(now.getTime() + SLOT_HOLD_DURATION_MS),
+        },
+      });
+      return true;
+    } catch (error) {
+      if ((error as { code?: unknown })?.code !== "P2002") {
+        throw error;
+      }
     }
 
-    const holdId = randomUUID();
-    const expiresAt = now + ttlMs;
-    this.holds.set(k, { holdId, expiresAt });
-    return { ok: true, holdId, expiresAt };
-  }
-
-  release(key: SlotHoldKey, holdId: string): void {
-    const k = keyFor(key);
-    const existing = this.holds.get(k);
-    if (existing && existing.holdId === holdId) {
-      this.holds.delete(k);
+    const existing = await this.holds.findUnique({ where: { slotKey } });
+    if (existing?.sessionId !== sessionId) {
+      return false;
     }
+
+    await this.holds.update({
+      where: { slotKey },
+      data: { expiresAt: new Date(now.getTime() + SLOT_HOLD_DURATION_MS) },
+    });
+    return true;
   }
 
-  reset(): void {
-    this.holds.clear();
+  /**
+   * Release the hold owned by a failed checkout session.
+   *
+   * The session predicate is important: cleanup from an older failed request
+   * must never remove a hold refreshed by a different customer.
+   */
+  async releaseAfterFailure(slotKey: string, sessionId: string): Promise<boolean> {
+    const result = (await this.holds.deleteMany({ where: { slotKey, sessionId } })) as {
+      count?: number;
+    };
+    return (result.count ?? 0) > 0;
+  }
+
+  async release(slotKey: string, sessionId: string): Promise<void> {
+    await this.releaseAfterFailure(slotKey, sessionId);
+  }
+
+  async clear(): Promise<void> {
+    await this.holds.deleteMany({ where: {} });
   }
 }
 
-let singleton: SlotHoldStore | null = null;
-
-export function getSlotHoldStore(): SlotHoldStore {
-  if (!singleton) singleton = new SlotHoldStore();
-  return singleton;
-}
-
-export function __resetSlotHoldStoreForTests(): void {
-  singleton = null;
-}
+export const slotHolds = new SlotHoldStore();

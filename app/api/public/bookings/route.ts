@@ -2,220 +2,114 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/app/db/prisma";
-import { runWithTenantContext } from "@/app/tenancy/tenant-context";
-import { InvalidPhoneNumberError, normalizeNigerianPhone } from "@/app/lib/phone";
-import { getSlotHoldStore, type SlotHoldKey } from "@/app/lib/slot-hold";
-import { jsonError, readJson, validationError } from "@/app/api/services/_helpers";
-import {
-  validateBookingInterval,
-  type BookingRecord,
-  type BookingValidationStore,
-  type BusinessHourRecord,
-} from "@/services/bookingValidation";
+import { normalizeNigerianPhone } from "@/app/lib/phone";
+import { SlotHoldStore, slotHolds } from "@/app/lib/slot-hold";
 
-export const dynamic = "force-dynamic";
+const bookingRequestSchema = z.object({
+  slug: z.string().trim().min(1),
+  serviceId: z.string().trim().min(1),
+  startsAt: z.string().datetime(),
+  name: z.string().trim().min(1),
+  phone: z.string().trim().min(1),
+  sessionId: z.string().trim().min(1),
+});
 
-const isoDateField = z.preprocess((value) => {
-  if (typeof value !== "string") return value;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date;
-}, z.date({ invalid_type_error: "startsAt must be a valid ISO date" }));
-
-const publicBookingSchema = z
-  .object({
-    slug: z.string().trim().min(1, "slug is required"),
-    serviceId: z.string().trim().min(1, "serviceId is required"),
-    staffId: z.string().trim().min(1, "staffId must not be blank").nullable().optional(),
-    startsAt: isoDateField,
-    name: z
-      .string()
-      .trim()
-      .min(1, "name is required")
-      .max(120, "name must be 120 characters or fewer"),
-    phone: z.string().trim().min(1, "phone is required"),
-    notes: z.string().trim().max(500, "notes must be 500 characters or fewer").nullable().optional(),
-  })
-  .strict();
-
-type TenantRow = { id: string; active: boolean };
-type ServiceRow = { id: string; tenantId: string; durationMinutes: number; active: boolean };
-type ClientRow = { id: string; tenantId: string; name: string; phone: string };
-type CreatedBookingRow = {
+type PublicService = {
   id: string;
-  status: string;
-  startsAt: Date;
-  endsAt: Date;
+  tenantId: string;
+  durationMinutes: number;
+  tenant: { currency: string; slug: string };
 };
 
-const tenantDelegate = prisma.tenant as unknown as {
-  findUnique(args: unknown): Promise<TenantRow | null>;
-};
 const serviceDelegate = prisma.service as unknown as {
-  findFirst(args: unknown): Promise<ServiceRow | null>;
+  findFirst(args: unknown): Promise<PublicService | null>;
 };
-const clientDelegate = prisma.client as unknown as {
-  findFirst(args: unknown): Promise<ClientRow | null>;
-  create(args: unknown): Promise<ClientRow>;
-  update(args: unknown): Promise<ClientRow>;
-};
-const bookingDelegate = prisma.booking as unknown as {
-  findMany(args: unknown): Promise<BookingRecord[]>;
-  create(args: unknown): Promise<CreatedBookingRow>;
-};
-const businessHourDelegate = prisma.businessHour as unknown as {
-  findFirst(args: unknown): Promise<BusinessHourRecord | null>;
-};
-const blackoutDateDelegate = (
-  prisma as unknown as {
-    blackoutDate?: {
-      findFirst(args: unknown): Promise<unknown | null>;
-    };
-  }
-).blackoutDate;
 
-function buildValidationStore(): BookingValidationStore {
-  return {
-    async findBusinessHours({ tenantId, dayOfWeek }) {
-      return businessHourDelegate.findFirst({ where: { tenantId, dayOfWeek } });
-    },
-    async hasBlackoutDate({ tenantId, date, staffId }) {
-      if (!blackoutDateDelegate) {
-        return false;
-      }
-
-      const blackoutDate = await blackoutDateDelegate.findFirst({
-        where: {
-          tenantId,
-          date,
-          OR: staffId ? [{ staffId }, { staffId: null }] : [{ staffId: null }],
-        },
-      });
-
-      return !!blackoutDate;
-    },
-    async findOverlappingBooking({ tenantId, bookingId, staffId, startsAt, endsAt }) {
-      const overlapping = await bookingDelegate.findMany({
-        where: {
-          tenantId,
-          id: { not: bookingId },
-          staffId,
-          startsAt: { lt: endsAt },
-          endsAt: { gt: startsAt },
-        },
-        take: 1,
-      });
-
-      return overlapping[0] ?? null;
-    },
+type BookingTransaction = {
+  client: {
+    upsert(args: unknown): Promise<{ id: string }>;
   };
-}
+  booking: {
+    create(args: unknown): Promise<{ id: string; status: string }>;
+  };
+  slotHold: ConstructorParameters<typeof SlotHoldStore>[0];
+};
 
-export async function POST(req: NextRequest) {
-  const body = await readJson(req);
-  if (body instanceof NextResponse) {
-    return body;
-  }
+const bookingTransaction = prisma.$transaction as unknown as <T>(
+  callback: (transaction: BookingTransaction) => Promise<T>
+) => Promise<T>;
 
-  const parsed = publicBookingSchema.safeParse(body);
+export async function POST(request: NextRequest) {
+  const body: unknown = await request.json().catch(() => null);
+  const parsed = bookingRequestSchema.safeParse(body);
   if (!parsed.success) {
-    return validationError(parsed.error);
+    return NextResponse.json({ error: "INVALID_BOOKING_REQUEST" }, { status: 400 });
   }
-
-  const { slug, serviceId, startsAt, name, notes } = parsed.data;
-  const staffId = parsed.data.staffId ?? null;
 
   let phone: string;
   try {
     phone = normalizeNigerianPhone(parsed.data.phone);
-  } catch (error) {
-    if (error instanceof InvalidPhoneNumberError) {
-      return jsonError("invalid_phone", 400);
-    }
-    throw error;
+  } catch {
+    return NextResponse.json({ error: "INVALID_PHONE_NUMBER" }, { status: 400 });
   }
 
-  const tenant = await tenantDelegate.findUnique({
-    where: { slug },
-    select: { id: true, active: true },
+  const service = await serviceDelegate.findFirst({
+    where: {
+      id: parsed.data.serviceId,
+      active: true,
+      tenant: { slug: parsed.data.slug, active: true },
+    },
+    select: {
+      id: true,
+      tenantId: true,
+      durationMinutes: true,
+      tenant: { select: { currency: true, slug: true } },
+    },
   });
-  if (!tenant || !tenant.active) {
-    return jsonError("tenant_not_found", 404);
+  if (!service) {
+    return NextResponse.json({ error: "SERVICE_NOT_FOUND" }, { status: 404 });
   }
-  const tenantId = tenant.id;
 
-  return runWithTenantContext({ tenantId }, async () => {
-    const service = await serviceDelegate.findFirst({
-      where: { tenantId, id: serviceId, active: true },
-      select: { id: true, tenantId: true, durationMinutes: true, active: true },
-    });
-    if (!service) {
-      return jsonError("service_not_found", 404);
-    }
-
-    const endsAt = new Date(startsAt.getTime() + service.durationMinutes * 60_000);
-
-    const holdKey: SlotHoldKey = { tenantId, serviceId, staffId, startsAt };
-    const hold = getSlotHoldStore().acquire(holdKey);
-    if (!hold.ok) {
-      return NextResponse.json(
-        { ok: false, error: "slot_held", retryAfter: hold.expiresAt },
-        { status: 409 }
-      );
-    }
-
-    try {
-      const validationIssue = await validateBookingInterval(
-        buildValidationStore(),
-        { id: "__new__", tenantId, staffId, startsAt, endsAt },
-        { startsAt, endsAt, staffId }
-      );
-      if (validationIssue) {
-        getSlotHoldStore().release(holdKey, hold.holdId);
-        return NextResponse.json(
-          { ok: false, error: validationIssue.code, message: validationIssue.message },
-          { status: validationIssue.status }
-        );
+  const startsAt = new Date(parsed.data.startsAt);
+  const endsAt = new Date(startsAt.getTime() + service.durationMinutes * 60_000);
+  const slot = `${service.tenantId}:${service.id}:${startsAt.toISOString()}`;
+  let booking: { id: string; status: string } | null;
+  try {
+    booking = await bookingTransaction(async (transaction) => {
+      const transactionSlotHolds = new SlotHoldStore(transaction.slotHold);
+      if (!(await transactionSlotHolds.acquire(slot, service.tenantId, parsed.data.sessionId))) {
+        return null;
       }
 
-      let client = await clientDelegate.findFirst({ where: { tenantId, phone } });
-      if (!client) {
-        client = await clientDelegate.create({ data: { tenantId, phone, name } });
-      } else if (client.name !== name) {
-        client = await clientDelegate.update({
-          where: { id: client.id, tenantId },
-          data: { name },
-        });
-      }
-
-      const booking = await bookingDelegate.create({
+      const client = await transaction.client.upsert({
+        where: { tenantId_phone: { tenantId: service.tenantId, phone } },
+        update: { name: parsed.data.name },
+        create: { tenantId: service.tenantId, name: parsed.data.name, phone },
+      });
+      return transaction.booking.create({
         data: {
-          tenantId,
+          tenantId: service.tenantId,
           clientId: client.id,
           serviceId: service.id,
-          staffId,
           startsAt,
           endsAt,
           status: "pending_payment",
-          notes: notes ?? null,
         },
       });
+    });
+  } catch (error) {
+    // A database rollback normally removes this hold too. Explicit cleanup
+    // also covers payment/setup failures outside a fully rolled-back request.
+    await slotHolds.releaseAfterFailure(slot, parsed.data.sessionId);
+    throw error;
+  }
 
-      return NextResponse.json(
-        {
-          ok: true,
-          booking: {
-            id: booking.id,
-            status: booking.status,
-            startsAt: booking.startsAt.toISOString(),
-            endsAt: booking.endsAt.toISOString(),
-          },
-          hold: { expiresAt: hold.expiresAt },
-        },
-        { status: 201 }
-      );
-    } catch (error) {
-      getSlotHoldStore().release(holdKey, hold.holdId);
-      throw error;
-    }
-  });
+  if (!booking) {
+    return NextResponse.json({ error: "SLOT_HELD" }, { status: 409 });
+  }
+
+  return NextResponse.json(
+    { booking: { id: booking.id, status: booking.status, startsAt: startsAt.toISOString() } },
+    { status: 201 }
+  );
 }

@@ -1,127 +1,118 @@
 import {
+  type CreatedSubaccount,
+  type CreateSubaccountInput,
+  type InitializedPayment,
+  type InitializePaymentInput,
   PaymentProviderError,
-  type PaymentInitializeInput,
-  type PaymentInitializeResult,
-  type PaymentProvider,
-  type PaymentVerification,
-  type SubaccountCreateInput,
-  type SubaccountCreateResult,
+  type VerifiedPayment,
 } from "./provider";
 
-type PaystackResponse = { status?: boolean; message?: string; data?: Record<string, unknown> };
+type Fetch = typeof fetch;
 
-export class PaystackPaymentProvider implements PaymentProvider {
+type PaystackResponse<T> = {
+  status: boolean;
+  data?: T;
+};
+
+type PaystackTransaction = {
+  reference: string;
+  status: "success" | "failed" | "abandoned" | string;
+  amount: number;
+  currency: string;
+  paid_at?: string | null;
+};
+
+type PaystackSubaccount = {
+  subaccount_code: string;
+  percentage_charge: number;
+};
+
+/** Adapter for Paystack's transaction and subaccount APIs. */
+export class PaystackPaymentProvider {
   readonly name = "paystack";
 
   constructor(
-    private readonly secretKey = process.env.PAYSTACK_SECRET_KEY,
-    private readonly request = fetch
+    private readonly apiKey: string,
+    private readonly request: Fetch = fetch,
+    private readonly apiUrl = "https://api.paystack.co"
   ) {}
 
-  async initialize(input: PaymentInitializeInput): Promise<PaymentInitializeResult> {
-    const data = await this.post("/transaction/initialize", {
-      email: input.customer.email,
-      amount: input.amount,
-      currency: input.currency,
-      reference: input.reference,
-      callback_url: input.callbackUrl,
-      metadata: input.metadata,
-      subaccount: input.subaccountCode,
-    });
-    const authorizationUrl = stringField(data, "authorization_url");
-    const reference = stringField(data, "reference");
-    return { provider: this.name, reference, authorizationUrl };
+  async initialize(input: InitializePaymentInput): Promise<InitializedPayment> {
+    const data = await this.post<{ reference: string; authorization_url: string }>(
+      "/transaction/initialize",
+      {
+        email: input.customerEmail,
+        amount: input.amountCents,
+        currency: input.currency,
+        reference: input.reference,
+        callback_url: input.callbackUrl,
+        metadata: input.metadata,
+        subaccount: input.subaccountCode,
+      }
+    );
+
+    return { reference: data.reference, authorizationUrl: data.authorization_url };
   }
 
-  async verify(reference: string): Promise<PaymentVerification> {
-    const data = await this.get(`/transaction/verify/${encodeURIComponent(reference)}`);
-    const status = stringField(data, "status");
+  async verify(reference: string): Promise<VerifiedPayment> {
+    const data = await this.get<PaystackTransaction>(
+      `/transaction/verify/${encodeURIComponent(reference)}`
+    );
     return {
-      provider: this.name,
-      reference: stringField(data, "reference"),
-      status: status === "success" ? "success" : status === "ongoing" ? "pending" : "failed",
-      amount: numberField(data, "amount"),
-      currency: stringField(data, "currency"),
-      paidAt: dateField(data, "paid_at"),
+      reference: data.reference,
+      status:
+        data.status === "success" ? "succeeded" : data.status === "failed" ? "failed" : "pending",
+      amountCents: data.amount,
+      currency: data.currency,
+      ...(data.paid_at ? { paidAt: new Date(data.paid_at) } : {}),
     };
   }
 
-  async createSubaccount(input: SubaccountCreateInput): Promise<SubaccountCreateResult> {
-    const data = await this.post("/subaccount", {
-      business_name: input.name,
+  async createSubaccount(input: CreateSubaccountInput): Promise<CreatedSubaccount> {
+    const data = await this.post<PaystackSubaccount>("/subaccount", {
+      business_name: input.businessName,
       settlement_bank: input.settlementBank,
       account_number: input.accountNumber,
       percentage_charge: input.percentageCharge,
-      currency: input.currency,
     });
-    return {
-      provider: this.name,
-      code: stringField(data, "subaccount_code"),
-      percentageCharge: numberField(data, "percentage_charge"),
-    };
+    return { code: data.subaccount_code, percentageCharge: data.percentage_charge };
   }
 
-  private async get(path: string): Promise<Record<string, unknown>> {
-    return this.send(path, { method: "GET" });
+  private async get<T>(path: string): Promise<T> {
+    return this.send<T>(path, { method: "GET" });
   }
 
-  private async post(
-    path: string,
-    body: Record<string, unknown>
-  ): Promise<Record<string, unknown>> {
-    return this.send(path, { method: "POST", body: JSON.stringify(body) });
+  private async post<T>(path: string, body: Record<string, unknown>): Promise<T> {
+    return this.send<T>(path, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(
+        Object.fromEntries(Object.entries(body).filter(([, value]) => value !== undefined))
+      ),
+    });
   }
 
-  private async send(path: string, init: RequestInit): Promise<Record<string, unknown>> {
-    if (!this.secretKey) {
-      throw new PaymentProviderError(this.name, "Payment provider is not configured");
-    }
+  private async send<T>(path: string, init: RequestInit): Promise<T> {
+    let response: Response;
     try {
-      const response = await this.request(`https://api.paystack.co${path}`, {
+      response = await this.request(`${this.apiUrl}${path}`, {
         ...init,
-        headers: { Authorization: `Bearer ${this.secretKey}`, "Content-Type": "application/json" },
+        headers: { ...init.headers, authorization: `Bearer ${this.apiKey}` },
       });
-      const body = (await response.json()) as PaystackResponse;
-      if (!response.ok || !body.status || !body.data) {
-        throw new PaymentProviderError(this.name, "Payment provider request failed", {
-          status: response.status,
-        });
-      }
-      return body.data;
-    } catch (error) {
-      if (error instanceof PaymentProviderError) throw error;
-      throw new PaymentProviderError(this.name, "Payment provider request failed", {
-        cause: error,
+    } catch {
+      throw new PaymentProviderError(this.name, "Payment provider request failed");
+    }
+
+    if (!response.ok) {
+      throw new PaymentProviderError(this.name, "Payment provider request was rejected", {
+        status: response.status,
       });
     }
-  }
-}
 
-function stringField(data: Record<string, unknown>, field: string): string {
-  const value = data[field];
-  if (typeof value !== "string" || !value) {
-    throw new PaymentProviderError("paystack", "Payment provider returned invalid data");
+    const payload = (await response.json()) as PaystackResponse<T>;
+    if (!payload.status || !payload.data) {
+      throw new PaymentProviderError(this.name, "Payment provider returned an invalid response");
+    }
+    return payload.data;
   }
-  return value;
-}
-
-function numberField(data: Record<string, unknown>, field: string): number {
-  const value = data[field];
-  if (typeof value !== "number" || !Number.isSafeInteger(value)) {
-    throw new PaymentProviderError("paystack", "Payment provider returned invalid data");
-  }
-  return value;
-}
-
-function dateField(data: Record<string, unknown>, field: string): Date | null {
-  const value = data[field];
-  if (value == null) return null;
-  if (typeof value !== "string") {
-    throw new PaymentProviderError("paystack", "Payment provider returned invalid data");
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    throw new PaymentProviderError("paystack", "Payment provider returned invalid data");
-  }
-  return date;
 }
