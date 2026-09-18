@@ -58,6 +58,10 @@ export function getShopfrontRouteMetadata(metadata: ShopfrontMetadata): Metadata
     metadataBase: new URL(canonicalUrl.origin),
     title: head.title,
     description: head.description,
+    robots: {
+      index: true,
+      follow: true,
+    },
     alternates: { canonical: head.canonicalUrl },
     openGraph: {
       title: head.openGraph.title,

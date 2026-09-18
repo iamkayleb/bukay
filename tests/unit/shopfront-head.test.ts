@@ -83,6 +83,10 @@ describe("shopfront head", () => {
       metadataBase: new URL("http://localhost:3000"),
       title: "Head Test Salon | Book with Bukay",
       description: "Book an appointment with Head Test Salon on Bukay.",
+      robots: {
+        index: true,
+        follow: true,
+      },
       alternates: { canonical: "http://localhost:3000/head-test-salon" },
       openGraph: {
         title: "Head Test Salon | Book with Bukay",
