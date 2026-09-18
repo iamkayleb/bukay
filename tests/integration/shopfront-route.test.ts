@@ -79,6 +79,10 @@ function linkHref(html: string, rel: string): string | undefined {
   return match?.[1];
 }
 
+function occurrences(html: string, value: string): number {
+  return html.split(value).length - 1;
+}
+
 async function stop(server: ChildProcess | undefined): Promise<void> {
   if (!server || server.exitCode !== null) return;
 
@@ -160,6 +164,14 @@ describe("shopfront route (integration)", () => {
     expect(metaContent(head, "property", "og:url")).toBe(`${BASE_URL}/${SLUG}`);
     expect(metaContent(head, "property", "og:type")).toBe("website");
     expect(linkHref(head, "canonical")).toBe(`${BASE_URL}/${SLUG}`);
+
+    // Next composes metadata from the route. Each primary tag must be emitted once,
+    // so a second metadata surface cannot silently produce conflicting SEO values.
+    expect(occurrences(head, "<title>")).toBe(1);
+    expect(occurrences(head, 'name="description"')).toBe(1);
+    expect(occurrences(head, 'property="og:title"')).toBe(1);
+    expect(occurrences(head, 'property="og:description"')).toBe(1);
+    expect(occurrences(head, 'property="og:image"')).toBe(1);
   });
 
   it("returns 404 for an unknown shopfront slug", async () => {
