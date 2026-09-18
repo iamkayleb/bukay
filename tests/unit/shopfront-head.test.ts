@@ -44,4 +44,24 @@ describe("shopfront head", () => {
 
     await expect(Head({ params: { slug: "missing-shopfront" } })).rejects.toThrow("not found");
   });
+
+  it("keeps required route metadata non-empty when tenant display fields are blank", async () => {
+    getShopfrontTenant.mockResolvedValueOnce({
+      id: "tenant-id",
+      name: "   ",
+      slug: "sparse-shopfront",
+      currency: "NGN",
+      services: [{ name: " " }],
+    });
+
+    const markup = renderToStaticMarkup(await Head({ params: { slug: "sparse-shopfront" } }));
+
+    expect(markup).toContain("<title>Bukay Shopfront | Book with Bukay</title>");
+    expect(markup).toContain('meta name="description" content="Book an appointment with Bukay Shopfront on Bukay."');
+    expect(markup).toContain('meta property="og:title" content="Bukay Shopfront | Book with Bukay"');
+    expect(markup).toContain(
+      'meta property="og:description" content="Book an appointment with Bukay Shopfront on Bukay."',
+    );
+    expect(markup).toContain('meta property="og:image" content="http://localhost:3000/favicon.ico"');
+  });
 });
