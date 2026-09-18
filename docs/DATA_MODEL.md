@@ -83,6 +83,12 @@ paid timestamp, and audit timestamps.
 callbacks) that could not be processed, storing the provider, event type, raw payload, and an
 optional failure reason for later inspection.
 
+### IdempotencyEvent
+
+`IdempotencyEvent` stores a webhook delivery key and its expiry timestamp. The primary key makes
+the claim durable across application instances, while the expiry index supports removing records
+after the seven-day replay-protection window.
+
 ### AuditLog
 
 `AuditLog` stores action history with optional actor and entity references. `metadata` is stored as a
