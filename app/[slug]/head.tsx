@@ -33,7 +33,18 @@ function webUrlOrFallback(value: string, fallback: string): string {
 
   try {
     const url = new URL(normalizedValue);
-    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : fallback;
+    // Canonical and social-preview URLs are public identifiers. Credentials
+    // or fragments are not part of those identifiers and must not leak into
+    // the tags even if a future metadata source provides them.
+    if (
+      (url.protocol !== "http:" && url.protocol !== "https:") ||
+      url.username ||
+      url.password ||
+      url.hash
+    ) {
+      return fallback;
+    }
+    return url.toString();
   } catch {
     return fallback;
   }

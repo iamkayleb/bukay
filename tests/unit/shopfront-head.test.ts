@@ -158,6 +158,20 @@ describe("shopfront head", () => {
     expect(metadata.openGraph.image.alt).toBe("Bukay shopfront booking page");
   });
 
+  it("does not publish credentials or fragments in canonical and Open Graph URLs", () => {
+    const metadata = getShopfrontHeadMetadata({
+      title: "Private URL Salon | Book with Bukay",
+      description: "Book a private URL shopfront on Bukay.",
+      pageUrl: "https://metadata-user:metadata-password@example.test/private-url-salon#booking",
+      imageUrl: "https://example.test/private-url-salon/opengraph-image#preview",
+      imageAlt: "Private URL Salon booking page on Bukay",
+    });
+
+    expect(metadata.canonicalUrl).toBe("http://localhost:3000/");
+    expect(metadata.openGraph.url).toBe("http://localhost:3000/");
+    expect(metadata.openGraph.image.url).toBe("http://localhost:3000/opengraph-image");
+  });
+
   it("normalizes whitespace around route metadata URLs", () => {
     const metadata = getShopfrontHeadMetadata({
       title: "Whitespace URL Salon | Book with Bukay",
