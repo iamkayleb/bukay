@@ -102,7 +102,11 @@ describe("shopfront route (integration)", () => {
 
     server = spawn(localBinary("next"), ["dev", "--port", String(PORT)], {
       cwd: process.cwd(),
-      env: { ...process.env, NODE_ENV: "development", ROOT_HOST: `127.0.0.1:${PORT}` },
+      env: {
+        ...process.env,
+        NODE_ENV: "development",
+        ROOT_HOST: BASE_URL,
+      },
       stdio: "ignore",
     });
     await waitForServer(`${BASE_URL}/${SLUG}`);
@@ -132,7 +136,7 @@ describe("shopfront route (integration)", () => {
       "Book Integration Test Service and more with Integration Test Salon on Bukay.",
     );
     expect(metaContent(response.body, "property", "og:image")).toBe(
-      `https://127.0.0.1:${PORT}/favicon.ico`,
+      `${BASE_URL}/favicon.ico`,
     );
   });
 

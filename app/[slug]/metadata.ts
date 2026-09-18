@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 
 import type { ShopfrontTenant } from "./data";
 
-function metadataBase(): URL {
+export function metadataBase(): URL {
   const rootHost = process.env.ROOT_HOST?.trim();
-  return new URL(rootHost ? `https://${rootHost}` : "http://localhost:3000");
+  if (!rootHost) return new URL("http://localhost:3000");
+
+  return new URL(/^https?:\/\//i.test(rootHost) ? rootHost : `https://${rootHost}`);
 }
 
 export type ShopfrontMetadata = {
