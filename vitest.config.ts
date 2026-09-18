@@ -11,6 +11,7 @@ export default defineConfig({
       "__tests__/**/*.test.tsx",
       "__tests__/**/*.bench.ts",
       "test/**/*.test.ts",
+      "tests/**/*.test.ts",
     ],
     testTimeout: 120_000,
   },
