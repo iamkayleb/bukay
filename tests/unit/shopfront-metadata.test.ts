@@ -29,7 +29,7 @@ describe("shopfront metadata", () => {
 
     expect(metadataBase().toString()).toBe("http://127.0.0.1:31474/");
     expect(metadata.pageUrl).toBe("http://127.0.0.1:31474/test-salon");
-    expect(metadata.imageUrl).toBe("http://127.0.0.1:31474/favicon.ico");
+    expect(metadata.imageUrl).toBe("http://127.0.0.1:31474/test-salon/opengraph-image");
     expect(metadata.imageAlt).toBe("Test Salon booking page on Bukay");
   });
 
@@ -54,6 +54,7 @@ describe("shopfront metadata", () => {
     );
 
     expect(metadata.pageUrl).toBe("https://shops.bukay.test/test%20salon");
+    expect(metadata.imageUrl).toBe("https://shops.bukay.test/test%20salon/opengraph-image");
   });
 
   it("keeps required metadata non-empty when tenant display fields are blank", () => {
@@ -63,7 +64,15 @@ describe("shopfront metadata", () => {
         name: "   ",
         slug: "empty-details",
         currency: "NGN",
-        services: [{ name: " " }],
+        services: [
+          {
+            id: "service-id",
+            name: " ",
+            description: null,
+            durationMinutes: 30,
+            priceCents: 5000,
+          },
+        ],
       },
       "empty-details",
     );

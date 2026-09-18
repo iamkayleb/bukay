@@ -36,7 +36,9 @@ describe("shopfront head", () => {
     expect(markup).toContain(
       '<meta property="og:description" content="Book Haircut and more with Head Test Salon on Bukay."/>',
     );
-    expect(markup).toContain('<meta property="og:image" content="http://localhost:3000/favicon.ico"/>');
+    expect(markup).toContain(
+      '<meta property="og:image" content="http://localhost:3000/head-test-salon/opengraph-image"/>',
+    );
     expect(markup).toContain(
       '<meta property="og:image:alt" content="Head Test Salon booking page on Bukay"/>',
     );
@@ -65,6 +67,8 @@ describe("shopfront head", () => {
     expect(markup).toContain(
       'meta property="og:description" content="Book an appointment with Bukay Shopfront on Bukay."',
     );
-    expect(markup).toContain('meta property="og:image" content="http://localhost:3000/favicon.ico"');
+    expect(markup).toContain(
+      'meta property="og:image" content="http://localhost:3000/sparse-shopfront/opengraph-image"',
+    );
   });
 });

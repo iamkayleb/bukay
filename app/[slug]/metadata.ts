@@ -24,8 +24,11 @@ export function getShopfrontMetadata(
   const base = metadataBase();
   // Slugs are route segments. Encoding them here preserves the one-segment
   // canonical/OG URL even if imported tenant data contains URL-reserved text.
-  const pageUrl = new URL(`/${encodeURIComponent(slug)}`, base).toString();
-  const imageUrl = new URL("/favicon.ico", base).toString();
+  const encodedSlug = encodeURIComponent(slug);
+  const pageUrl = new URL(`/${encodedSlug}`, base).toString();
+  // A full-size route image gives social clients a usable preview instead of
+  // pointing them at the small browser favicon.
+  const imageUrl = new URL(`/${encodedSlug}/opengraph-image`, base).toString();
 
   if (!tenant) {
     return {

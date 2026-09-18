@@ -34,7 +34,9 @@ async function waitForServer(url: string): Promise<void> {
   throw new Error(`Next.js server did not become ready within ${START_TIMEOUT_MS}ms.`);
 }
 
-async function request(url: string): Promise<{ body: string; status: number; ttfbMs: number }> {
+async function request(
+  url: string,
+): Promise<{ body: string; contentType: string | undefined; status: number; ttfbMs: number }> {
   return new Promise((resolve, reject) => {
     const startedAt = performance.now();
     const req = http.get(url, (response) => {
@@ -45,6 +47,7 @@ async function request(url: string): Promise<{ body: string; status: number; ttf
       response.on("end", () => {
         resolve({
           body: Buffer.concat(chunks).toString("utf8"),
+          contentType: response.headers["content-type"],
           status: response.statusCode ?? 0,
           ttfbMs,
         });
@@ -156,7 +159,7 @@ describe("shopfront route (integration)", () => {
       "Book Integration Test Service and more with Integration Test Salon on Bukay.",
     );
     expect(metaContent(head, "property", "og:image")).toBe(
-      `${BASE_URL}/favicon.ico`,
+      `${BASE_URL}/${SLUG}/opengraph-image`,
     );
     expect(metaContent(head, "property", "og:image:alt")).toBe(
       "Integration Test Salon booking page on Bukay",
@@ -178,5 +181,12 @@ describe("shopfront route (integration)", () => {
     const response = await request(`${BASE_URL}/shopfront-route-test-missing`);
 
     expect(response.status).toBe(404);
+  });
+
+  it("serves a PNG Open Graph image for the shopfront", async () => {
+    const response = await request(`${BASE_URL}/${SLUG}/opengraph-image`);
+
+    expect(response.status).toBe(200);
+    expect(response.contentType).toContain("image/png");
   });
 });
