@@ -1,40 +1,67 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import {
-  __resetIdempotencyStoreForTests,
-  hasProcessed,
-  IDEMPOTENCY_TTL_MS,
-  markProcessed,
-} from "@/app/lib/idempotency";
+import { IDEMPOTENCY_TTL_MS, IdempotencyStore } from "@/app/lib/idempotency";
 
-beforeEach(() => {
-  __resetIdempotencyStoreForTests();
-});
-
-afterEach(() => {
-  vi.useRealTimers();
-});
+function createDelegate() {
+  const events = new Map<string, Date>();
+  return {
+    events,
+    delegate: {
+      deleteMany: vi.fn(async ({ where }: { where: { key: string; expiresAt: { lte: Date } } }) => {
+        const expiresAt = events.get(where.key);
+        if (expiresAt && expiresAt <= where.expiresAt.lte) {
+          events.delete(where.key);
+          return { count: 1 };
+        }
+        return { count: 0 };
+      }),
+      create: vi.fn(async ({ data }: { data: { key: string; expiresAt: Date } }) => {
+        if (events.has(data.key)) {
+          throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
+        }
+        events.set(data.key, data.expiresAt);
+      }),
+    },
+  };
+}
 
 describe("idempotency store", () => {
-  it("reports a key as unseen before it is marked processed", () => {
-    expect(hasProcessed("evt-1")).toBe(false);
+  it("claims an unseen key once", async () => {
+    const { delegate } = createDelegate();
+    const store = new IdempotencyStore(delegate);
+
+    await expect(store.claim("evt-1")).resolves.toBe(true);
+    await expect(store.claim("evt-1")).resolves.toBe(false);
   });
 
-  it("reports a key as seen once marked processed", () => {
-    markProcessed("evt-1");
-    expect(hasProcessed("evt-1")).toBe(true);
+  it("does not confuse distinct keys", async () => {
+    const { delegate } = createDelegate();
+    const store = new IdempotencyStore(delegate);
+
+    await expect(store.claim("evt-1")).resolves.toBe(true);
+    await expect(store.claim("evt-2")).resolves.toBe(true);
   });
 
-  it("does not confuse distinct keys", () => {
-    markProcessed("evt-1");
-    expect(hasProcessed("evt-2")).toBe(false);
+  it("allows a claim after the 7-day TTL", async () => {
+    const { delegate } = createDelegate();
+    const store = new IdempotencyStore(delegate);
+    const start = new Date("2026-01-01T00:00:00.000Z");
+
+    await expect(store.claim("evt-1", start)).resolves.toBe(true);
+    await expect(
+      store.claim("evt-1", new Date(start.getTime() + IDEMPOTENCY_TTL_MS - 1))
+    ).resolves.toBe(false);
+    await expect(
+      store.claim("evt-1", new Date(start.getTime() + IDEMPOTENCY_TTL_MS))
+    ).resolves.toBe(true);
   });
 
-  it("expires entries after the 7-day TTL", () => {
-    const start = Date.parse("2026-01-01T00:00:00.000Z");
-    markProcessed("evt-1", start);
+  it("retains claims across a simulated process restart", async () => {
+    const { delegate } = createDelegate();
+    const firstProcess = new IdempotencyStore(delegate);
+    await expect(firstProcess.claim("evt-1")).resolves.toBe(true);
 
-    expect(hasProcessed("evt-1", start + IDEMPOTENCY_TTL_MS - 1)).toBe(true);
-    expect(hasProcessed("evt-1", start + IDEMPOTENCY_TTL_MS + 1)).toBe(false);
+    const restartedProcess = new IdempotencyStore(delegate);
+    await expect(restartedProcess.claim("evt-1")).resolves.toBe(false);
   });
 });

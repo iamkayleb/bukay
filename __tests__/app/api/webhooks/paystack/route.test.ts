@@ -35,6 +35,9 @@ const state = vi.hoisted(() => ({
   updatePayment: vi.fn(),
   updateBooking: vi.fn(),
   createDeadLetter: vi.fn(),
+  idempotencyEvents: new Map<string, Date>(),
+  deleteExpiredIdempotency: vi.fn(),
+  createIdempotency: vi.fn(),
 }));
 
 vi.mock("@/app/db/prisma", () => ({
@@ -49,11 +52,14 @@ vi.mock("@/app/db/prisma", () => ({
     deadLetterEvent: {
       create: state.createDeadLetter,
     },
+    idempotencyEvent: {
+      deleteMany: state.deleteExpiredIdempotency,
+      create: state.createIdempotency,
+    },
   },
 }));
 
 import { POST } from "@/app/api/webhooks/paystack/route";
-import { __resetIdempotencyStoreForTests } from "@/app/lib/idempotency";
 import { __resetDomainEventsForTests, onBookingConfirmed } from "@/app/lib/events";
 
 function sign(body: string): string {
@@ -119,6 +125,9 @@ beforeEach(() => {
   state.updatePayment.mockReset();
   state.updateBooking.mockReset();
   state.createDeadLetter.mockReset();
+  state.idempotencyEvents.clear();
+  state.deleteExpiredIdempotency.mockReset();
+  state.createIdempotency.mockReset();
 
   state.findPaymentFirst.mockImplementation(
     async (args: { where: { tenantId: string; providerRef: string } }) =>
@@ -150,8 +159,25 @@ beforeEach(() => {
       return args.data;
     }
   );
+  state.deleteExpiredIdempotency.mockImplementation(
+    async ({ where }: { where: { key: string; expiresAt: { lte: Date } } }) => {
+      const expiresAt = state.idempotencyEvents.get(where.key);
+      if (expiresAt && expiresAt <= where.expiresAt.lte) {
+        state.idempotencyEvents.delete(where.key);
+        return { count: 1 };
+      }
+      return { count: 0 };
+    }
+  );
+  state.createIdempotency.mockImplementation(
+    async ({ data }: { data: { key: string; expiresAt: Date } }) => {
+      if (state.idempotencyEvents.has(data.key)) {
+        throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
+      }
+      state.idempotencyEvents.set(data.key, data.expiresAt);
+    }
+  );
 
-  __resetIdempotencyStoreForTests();
   __resetDomainEventsForTests();
 });
 

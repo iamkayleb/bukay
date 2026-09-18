@@ -180,6 +180,14 @@ model DeadLetterEvent {
   @@index([provider, eventType])
 }
 
+model IdempotencyEvent {
+  key       String   @id
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
 model AuditLog {
   id         String   @id @default(cuid())
   tenantId   String

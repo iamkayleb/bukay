@@ -1,30 +1,37 @@
-// In-memory idempotency store for at-least-once event delivery (e.g. Paystack
-// webhook retries). Entries expire after seven days, matching Paystack's own
-// retry window, so the map cannot grow unbounded across a long-lived process.
+import { prisma } from "@/app/db/prisma";
+
+// Entries expire after seven days, matching Paystack's retry window. The
+// database primary key is the concurrency boundary, so replay protection is
+// retained when a request lands on another instance or after a restart.
 export const IDEMPOTENCY_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-type Entry = { expiresAt: number };
+type IdempotencyDelegate = {
+  create(args: unknown): Promise<unknown>;
+  deleteMany(args: unknown): Promise<unknown>;
+};
 
-const seen = new Map<string, Entry>();
+export class IdempotencyStore {
+  constructor(private readonly events: IdempotencyDelegate = prisma.idempotencyEvent) {}
 
-function purgeExpired(now: number): void {
-  for (const [key, entry] of seen) {
-    if (entry.expiresAt <= now) {
-      seen.delete(key);
+  /**
+   * Atomically claim an event key. `true` means this delivery may be handled;
+   * `false` means another process has already claimed a non-expired delivery.
+   */
+  async claim(key: string, now = new Date()): Promise<boolean> {
+    await this.events.deleteMany({ where: { key, expiresAt: { lte: now } } });
+
+    try {
+      await this.events.create({
+        data: { key, expiresAt: new Date(now.getTime() + IDEMPOTENCY_TTL_MS) },
+      });
+      return true;
+    } catch (error) {
+      if ((error as { code?: unknown })?.code === "P2002") {
+        return false;
+      }
+      throw error;
     }
   }
 }
 
-export function hasProcessed(key: string, now: number = Date.now()): boolean {
-  purgeExpired(now);
-  const entry = seen.get(key);
-  return !!entry && entry.expiresAt > now;
-}
-
-export function markProcessed(key: string, now: number = Date.now()): void {
-  seen.set(key, { expiresAt: now + IDEMPOTENCY_TTL_MS });
-}
-
-export function __resetIdempotencyStoreForTests(): void {
-  seen.clear();
-}
+export const idempotencyStore = new IdempotencyStore();
