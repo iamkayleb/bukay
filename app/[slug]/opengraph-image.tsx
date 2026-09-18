@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { notFound } from "next/navigation";
 
 import { getShopfrontTenant } from "./data";
 
@@ -15,7 +16,15 @@ type ShopfrontImageProps = {
 
 export default async function OpenGraphImage({ params }: ShopfrontImageProps) {
   const tenant = await getShopfrontTenant(params.slug);
-  const shopfrontName = tenant?.name.trim() || "Bukay Shopfront";
+
+  // Keep the image route within the same tenant boundary as the rendered
+  // shopfront. Otherwise a deleted or unknown slug would still advertise a
+  // successful social-preview image even though its booking page is a 404.
+  if (!tenant) {
+    notFound();
+  }
+
+  const shopfrontName = tenant.name.trim() || "Bukay Shopfront";
 
   return new ImageResponse(
     <div

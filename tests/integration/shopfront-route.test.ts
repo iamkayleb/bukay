@@ -220,6 +220,12 @@ describe("shopfront route (integration)", () => {
     expect(headContent(response.body)).not.toContain("Integration Test Salon | Book with Bukay");
   });
 
+  it("returns 404 for an unknown shopfront's Open Graph image", async () => {
+    const response = await request(`${baseUrl}/shopfront-route-test-missing/opengraph-image`);
+
+    expect(response.status).toBe(404);
+  });
+
   it("serves a PNG Open Graph image for the shopfront", async () => {
     const shopfront = await request(`${baseUrl}/${SLUG}`);
     const imageUrl = metaContent(headContent(shopfront.body), "property", "og:image");
