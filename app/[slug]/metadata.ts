@@ -4,7 +4,13 @@ export function metadataBase(): URL {
   const rootHost = process.env.ROOT_HOST?.trim();
   if (!rootHost) return new URL("http://localhost:3000");
 
-  return new URL(/^https?:\/\//i.test(rootHost) ? rootHost : `https://${rootHost}`);
+  try {
+    return new URL(/^https?:\/\//i.test(rootHost) ? rootHost : `https://${rootHost}`);
+  } catch {
+    // Invalid deployment configuration must not turn an otherwise valid
+    // shopfront into a 500 response or omit its required metadata.
+    return new URL("http://localhost:3000");
+  }
 }
 
 export type ShopfrontMetadata = {
@@ -17,7 +23,7 @@ export type ShopfrontMetadata = {
 
 export function getShopfrontMetadata(
   tenant: ShopfrontTenant | null,
-  slug: string
+  slug: string,
 ): ShopfrontMetadata {
   const base = metadataBase();
   // Slugs are route segments. Encoding them here preserves the one-segment
