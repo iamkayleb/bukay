@@ -55,6 +55,16 @@ async function request(url: string): Promise<{ body: string; status: number; ttf
   });
 }
 
+function metaContent(html: string, attribute: "name" | "property", value: string): string | undefined {
+  const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = html.match(
+    new RegExp(
+      `<meta(?=[^>]*\\b${attribute}="${escapedValue}")(?=[^>]*\\bcontent="([^"]+)")[^>]*>`,
+    ),
+  );
+  return match?.[1];
+}
+
 async function stop(server: ChildProcess | undefined): Promise<void> {
   if (!server || server.exitCode !== null) return;
 
@@ -92,7 +102,7 @@ describe("shopfront route (integration)", () => {
 
     server = spawn(localBinary("next"), ["dev", "--port", String(PORT)], {
       cwd: process.cwd(),
-      env: { ...process.env, NODE_ENV: "development" },
+      env: { ...process.env, NODE_ENV: "development", ROOT_HOST: `127.0.0.1:${PORT}` },
       stdio: "ignore",
     });
     await waitForServer(`${BASE_URL}/${SLUG}`);
@@ -112,10 +122,18 @@ describe("shopfront route (integration)", () => {
     expect(response.status).toBe(200);
     expect(response.ttfbMs).toBeLessThan(500);
     expect(response.body).toContain("<title>Integration Test Salon | Book with Bukay</title>");
-    expect(response.body).toContain('name="description"');
-    expect(response.body).toContain('property="og:title"');
-    expect(response.body).toContain('property="og:description"');
-    expect(response.body).toContain('property="og:image"');
+    expect(metaContent(response.body, "name", "description")).toBe(
+      "Book Integration Test Service and more with Integration Test Salon on Bukay.",
+    );
+    expect(metaContent(response.body, "property", "og:title")).toBe(
+      "Integration Test Salon | Book with Bukay",
+    );
+    expect(metaContent(response.body, "property", "og:description")).toBe(
+      "Book Integration Test Service and more with Integration Test Salon on Bukay.",
+    );
+    expect(metaContent(response.body, "property", "og:image")).toBe(
+      `https://127.0.0.1:${PORT}/favicon.ico`,
+    );
   });
 
   it("returns 404 for an unknown shopfront slug", async () => {
