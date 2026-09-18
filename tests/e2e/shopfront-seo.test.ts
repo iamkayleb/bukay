@@ -3,6 +3,7 @@ import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { once } from "node:events";
+import net from "node:net";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { tmpdir } from "node:os";
@@ -10,7 +11,6 @@ import lighthouse from "lighthouse";
 import { PrismaClient } from "@prisma/client";
 
 const PORT = 31475;
-const CHROME_PORT = 9223;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 const START_TIMEOUT_MS = 90_000;
 const prisma = new PrismaClient();
@@ -40,6 +40,22 @@ function chromeBinary(): string {
   return binary;
 }
 
+async function availablePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const listener = net.createServer();
+    listener.once("error", reject);
+    listener.listen(0, "127.0.0.1", () => {
+      const address = listener.address();
+      if (!address || typeof address === "string") {
+        listener.close();
+        reject(new Error("Could not reserve a Chrome DevTools port."));
+        return;
+      }
+      listener.close((error) => (error ? reject(error) : resolve(address.port)));
+    });
+  });
+}
+
 async function waitForServer(url: string): Promise<void> {
   const deadline = Date.now() + START_TIMEOUT_MS;
   while (Date.now() < deadline) {
@@ -53,8 +69,8 @@ async function waitForServer(url: string): Promise<void> {
   throw new Error(`Next.js server did not become ready within ${START_TIMEOUT_MS}ms.`);
 }
 
-async function waitForChrome(): Promise<void> {
-  const endpoint = `http://127.0.0.1:${CHROME_PORT}/json/version`;
+async function waitForChrome(port: number): Promise<void> {
+  const endpoint = `http://127.0.0.1:${port}/json/version`;
   const deadline = Date.now() + START_TIMEOUT_MS;
 
   while (Date.now() < deadline) {
@@ -81,6 +97,7 @@ async function stop(process: ChildProcess | undefined): Promise<void> {
 describe("shopfront SEO (end-to-end)", () => {
   let server: ChildProcess;
   let chrome: ChildProcess;
+  let chromePort: number;
   let chromeDataDir: string | undefined;
 
   beforeAll(async () => {
@@ -120,16 +137,17 @@ describe("shopfront SEO (end-to-end)", () => {
     // An isolated profile prevents a concurrently running local Chrome from
     // taking over this process and closing its DevTools connection mid-audit.
     chromeDataDir = await mkdtemp(join(tmpdir(), "bukay-lighthouse-"));
+    chromePort = await availablePort();
     chrome = spawn(chromeBinary(), [
       "--headless=new",
       "--no-sandbox",
       "--disable-gpu",
       "--disable-dev-shm-usage",
-      `--remote-debugging-port=${CHROME_PORT}`,
+      `--remote-debugging-port=${chromePort}`,
       `--user-data-dir=${chromeDataDir}`,
       "about:blank",
     ]);
-    await waitForChrome();
+    await waitForChrome(chromePort);
   }, START_TIMEOUT_MS + 30_000);
 
   afterAll(async () => {
@@ -143,7 +161,7 @@ describe("shopfront SEO (end-to-end)", () => {
 
   it("renders the shopfront in headless Chrome with an SEO score of at least 95", async () => {
     const result = await lighthouse(`${BASE_URL}/seo-audit`, {
-      port: CHROME_PORT,
+      port: chromePort,
       onlyCategories: ["seo"],
       output: "json",
       logLevel: "error",
