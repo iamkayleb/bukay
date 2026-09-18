@@ -10,6 +10,7 @@ import { PrismaClient } from "@prisma/client";
 
 const SLUG = "shopfront-route-test";
 const START_TIMEOUT_MS = 90_000;
+const REQUEST_TIMEOUT_MS = 10_000;
 const prisma = new PrismaClient();
 
 function localBinary(name: string): string {
@@ -65,6 +66,7 @@ async function request(
 
       response.on("data", (chunk: Buffer) => chunks.push(chunk));
       response.on("end", () => {
+        clearTimeout(timeout);
         resolve({
           body: Buffer.concat(chunks).toString("utf8"),
           contentType: response.headers["content-type"],
@@ -74,7 +76,14 @@ async function request(
       });
     });
 
-    req.on("error", reject);
+    const timeout = setTimeout(() => {
+      req.destroy(new Error(`Request to ${url} did not finish within ${REQUEST_TIMEOUT_MS}ms.`));
+    }, REQUEST_TIMEOUT_MS);
+
+    req.on("error", (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
   });
 }
 
