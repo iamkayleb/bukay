@@ -83,4 +83,26 @@ describe("shopfront head", () => {
       'meta property="og:image" content="http://localhost:3000/sparse-shopfront/opengraph-image"',
     );
   });
+
+  it("encodes a route slug consistently in canonical and Open Graph URLs", async () => {
+    getShopfrontTenant.mockResolvedValueOnce({
+      id: "tenant-id",
+      name: "Encoded Slug Salon",
+      slug: "encoded-slug",
+      currency: "NGN",
+      services: [],
+    });
+
+    const markup = renderToStaticMarkup(await Head({ params: { slug: "encoded slug/preview" } }));
+
+    expect(markup).toContain(
+      '<link rel="canonical" href="http://localhost:3000/encoded%20slug%2Fpreview"/>',
+    );
+    expect(markup).toContain(
+      '<meta property="og:url" content="http://localhost:3000/encoded%20slug%2Fpreview"/>',
+    );
+    expect(markup).toContain(
+      '<meta property="og:image" content="http://localhost:3000/encoded%20slug%2Fpreview/opengraph-image"/>',
+    );
+  });
 });
