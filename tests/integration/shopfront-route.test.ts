@@ -74,6 +74,10 @@ function headContent(html: string): string {
   return match[1];
 }
 
+function titleContent(html: string): string | undefined {
+  return html.match(/<title>([^<]+)<\/title>/i)?.[1];
+}
+
 function linkHref(html: string, rel: string): string | undefined {
   const escapedRel = rel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = html.match(
@@ -147,6 +151,14 @@ describe("shopfront route (integration)", () => {
     expect(response.status).toBe(200);
     expect(response.ttfbMs).toBeLessThan(500);
     const head = headContent(response.body);
+
+    // Check the HTTP response itself for the minimum non-empty SEO contract,
+    // in addition to the tenant-specific expected values below.
+    expect(titleContent(head)?.trim()).not.toBe("");
+    expect(metaContent(head, "name", "description")?.trim()).not.toBe("");
+    expect(metaContent(head, "property", "og:title")?.trim()).not.toBe("");
+    expect(metaContent(head, "property", "og:description")?.trim()).not.toBe("");
+    expect(metaContent(head, "property", "og:image")?.trim()).not.toBe("");
 
     expect(head).toContain("<title>Integration Test Salon | Book with Bukay</title>");
     expect(metaContent(head, "name", "description")).toBe(
