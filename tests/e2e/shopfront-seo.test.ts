@@ -10,8 +10,6 @@ import { tmpdir } from "node:os";
 import lighthouse from "lighthouse";
 import { PrismaClient } from "@prisma/client";
 
-const PORT = 31475;
-const BASE_URL = `http://127.0.0.1:${PORT}`;
 const START_TIMEOUT_MS = 90_000;
 const prisma = new PrismaClient();
 
@@ -99,6 +97,7 @@ describe("shopfront SEO (end-to-end)", () => {
   let chrome: ChildProcess;
   let chromePort: number;
   let chromeDataDir: string | undefined;
+  let baseUrl: string;
 
   beforeAll(async () => {
     const prismaPush = spawn(localBinary("prisma"), ["db", "push", "--skip-generate"], {
@@ -124,15 +123,17 @@ describe("shopfront SEO (end-to-end)", () => {
       },
     });
 
-    server = spawn(localBinary("next"), ["dev", "--port", String(PORT)], {
+    const serverPort = await availablePort();
+    baseUrl = `http://127.0.0.1:${serverPort}`;
+    server = spawn(localBinary("next"), ["dev", "--port", String(serverPort)], {
       cwd: process.cwd(),
       // Metadata URLs must describe the same public origin that Lighthouse is
       // auditing. Without this, the test can pass while canonical and Open
       // Graph tags incorrectly point at the local development default.
-      env: { ...process.env, NODE_ENV: "development", ROOT_HOST: BASE_URL },
+      env: { ...process.env, NODE_ENV: "development", ROOT_HOST: baseUrl },
       stdio: "ignore",
     });
-    await waitForServer(`${BASE_URL}/seo-audit`);
+    await waitForServer(`${baseUrl}/seo-audit`);
 
     // An isolated profile prevents a concurrently running local Chrome from
     // taking over this process and closing its DevTools connection mid-audit.
@@ -160,7 +161,7 @@ describe("shopfront SEO (end-to-end)", () => {
   });
 
   it("renders the shopfront in headless Chrome with an SEO score of at least 95", async () => {
-    const result = await lighthouse(`${BASE_URL}/seo-audit`, {
+    const result = await lighthouse(`${baseUrl}/seo-audit`, {
       port: chromePort,
       onlyCategories: ["seo"],
       output: "json",
