@@ -38,4 +38,10 @@ describe("shopfront head", () => {
     );
     expect(markup).toContain('<meta property="og:image" content="http://localhost:3000/favicon.ico"/>');
   });
+
+  it("does not render fallback metadata for an unknown shopfront", async () => {
+    getShopfrontTenant.mockResolvedValueOnce(null);
+
+    await expect(Head({ params: { slug: "missing-shopfront" } })).rejects.toThrow("not found");
+  });
 });
