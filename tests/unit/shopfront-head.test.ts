@@ -98,6 +98,31 @@ describe("shopfront head", () => {
     });
   });
 
+  it("keeps every required route metadata value non-empty", () => {
+    const routeMetadata = getShopfrontRouteMetadata(
+      getShopfrontMetadata(
+        {
+          id: "tenant-id",
+          name: "Required Metadata Salon",
+          slug: "required-metadata-salon",
+          currency: "NGN",
+          services: [],
+        },
+        "required-metadata-salon",
+      ),
+    );
+    const ogImages = routeMetadata.openGraph?.images;
+    const ogImage = Array.isArray(ogImages) ? ogImages[0] : ogImages;
+    const ogImageUrl =
+      typeof ogImage === "string" || ogImage instanceof URL ? ogImage.toString() : ogImage?.url;
+
+    expect(routeMetadata.title?.toString().trim()).not.toBe("");
+    expect(routeMetadata.description?.trim()).not.toBe("");
+    expect(routeMetadata.openGraph?.title?.toString().trim()).not.toBe("");
+    expect(routeMetadata.openGraph?.description?.trim()).not.toBe("");
+    expect(ogImageUrl?.toString().trim()).not.toBe("");
+  });
+
   it("renders title, description, and Open Graph image metadata for a shopfront", async () => {
     const markup = renderToStaticMarkup(await Head({ params: { slug: "head-test-salon" } }));
 
