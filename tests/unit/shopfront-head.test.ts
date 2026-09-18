@@ -11,6 +11,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import Head from "@/app/[slug]/head";
+import { generateMetadata } from "@/app/[slug]/page";
 
 describe("shopfront head", () => {
   beforeEach(() => {
@@ -51,6 +52,14 @@ describe("shopfront head", () => {
     getShopfrontTenant.mockResolvedValueOnce(null);
 
     await expect(Head({ params: { slug: "missing-shopfront" } })).rejects.toThrow("not found");
+  });
+
+  it("does not generate shopfront metadata for an unknown slug", async () => {
+    getShopfrontTenant.mockResolvedValueOnce(null);
+
+    await expect(generateMetadata({ params: { slug: "missing-shopfront" } })).rejects.toThrow(
+      "not found",
+    );
   });
 
   it("keeps required route metadata non-empty when tenant display fields are blank", async () => {

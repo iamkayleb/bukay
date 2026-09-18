@@ -14,6 +14,14 @@ type ShopfrontPageProps = {
 // API is what Next uses when composing the document head for a dynamic segment.
 export async function generateMetadata({ params }: ShopfrontPageProps): Promise<Metadata> {
   const tenant = await getShopfrontTenant(params.slug);
+
+  // Metadata is resolved before the page is rendered. Stop here for an
+  // unknown slug so Next emits its 404 document instead of route metadata
+  // describing a shopfront that does not exist.
+  if (!tenant) {
+    notFound();
+  }
+
   const metadata = getShopfrontMetadata(tenant, params.slug);
 
   return {
