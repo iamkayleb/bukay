@@ -1,3 +1,5 @@
+import { notFound } from "next/navigation";
+
 import { getShopfrontTenant } from "./data";
 import { getShopfrontMetadata } from "./metadata";
 
@@ -7,6 +9,13 @@ type ShopfrontHeadProps = {
 
 export default async function Head({ params }: ShopfrontHeadProps) {
   const tenant = await getShopfrontTenant(params.slug);
+
+  // Keep the metadata route aligned with the page route: unknown shopfronts
+  // must resolve to Next's 404 response rather than publishing fallback tags.
+  if (!tenant) {
+    notFound();
+  }
+
   const metadata = getShopfrontMetadata(tenant, params.slug);
 
   return (
