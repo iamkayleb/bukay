@@ -65,6 +65,14 @@ function metaContent(html: string, attribute: "name" | "property", value: string
   return match?.[1];
 }
 
+function linkHref(html: string, rel: string): string | undefined {
+  const escapedRel = rel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = html.match(
+    new RegExp(`<link(?=[^>]*\\brel="${escapedRel}")(?=[^>]*\\bhref="([^"]+)")[^>]*>`),
+  );
+  return match?.[1];
+}
+
 async function stop(server: ChildProcess | undefined): Promise<void> {
   if (!server || server.exitCode !== null) return;
 
@@ -138,6 +146,9 @@ describe("shopfront route (integration)", () => {
     expect(metaContent(response.body, "property", "og:image")).toBe(
       `${BASE_URL}/favicon.ico`,
     );
+    expect(metaContent(response.body, "property", "og:url")).toBe(`${BASE_URL}/${SLUG}`);
+    expect(metaContent(response.body, "property", "og:type")).toBe("website");
+    expect(linkHref(response.body, "canonical")).toBe(`${BASE_URL}/${SLUG}`);
   });
 
   it("returns 404 for an unknown shopfront slug", async () => {
