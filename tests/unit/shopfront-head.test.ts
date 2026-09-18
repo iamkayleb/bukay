@@ -54,6 +54,7 @@ describe("shopfront head", () => {
       description: "Book Haircut and more with Head Test Salon on Bukay.",
       url: "http://localhost:3000/head-test-salon",
       type: "website",
+      locale: "en_NG",
       siteName: "Bukay",
       image: {
         url: "http://localhost:3000/head-test-salon/opengraph-image",
@@ -152,6 +153,7 @@ describe("shopfront head", () => {
     expect(markup).toContain('<link rel="canonical" href="http://localhost:3000/head-test-salon"/>');
     expect(markup).toContain('<meta property="og:url" content="http://localhost:3000/head-test-salon"/>');
     expect(markup).toContain('<meta property="og:type" content="website"/>');
+    expect(markup).toContain('<meta property="og:locale" content="en_NG"/>');
   });
 
   it("renders every required explicit head tag with a non-empty value", async () => {

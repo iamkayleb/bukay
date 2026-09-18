@@ -13,6 +13,7 @@ export type ShopfrontHeadMetadata = Pick<ShopfrontMetadata, "description" | "tit
   openGraph: {
     description: string;
     image: { alt: string; height: number; type: string; url: string; width: number };
+    locale: string;
     siteName: string;
     title: string;
     type: string;
@@ -32,6 +33,7 @@ export function getShopfrontHeadMetadata(metadata: ShopfrontMetadata): Shopfront
       description: metadata.description,
       url: metadata.pageUrl,
       type: "website",
+      locale: "en_NG",
       siteName: "Bukay",
       image: {
         url: metadata.imageUrl,
@@ -68,6 +70,7 @@ export function getShopfrontRouteMetadata(metadata: ShopfrontMetadata): Metadata
       description: head.openGraph.description,
       url: head.openGraph.url,
       type: "website",
+      locale: head.openGraph.locale,
       siteName: head.openGraph.siteName,
       images: [head.openGraph.image],
     },
@@ -100,6 +103,7 @@ export default async function Head({ params }: ShopfrontHeadProps) {
       <meta property="og:description" content={metadata.openGraph.description} />
       <meta property="og:url" content={metadata.openGraph.url} />
       <meta property="og:type" content={metadata.openGraph.type} />
+      <meta property="og:locale" content={metadata.openGraph.locale} />
       <meta property="og:site_name" content={metadata.openGraph.siteName} />
       <meta property="og:image" content={metadata.openGraph.image.url} />
       <meta property="og:image:alt" content={metadata.openGraph.image.alt} />
