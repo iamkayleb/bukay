@@ -29,6 +29,7 @@ export default async function Head({ params }: ShopfrontHeadProps) {
       <meta property="og:type" content="website" />
       <meta property="og:site_name" content="Bukay" />
       <meta property="og:image" content={metadata.imageUrl} />
+      <meta property="og:image:alt" content={metadata.imageAlt} />
       <meta name="twitter:card" content="summary" />
       <meta name="twitter:title" content={metadata.title} />
       <meta name="twitter:description" content={metadata.description} />

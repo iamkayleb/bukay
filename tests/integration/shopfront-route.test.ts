@@ -146,6 +146,9 @@ describe("shopfront route (integration)", () => {
     expect(metaContent(response.body, "property", "og:image")).toBe(
       `${BASE_URL}/favicon.ico`,
     );
+    expect(metaContent(response.body, "property", "og:image:alt")).toBe(
+      "Integration Test Salon booking page on Bukay",
+    );
     expect(metaContent(response.body, "property", "og:url")).toBe(`${BASE_URL}/${SLUG}`);
     expect(metaContent(response.body, "property", "og:type")).toBe("website");
     expect(linkHref(response.body, "canonical")).toBe(`${BASE_URL}/${SLUG}`);

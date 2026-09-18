@@ -11,6 +11,7 @@ export function metadataBase(): URL {
 
 export type ShopfrontMetadata = {
   description: string;
+  imageAlt: string;
   imageUrl: string;
   pageUrl: string;
   title: string;
@@ -28,6 +29,7 @@ export function getShopfrontMetadata(
     return {
       title: "Shop not found | Bukay",
       description: "The requested Bukay shopfront could not be found.",
+      imageAlt: "Bukay shopfront",
       pageUrl,
       imageUrl,
     };
@@ -42,6 +44,7 @@ export function getShopfrontMetadata(
             .map((service) => service.name)
             .join(", ")} and more with ${tenant.name} on Bukay.`
         : `Book an appointment with ${tenant.name} on Bukay.`,
+    imageAlt: `${tenant.name} booking page on Bukay`,
     pageUrl,
     imageUrl,
   };
@@ -58,7 +61,7 @@ export function asNextMetadata(metadata: ShopfrontMetadata): Metadata {
       url: metadata.pageUrl,
       type: "website",
       siteName: "Bukay",
-      images: [{ url: metadata.imageUrl }],
+      images: [{ url: metadata.imageUrl, alt: metadata.imageAlt }],
     },
     twitter: {
       card: "summary",

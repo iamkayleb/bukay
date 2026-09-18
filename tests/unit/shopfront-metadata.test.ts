@@ -30,6 +30,7 @@ describe("shopfront metadata", () => {
     expect(metadataBase().toString()).toBe("http://127.0.0.1:31474/");
     expect(metadata.pageUrl).toBe("http://127.0.0.1:31474/test-salon");
     expect(metadata.imageUrl).toBe("http://127.0.0.1:31474/favicon.ico");
+    expect(metadata.imageAlt).toBe("Test Salon booking page on Bukay");
   });
 
   it("uses HTTPS when ROOT_HOST is supplied as a hostname", () => {
