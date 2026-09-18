@@ -221,7 +221,7 @@ describe("shopfront head", () => {
   });
 
   it("keeps required route metadata non-empty when tenant display fields are blank", async () => {
-    getShopfrontTenant.mockResolvedValueOnce({
+    getShopfrontTenant.mockResolvedValue({
       id: "tenant-id",
       name: "   ",
       slug: "sparse-shopfront",
@@ -240,6 +240,22 @@ describe("shopfront head", () => {
     expect(markup).toContain(
       'meta property="og:image" content="http://localhost:3000/sparse-shopfront/opengraph-image"',
     );
+
+    // The page's runtime metadata is what Next uses to produce the document
+    // head. Assert its required values too, so a future change cannot leave
+    // the explicit head component valid while making the actual route
+    // metadata empty for sparse tenant records.
+    const routeMetadata = await generateMetadata({ params: { slug: "sparse-shopfront" } });
+    const ogImages = routeMetadata.openGraph?.images;
+    const ogImage = Array.isArray(ogImages) ? ogImages[0] : ogImages;
+    const ogImageUrl =
+      typeof ogImage === "string" || ogImage instanceof URL ? ogImage.toString() : ogImage?.url;
+
+    expect(routeMetadata.title?.toString().trim()).not.toBe("");
+    expect(routeMetadata.description?.trim()).not.toBe("");
+    expect(routeMetadata.openGraph?.title?.toString().trim()).not.toBe("");
+    expect(routeMetadata.openGraph?.description?.trim()).not.toBe("");
+    expect(ogImageUrl?.toString().trim()).not.toBe("");
   });
 
   it("encodes a route slug consistently in canonical and Open Graph URLs", async () => {
