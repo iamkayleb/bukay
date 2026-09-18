@@ -1,12 +1,41 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 
 import { getShopfrontTenant } from "./data";
+import { getShopfrontMetadata } from "./metadata";
 
 export const revalidate = 60;
 
 type ShopfrontPageProps = {
   params: { slug: string };
 };
+
+// `head.tsx` remains the explicit metadata surface for this route, while this
+// API is what Next uses when composing the document head for a dynamic segment.
+export async function generateMetadata({ params }: ShopfrontPageProps): Promise<Metadata> {
+  const tenant = await getShopfrontTenant(params.slug);
+  const metadata = getShopfrontMetadata(tenant, params.slug);
+
+  return {
+    title: metadata.title,
+    description: metadata.description,
+    alternates: { canonical: metadata.pageUrl },
+    openGraph: {
+      title: metadata.title,
+      description: metadata.description,
+      url: metadata.pageUrl,
+      type: "website",
+      siteName: "Bukay",
+      images: [{ url: metadata.imageUrl, alt: metadata.imageAlt }],
+    },
+    twitter: {
+      card: "summary",
+      title: metadata.title,
+      description: metadata.description,
+      images: [metadata.imageUrl],
+    },
+  };
+}
 
 function formatPrice(priceCents: number, currency: string): string {
   return new Intl.NumberFormat("en-NG", { style: "currency", currency }).format(priceCents / 100);
