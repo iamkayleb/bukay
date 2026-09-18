@@ -170,6 +170,33 @@ describe("shopfront head", () => {
     }
   });
 
+  it("escapes tenant text while retaining the explicit SEO tag contract", async () => {
+    getShopfrontTenant.mockResolvedValueOnce({
+      id: "tenant-id",
+      name: "Safety & <Style> Salon",
+      slug: "safe-style-salon",
+      currency: "NGN",
+      services: [{ name: "Cut & Color" }],
+    });
+
+    const markup = renderToStaticMarkup(await Head({ params: { slug: "safe-style-salon" } }));
+
+    expect(markup).toContain("<title>Safety &amp; &lt;Style&gt; Salon | Book with Bukay</title>");
+    expect(markup).toContain(
+      'meta name="description" content="Book Cut &amp; Color and more with Safety &amp; &lt;Style&gt; Salon on Bukay."',
+    );
+    expect(markup).toContain(
+      'meta property="og:title" content="Safety &amp; &lt;Style&gt; Salon | Book with Bukay"',
+    );
+    expect(markup).toContain(
+      'meta property="og:description" content="Book Cut &amp; Color and more with Safety &amp; &lt;Style&gt; Salon on Bukay."',
+    );
+    expect(markup).toContain(
+      'meta property="og:image" content="http://localhost:3000/safe-style-salon/opengraph-image"',
+    );
+    expect(markup).not.toContain("Safety & <Style> Salon");
+  });
+
   it("exports complete structured route metadata for Next head composition", async () => {
     const metadata = await generateMetadata({ params: { slug: "head-test-salon" } });
 
