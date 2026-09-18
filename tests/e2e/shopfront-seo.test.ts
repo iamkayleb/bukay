@@ -141,7 +141,6 @@ describe("shopfront SEO (end-to-end)", () => {
     chromePort = await availablePort();
     chrome = spawn(chromeBinary(), [
       "--headless=new",
-      "--no-sandbox",
       "--disable-gpu",
       "--disable-dev-shm-usage",
       `--remote-debugging-port=${chromePort}`,
