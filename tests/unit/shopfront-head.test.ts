@@ -48,6 +48,26 @@ describe("shopfront head", () => {
     expect(markup).toContain('<meta property="og:type" content="website"/>');
   });
 
+  it("exports complete structured route metadata for Next head composition", async () => {
+    const metadata = await generateMetadata({ params: { slug: "head-test-salon" } });
+
+    expect(metadata.title).toBe("Head Test Salon | Book with Bukay");
+    expect(metadata.description).toBe(
+      "Book Haircut and more with Head Test Salon on Bukay.",
+    );
+    expect(metadata.openGraph).toMatchObject({
+      title: "Head Test Salon | Book with Bukay",
+      description: "Book Haircut and more with Head Test Salon on Bukay.",
+      type: "website",
+    });
+    expect(metadata.openGraph?.images).toEqual([
+      {
+        url: "http://localhost:3000/head-test-salon/opengraph-image",
+        alt: "Head Test Salon booking page on Bukay",
+      },
+    ]);
+  });
+
   it("does not render fallback metadata for an unknown shopfront", async () => {
     getShopfrontTenant.mockResolvedValueOnce(null);
 
