@@ -16,7 +16,7 @@ export type ShopfrontHeadMetadata = Pick<ShopfrontMetadata, "description" | "tit
     locale: string;
     siteName: string;
     title: string;
-    type: string;
+    type: "website";
     url: string;
   };
 };
@@ -94,7 +94,7 @@ export function getShopfrontRouteMetadata(metadata: ShopfrontMetadata): Metadata
       title: head.openGraph.title,
       description: head.openGraph.description,
       url: head.openGraph.url,
-      type: "website",
+      type: head.openGraph.type,
       locale: head.openGraph.locale,
       siteName: head.openGraph.siteName,
       images: [head.openGraph.image],
