@@ -921,7 +921,13 @@ jobs:
                   .map((l) => (typeof l === 'string' ? l : l && l.name) || '')
                   .filter((n) => n.startsWith('agent:'))
                   .map((n) => n.slice('agent:'.length).trim().toLowerCase());
-                const unique = [...new Set(names)];
+                // `agent:auto` means "you choose"; it is not a competing
+                // assignment, so an explicit label beside it wins rather than
+                // making the pair ambiguous. resolveAgentRoutingFromLabels
+                // throws on that pair, and without this filter the follow-up
+                // silently fell through to the registry default (codex) even
+                // for a Claude- or Cursor-lane PR.
+                const unique = [...new Set(names)].filter((n) => n && n !== 'auto');
                 return unique.length === 1 ? unique[0] : '';
               }
             };
