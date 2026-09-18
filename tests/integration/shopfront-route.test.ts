@@ -1,0 +1,126 @@
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { spawn, type ChildProcess } from "node:child_process";
+import { existsSync } from "node:fs";
+import http from "node:http";
+import { once } from "node:events";
+import { join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
+import { PrismaClient } from "@prisma/client";
+
+const PORT = 31474;
+const BASE_URL = `http://127.0.0.1:${PORT}`;
+const SLUG = "shopfront-route-test";
+const START_TIMEOUT_MS = 90_000;
+const prisma = new PrismaClient();
+
+function localBinary(name: string): string {
+  const binary = join(process.cwd(), "node_modules", ".bin", name);
+  if (!existsSync(binary)) {
+    throw new Error(`${name} is not installed; run pnpm install before running integration tests.`);
+  }
+  return binary;
+}
+
+async function waitForServer(url: string): Promise<void> {
+  const deadline = Date.now() + START_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    try {
+      if ((await fetch(url)).status < 500) return;
+    } catch {
+      // The Next.js server is still starting.
+    }
+    await sleep(500);
+  }
+  throw new Error(`Next.js server did not become ready within ${START_TIMEOUT_MS}ms.`);
+}
+
+async function request(url: string): Promise<{ body: string; status: number; ttfbMs: number }> {
+  return new Promise((resolve, reject) => {
+    const startedAt = performance.now();
+    const req = http.get(url, (response) => {
+      const ttfbMs = performance.now() - startedAt;
+      const chunks: Buffer[] = [];
+
+      response.on("data", (chunk: Buffer) => chunks.push(chunk));
+      response.on("end", () => {
+        resolve({
+          body: Buffer.concat(chunks).toString("utf8"),
+          status: response.statusCode ?? 0,
+          ttfbMs,
+        });
+      });
+    });
+
+    req.on("error", reject);
+  });
+}
+
+async function stop(server: ChildProcess | undefined): Promise<void> {
+  if (!server || server.exitCode !== null) return;
+
+  server.kill("SIGTERM");
+  await Promise.race([once(server, "exit"), sleep(5_000)]);
+  if (server.exitCode === null) server.kill("SIGKILL");
+}
+
+describe("shopfront route (integration)", () => {
+  let server: ChildProcess;
+
+  beforeAll(async () => {
+    const prismaPush = spawn(localBinary("prisma"), ["db", "push", "--skip-generate"], {
+      cwd: process.cwd(),
+      stdio: "inherit",
+    });
+    const [pushExitCode] = await once(prismaPush, "exit");
+    if (pushExitCode !== 0) throw new Error(`prisma db push exited with code ${pushExitCode}.`);
+
+    await prisma.service.deleteMany({ where: { tenant: { slug: SLUG } } });
+    await prisma.tenant.upsert({
+      where: { slug: SLUG },
+      update: { name: "Integration Test Salon" },
+      create: { slug: SLUG, name: "Integration Test Salon" },
+    });
+    const tenant = await prisma.tenant.findUniqueOrThrow({ where: { slug: SLUG } });
+    await prisma.service.create({
+      data: {
+        tenantId: tenant.id,
+        name: "Integration Test Service",
+        durationMinutes: 30,
+        priceCents: 5000,
+      },
+    });
+
+    server = spawn(localBinary("next"), ["dev", "--port", String(PORT)], {
+      cwd: process.cwd(),
+      env: { ...process.env, NODE_ENV: "development" },
+      stdio: "ignore",
+    });
+    await waitForServer(`${BASE_URL}/${SLUG}`);
+    await request(`${BASE_URL}/${SLUG}`);
+  }, START_TIMEOUT_MS + 30_000);
+
+  afterAll(async () => {
+    await stop(server);
+    await prisma.service.deleteMany({ where: { tenant: { slug: SLUG } } });
+    await prisma.tenant.deleteMany({ where: { slug: SLUG } });
+    await prisma.$disconnect();
+  });
+
+  it("serves a valid shopfront with its route metadata in under 500ms TTFB", async () => {
+    const response = await request(`${BASE_URL}/${SLUG}`);
+
+    expect(response.status).toBe(200);
+    expect(response.ttfbMs).toBeLessThan(500);
+    expect(response.body).toContain("<title>Integration Test Salon | Book with Bukay</title>");
+    expect(response.body).toContain('name="description"');
+    expect(response.body).toContain('property="og:title"');
+    expect(response.body).toContain('property="og:description"');
+    expect(response.body).toContain('property="og:image"');
+  });
+
+  it("returns 404 for an unknown shopfront slug", async () => {
+    const response = await request(`${BASE_URL}/shopfront-route-test-missing`);
+
+    expect(response.status).toBe(404);
+  });
+});

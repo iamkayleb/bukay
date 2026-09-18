@@ -22,10 +22,11 @@ function localBinary(name: string): string {
 }
 
 function chromeBinary(): string {
-  const candidates = [process.env.CHROME_PATH, "google-chrome", "chromium", "chromium-browser"];
+  const candidates = [process.env.CHROME_PATH, "google-chrome", "chromium", "chromium-browser"].filter(
+    (candidate): candidate is string => Boolean(candidate),
+  );
   const binary = candidates.find(
-    (candidate): candidate is string =>
-      Boolean(candidate) && spawnSync(candidate, ["--version"], { stdio: "ignore" }).status === 0,
+    (candidate) => spawnSync(candidate, ["--version"], { stdio: "ignore" }).status === 0,
   );
 
   if (!binary) {
