@@ -131,4 +131,50 @@ describe("shopfront metadata", () => {
     expect(metadata.imageAlt).toBe("Bukay Shopfront booking page on Bukay");
     expect(metadata.imageUrl).not.toBe("");
   });
+
+  it("uses distinct service names in the shopfront description", () => {
+    const metadata = getShopfrontMetadata(
+      {
+        id: "tenant-id",
+        name: "Distinct Services Salon",
+        slug: "distinct-services",
+        currency: "NGN",
+        services: [
+          {
+            id: "service-one",
+            name: " Haircut ",
+            description: null,
+            durationMinutes: 30,
+            priceCents: 5000,
+          },
+          {
+            id: "service-two",
+            name: "Haircut",
+            description: null,
+            durationMinutes: 45,
+            priceCents: 6500,
+          },
+          {
+            id: "service-three",
+            name: "Colour",
+            description: null,
+            durationMinutes: 60,
+            priceCents: 8000,
+          },
+          {
+            id: "service-four",
+            name: "Styling",
+            description: null,
+            durationMinutes: 30,
+            priceCents: 4000,
+          },
+        ],
+      },
+      "distinct-services",
+    );
+
+    expect(metadata.description).toBe(
+      "Book Haircut, Colour, Styling and more with Distinct Services Salon on Bukay.",
+    );
+  });
 });

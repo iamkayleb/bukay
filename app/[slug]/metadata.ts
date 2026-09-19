@@ -60,10 +60,12 @@ export function getShopfrontMetadata(
   }
 
   const shopfrontName = tenant.name.trim() || "Bukay Shopfront";
-  const serviceNames = tenant.services
-    .map((service) => service.name.trim())
-    .filter(Boolean)
-    .slice(0, 3);
+  // Services can legitimately share a display name. Repeating one in the
+  // description makes the route's search and social metadata less useful,
+  // so retain the first three distinct non-empty labels instead.
+  const serviceNames = Array.from(
+    new Set(tenant.services.map((service) => service.name.trim()).filter(Boolean))
+  ).slice(0, 3);
 
   return {
     title: `${shopfrontName} | Book with Bukay`,
