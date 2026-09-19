@@ -12,6 +12,7 @@ const SLUG = "shopfront-route-test";
 const ESCAPED_METADATA_SLUG = "shopfront-route-escaped-metadata";
 const START_TIMEOUT_MS = 90_000;
 const REQUEST_TIMEOUT_MS = 10_000;
+const MAX_TTFB_MS = 500;
 const prisma = new PrismaClient();
 
 async function fetchWithTimeout(url: string): Promise<Response> {
@@ -230,7 +231,10 @@ describe("shopfront route (integration)", () => {
     // X-Robots-Tag header can suppress otherwise valid HTML metadata.
     expect(response.location).toBeUndefined();
     expect(response.robotsTag?.toLowerCase() ?? "").not.toContain("noindex");
-    expect(response.ttfbMs).toBeLessThan(500);
+    expect(
+      response.ttfbMs,
+      `Shopfront TTFB was ${response.ttfbMs.toFixed(1)}ms; it must stay below ${MAX_TTFB_MS}ms.`,
+    ).toBeLessThan(MAX_TTFB_MS);
     expect(response.contentType).toContain("text/html");
     const head = headContent(response.body);
 
