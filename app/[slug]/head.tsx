@@ -31,7 +31,9 @@ function nonEmptyMetadataValue(value: string, fallback: string): string {
   // Zero-width formatting characters are not meaningful crawlable metadata,
   // but String#trim does not remove them. Treat a value containing only those
   // characters as empty so the route preserves its non-empty SEO contract.
-  const visibleValue = value.replace(/[\u200B-\u200D\uFEFF]/g, "").trim();
+  const visibleValue = value
+    .replace(/[\u00AD\u034F\u061C\u180E\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, "")
+    .trim();
   return visibleValue || fallback;
 }
 
