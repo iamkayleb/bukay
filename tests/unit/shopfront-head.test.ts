@@ -326,6 +326,30 @@ describe("shopfront head", () => {
     expect(markup).not.toContain("Safety & <Style> Salon");
   });
 
+  it("escapes quoted tenant text in title, description, and Open Graph tags", async () => {
+    getShopfrontTenant.mockResolvedValueOnce({
+      id: "tenant-id",
+      name: 'Quoted "Salon"',
+      slug: "quoted-salon",
+      currency: "NGN",
+      services: [{ name: 'Cut "&" Style' }],
+    });
+
+    const markup = renderToStaticMarkup(await Head({ params: { slug: "quoted-salon" } }));
+
+    expect(markup).toContain("<title>Quoted &quot;Salon&quot; | Book with Bukay</title>");
+    expect(markup).toContain(
+      'meta name="description" content="Book Cut &quot;&amp;&quot; Style and more with Quoted &quot;Salon&quot; on Bukay."',
+    );
+    expect(markup).toContain(
+      'meta property="og:title" content="Quoted &quot;Salon&quot; | Book with Bukay"',
+    );
+    expect(markup).toContain(
+      'meta property="og:description" content="Book Cut &quot;&amp;&quot; Style and more with Quoted &quot;Salon&quot; on Bukay."',
+    );
+    expect(markup).not.toContain('name="description" content="Book Cut "&" Style');
+  });
+
   it("exports complete structured route metadata for Next head composition", async () => {
     const metadata = await generateMetadata({ params: { slug: "head-test-salon" } });
 
