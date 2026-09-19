@@ -187,6 +187,10 @@ describe("shopfront SEO (end-to-end)", () => {
     // pass this shopfront-specific check.
     expect(result?.lhr.audits["document-title"].score).toBe(1);
     expect(result?.lhr.audits["meta-description"].score).toBe(1);
+    // The canonical URL is a route-specific SEO requirement. Keep it
+    // explicit so a passing aggregate score cannot conceal a regression if
+    // Lighthouse changes category weights.
+    expect(result?.lhr.audits.canonical.score).toBe(1);
     // A complete title and description are insufficient if the rendered
     // document tells search engines not to index it. Keep crawlability an
     // explicit shopfront contract alongside the aggregate SEO threshold.
