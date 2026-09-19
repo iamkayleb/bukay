@@ -189,6 +189,25 @@ describe("shopfront head", () => {
     expect(metadata.openGraph.description).toBe(metadata.description);
   });
 
+  it("uses crawlable fallbacks when an untyped metadata source omits required values", () => {
+    // Database and CMS values are typed in this app, but this boundary is also
+    // responsible for producing crawlable HTML if an untyped runtime source
+    // omits a field. Keep the explicit head contract non-empty in that case.
+    const metadata = getShopfrontHeadMetadata({
+      title: undefined as unknown as string,
+      description: null as unknown as string,
+      pageUrl: undefined as unknown as string,
+      imageUrl: null as unknown as string,
+      imageAlt: undefined as unknown as string,
+    });
+
+    expect(metadata.title).toBe("Bukay Shopfront | Book with Bukay");
+    expect(metadata.description).toBe("Book an appointment through Bukay.");
+    expect(metadata.canonicalUrl).toBe("http://localhost:3000/");
+    expect(metadata.openGraph.image.url).toBe("http://localhost:3000/opengraph-image");
+    expect(metadata.openGraph.image.alt).toBe("Bukay shopfront booking page");
+  });
+
   it("keeps canonical and Open Graph image URLs usable at the head boundary", () => {
     const metadata = getShopfrontHeadMetadata({
       title: "Resilient Shopfront | Book with Bukay",

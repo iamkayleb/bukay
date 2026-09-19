@@ -28,12 +28,12 @@ export type ShopfrontHeadMetadata = Pick<ShopfrontMetadata, "description" | "tit
   };
 };
 
-function nonEmptyMetadataValue(value: string, fallback: string): string {
+function nonEmptyMetadataValue(value: string | null | undefined, fallback: string): string {
   // Invisible Unicode formatting and control characters are not meaningful
   // crawlable metadata, but String#trim does not remove all of them. Treat a
   // value containing only those characters as empty so the route preserves
   // its non-empty SEO contract.
-  const visibleValue = value
+  const visibleValue = (value ?? "")
     .replace(
       /[\u0000-\u001F\u007F-\u009F\u00AD\u034F\u061C\u180E\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFFF9-\uFFFB\u{E0000}-\u{E0FFF}\uFEFF]/gu,
       ""
@@ -42,10 +42,10 @@ function nonEmptyMetadataValue(value: string, fallback: string): string {
   return visibleValue || fallback;
 }
 
-function webUrlOrFallback(value: string, fallback: string): string {
+function webUrlOrFallback(value: string | null | undefined, fallback: string): string {
   // URL() accepts leading and trailing ASCII whitespace. Metadata attributes
   // should publish a canonical URL, never the unnormalised source value.
-  const normalizedValue = value.trim();
+  const normalizedValue = value?.trim() ?? "";
   if (!normalizedValue) return fallback;
 
   try {
