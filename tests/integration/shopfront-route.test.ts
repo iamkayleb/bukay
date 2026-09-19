@@ -117,9 +117,10 @@ function metaContent(html: string, attribute: "name" | "property", value: string
   // matching tag before reading content so this real-HTTP test asserts the
   // metadata contract, not a particular serializer attribute order.
   const tag = tags.find((candidate) =>
-    new RegExp(`\\b${attribute}="${escapedValue}"`, "i").test(candidate),
+    new RegExp(`\\b${attribute}=(?:"${escapedValue}"|'${escapedValue}')`, "i").test(candidate),
   );
-  return tag?.match(/\bcontent="([^"]*)"/i)?.[1];
+  const content = tag?.match(/\bcontent=(?:"([^"]*)"|'([^']*)')/i);
+  return content?.[1] ?? content?.[2];
 }
 
 function headContent(html: string): string {
@@ -135,9 +136,11 @@ function titleContent(html: string): string | undefined {
 function linkHref(html: string, rel: string): string | undefined {
   const escapedRel = rel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = html.match(
-    new RegExp(`<link(?=[^>]*\\brel="${escapedRel}")(?=[^>]*\\bhref="([^"]+)")[^>]*>`),
+    new RegExp(
+      `<link(?=[^>]*\\brel=(?:"${escapedRel}"|'${escapedRel}'))(?=[^>]*\\bhref=(?:"([^"]+)"|'([^']+)'))[^>]*>`,
+    ),
   );
-  return match?.[1];
+  return match?.[1] ?? match?.[2];
 }
 
 function occurrences(html: string, value: string): number {
