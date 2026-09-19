@@ -240,7 +240,13 @@ describe("shopfront route (integration)", () => {
     expect(metaContent(head, "name", "description")?.trim()).not.toBe("");
     expect(metaContent(head, "property", "og:title")?.trim()).not.toBe("");
     expect(metaContent(head, "property", "og:description")?.trim()).not.toBe("");
-    expect(metaContent(head, "property", "og:image")?.trim()).not.toBe("");
+    const openGraphImage = metaContent(head, "property", "og:image");
+    expect(openGraphImage?.trim()).not.toBe("");
+    // Social crawlers resolve Open Graph images outside the current document,
+    // so a non-empty relative value is still not a usable preview contract.
+    // Assert the rendered HTTP response advertises an absolute web URL.
+    const openGraphImageUrl = new URL(openGraphImage!);
+    expect(["http:", "https:"]).toContain(openGraphImageUrl.protocol);
 
     expect(head).toContain("<title>Integration Test Salon | Book with Bukay</title>");
     expect(metaContent(head, "name", "description")).toBe(
@@ -259,7 +265,7 @@ describe("shopfront route (integration)", () => {
     expect(metaContent(head, "property", "og:description")).toBe(
       metaContent(head, "name", "description"),
     );
-    expect(metaContent(head, "property", "og:image")).toBe(
+    expect(openGraphImage).toBe(
       `${baseUrl}/${SLUG}/opengraph-image`,
     );
     expect(metaContent(head, "property", "og:image:alt")).toBe(
