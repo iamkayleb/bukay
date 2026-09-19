@@ -268,6 +268,10 @@ describe("shopfront route (integration)", () => {
     expect(openGraphImage).toBe(
       `${baseUrl}/${SLUG}/opengraph-image`,
     );
+    // A secure-image tag promises an HTTPS resource. This local route is
+    // intentionally served over HTTP, so its rendered metadata must not make
+    // a contradictory secure-URL claim alongside the advertised image.
+    expect(metaContent(head, "property", "og:image:secure_url")).toBeUndefined();
     expect(metaContent(head, "property", "og:image:alt")).toBe(
       "Integration Test Salon booking page on Bukay",
     );
