@@ -19,6 +19,12 @@ export type ShopfrontHeadMetadata = Pick<ShopfrontMetadata, "description" | "tit
     type: "website";
     url: string;
   };
+  twitter: {
+    card: "summary";
+    description: string;
+    image: string;
+    title: string;
+  };
 };
 
 function nonEmptyMetadataValue(value: string, fallback: string): string {
@@ -85,6 +91,12 @@ export function getShopfrontHeadMetadata(metadata: ShopfrontMetadata): Shopfront
         height: 630,
       },
     },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+      image: imageUrl,
+    },
   };
 }
 
@@ -117,10 +129,10 @@ export function getShopfrontRouteMetadata(metadata: ShopfrontMetadata): Metadata
       images: [head.openGraph.image],
     },
     twitter: {
-      card: "summary",
-      title: head.title,
-      description: head.description,
-      images: [head.openGraph.image.url],
+      card: head.twitter.card,
+      title: head.twitter.title,
+      description: head.twitter.description,
+      images: [head.twitter.image],
     },
   };
 }
@@ -152,10 +164,10 @@ export default async function Head({ params }: ShopfrontHeadProps) {
       <meta property="og:image:type" content={metadata.openGraph.image.type} />
       <meta property="og:image:width" content={String(metadata.openGraph.image.width)} />
       <meta property="og:image:height" content={String(metadata.openGraph.image.height)} />
-      <meta name="twitter:card" content="summary" />
-      <meta name="twitter:title" content={metadata.title} />
-      <meta name="twitter:description" content={metadata.description} />
-      <meta name="twitter:image" content={metadata.openGraph.image.url} />
+      <meta name="twitter:card" content={metadata.twitter.card} />
+      <meta name="twitter:title" content={metadata.twitter.title} />
+      <meta name="twitter:description" content={metadata.twitter.description} />
+      <meta name="twitter:image" content={metadata.twitter.image} />
     </>
   );
 }
