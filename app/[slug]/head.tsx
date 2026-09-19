@@ -67,6 +67,15 @@ function webUrlOrFallback(value: string, fallback: string): string {
   }
 }
 
+function shopfrontImageFallback(canonicalUrl: string): string {
+  const canonical = new URL(canonicalUrl);
+  // Keep an invalid configured image from turning the social preview into an
+  // unrelated root URL. The canonical URL identifies this shopfront, so its
+  // image fallback must remain on the same route.
+  const pathname = canonical.pathname.replace(/\/$/, "");
+  return new URL(`${pathname}/opengraph-image`, canonical.origin).toString();
+}
+
 // This exported contract is deliberately separate from the JSX below so route
 // metadata can be verified without depending on React's server renderer.
 export function getShopfrontHeadMetadata(metadata: ShopfrontMetadata): ShopfrontHeadMetadata {
@@ -79,7 +88,7 @@ export function getShopfrontHeadMetadata(metadata: ShopfrontMetadata): Shopfront
     "Book an appointment through Bukay."
   );
   const canonicalUrl = webUrlOrFallback(metadata.pageUrl, "http://localhost:3000/");
-  const imageUrl = webUrlOrFallback(metadata.imageUrl, "http://localhost:3000/opengraph-image");
+  const imageUrl = webUrlOrFallback(metadata.imageUrl, shopfrontImageFallback(canonicalUrl));
   const imageAlt = nonEmptyMetadataValue(metadata.imageAlt, "Bukay shopfront booking page");
   const image = {
     url: imageUrl,

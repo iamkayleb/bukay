@@ -203,6 +203,21 @@ describe("shopfront head", () => {
     expect(metadata.openGraph.image.alt).toBe("Bukay shopfront booking page");
   });
 
+  it("keeps an invalid image URL on the canonical shopfront route", () => {
+    const metadata = getShopfrontHeadMetadata({
+      title: "Route Image Fallback Salon | Book with Bukay",
+      description: "Book with Route Image Fallback Salon on Bukay.",
+      pageUrl: "https://shops.bukay.test/route-image-fallback",
+      imageUrl: "javascript:alert(1)",
+      imageAlt: "Route Image Fallback Salon booking page on Bukay",
+    });
+
+    expect(metadata.canonicalUrl).toBe("https://shops.bukay.test/route-image-fallback");
+    expect(metadata.openGraph.image.url).toBe(
+      "https://shops.bukay.test/route-image-fallback/opengraph-image",
+    );
+  });
+
   it("does not publish credentials or fragments in canonical and Open Graph URLs", () => {
     const metadata = getShopfrontHeadMetadata({
       title: "Private URL Salon | Book with Bukay",
