@@ -438,7 +438,11 @@ describe("shopfront head", () => {
     ];
 
     for (const tag of requiredTags) {
-      expect(markup.match(tag)?.[1].trim()).not.toBe("");
+      // `not.toBe("")` would let a missing tag pass because `undefined` is
+      // also not an empty string. Require a matched, non-whitespace value so
+      // this test verifies the explicit head contract rather than only the
+      // values of tags that happen to be present.
+      expect(markup.match(tag)?.[1]?.trim()).toBeTruthy();
     }
 
     // The explicit head component is composed with Next's route metadata in
