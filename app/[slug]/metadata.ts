@@ -48,6 +48,13 @@ function visibleText(value: string): string {
     .trim();
 }
 
+// The social-image route and the document metadata both represent the same
+// shopfront. Keep their display-name fallback at this shared boundary so a
+// non-visible tenant name cannot produce a crawlable title with a blank image.
+export function shopfrontDisplayName(value: string): string {
+  return visibleText(value) || "Bukay Shopfront";
+}
+
 export function getShopfrontMetadata(
   tenant: ShopfrontTenant | null,
   slug: string
@@ -71,7 +78,7 @@ export function getShopfrontMetadata(
     };
   }
 
-  const shopfrontName = visibleText(tenant.name) || "Bukay Shopfront";
+  const shopfrontName = shopfrontDisplayName(tenant.name);
   // Services can legitimately share a display name. Repeating one in the
   // description makes the route's search and social metadata less useful,
   // so retain the first three distinct non-empty labels instead.

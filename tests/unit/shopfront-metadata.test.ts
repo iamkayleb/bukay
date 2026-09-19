@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { getShopfrontMetadata, metadataBase } from "@/app/[slug]/metadata";
+import {
+  getShopfrontMetadata,
+  metadataBase,
+  shopfrontDisplayName,
+} from "@/app/[slug]/metadata";
 
 const originalRootHost = process.env.ROOT_HOST;
 
@@ -13,6 +17,10 @@ afterEach(() => {
 });
 
 describe("shopfront metadata", () => {
+  it("uses the crawlable shopfront fallback for invisible display names", () => {
+    expect(shopfrontDisplayName("\u200B\u200C\u200D\uFEFF")).toBe("Bukay Shopfront");
+  });
+
   it("preserves an explicitly configured HTTP origin", () => {
     process.env.ROOT_HOST = "http://127.0.0.1:31474";
 

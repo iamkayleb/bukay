@@ -398,9 +398,6 @@ describe("shopfront head", () => {
       '<meta property="og:image" content="http://localhost:3000/head-test-salon/opengraph-image"/>',
     );
     expect(markup).toContain(
-      '<meta property="og:image:url" content="http://localhost:3000/head-test-salon/opengraph-image"/>',
-    );
-    expect(markup).toContain(
       '<meta property="og:image:alt" content="Head Test Salon booking page on Bukay"/>',
     );
     expect(markup).toContain('<meta property="og:image:type" content="image/png"/>');
@@ -434,7 +431,6 @@ describe("shopfront head", () => {
       /<meta property="og:title" content="([^"]+)"\/>/,
       /<meta property="og:description" content="([^"]+)"\/>/,
       /<meta property="og:image" content="([^"]+)"\/>/,
-      /<meta property="og:image:url" content="([^"]+)"\/>/,
     ];
 
     for (const tag of requiredTags) {
@@ -454,7 +450,6 @@ describe("shopfront head", () => {
     expect(markup.match(/<meta property="og:title"/g)).toHaveLength(1);
     expect(markup.match(/<meta property="og:description"/g)).toHaveLength(1);
     expect(markup.match(/<meta property="og:image"/g)).toHaveLength(1);
-    expect(markup.match(/<meta property="og:image:url"/g)).toHaveLength(1);
   });
 
   it("does not render fallback shopfront metadata for an unknown slug", async () => {

@@ -2,6 +2,7 @@ import { ImageResponse } from "next/og";
 import { notFound } from "next/navigation";
 
 import { getShopfrontTenant } from "./data";
+import { shopfrontDisplayName } from "./metadata";
 
 export const alt = "Bukay shopfront booking page";
 export const size = {
@@ -24,7 +25,7 @@ export default async function OpenGraphImage({ params }: ShopfrontImageProps) {
     notFound();
   }
 
-  const shopfrontName = tenant.name.trim() || "Bukay Shopfront";
+  const shopfrontName = shopfrontDisplayName(tenant.name);
 
   return new ImageResponse(
     <div

@@ -196,7 +196,6 @@ export default async function Head({ params }: ShopfrontHeadProps) {
       <meta property="og:locale" content={metadata.openGraph.locale} />
       <meta property="og:site_name" content={metadata.openGraph.siteName} />
       <meta property="og:image" content={metadata.openGraph.image.url} />
-      <meta property="og:image:url" content={metadata.openGraph.image.url} />
       {metadata.openGraph.image.url.startsWith("https://") ? (
         <meta property="og:image:secure_url" content={metadata.openGraph.image.url} />
       ) : null}

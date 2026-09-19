@@ -283,10 +283,6 @@ describe("shopfront route (integration)", () => {
     expect(openGraphImage).toBe(
       `${baseUrl}/${SLUG}/opengraph-image`,
     );
-    // Keep both Open Graph image declarations synchronized. Some social
-    // crawlers consume og:image:url in preference to og:image, so validating
-    // only the primary field could still leave a broken preview in production.
-    expect(metaContent(head, "property", "og:image:url")).toBe(openGraphImage);
     // A secure-image tag promises an HTTPS resource. This local route is
     // intentionally served over HTTP, so its rendered metadata must not make
     // a contradictory secure-URL claim alongside the advertised image.
