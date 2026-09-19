@@ -187,5 +187,9 @@ describe("shopfront SEO (end-to-end)", () => {
     // pass this shopfront-specific check.
     expect(result?.lhr.audits["document-title"].score).toBe(1);
     expect(result?.lhr.audits["meta-description"].score).toBe(1);
+    // A complete title and description are insufficient if the rendered
+    // document tells search engines not to index it. Keep crawlability an
+    // explicit shopfront contract alongside the aggregate SEO threshold.
+    expect(result?.lhr.audits["is-crawlable"].score).toBe(1);
   }, 120_000);
 });
