@@ -217,6 +217,7 @@ describe("shopfront head", () => {
     expect(metadata.openGraph.image.url).toBe(
       "https://shops.bukay.test/route-image-fallback/opengraph-image",
     );
+    expect(metadata.twitter.image).toBe(metadata.openGraph.image.url);
   });
 
   it("does not publish credentials or fragments in canonical and Open Graph URLs", () => {

@@ -119,7 +119,10 @@ export function getShopfrontHeadMetadata(metadata: ShopfrontMetadata): Shopfront
       card: "summary_large_image",
       title,
       description,
-      image: imageUrl,
+      // Reuse the normalized Open Graph image rather than the untrusted
+      // source value. This keeps both social metadata surfaces on the same
+      // route when an invalid configured image needs the route fallback.
+      image: image.url,
       imageAlt,
     },
   };
