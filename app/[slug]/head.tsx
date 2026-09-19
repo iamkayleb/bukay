@@ -71,6 +71,13 @@ export function getShopfrontHeadMetadata(metadata: ShopfrontMetadata): Shopfront
   const canonicalUrl = webUrlOrFallback(metadata.pageUrl, "http://localhost:3000/");
   const imageUrl = webUrlOrFallback(metadata.imageUrl, "http://localhost:3000/opengraph-image");
   const imageAlt = nonEmptyMetadataValue(metadata.imageAlt, "Bukay shopfront booking page");
+  const image = {
+    url: imageUrl,
+    alt: imageAlt,
+    type: "image/png",
+    width: 1200,
+    height: 630,
+  };
 
   return {
     title,
@@ -83,13 +90,7 @@ export function getShopfrontHeadMetadata(metadata: ShopfrontMetadata): Shopfront
       type: "website",
       locale: "en_NG",
       siteName: "Bukay",
-      image: {
-        url: imageUrl,
-        alt: imageAlt,
-        type: "image/png",
-        width: 1200,
-        height: 630,
-      },
+      image,
     },
     twitter: {
       card: "summary",
@@ -160,6 +161,9 @@ export default async function Head({ params }: ShopfrontHeadProps) {
       <meta property="og:locale" content={metadata.openGraph.locale} />
       <meta property="og:site_name" content={metadata.openGraph.siteName} />
       <meta property="og:image" content={metadata.openGraph.image.url} />
+      {metadata.openGraph.image.url.startsWith("https://") ? (
+        <meta property="og:image:secure_url" content={metadata.openGraph.image.url} />
+      ) : null}
       <meta property="og:image:alt" content={metadata.openGraph.image.alt} />
       <meta property="og:image:type" content={metadata.openGraph.image.type} />
       <meta property="og:image:width" content={String(metadata.openGraph.image.width)} />

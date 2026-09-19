@@ -280,6 +280,25 @@ describe("shopfront head", () => {
     }
   });
 
+  it("publishes a secure Open Graph image URL when the shopfront is served over HTTPS", async () => {
+    const previousRootHost = process.env.ROOT_HOST;
+    process.env.ROOT_HOST = "https://shops.bukay.test";
+
+    try {
+      const markup = renderToStaticMarkup(await Head({ params: { slug: "head-test-salon" } }));
+
+      expect(markup).toContain(
+        '<meta property="og:image:secure_url" content="https://shops.bukay.test/head-test-salon/opengraph-image"/>',
+      );
+    } finally {
+      if (previousRootHost === undefined) {
+        delete process.env.ROOT_HOST;
+      } else {
+        process.env.ROOT_HOST = previousRootHost;
+      }
+    }
+  });
+
   it("escapes tenant text while retaining the explicit SEO tag contract", async () => {
     getShopfrontTenant.mockResolvedValueOnce({
       id: "tenant-id",
