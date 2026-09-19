@@ -180,5 +180,12 @@ describe("shopfront SEO (end-to-end)", () => {
     expect(result?.lhr.finalDisplayedUrl).toBe(shopfrontUrl);
     expect(seoScore).not.toBeNull();
     expect(seoScore).toBeGreaterThanOrEqual(0.95);
+
+    // Keep the route's minimum crawl metadata explicit in this browser-level
+    // audit. A high aggregate score alone could otherwise mask a future
+    // Lighthouse weighting change that lets a missing title or description
+    // pass this shopfront-specific check.
+    expect(result?.lhr.audits["document-title"].score).toBe(1);
+    expect(result?.lhr.audits["meta-description"].score).toBe(1);
   }, 120_000);
 });
