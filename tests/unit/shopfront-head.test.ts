@@ -617,6 +617,30 @@ describe("shopfront head", () => {
     expect(markup).toContain(`content="${ogImageUrl}"`);
   });
 
+  it("keeps the HTTPS social-image declaration aligned across metadata surfaces", async () => {
+    const previousRootHost = process.env.ROOT_HOST;
+    process.env.ROOT_HOST = "https://shops.bukay.test";
+
+    try {
+      const markup = renderToStaticMarkup(await Head({ params: { slug: "head-test-salon" } }));
+      const metadata = await generateMetadata({ params: { slug: "head-test-salon" } });
+      const images = metadata.openGraph?.images;
+      const image = Array.isArray(images) ? images[0] : images;
+      const imageUrl =
+        typeof image === "string" || image instanceof URL ? image.toString() : image?.url;
+
+      expect(imageUrl).toBe("https://shops.bukay.test/head-test-salon/opengraph-image");
+      expect(markup).toContain(`<meta property="og:image" content="${imageUrl}"/>`);
+      expect(markup).toContain(`<meta property="og:image:secure_url" content="${imageUrl}"/>`);
+    } finally {
+      if (previousRootHost === undefined) {
+        delete process.env.ROOT_HOST;
+      } else {
+        process.env.ROOT_HOST = previousRootHost;
+      }
+    }
+  });
+
   it("does not render fallback metadata for an unknown shopfront", async () => {
     getShopfrontTenant.mockResolvedValueOnce(null);
 
