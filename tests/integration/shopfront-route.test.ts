@@ -231,6 +231,13 @@ describe("shopfront route (integration)", () => {
     expect(metaContent(head, "property", "og:description")).toBe(
       "Book Integration Test Service and more with Integration Test Salon on Bukay.",
     );
+    // Open Graph previews must describe the same shopfront as the document
+    // itself. Keeping these values coupled prevents a partial metadata change
+    // from leaving social crawlers with stale title or description text.
+    expect(metaContent(head, "property", "og:title")).toBe(titleContent(head));
+    expect(metaContent(head, "property", "og:description")).toBe(
+      metaContent(head, "name", "description"),
+    );
     expect(metaContent(head, "property", "og:image")).toBe(
       `${baseUrl}/${SLUG}/opengraph-image`,
     );
