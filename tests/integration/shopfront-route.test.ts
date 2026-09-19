@@ -217,6 +217,10 @@ describe("shopfront route (integration)", () => {
     expect(metaContent(head, "property", "og:image:width")).toBe("1200");
     expect(metaContent(head, "property", "og:image:height")).toBe("630");
     expect(linkHref(head, "canonical")).toBe(`${baseUrl}/${SLUG}`);
+    // This is emitted through the route Metadata export rather than the
+    // explicit head component. Check the rendered document so the two route
+    // metadata surfaces remain active together for search crawlers.
+    expect(metaContent(head, "name", "robots")).toBe("index, follow");
 
     // Next composes metadata from the route. Each primary tag must be emitted once,
     // so a second metadata surface cannot silently produce conflicting SEO values.
