@@ -329,6 +329,22 @@ describe("shopfront head", () => {
     expect(metadata.openGraph.image.alt).toBe("Bukay shopfront booking page");
   });
 
+  it("uses crawlable fallbacks for Unicode tag-only metadata", () => {
+    const metadata = getShopfrontHeadMetadata({
+      title: "\u{E0001}\u{E0020}",
+      description: "\u{E0001}\u{E007F}",
+      pageUrl: "http://localhost:3000/tag-only-metadata-salon",
+      imageUrl: "http://localhost:3000/tag-only-metadata-salon/opengraph-image",
+      imageAlt: "\u{E0001}\u{E007F}",
+    });
+
+    expect(metadata.title).toBe("Bukay Shopfront | Book with Bukay");
+    expect(metadata.description).toBe("Book an appointment through Bukay.");
+    expect(metadata.openGraph.title).toBe(metadata.title);
+    expect(metadata.openGraph.description).toBe(metadata.description);
+    expect(metadata.openGraph.image.alt).toBe("Bukay shopfront booking page");
+  });
+
   it("renders title, description, and Open Graph image metadata for a shopfront", async () => {
     const markup = renderToStaticMarkup(await Head({ params: { slug: "head-test-salon" } }));
 
