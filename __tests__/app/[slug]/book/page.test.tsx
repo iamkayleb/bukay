@@ -25,6 +25,13 @@ vi.mock("@/app/db/prisma", () => ({
   prisma: { tenant: { findUnique: state.findUnique } },
 }));
 
+// React 18 does not expose the server-only cache helper in Vitest. The route
+// loader uses it in Next to share the page and metadata tenant lookup.
+vi.mock("react", async () => {
+  const actual = await vi.importActual<typeof import("react")>("react");
+  return { ...actual, cache: <T extends (...args: never[]) => unknown>(fn: T) => fn };
+});
+
 vi.mock("next/navigation", () => ({
   notFound: () => {
     throw new Error("__NOT_FOUND__");

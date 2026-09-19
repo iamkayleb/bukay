@@ -8,10 +8,10 @@
       "scope": "Multi-step booking at `/{slug}/book` creating a pending booking and holding the slot for 10 minutes.",
       "tasks": [
         "Add `app/[slug]/book/page.tsx`: build the stepper",
-        "Add `lib/phone.ts`: validate Nigerian numbers with",
-        "Add `lib/slot-hold.ts`: implement the hold with a 10-minute expiry",
+        "Add `app/lib/phone.ts`: validate Nigerian numbers with",
+        "Add `app/lib/slot-hold.ts`: implement the hold with a 10-minute expiry",
         "Add `app/api/public/bookings/route.ts`: implement",
-        "Add `tests/public-booking.test.ts` covering the full path"
+        "Add `__tests__/public-booking.test.ts` covering the full path"
       ],
       "acceptance": [
         "A completed flow creates a booking with status `pending_payment`, verified by `pnpm test`",
@@ -27,12 +27,12 @@
       "scope": "Confirmation screen with an `.ics` download and signed reschedule and cancel links.",
       "tasks": [
         "Add `app/[slug]/book/confirmed/page.tsx`: build the page",
-        "Add `lib/ics.ts`: generate the calendar file",
-        "Add `lib/tokens.ts`: sign 30-day tokens",
-        "Add `lib/events.ts`: emit `booking.confirmed` from"
+        "Add `app/lib/ics.ts`: generate the calendar file",
+        "Add `app/lib/tokens.ts`: sign 30-day tokens",
+        "Add `app/lib/events.ts`: emit `booking.confirmed` from"
       ],
       "acceptance": [
-        "The generated file from `lib/ics.ts` imports into Google Calendar, verified by `pnpm test`",
+        "The generated file from `app/lib/ics.ts` imports into Google Calendar, verified by `pnpm test`",
         "A tampered token returns HTTP 400",
         "An expired token returns HTTP 410",
         "`pnpm test` passes"
