@@ -326,6 +326,16 @@ describe("shopfront head", () => {
     for (const tag of requiredTags) {
       expect(markup.match(tag)?.[1].trim()).not.toBe("");
     }
+
+    // The explicit head component is composed with Next's route metadata in
+    // the rendered document. Keep its own core tags singular so a future JSX
+    // change cannot introduce conflicting title, description, or Open Graph
+    // values before the route-level integration test catches it.
+    expect(markup.match(/<title>/g)).toHaveLength(1);
+    expect(markup.match(/<meta name="description"/g)).toHaveLength(1);
+    expect(markup.match(/<meta property="og:title"/g)).toHaveLength(1);
+    expect(markup.match(/<meta property="og:description"/g)).toHaveLength(1);
+    expect(markup.match(/<meta property="og:image"/g)).toHaveLength(1);
   });
 
   it("publishes a secure Open Graph image URL when the shopfront is served over HTTPS", async () => {
