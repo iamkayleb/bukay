@@ -17,6 +17,13 @@ async function fetchWithTimeout(url: string): Promise<Response> {
   return fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
 }
 
+function headerValue(value: string | string[] | undefined): string | undefined {
+  // Node preserves repeated response headers as an array. The route contract
+  // evaluates the combined value so a second X-Robots-Tag cannot hide a
+  // noindex directive from this real-HTTP assertion.
+  return Array.isArray(value) ? value.join(", ") : value;
+}
+
 function localBinary(name: string): string {
   const binary = join(process.cwd(), "node_modules", ".bin", name);
   if (!existsSync(binary)) {
@@ -80,9 +87,9 @@ async function request(
         clearTimeout(timeout);
         resolve({
           body: Buffer.concat(chunks).toString("utf8"),
-          contentType: response.headers["content-type"],
-          location: response.headers.location,
-          robotsTag: response.headers["x-robots-tag"],
+          contentType: headerValue(response.headers["content-type"]),
+          location: headerValue(response.headers.location),
+          robotsTag: headerValue(response.headers["x-robots-tag"]),
           status: response.statusCode ?? 0,
           ttfbMs,
         });

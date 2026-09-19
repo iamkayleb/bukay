@@ -242,6 +242,22 @@ describe("shopfront head", () => {
     expect(metadata.openGraph.image.alt).toBe("Bukay shopfront booking page");
   });
 
+  it("uses crawlable fallbacks when metadata contains only control characters", () => {
+    const metadata = getShopfrontHeadMetadata({
+      title: "\u0000\u0001\u007F\u009F",
+      description: "\u0000\u0001\u007F\u009F",
+      pageUrl: "http://localhost:3000/control-character-salon",
+      imageUrl: "http://localhost:3000/control-character-salon/opengraph-image",
+      imageAlt: "\u0000\u0001\u007F\u009F",
+    });
+
+    expect(metadata.title).toBe("Bukay Shopfront | Book with Bukay");
+    expect(metadata.description).toBe("Book an appointment with Bukay on Bukay.");
+    expect(metadata.openGraph.title).toBe(metadata.title);
+    expect(metadata.openGraph.description).toBe(metadata.description);
+    expect(metadata.openGraph.image.alt).toBe("Bukay shopfront booking page");
+  });
+
   it("uses crawlable fallbacks for Unicode formatting-only metadata", () => {
     const metadata = getShopfrontHeadMetadata({
       title: "\u2060\u200E\u202A",
