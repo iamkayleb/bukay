@@ -636,6 +636,32 @@ describe("shopfront head", () => {
     expect(ogImageUrl?.toString().trim()).not.toBe("");
   });
 
+  it("keeps Next route metadata crawlable when tenant display fields are formatting-only", async () => {
+    getShopfrontTenant.mockResolvedValueOnce({
+      id: "tenant-id",
+      name: "\u200B\u200C\u200D\uFEFF",
+      slug: "formatting-only-shopfront",
+      currency: "NGN",
+      services: [{ name: "\u2060\u200E\u202A" }],
+    });
+
+    const routeMetadata = await generateMetadata({
+      params: { slug: "formatting-only-shopfront" },
+    });
+    const images = routeMetadata.openGraph?.images;
+    const image = Array.isArray(images) ? images[0] : images;
+    const imageUrl =
+      typeof image === "string" || image instanceof URL ? image.toString() : image?.url;
+
+    expect(routeMetadata.title).toBe("Bukay Shopfront | Book with Bukay");
+    expect(routeMetadata.description).toBe(
+      "Book an appointment with Bukay Shopfront on Bukay.",
+    );
+    expect(routeMetadata.openGraph?.title).toBe(routeMetadata.title);
+    expect(routeMetadata.openGraph?.description).toBe(routeMetadata.description);
+    expect(imageUrl).toBe("http://localhost:3000/formatting-only-shopfront/opengraph-image");
+  });
+
   it("encodes a route slug consistently in canonical and Open Graph URLs", async () => {
     getShopfrontTenant.mockResolvedValueOnce({
       id: "tenant-id",
