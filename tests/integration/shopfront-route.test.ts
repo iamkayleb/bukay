@@ -295,11 +295,16 @@ describe("shopfront route (integration)", () => {
 
   it("returns 404 for an unknown shopfront slug", async () => {
     const response = await request(`${baseUrl}/shopfront-route-test-missing`);
+    const head = headContent(response.body);
 
     expect(response.status).toBe(404);
-    // A not-found response must not retain metadata from the seeded shopfront
-    // that was rendered earlier in this server process.
-    expect(headContent(response.body)).not.toContain("Integration Test Salon | Book with Bukay");
+    // A not-found response must not retain any route metadata from the seeded
+    // shopfront that was rendered earlier in this server process. This checks
+    // the rendered document rather than the route helper, because metadata
+    // composition and caching happen in the running Next.js app.
+    expect(head).not.toContain("Integration Test Salon | Book with Bukay");
+    expect(head).not.toContain("Book Integration Test Service and more with Integration Test Salon");
+    expect(head).not.toContain(`${baseUrl}/${SLUG}`);
   });
 
   it("renders escaped tenant values safely in the route metadata", async () => {
