@@ -517,6 +517,31 @@ describe("shopfront head", () => {
     ]);
   });
 
+  it("exports complete route metadata when the shopfront is served over HTTPS", async () => {
+    const previousRootHost = process.env.ROOT_HOST;
+    process.env.ROOT_HOST = "https://shops.bukay.test";
+
+    try {
+      const metadata = await generateMetadata({ params: { slug: "head-test-salon" } });
+      const images = metadata.openGraph?.images;
+      const image = Array.isArray(images) ? images[0] : images;
+      const imageUrl =
+        typeof image === "string" || image instanceof URL ? image.toString() : image?.url;
+
+      expect(metadata.title?.toString().trim()).not.toBe("");
+      expect(metadata.description?.trim()).not.toBe("");
+      expect(metadata.openGraph?.title?.toString().trim()).not.toBe("");
+      expect(metadata.openGraph?.description?.trim()).not.toBe("");
+      expect(imageUrl).toBe("https://shops.bukay.test/head-test-salon/opengraph-image");
+    } finally {
+      if (previousRootHost === undefined) {
+        delete process.env.ROOT_HOST;
+      } else {
+        process.env.ROOT_HOST = previousRootHost;
+      }
+    }
+  });
+
   it("keeps the explicit head tags aligned with Next's runtime metadata", async () => {
     getShopfrontTenant.mockResolvedValueOnce({
       id: "tenant-id",
