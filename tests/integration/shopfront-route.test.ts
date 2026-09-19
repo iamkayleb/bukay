@@ -305,6 +305,9 @@ describe("shopfront route (integration)", () => {
     expect(head).not.toContain("Integration Test Salon | Book with Bukay");
     expect(head).not.toContain("Book Integration Test Service and more with Integration Test Salon");
     expect(head).not.toContain(`${baseUrl}/${SLUG}`);
+    // The app shell supplies generic site metadata for 404 pages. Verify it
+    // remains generic rather than publishing stale tenant metadata.
+    expect(metaContent(head, "property", "og:title")).toBe("Bukay");
   });
 
   it("renders escaped tenant values safely in the route metadata", async () => {
