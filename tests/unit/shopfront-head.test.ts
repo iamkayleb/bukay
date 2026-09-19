@@ -178,6 +178,24 @@ describe("shopfront head", () => {
     expect(metadata.openGraph.image.url).toBe("http://localhost:3000/opengraph-image");
   });
 
+  it("keeps Next's structured metadata URLs sanitized with the explicit head tags", () => {
+    const metadata = getShopfrontRouteMetadata({
+      title: "Structured Metadata Salon | Book with Bukay",
+      description: "Book with Structured Metadata Salon on Bukay.",
+      pageUrl: "https://metadata-user:metadata-password@example.test/shopfront#booking",
+      imageUrl: "javascript:alert(1)",
+      imageAlt: "Structured Metadata Salon booking page on Bukay",
+    });
+    const ogImages = metadata.openGraph?.images;
+    const ogImage = Array.isArray(ogImages) ? ogImages[0] : ogImages;
+    const ogImageUrl =
+      typeof ogImage === "string" || ogImage instanceof URL ? ogImage.toString() : ogImage?.url;
+
+    expect(metadata.alternates?.canonical).toBe("http://localhost:3000/");
+    expect(metadata.openGraph?.url).toBe("http://localhost:3000/");
+    expect(ogImageUrl).toBe("http://localhost:3000/opengraph-image");
+  });
+
   it("does not publish query-string URLs as canonical or Open Graph metadata", () => {
     const metadata = getShopfrontHeadMetadata({
       title: "Query String Salon | Book with Bukay",
