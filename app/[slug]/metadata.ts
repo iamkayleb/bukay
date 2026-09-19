@@ -42,7 +42,7 @@ function visibleText(value: string): string {
   // shopfront metadata rather than an apparently non-empty invisible label.
   return value
     .replace(
-      /[\u0000-\u001F\u007F-\u009F\u00AD\u034F\u061C\u180E\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g,
+      /[\u0000-\u001F\u007F-\u009F\u00AD\u034F\u061C\u180E\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFFF9-\uFFFB\uFEFF]/g,
       ""
     )
     .trim();

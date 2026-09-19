@@ -157,6 +157,31 @@ describe("shopfront metadata", () => {
     expect(metadata.imageAlt).toBe("Bukay Shopfront booking page on Bukay");
   });
 
+  it("uses crawlable fallbacks when tenant display fields contain only interlinear formatting controls", () => {
+    const metadata = getShopfrontMetadata(
+      {
+        id: "tenant-id",
+        name: "\uFFF9\uFFFA\uFFFB",
+        slug: "interlinear-details",
+        currency: "NGN",
+        services: [
+          {
+            id: "service-id",
+            name: "\uFFF9\uFFFA\uFFFB",
+            description: null,
+            durationMinutes: 30,
+            priceCents: 5000,
+          },
+        ],
+      },
+      "interlinear-details",
+    );
+
+    expect(metadata.title).toBe("Bukay Shopfront | Book with Bukay");
+    expect(metadata.description).toBe("Book an appointment with Bukay Shopfront on Bukay.");
+    expect(metadata.imageAlt).toBe("Bukay Shopfront booking page on Bukay");
+  });
+
   it("uses distinct service names in the shopfront description", () => {
     const metadata = getShopfrontMetadata(
       {

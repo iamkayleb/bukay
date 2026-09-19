@@ -313,6 +313,22 @@ describe("shopfront head", () => {
     expect(metadata.openGraph.image.alt).toBe("Bukay shopfront booking page");
   });
 
+  it("uses crawlable fallbacks for interlinear formatting-only metadata", () => {
+    const metadata = getShopfrontHeadMetadata({
+      title: "\uFFF9\uFFFA\uFFFB",
+      description: "\uFFF9\uFFFA\uFFFB",
+      pageUrl: "http://localhost:3000/interlinear-metadata-salon",
+      imageUrl: "http://localhost:3000/interlinear-metadata-salon/opengraph-image",
+      imageAlt: "\uFFF9\uFFFA\uFFFB",
+    });
+
+    expect(metadata.title).toBe("Bukay Shopfront | Book with Bukay");
+    expect(metadata.description).toBe("Book an appointment with Bukay on Bukay.");
+    expect(metadata.openGraph.title).toBe(metadata.title);
+    expect(metadata.openGraph.description).toBe(metadata.description);
+    expect(metadata.openGraph.image.alt).toBe("Bukay shopfront booking page");
+  });
+
   it("renders title, description, and Open Graph image metadata for a shopfront", async () => {
     const markup = renderToStaticMarkup(await Head({ params: { slug: "head-test-salon" } }));
 
