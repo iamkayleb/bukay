@@ -68,7 +68,11 @@ export function getShopfrontMetadata(
       const name = service.name.trim();
       if (
         name &&
-        !names.some((existingName) => existingName.toLocaleLowerCase() === name.toLocaleLowerCase())
+        // Service metadata is rendered on the server, where the default ICU
+        // locale can differ between a developer machine and CI. Use the
+        // locale-independent Unicode case mapping so equivalent display names
+        // are consistently de-duplicated in the indexed description.
+        !names.some((existingName) => existingName.toLowerCase() === name.toLowerCase())
       ) {
         names.push(name);
       }
