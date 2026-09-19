@@ -10,7 +10,11 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-import Head, { getShopfrontHeadMetadata, getShopfrontRouteMetadata } from "@/app/[slug]/head";
+import Head, {
+  getShopfrontHeadMetadata,
+  getShopfrontRouteMetadata,
+  getShopfrontRouteMetadataForSlug,
+} from "@/app/[slug]/head";
 import { getShopfrontMetadata } from "@/app/[slug]/metadata";
 import { generateMetadata } from "@/app/[slug]/page";
 
@@ -108,6 +112,20 @@ describe("shopfront head", () => {
         ],
       },
     });
+  });
+
+  it("exports slug-based route metadata from the explicit head contract", async () => {
+    const metadata = await getShopfrontRouteMetadataForSlug("head-test-salon");
+
+    expect(metadata).toMatchObject({
+      title: "Head Test Salon | Book with Bukay",
+      description: "Book Haircut and more with Head Test Salon on Bukay.",
+      openGraph: {
+        title: "Head Test Salon | Book with Bukay",
+        description: "Book Haircut and more with Head Test Salon on Bukay.",
+      },
+    });
+    expect(getShopfrontTenant).toHaveBeenCalledWith("head-test-salon");
   });
 
   it("preserves the secure Open Graph image URL in Next runtime metadata", () => {

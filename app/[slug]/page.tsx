@@ -2,8 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { getShopfrontTenant } from "./data";
-import { getShopfrontRouteMetadata } from "./head";
-import { getShopfrontMetadata } from "./metadata";
+import { getShopfrontRouteMetadataForSlug } from "./head";
 
 export const revalidate = 60;
 
@@ -15,13 +14,7 @@ type ShopfrontPageProps = {
 // metadata API is the runtime source used to compose the App Router document
 // head for dynamic shopfronts.
 export async function generateMetadata({ params }: ShopfrontPageProps): Promise<Metadata> {
-  const tenant = await getShopfrontTenant(params.slug);
-
-  if (!tenant) {
-    notFound();
-  }
-
-  return getShopfrontRouteMetadata(getShopfrontMetadata(tenant, params.slug));
+  return getShopfrontRouteMetadataForSlug(params.slug);
 }
 
 function formatPrice(priceCents: number, currency: string): string {

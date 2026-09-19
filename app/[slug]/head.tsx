@@ -173,6 +173,19 @@ export function getShopfrontRouteMetadata(metadata: ShopfrontMetadata): Metadata
   };
 }
 
+// Keep the dynamic route's metadata lookup in this module with the explicit
+// head contract. This gives the page a single route-level entry point instead
+// of duplicating the tenant lookup and 404 boundary before it builds Metadata.
+export async function getShopfrontRouteMetadataForSlug(slug: string): Promise<Metadata> {
+  const tenant = await getShopfrontTenant(slug);
+
+  if (!tenant) {
+    notFound();
+  }
+
+  return getShopfrontRouteMetadata(getShopfrontMetadata(tenant, slug));
+}
+
 export default async function Head({ params }: ShopfrontHeadProps) {
   const tenant = await getShopfrontTenant(params.slug);
 
