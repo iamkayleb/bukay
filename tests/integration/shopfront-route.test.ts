@@ -59,7 +59,14 @@ async function waitForServer(url: string): Promise<void> {
 
 async function request(
   url: string,
-): Promise<{ body: string; contentType: string | undefined; status: number; ttfbMs: number }> {
+): Promise<{
+  body: string;
+  contentType: string | undefined;
+  location: string | undefined;
+  robotsTag: string | undefined;
+  status: number;
+  ttfbMs: number;
+}> {
   return new Promise((resolve, reject) => {
     const startedAt = performance.now();
     // Use a fresh connection for each request. A reused keep-alive socket can
@@ -74,6 +81,8 @@ async function request(
         resolve({
           body: Buffer.concat(chunks).toString("utf8"),
           contentType: response.headers["content-type"],
+          location: response.headers.location,
+          robotsTag: response.headers["x-robots-tag"],
           status: response.statusCode ?? 0,
           ttfbMs,
         });
@@ -188,6 +197,11 @@ describe("shopfront route (integration)", () => {
     const response = await request(`${baseUrl}/${SLUG}`);
 
     expect(response.status).toBe(200);
+    // This public route must be directly crawlable. A redirect can cause
+    // crawlers to associate route metadata with a different URL, while an
+    // X-Robots-Tag header can suppress otherwise valid HTML metadata.
+    expect(response.location).toBeUndefined();
+    expect(response.robotsTag?.toLowerCase() ?? "").not.toContain("noindex");
     expect(response.ttfbMs).toBeLessThan(500);
     expect(response.contentType).toContain("text/html");
     const head = headContent(response.body);
