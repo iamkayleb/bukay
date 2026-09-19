@@ -28,7 +28,11 @@ export type ShopfrontHeadMetadata = Pick<ShopfrontMetadata, "description" | "tit
 };
 
 function nonEmptyMetadataValue(value: string, fallback: string): string {
-  return value.trim() || fallback;
+  // Zero-width formatting characters are not meaningful crawlable metadata,
+  // but String#trim does not remove them. Treat a value containing only those
+  // characters as empty so the route preserves its non-empty SEO contract.
+  const visibleValue = value.replace(/[\u200B-\u200D\uFEFF]/g, "").trim();
+  return visibleValue || fallback;
 }
 
 function webUrlOrFallback(value: string, fallback: string): string {

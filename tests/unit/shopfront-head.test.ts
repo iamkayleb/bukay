@@ -226,6 +226,22 @@ describe("shopfront head", () => {
     );
   });
 
+  it("uses crawlable fallbacks when metadata contains only invisible characters", () => {
+    const metadata = getShopfrontHeadMetadata({
+      title: "\u200B\u200C\u200D\uFEFF",
+      description: "\u200B\u200C\u200D\uFEFF",
+      pageUrl: "http://localhost:3000/invisible-metadata-salon",
+      imageUrl: "http://localhost:3000/invisible-metadata-salon/opengraph-image",
+      imageAlt: "\u200B\u200C\u200D\uFEFF",
+    });
+
+    expect(metadata.title).toBe("Bukay Shopfront | Book with Bukay");
+    expect(metadata.description).toBe("Book an appointment with Bukay on Bukay.");
+    expect(metadata.openGraph.title).toBe(metadata.title);
+    expect(metadata.openGraph.description).toBe(metadata.description);
+    expect(metadata.openGraph.image.alt).toBe("Bukay shopfront booking page");
+  });
+
   it("renders title, description, and Open Graph image metadata for a shopfront", async () => {
     const markup = renderToStaticMarkup(await Head({ params: { slug: "head-test-salon" } }));
 
