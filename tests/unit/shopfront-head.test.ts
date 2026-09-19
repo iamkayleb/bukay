@@ -109,6 +109,27 @@ describe("shopfront head", () => {
     });
   });
 
+  it("preserves the secure Open Graph image URL in Next runtime metadata", () => {
+    const routeMetadata = getShopfrontRouteMetadata({
+      title: "HTTPS Metadata Salon | Book with Bukay",
+      description: "Book with HTTPS Metadata Salon on Bukay.",
+      pageUrl: "https://shops.bukay.test/https-metadata-salon",
+      imageUrl: "https://shops.bukay.test/https-metadata-salon/opengraph-image",
+      imageAlt: "HTTPS Metadata Salon booking page on Bukay",
+    });
+
+    expect(routeMetadata.openGraph?.images).toEqual([
+      {
+        url: "https://shops.bukay.test/https-metadata-salon/opengraph-image",
+        alt: "HTTPS Metadata Salon booking page on Bukay",
+        type: "image/png",
+        width: 1200,
+        height: 630,
+        secureUrl: "https://shops.bukay.test/https-metadata-salon/opengraph-image",
+      },
+    ]);
+  });
+
   it("keeps every required route metadata value non-empty", () => {
     const routeMetadata = getShopfrontRouteMetadata(
       getShopfrontMetadata(

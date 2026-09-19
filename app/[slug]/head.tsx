@@ -118,6 +118,14 @@ export function getShopfrontHeadMetadata(metadata: ShopfrontMetadata): Shopfront
 export function getShopfrontRouteMetadata(metadata: ShopfrontMetadata): Metadata {
   const head = getShopfrontHeadMetadata(metadata);
   const canonicalUrl = new URL(head.canonicalUrl);
+  const openGraphImage = {
+    ...head.openGraph.image,
+    // Keep Next's structured metadata aligned with the explicit tag emitted
+    // below. Social crawlers can prefer this HTTPS-specific image URL.
+    ...(head.openGraph.image.url.startsWith("https://")
+      ? { secureUrl: head.openGraph.image.url }
+      : {}),
+  };
 
   return {
     // Declare the origin alongside the absolute URLs below so this remains a
@@ -137,7 +145,7 @@ export function getShopfrontRouteMetadata(metadata: ShopfrontMetadata): Metadata
       type: head.openGraph.type,
       locale: head.openGraph.locale,
       siteName: head.openGraph.siteName,
-      images: [head.openGraph.image],
+      images: [openGraphImage],
     },
     twitter: {
       card: head.twitter.card,
