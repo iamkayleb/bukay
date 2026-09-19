@@ -69,6 +69,7 @@ describe("shopfront head", () => {
       title: "Head Test Salon | Book with Bukay",
       description: "Book Haircut and more with Head Test Salon on Bukay.",
       image: "http://localhost:3000/head-test-salon/opengraph-image",
+      imageAlt: "Head Test Salon booking page on Bukay",
     });
   });
 
@@ -395,6 +396,9 @@ describe("shopfront head", () => {
     );
     expect(markup).toContain(
       '<meta name="twitter:image" content="http://localhost:3000/head-test-salon/opengraph-image"/>',
+    );
+    expect(markup).toContain(
+      '<meta name="twitter:image:alt" content="Head Test Salon booking page on Bukay"/>',
     );
   });
 

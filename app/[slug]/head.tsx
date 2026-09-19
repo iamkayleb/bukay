@@ -22,6 +22,7 @@ export type ShopfrontHeadMetadata = Pick<ShopfrontMetadata, "description" | "tit
   twitter: {
     card: "summary_large_image";
     description: string;
+    imageAlt: string;
     image: string;
     title: string;
   };
@@ -119,6 +120,7 @@ export function getShopfrontHeadMetadata(metadata: ShopfrontMetadata): Shopfront
       title,
       description,
       image: imageUrl,
+      imageAlt,
     },
   };
 }
@@ -163,7 +165,7 @@ export function getShopfrontRouteMetadata(metadata: ShopfrontMetadata): Metadata
       card: head.twitter.card,
       title: head.twitter.title,
       description: head.twitter.description,
-      images: [head.twitter.image],
+      images: [{ url: head.twitter.image, alt: head.twitter.imageAlt }],
     },
   };
 }
@@ -202,6 +204,7 @@ export default async function Head({ params }: ShopfrontHeadProps) {
       <meta name="twitter:title" content={metadata.twitter.title} />
       <meta name="twitter:description" content={metadata.twitter.description} />
       <meta name="twitter:image" content={metadata.twitter.image} />
+      <meta name="twitter:image:alt" content={metadata.twitter.imageAlt} />
     </>
   );
 }
