@@ -76,7 +76,7 @@ export function getShopfrontHeadMetadata(metadata: ShopfrontMetadata): Shopfront
   const title = nonEmptyMetadataValue(metadata.title, "Bukay Shopfront | Book with Bukay");
   const description = nonEmptyMetadataValue(
     metadata.description,
-    "Book an appointment with Bukay on Bukay."
+    "Book an appointment through Bukay."
   );
   const canonicalUrl = webUrlOrFallback(metadata.pageUrl, "http://localhost:3000/");
   const imageUrl = webUrlOrFallback(metadata.imageUrl, "http://localhost:3000/opengraph-image");

@@ -183,7 +183,7 @@ describe("shopfront head", () => {
     });
 
     expect(metadata.title).toBe("Bukay Shopfront | Book with Bukay");
-    expect(metadata.description).toBe("Book an appointment with Bukay on Bukay.");
+    expect(metadata.description).toBe("Book an appointment through Bukay.");
     expect(metadata.openGraph.title).toBe(metadata.title);
     expect(metadata.openGraph.description).toBe(metadata.description);
   });
@@ -275,7 +275,7 @@ describe("shopfront head", () => {
     });
 
     expect(metadata.title).toBe("Bukay Shopfront | Book with Bukay");
-    expect(metadata.description).toBe("Book an appointment with Bukay on Bukay.");
+    expect(metadata.description).toBe("Book an appointment through Bukay.");
     expect(metadata.openGraph.title).toBe(metadata.title);
     expect(metadata.openGraph.description).toBe(metadata.description);
     expect(metadata.openGraph.image.alt).toBe("Bukay shopfront booking page");
@@ -291,7 +291,7 @@ describe("shopfront head", () => {
     });
 
     expect(metadata.title).toBe("Bukay Shopfront | Book with Bukay");
-    expect(metadata.description).toBe("Book an appointment with Bukay on Bukay.");
+    expect(metadata.description).toBe("Book an appointment through Bukay.");
     expect(metadata.openGraph.title).toBe(metadata.title);
     expect(metadata.openGraph.description).toBe(metadata.description);
     expect(metadata.openGraph.image.alt).toBe("Bukay shopfront booking page");
@@ -307,7 +307,7 @@ describe("shopfront head", () => {
     });
 
     expect(metadata.title).toBe("Bukay Shopfront | Book with Bukay");
-    expect(metadata.description).toBe("Book an appointment with Bukay on Bukay.");
+    expect(metadata.description).toBe("Book an appointment through Bukay.");
     expect(metadata.openGraph.title).toBe(metadata.title);
     expect(metadata.openGraph.description).toBe(metadata.description);
     expect(metadata.openGraph.image.alt).toBe("Bukay shopfront booking page");
@@ -323,7 +323,7 @@ describe("shopfront head", () => {
     });
 
     expect(metadata.title).toBe("Bukay Shopfront | Book with Bukay");
-    expect(metadata.description).toBe("Book an appointment with Bukay on Bukay.");
+    expect(metadata.description).toBe("Book an appointment through Bukay.");
     expect(metadata.openGraph.title).toBe(metadata.title);
     expect(metadata.openGraph.description).toBe(metadata.description);
     expect(metadata.openGraph.image.alt).toBe("Bukay shopfront booking page");
