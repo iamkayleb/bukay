@@ -9,6 +9,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { PrismaClient } from "@prisma/client";
 
 const SLUG = "shopfront-route-test";
+const ESCAPED_METADATA_SLUG = "shopfront-route-escaped-metadata";
 const START_TIMEOUT_MS = 90_000;
 const REQUEST_TIMEOUT_MS = 10_000;
 const prisma = new PrismaClient();
@@ -178,6 +179,24 @@ describe("shopfront route (integration)", () => {
       },
     });
 
+    await prisma.service.deleteMany({ where: { tenant: { slug: ESCAPED_METADATA_SLUG } } });
+    await prisma.tenant.upsert({
+      where: { slug: ESCAPED_METADATA_SLUG },
+      update: { name: 'Escaped " & <Shopfront>' },
+      create: { slug: ESCAPED_METADATA_SLUG, name: 'Escaped " & <Shopfront>' },
+    });
+    const escapedMetadataTenant = await prisma.tenant.findUniqueOrThrow({
+      where: { slug: ESCAPED_METADATA_SLUG },
+    });
+    await prisma.service.create({
+      data: {
+        tenantId: escapedMetadataTenant.id,
+        name: 'Style " & <Care>',
+        durationMinutes: 30,
+        priceCents: 5000,
+      },
+    });
+
     const port = await availablePort();
     baseUrl = `http://127.0.0.1:${port}`;
     server = spawn(localBinary("next"), ["dev", "--port", String(port)], {
@@ -197,6 +216,8 @@ describe("shopfront route (integration)", () => {
     await stop(server);
     await prisma.service.deleteMany({ where: { tenant: { slug: SLUG } } });
     await prisma.tenant.deleteMany({ where: { slug: SLUG } });
+    await prisma.service.deleteMany({ where: { tenant: { slug: ESCAPED_METADATA_SLUG } } });
+    await prisma.tenant.deleteMany({ where: { slug: ESCAPED_METADATA_SLUG } });
     await prisma.$disconnect();
   });
 
@@ -273,6 +294,23 @@ describe("shopfront route (integration)", () => {
     // A not-found response must not retain metadata from the seeded shopfront
     // that was rendered earlier in this server process.
     expect(headContent(response.body)).not.toContain("Integration Test Salon | Book with Bukay");
+  });
+
+  it("renders escaped tenant values safely in the route metadata", async () => {
+    const response = await request(`${baseUrl}/${ESCAPED_METADATA_SLUG}`);
+    const head = headContent(response.body);
+
+    expect(response.status).toBe(200);
+    expect(titleContent(head)).toBe('Escaped &quot; &amp; &lt;Shopfront&gt; | Book with Bukay');
+    expect(metaContent(head, "name", "description")).toBe(
+      'Book Style &quot; &amp; &lt;Care&gt; and more with Escaped &quot; &amp; &lt;Shopfront&gt; on Bukay.',
+    );
+    expect(metaContent(head, "property", "og:title")).toBe(titleContent(head));
+    expect(metaContent(head, "property", "og:description")).toBe(
+      metaContent(head, "name", "description"),
+    );
+    expect(head).not.toContain('<Shopfront>');
+    expect(head).not.toContain('<Care>');
   });
 
   it("returns 404 for an unknown shopfront's Open Graph image", async () => {
