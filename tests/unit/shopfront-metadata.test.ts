@@ -132,6 +132,31 @@ describe("shopfront metadata", () => {
     expect(metadata.imageUrl).not.toBe("");
   });
 
+  it("uses crawlable fallbacks when tenant display fields contain only invisible characters", () => {
+    const metadata = getShopfrontMetadata(
+      {
+        id: "tenant-id",
+        name: "\u200B\u200C\u200D\uFEFF",
+        slug: "invisible-details",
+        currency: "NGN",
+        services: [
+          {
+            id: "service-id",
+            name: "\u0000\u2060\u200E",
+            description: null,
+            durationMinutes: 30,
+            priceCents: 5000,
+          },
+        ],
+      },
+      "invisible-details",
+    );
+
+    expect(metadata.title).toBe("Bukay Shopfront | Book with Bukay");
+    expect(metadata.description).toBe("Book an appointment with Bukay Shopfront on Bukay.");
+    expect(metadata.imageAlt).toBe("Bukay Shopfront booking page on Bukay");
+  });
+
   it("uses distinct service names in the shopfront description", () => {
     const metadata = getShopfrontMetadata(
       {

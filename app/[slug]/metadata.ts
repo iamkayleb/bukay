@@ -36,6 +36,18 @@ export type ShopfrontMetadata = {
   title: string;
 };
 
+function visibleText(value: string): string {
+  // Tenant display fields are admin-provided content. Treat formatting and
+  // control characters as empty so crawlers always receive meaningful
+  // shopfront metadata rather than an apparently non-empty invisible label.
+  return value
+    .replace(
+      /[\u0000-\u001F\u007F-\u009F\u00AD\u034F\u061C\u180E\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g,
+      ""
+    )
+    .trim();
+}
+
 export function getShopfrontMetadata(
   tenant: ShopfrontTenant | null,
   slug: string
@@ -59,13 +71,13 @@ export function getShopfrontMetadata(
     };
   }
 
-  const shopfrontName = tenant.name.trim() || "Bukay Shopfront";
+  const shopfrontName = visibleText(tenant.name) || "Bukay Shopfront";
   // Services can legitimately share a display name. Repeating one in the
   // description makes the route's search and social metadata less useful,
   // so retain the first three distinct non-empty labels instead.
   const serviceNames = Array.from(
     tenant.services.reduce<string[]>((names, service) => {
-      const name = service.name.trim();
+      const name = visibleText(service.name);
       if (
         name &&
         // Service metadata is rendered on the server, where the default ICU
