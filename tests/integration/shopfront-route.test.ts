@@ -143,6 +143,14 @@ function linkHref(html: string, rel: string): string | undefined {
   return match?.[1] ?? match?.[2];
 }
 
+function linkCount(html: string, rel: string): number {
+  const escapedRel = rel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const links = html.match(/<link\b[^>]*>/gi) ?? [];
+  return links.filter((link) =>
+    new RegExp(`\\brel=(?:"${escapedRel}"|'${escapedRel}')`, "i").test(link),
+  ).length;
+}
+
 function occurrences(html: string, value: string): number {
   return html.split(value).length - 1;
 }
@@ -290,6 +298,9 @@ describe("shopfront route (integration)", () => {
     expect(metaContent(head, "property", "og:image:width")).toBe("1200");
     expect(metaContent(head, "property", "og:image:height")).toBe("630");
     expect(linkHref(head, "canonical")).toBe(`${baseUrl}/${SLUG}`);
+    // Like title and description, canonical metadata must be singular: two
+    // canonical links leave crawlers to choose an arbitrary URL for the page.
+    expect(linkCount(head, "canonical")).toBe(1);
     // This is emitted through the route Metadata export rather than the
     // explicit head component. Check the rendered document so the two route
     // metadata surfaces remain active together for search crawlers.
