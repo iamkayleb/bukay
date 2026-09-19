@@ -453,6 +453,15 @@ describe("shopfront head", () => {
     expect(markup.match(/<meta property="og:image:url"/g)).toHaveLength(1);
   });
 
+  it("does not render fallback shopfront metadata for an unknown slug", async () => {
+    // The explicit head component is a second metadata surface alongside
+    // generateMetadata. It must preserve the route's 404 boundary instead of
+    // emitting crawlable-looking metadata for a shopfront that does not exist.
+    getShopfrontTenant.mockResolvedValueOnce(null);
+
+    await expect(Head({ params: { slug: "missing-shopfront" } })).rejects.toThrow("not found");
+  });
+
   it("publishes a secure Open Graph image URL when the shopfront is served over HTTPS", async () => {
     const previousRootHost = process.env.ROOT_HOST;
     process.env.ROOT_HOST = "https://shops.bukay.test";
