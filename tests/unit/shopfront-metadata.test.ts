@@ -177,4 +177,43 @@ describe("shopfront metadata", () => {
       "Book Haircut, Colour, Styling and more with Distinct Services Salon on Bukay.",
     );
   });
+
+  it("does not repeat service names that only differ by capitalization", () => {
+    const metadata = getShopfrontMetadata(
+      {
+        id: "tenant-id",
+        name: "Case Insensitive Salon",
+        slug: "case-insensitive-services",
+        currency: "NGN",
+        services: [
+          {
+            id: "service-one",
+            name: "Haircut",
+            description: null,
+            durationMinutes: 30,
+            priceCents: 5000,
+          },
+          {
+            id: "service-two",
+            name: "HAIRCUT",
+            description: null,
+            durationMinutes: 45,
+            priceCents: 6500,
+          },
+          {
+            id: "service-three",
+            name: "Colour",
+            description: null,
+            durationMinutes: 60,
+            priceCents: 8000,
+          },
+        ],
+      },
+      "case-insensitive-services",
+    );
+
+    expect(metadata.description).toBe(
+      "Book Haircut, Colour and more with Case Insensitive Salon on Bukay.",
+    );
+  });
 });

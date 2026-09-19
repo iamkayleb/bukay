@@ -64,7 +64,16 @@ export function getShopfrontMetadata(
   // description makes the route's search and social metadata less useful,
   // so retain the first three distinct non-empty labels instead.
   const serviceNames = Array.from(
-    new Set(tenant.services.map((service) => service.name.trim()).filter(Boolean))
+    tenant.services.reduce<string[]>((names, service) => {
+      const name = service.name.trim();
+      if (
+        name &&
+        !names.some((existingName) => existingName.toLocaleLowerCase() === name.toLocaleLowerCase())
+      ) {
+        names.push(name);
+      }
+      return names;
+    }, [])
   ).slice(0, 3);
 
   return {
