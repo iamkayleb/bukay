@@ -13,6 +13,10 @@ const START_TIMEOUT_MS = 90_000;
 const REQUEST_TIMEOUT_MS = 10_000;
 const prisma = new PrismaClient();
 
+async function fetchWithTimeout(url: string): Promise<Response> {
+  return fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+}
+
 function localBinary(name: string): string {
   const binary = join(process.cwd(), "node_modules", ".bin", name);
   if (!existsSync(binary)) {
@@ -44,7 +48,7 @@ async function waitForServer(url: string): Promise<void> {
       // A 404 can be returned before the development server has finished
       // compiling this dynamic route. Wait for the known seeded shopfront
       // itself so the test does not begin against a partially ready app.
-      if ((await fetch(url)).ok) return;
+      if ((await fetchWithTimeout(url)).ok) return;
     } catch {
       // The Next.js server is still starting.
     }

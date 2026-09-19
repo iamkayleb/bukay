@@ -11,7 +11,12 @@ import lighthouse from "lighthouse";
 import { PrismaClient } from "@prisma/client";
 
 const START_TIMEOUT_MS = 90_000;
+const REQUEST_TIMEOUT_MS = 10_000;
 const prisma = new PrismaClient();
+
+async function fetchWithTimeout(url: string): Promise<Response> {
+  return fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+}
 
 function localBinary(name: string): string {
   const binary = join(process.cwd(), "node_modules", ".bin", name);
@@ -58,7 +63,7 @@ async function waitForServer(url: string): Promise<void> {
   const deadline = Date.now() + START_TIMEOUT_MS;
   while (Date.now() < deadline) {
     try {
-      if ((await fetch(url)).ok) return;
+      if ((await fetchWithTimeout(url)).ok) return;
     } catch {
       // The Next.js server is still starting.
     }
@@ -73,7 +78,7 @@ async function waitForChrome(port: number): Promise<void> {
 
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(endpoint);
+      const response = await fetchWithTimeout(endpoint);
       const details = (await response.json()) as { webSocketDebuggerUrl?: string };
       if (response.ok && details.webSocketDebuggerUrl) return;
     } catch {
