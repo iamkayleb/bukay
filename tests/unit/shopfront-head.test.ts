@@ -65,7 +65,7 @@ describe("shopfront head", () => {
       },
     });
     expect(metadata.twitter).toEqual({
-      card: "summary",
+      card: "summary_large_image",
       title: "Head Test Salon | Book with Bukay",
       description: "Book Haircut and more with Head Test Salon on Bukay.",
       image: "http://localhost:3000/head-test-salon/opengraph-image",
@@ -371,7 +371,7 @@ describe("shopfront head", () => {
     expect(markup).toContain('<meta property="og:url" content="http://localhost:3000/head-test-salon"/>');
     expect(markup).toContain('<meta property="og:type" content="website"/>');
     expect(markup).toContain('<meta property="og:locale" content="en_NG"/>');
-    expect(markup).toContain('<meta name="twitter:card" content="summary"/>');
+    expect(markup).toContain('<meta name="twitter:card" content="summary_large_image"/>');
     expect(markup).toContain(
       '<meta name="twitter:title" content="Head Test Salon | Book with Bukay"/>',
     );

@@ -20,7 +20,7 @@ export type ShopfrontHeadMetadata = Pick<ShopfrontMetadata, "description" | "tit
     url: string;
   };
   twitter: {
-    card: "summary";
+    card: "summary_large_image";
     description: string;
     image: string;
     title: string;
@@ -103,7 +103,10 @@ export function getShopfrontHeadMetadata(metadata: ShopfrontMetadata): Shopfront
       image,
     },
     twitter: {
-      card: "summary",
+      // The route provides a 1200×630 social image. Request Twitter's large
+      // card treatment so the image used for Open Graph is also presented as
+      // a meaningful preview on Twitter/X rather than a small thumbnail.
+      card: "summary_large_image",
       title,
       description,
       image: imageUrl,
