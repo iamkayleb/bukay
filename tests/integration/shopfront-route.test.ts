@@ -93,12 +93,15 @@ async function request(
 
 function metaContent(html: string, attribute: "name" | "property", value: string): string | undefined {
   const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = html.match(
-    new RegExp(
-      `<meta(?=[^>]*\\b${attribute}="${escapedValue}")(?=[^>]*\\bcontent="([^"]+)")[^>]*>`,
-    ),
+  const tags = html.match(/<meta\b[^>]*>/gi) ?? [];
+
+  // Next can reorder tag attributes between releases. Select the complete
+  // matching tag before reading content so this real-HTTP test asserts the
+  // metadata contract, not a particular serializer attribute order.
+  const tag = tags.find((candidate) =>
+    new RegExp(`\\b${attribute}="${escapedValue}"`, "i").test(candidate),
   );
-  return match?.[1];
+  return tag?.match(/\bcontent="([^"]*)"/i)?.[1];
 }
 
 function headContent(html: string): string {
