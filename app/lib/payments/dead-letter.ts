@@ -1,7 +1,7 @@
 /**
  * Dead-letter retention for webhook (and similar) payloads that may contain
  * sensitive payment data. Rows older than {@link DEAD_LETTER_RETENTION_MS}
- * are deleted whenever a new dead letter is recorded.
+ * are deleted on every authenticated Paystack webhook (see paystack-webhook).
  */
 
 export const DEAD_LETTER_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;

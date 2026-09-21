@@ -198,7 +198,6 @@ async function recordDeadLetter(
   reason: string,
   tenantId?: string | null
 ): Promise<void> {
-  await purgeExpiredDeadLetters(db);
   await db.deadLetter.create({
     data: {
       tenantId: tenantId ?? null,
@@ -236,6 +235,11 @@ export async function handlePaystackWebhook(
   const event = typeof payload.event === "string" ? payload.event : "";
   const data = payload.data ?? {};
   const db = deps.db ?? defaultDb();
+
+  // Retention: purge on every authenticated webhook so expired DeadLetter rows
+  // (raw payment payloads) are cleaned even when only successful events arrive.
+  await purgeExpiredDeadLetters(db);
+
   const key = eventIdempotencyKey(event, data);
 
   const claimed = deps.idempotency

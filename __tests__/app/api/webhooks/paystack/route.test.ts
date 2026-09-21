@@ -522,6 +522,131 @@ describe("tenantIdFromPaystackMetadata", () => {
   });
 });
 
+/**
+ * Re-verification contract for follow-up #380 / PR #368 CONCERNS.
+ * Each case maps to a verification concern; keep this green before marking
+ * "Re-verification passes".
+ */
+describe("re-verification: PR #368 concerns", () => {
+  afterEach(() => {
+    __setPaystackWebhookDbForTests(null);
+    __resetIdempotencyStoreForTests();
+  });
+
+  it("route module stays thin and exports only Next.js symbols", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const routePath = path.join(process.cwd(), "app/api/webhooks/paystack/route.ts");
+    const source = await fs.readFile(routePath, "utf8");
+    expect(source.length).toBeLessThan(1200);
+    expect(source).toContain('from "@/app/lib/payments/paystack-webhook"');
+    expect(source).not.toContain("__setPaystackWebhookDbForTests");
+    expect(Object.keys(paystackRoute).sort()).toEqual(["POST", "dynamic"].sort());
+  });
+
+  it("production path uses durable DB idempotency across replay", async () => {
+    const { db, payment, idempotencyKeys } = createDb();
+    const body = eventBody("charge.success", { id: 880 });
+    await handlePaystackWebhook(signedRequest(body), { db, secret: SECRET });
+    expect(idempotencyKeys.size).toBe(1);
+    payment.status = "tampered";
+    const replay = await handlePaystackWebhook(signedRequest(body), { db, secret: SECRET });
+    expect(await replay.json()).toEqual({ ok: true, duplicate: true });
+    expect(payment.status).toBe("tampered");
+    expect(db.idempotencyKey?.create).toHaveBeenCalled();
+  });
+
+  it("purges expired dead letters on authenticated webhooks (not only DL writes)", async () => {
+    const { db, deadLetters } = createDb();
+    const now = Date.now();
+    deadLetters.push({
+      source: "paystack",
+      eventType: "stale",
+      payload: '{"sensitive":true}',
+      reason: "unhandled_event",
+      createdAt: new Date(now - DEAD_LETTER_RETENTION_MS - 60_000),
+    });
+    deadLetters.push({
+      source: "paystack",
+      eventType: "fresh",
+      payload: "{}",
+      reason: "unhandled_event",
+      createdAt: new Date(now),
+    });
+
+    const res = await handlePaystackWebhook(signedRequest(eventBody("charge.success")), {
+      db,
+      secret: SECRET,
+    });
+    expect(res.status).toBe(200);
+    expect(db.deadLetter.deleteMany).toHaveBeenCalled();
+    expect(deadLetters.map((r) => r.eventType)).toEqual(["fresh"]);
+  });
+
+  it("applies exact status transitions for success / failed / refund", async () => {
+    const cases: Array<{
+      event: string;
+      paymentStatus: string;
+      bookingStatus: string;
+      seedPaymentStatus: string;
+      seedBookingStatus: string;
+    }> = [
+      {
+        event: "charge.success",
+        paymentStatus: "paid",
+        bookingStatus: "confirmed",
+        seedPaymentStatus: "pending",
+        seedBookingStatus: "pending_payment",
+      },
+      {
+        event: "charge.failed",
+        paymentStatus: "failed",
+        bookingStatus: "cancelled",
+        seedPaymentStatus: "pending",
+        seedBookingStatus: "pending_payment",
+      },
+      {
+        event: "refund.processed",
+        paymentStatus: "refunded",
+        bookingStatus: "cancelled",
+        seedPaymentStatus: "paid",
+        seedBookingStatus: "confirmed",
+      },
+    ];
+
+    for (const c of cases) {
+      const { db, payment, booking } = createDb({
+        payment: {
+          id: "pay-1",
+          tenantId: "tenant-1",
+          bookingId: "book-1",
+          status: c.seedPaymentStatus,
+          providerRef: "ref-abc",
+          paidAt: c.seedPaymentStatus === "paid" ? new Date() : null,
+        },
+        booking: {
+          id: "book-1",
+          tenantId: "tenant-1",
+          status: c.seedBookingStatus,
+        },
+      });
+      const res = await handlePaystackWebhook(
+        signedRequest(eventBody(c.event, { id: c.event.length })),
+        { db, secret: SECRET }
+      );
+      expect(res.status).toBe(200);
+      expect(payment.status).toBe(c.paymentStatus);
+      expect(booking.status).toBe(c.bookingStatus);
+      expect(db.payment.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: "pay-1", tenantId: "tenant-1" } })
+      );
+      expect(db.booking.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: "book-1", tenantId: "tenant-1" } })
+      );
+    }
+  });
+});
+
 describe("POST /api/webhooks/paystack route module", () => {
   const previousSecret = process.env.PAYSTACK_SECRET_KEY;
 
