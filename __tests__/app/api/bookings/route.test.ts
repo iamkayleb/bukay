@@ -1,10 +1,7 @@
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  __resetDomainEventsForTests,
-  onBookingConfirmed,
-} from "@/app/lib/events";
+import { __resetDomainEventsForTests, onBookingConfirmed } from "@/app/lib/events";
 
 type BookingRow = {
   id: string;

@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  computeSlots,
-  type BusinessHours,
-  type ExistingBooking,
-} from "@/app/lib/availability";
+import { computeSlots, type BusinessHours, type ExistingBooking } from "@/app/lib/availability";
 
 import "./availability.bench";
 
@@ -332,9 +328,7 @@ describe("computeSlots edge cases", () => {
       weekdayHours
     );
 
-    expect(slotTimes(slots)).toEqual([
-      ["2026-07-27T10:00:00.000Z", "2026-07-27T11:00:00.000Z"],
-    ]);
+    expect(slotTimes(slots)).toEqual([["2026-07-27T10:00:00.000Z", "2026-07-27T11:00:00.000Z"]]);
   });
 
   it("rejects invalid service, buffer, and date inputs", () => {

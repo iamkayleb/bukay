@@ -7,6 +7,7 @@ export type BookingRecord = BookingInterval & {
   id: string;
   tenantId: string;
   staffId: string | null;
+  status: string;
 };
 
 export type BusinessHourRecord = {

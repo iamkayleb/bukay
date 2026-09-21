@@ -4,81 +4,81 @@ base: eval/cursor
 branch: cursor/issue-359
 tasks:
   - id: task-01
-    title: 'Add `app/lib/payments/provider.ts`: define the `PaymentProvider` port'
+    title: "Add `app/lib/payments/provider.ts`: define the `PaymentProvider` port"
     status: done
-    started_at: '2026-09-16T11:59:17Z'
-    finished_at: '2026-09-16T12:11:46Z'
+    started_at: "2026-09-16T11:59:17Z"
+    finished_at: "2026-09-16T12:11:46Z"
     commit: 186e092fa2a19dce3d4a47cdbceea3f62e95bca6
     notes: []
   - id: task-02
-    title: 'Add `app/lib/payments/paystack.ts`: add the adapter and a fake in `app/lib/payments/fake.ts`'
+    title: "Add `app/lib/payments/paystack.ts`: add the adapter and a fake in `app/lib/payments/fake.ts`"
     status: done
-    started_at: '2026-09-16T12:11:46Z'
-    finished_at: '2026-09-16T12:11:46Z'
+    started_at: "2026-09-16T12:11:46Z"
+    finished_at: "2026-09-16T12:11:46Z"
     commit: f7a4acad32f23ef5cedf0f4e8cd35df9df4ae06a
     notes: []
   - id: task-03
-    title: 'Add `app/lib/payments/paystack.ts`: add the adapter (verify: confirm completion
-      in repo)'
+    title: "Add `app/lib/payments/paystack.ts`: add the adapter (verify: confirm completion
+      in repo)"
     status: done
-    started_at: '2026-09-16T12:11:46Z'
-    finished_at: '2026-09-16T12:11:46Z'
+    started_at: "2026-09-16T12:11:46Z"
+    finished_at: "2026-09-16T12:11:46Z"
     commit: f7a4acad32f23ef5cedf0f4e8cd35df9df4ae06a
     notes: []
   - id: task-04
-    title: 'a fake in `app/lib/payments/fake.ts` (verify: confirm completion in repo)'
+    title: "a fake in `app/lib/payments/fake.ts` (verify: confirm completion in repo)"
     status: done
-    started_at: '2026-09-16T12:11:46Z'
-    finished_at: '2026-09-16T12:11:46Z'
+    started_at: "2026-09-16T12:11:46Z"
+    finished_at: "2026-09-16T12:11:46Z"
     commit: f7a4acad32f23ef5cedf0f4e8cd35df9df4ae06a
     notes: []
   - id: task-05
-    title: 'Add `app/api/payments/verify/route.ts`: implement the callback'
+    title: "Add `app/api/payments/verify/route.ts`: implement the callback"
     status: done
-    started_at: '2026-09-16T12:11:46Z'
-    finished_at: '2026-09-16T12:11:46Z'
+    started_at: "2026-09-16T12:11:46Z"
+    finished_at: "2026-09-16T12:11:46Z"
     commit: eabb8f5a54dd6b9708fced5dbf5007036dd408c3
     notes: []
   - id: task-06
-    title: 'Add `app/lib/payments/subaccount.ts`: create subaccounts during setup'
+    title: "Add `app/lib/payments/subaccount.ts`: create subaccounts during setup"
     status: done
-    started_at: '2026-09-16T12:11:46Z'
-    finished_at: '2026-09-16T12:11:46Z'
+    started_at: "2026-09-16T12:11:46Z"
+    finished_at: "2026-09-16T12:11:46Z"
     commit: eabb8f5a54dd6b9708fced5dbf5007036dd408c3
     notes: []
   - id: task-07
-    title: 'Add `app/lib/slot-hold.ts`: release held slots on failure'
+    title: "Add `app/lib/slot-hold.ts`: release held slots on failure"
     status: done
-    started_at: '2026-09-16T12:11:46Z'
-    finished_at: '2026-09-16T12:11:46Z'
+    started_at: "2026-09-16T12:11:46Z"
+    finished_at: "2026-09-16T12:11:46Z"
     commit: eabb8f5a54dd6b9708fced5dbf5007036dd408c3
     notes: []
   - id: task-08
     title: A test-mode payment moves the booking to `confirmed`, verified by `pnpm
       test`
     status: done
-    started_at: '2026-09-16T12:11:46Z'
-    finished_at: '2026-09-16T12:11:46Z'
+    started_at: "2026-09-16T12:11:46Z"
+    finished_at: "2026-09-16T12:11:46Z"
     commit: eabb8f5a54dd6b9708fced5dbf5007036dd408c3
     notes: []
   - id: task-09
     title: A failed payment releases the slot within 10 minutes
     status: done
-    started_at: '2026-09-16T12:11:46Z'
-    finished_at: '2026-09-16T12:11:46Z'
+    started_at: "2026-09-16T12:11:46Z"
+    finished_at: "2026-09-16T12:11:46Z"
     commit: eabb8f5a54dd6b9708fced5dbf5007036dd408c3
     notes: []
   - id: task-10
     title: The subaccount split matches the configured percentage
     status: done
-    started_at: '2026-09-16T12:11:46Z'
-    finished_at: '2026-09-16T12:11:46Z'
+    started_at: "2026-09-16T12:11:46Z"
+    finished_at: "2026-09-16T12:11:46Z"
     commit: eabb8f5a54dd6b9708fced5dbf5007036dd408c3
     notes: []
   - id: task-11
     title: No secret value appears in logs, verified by `pnpm test`
     status: done
-    started_at: '2026-09-16T12:11:46Z'
-    finished_at: '2026-09-16T12:11:46Z'
+    started_at: "2026-09-16T12:11:46Z"
+    finished_at: "2026-09-16T12:11:46Z"
     commit: eabb8f5a54dd6b9708fced5dbf5007036dd408c3
     notes: []

@@ -196,6 +196,8 @@ model AuditLog {
 }
 
 /// Unknown / unhandled webhook (and similar) events land here for inspection.
+/// Retention: authenticated Paystack webhooks call `purgeExpiredDeadLetters`
+/// to delete rows older than 30 days (see app/lib/payments/dead-letter.ts).
 model DeadLetter {
   id        String   @id @default(cuid())
   tenantId  String?
@@ -210,5 +212,15 @@ model DeadLetter {
   @@index([eventType])
   @@index([createdAt])
   @@index([tenantId])
+}
+
+/// Durable webhook / request idempotency keys (7-day TTL via expiresAt).
+model IdempotencyKey {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
 }
 

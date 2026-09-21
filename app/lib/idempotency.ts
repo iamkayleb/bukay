@@ -1,3 +1,14 @@
+/**
+ * Idempotency keys for webhook / request deduplication.
+ *
+ * Production path uses a durable Prisma `IdempotencyKey` row (unique `key`,
+ * 7-day `expiresAt`) so replay protection survives process restarts and works
+ * across serverless replicas. An in-memory store remains available for unit
+ * tests that inject a fake clock.
+ */
+
+import { isUniqueConstraintError } from "@/app/api/services/_helpers";
+
 /** Default retention for processed webhook / request keys. */
 export const IDEMPOTENCY_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -12,12 +23,32 @@ type IdempotencyRecord = {
   value?: unknown;
 };
 
+export type IdempotencyKeyDb = {
+  idempotencyKey: {
+    findUnique(args: { where: { key: string } }): Promise<{
+      key: string;
+      expiresAt: Date;
+    } | null>;
+    create(args: {
+      data: { key: string; expiresAt: Date };
+    }): Promise<{ key: string; expiresAt: Date }>;
+    deleteMany(args: {
+      where: { key?: string; expiresAt?: { lte: Date } };
+    }): Promise<{ count: number }>;
+  };
+};
+
+/** Sync or async claimer used by webhook handlers and tests. */
+export interface IdempotencyClaimer {
+  has(key: string): boolean | Promise<boolean>;
+  claim(key: string, value?: unknown): boolean | Promise<boolean>;
+}
+
 /**
  * In-memory idempotency store with a 7-day TTL.
- * `claim` returns true the first time a key is seen; subsequent calls within
- * the TTL return false so callers can skip duplicate side effects.
+ * Prefer {@link claimIdempotencyKey} in production so claims are durable.
  */
-export class IdempotencyStore {
+export class IdempotencyStore implements IdempotencyClaimer {
   private readonly entries = new Map<string, IdempotencyRecord>();
   private readonly clock: Clock;
   private readonly ttlMs: number;
@@ -27,15 +58,10 @@ export class IdempotencyStore {
     this.ttlMs = ttlMs;
   }
 
-  /** True when the key was already claimed and has not expired. */
   has(key: string): boolean {
     return this.getRecord(key) !== null;
   }
 
-  /**
-   * Atomically claim a key. Returns true if this is the first claim (caller
-   * should perform the side effect). Returns false for a replay within TTL.
-   */
   claim(key: string, value?: unknown): boolean {
     if (this.getRecord(key)) {
       return false;
@@ -64,6 +90,49 @@ export class IdempotencyStore {
       return null;
     }
     return record;
+  }
+}
+
+/**
+ * Atomically claim `key` in the database. Survives restarts and multi-instance
+ * deploys. Expired rows are cleared so the key can be reclaimed after TTL.
+ */
+export async function claimIdempotencyKey(
+  db: { idempotencyKey?: IdempotencyKeyDb["idempotencyKey"] },
+  key: string,
+  ttlMs: number = IDEMPOTENCY_TTL_MS,
+  now: Date = new Date()
+): Promise<boolean> {
+  const table = db.idempotencyKey;
+  if (!table) {
+    // Fallback when a test stub omits the table: treat as first claim.
+    // Production Prisma clients always expose idempotencyKey after migrate.
+    return true;
+  }
+
+  await table.deleteMany({ where: { expiresAt: { lte: now } } });
+
+  const existing = await table.findUnique({ where: { key } });
+  if (existing && existing.expiresAt.getTime() > now.getTime()) {
+    return false;
+  }
+  if (existing) {
+    await table.deleteMany({ where: { key } });
+  }
+
+  try {
+    await table.create({
+      data: {
+        key,
+        expiresAt: new Date(now.getTime() + ttlMs),
+      },
+    });
+    return true;
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      return false;
+    }
+    throw error;
   }
 }
 

@@ -11,6 +11,8 @@ function jsonResponse(body: unknown, init: { status?: number } = {}): Response {
   });
 }
 
+type FetchMock = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
 const SECRET = "sk_test_abcdefghijklmnopqrstuvwxyz123456";
 
 const baseInput = {
@@ -29,7 +31,7 @@ describe("PaystackProvider", () => {
   });
 
   it("POSTs /transaction/initialize with split metadata and returns checkout fields", async () => {
-    const fetchImpl = vi.fn(async () =>
+    const fetchImpl = vi.fn<Parameters<FetchMock>, ReturnType<FetchMock>>(async () =>
       jsonResponse({
         status: true,
         data: {
@@ -72,7 +74,7 @@ describe("PaystackProvider", () => {
   });
 
   it("verifies a successful charge and surfaces the configured split percentage", async () => {
-    const fetchImpl = vi.fn(async () =>
+    const fetchImpl = vi.fn<Parameters<FetchMock>, ReturnType<FetchMock>>(async () =>
       jsonResponse({
         status: true,
         data: {
@@ -101,7 +103,7 @@ describe("PaystackProvider", () => {
   });
 
   it("does not include the secret key in PaymentProviderError messages", async () => {
-    const fetchImpl = vi.fn(async () =>
+    const fetchImpl = vi.fn<Parameters<FetchMock>, ReturnType<FetchMock>>(async () =>
       jsonResponse({ status: false, message: `bad key ${SECRET}` }, { status: 401 })
     );
     const provider = new PaystackProvider({
@@ -119,7 +121,7 @@ describe("PaystackProvider", () => {
   });
 
   it("wraps network failures as PaymentProviderError", async () => {
-    const fetchImpl = vi.fn(async () => {
+    const fetchImpl = vi.fn<Parameters<FetchMock>, ReturnType<FetchMock>>(async () => {
       throw new Error("ECONNRESET");
     });
     const provider = new PaystackProvider({

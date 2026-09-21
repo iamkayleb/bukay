@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { randomUUID } from "node:crypto";
 
-import { createPublicBooking } from "@/app/api/public/bookings/route";
+import { createPublicBooking } from "@/app/api/public/bookings/create-public-booking";
 import { computeSlots } from "@/app/lib/availability";
 import { prisma } from "@/app/db/prisma";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
@@ -67,10 +67,7 @@ function formatSlotLabel(startsAt: Date, timezone: string): string {
   }
 }
 
-function bookPath(
-  slug: string,
-  query: Record<string, string | undefined | null>
-): string {
+function bookPath(slug: string, query: Record<string, string | undefined | null>): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
     if (value) {
@@ -107,7 +104,11 @@ function StepperNav({ current }: { current: number }) {
         const active = step.id === current;
         return (
           <li key={step.id} className="flex items-center gap-2">
-            {index > 0 ? <span className="text-slate-600" aria-hidden="true">/</span> : null}
+            {index > 0 ? (
+              <span className="text-slate-600" aria-hidden="true">
+                /
+              </span>
+            ) : null}
             <span
               className={[
                 "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide",
@@ -184,7 +185,9 @@ export default async function PublicBookPage({ params, searchParams = {} }: Page
   async function submitBooking(formData: FormData) {
     "use server";
 
-    const formSlug = String(formData.get("slug") ?? "").trim().toLowerCase();
+    const formSlug = String(formData.get("slug") ?? "")
+      .trim()
+      .toLowerCase();
     const serviceId = String(formData.get("serviceId") ?? "").trim();
     const startsAt = String(formData.get("startsAt") ?? "").trim();
     const customerName = String(formData.get("customerName") ?? "").trim();
@@ -401,8 +404,9 @@ export default async function PublicBookPage({ params, searchParams = {} }: Page
             Booking reserved
           </h2>
           <p className="text-sm text-slate-300">
-            Your appointment is held with status <code className="text-emerald-300">pending_payment</code>
-            . Complete payment within 10 minutes to keep this slot.
+            Your appointment is held with status{" "}
+            <code className="text-emerald-300">pending_payment</code>. Complete payment within 10
+            minutes to keep this slot.
           </p>
           {searchParams.bookingId ? (
             <p className="text-xs text-slate-500">Reference: {searchParams.bookingId}</p>
