@@ -2123,6 +2123,52 @@ jobs:
                 };
             const { withRetry, paginateWithRetry } = await createTokenAwareRetry({ github, core });
             const summary = core.summary;
+
+            // Refusal reasons used to land only in this job's summary table, so
+            // a PR auto-merge had declined looked identical to one nothing had
+            // looked at yet. Mirror the outcome onto the PR: one comment,
+            // updated in place, plus an `automerge:blocked` label cleared when
+            // it passes.
+            const BLOCKED_LABEL = 'automerge:blocked';
+            const OUTCOME_MARK = '<!-- automerge-outcome -->';
+            async function reportOutcome(prNumber, status, note) {
+              try {
+                const blocked = status !== 'merged' && Boolean(note);
+                const body = [
+                  OUTCOME_MARK,
+                  blocked ? '### Auto-merge declined' : '### Auto-merge',
+                  '',
+                  blocked ? note : `Result: \`${status}\`${note ? ` — ${note}` : ''}`,
+                  '',
+                  '_Posted by the guarded merger; this comment is updated in place._',
+                ].join('\n');
+                const comments = await paginateWithRetry(
+                  github.rest.issues.listComments,
+                  { owner, repo, issue_number: prNumber, per_page: 100 });
+                const existing = (comments || [])
+                  .find((c) => String(c.body || '').includes(OUTCOME_MARK));
+                if (existing) {
+                  await withRetry((client) => (client || github).rest.issues.updateComment(
+                    { owner, repo, comment_id: existing.id, body }));
+                } else {
+                  await withRetry((client) => (client || github).rest.issues.createComment(
+                    { owner, repo, issue_number: prNumber, body }));
+                }
+                if (blocked) {
+                  await withRetry((client) => (client || github).rest.issues.addLabels(
+                    { owner, repo, issue_number: prNumber, labels: [BLOCKED_LABEL] }));
+                } else {
+                  try {
+                    await withRetry((client) => (client || github).rest.issues.removeLabel(
+                      { owner, repo, issue_number: prNumber, name: BLOCKED_LABEL }));
+                  } catch (_) { /* label absent */ }
+                }
+              } catch (error) {
+                // Reporting must never be why a merge run fails.
+                core.warning(
+                  `Could not report auto-merge outcome on #${prNumber}: ${error.message || error}`);
+              }
+            }
             const { owner, repo } = context.repo;
 
             // Resolve the default branch (agent PRs must target it).
@@ -2241,9 +2287,24 @@ jobs:
                 }
                 unchecked += countUnchecked(linkedIssueSnapshot.body);
               }
-              return unchecked > 0
-                ? 'Refusing auto-merge: linked issue/PR has unchecked tasks.'
-                : '';
+              if (unchecked === 0) return '';
+              // Some repos track completion outside the checkboxes — an agent
+              // belt ledger, an external tracker — and their issue bodies carry
+              // a spec whose boxes are never ticked. For those this guard can
+              // never pass and auto-merge is structurally impossible. Honour an
+              // explicit per-PR opt-out rather than weakening the default.
+              const optOut = (pr?.labels || [])
+                .map((l) => (typeof l === 'string' ? l : l && l.name) || '')
+                .includes('merge:allow-unchecked-tasks');
+              if (optOut) {
+                core.info(
+                  `#${pr?.number}: ${unchecked} unchecked task(s) ignored via `
+                  + 'merge:allow-unchecked-tasks.');
+                return '';
+              }
+              return `Refusing auto-merge: linked issue/PR has ${unchecked} unchecked `
+                + 'task(s). Tick them, or add the `merge:allow-unchecked-tasks` label '
+                + 'if completion is tracked elsewhere.';
             }
 
             async function loadPullRequest(prNumber) {
@@ -2872,6 +2933,7 @@ jobs:
                 note = `Unhandled error: ${error.message || error}`;
               }
               rows.push([`#${prNumber}`, status, note || '']);
+              await reportOutcome(prNumber, status, note);
             }
 
             summary.addTable([
