@@ -258,8 +258,10 @@ describe("releaseHoldForBooking", () => {
 });
 
 describe("createPaystackSubaccount", () => {
+  type FetchMock = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
   it("posts percentage_charge and returns the matching split percentage", async () => {
-    const fetchImpl = vi.fn(
+    const fetchImpl = vi.fn<Parameters<FetchMock>, ReturnType<FetchMock>>(
       async () =>
         new Response(
           JSON.stringify({
@@ -293,7 +295,7 @@ describe("createPaystackSubaccount", () => {
   });
 
   it("redacts the secret key from subaccount error messages", async () => {
-    const fetchImpl = vi.fn(
+    const fetchImpl = vi.fn<Parameters<FetchMock>, ReturnType<FetchMock>>(
       async () =>
         new Response(JSON.stringify({ status: false, message: `unauthorized ${SECRET}` }), {
           status: 401,
