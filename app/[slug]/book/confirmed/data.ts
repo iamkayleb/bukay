@@ -13,8 +13,7 @@ export type ConfirmedBooking = {
 };
 
 export type ConfirmedBookingResult =
-  | { ok: true; booking: ConfirmedBooking }
-  | { ok: false; status: 400 | 404 | 410 };
+  { ok: true; booking: ConfirmedBooking } | { ok: false; status: 400 | 404 | 410 };
 
 export async function getConfirmedBooking(
   slug: string,
