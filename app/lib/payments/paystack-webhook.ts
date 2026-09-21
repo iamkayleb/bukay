@@ -35,14 +35,19 @@ type PaymentRow = {
 
 export type PaystackWebhookDb = {
   payment: {
-    findFirst(args: { where: { providerRef: string } }): Promise<PaymentRow | null>;
+    findFirst(args: {
+      where: { providerRef: string; tenantId?: string };
+    }): Promise<PaymentRow | null>;
     update(args: {
-      where: { id: string };
+      where: { id: string; tenantId: string };
       data: { status: string; paidAt?: Date | null };
     }): Promise<PaymentRow>;
   };
   booking: {
-    update(args: { where: { id: string }; data: { status: string } }): Promise<unknown>;
+    update(args: {
+      where: { id: string; tenantId: string };
+      data: { status: string };
+    }): Promise<unknown>;
   };
   deadLetter: {
     create(args: {
@@ -97,6 +102,26 @@ function eventIdempotencyKey(event: string, data: PaystackWebhookPayload["data"]
   return `paystack:${event}:${id || reference || "unknown"}`;
 }
 
+/** Best-effort tenant id from Paystack metadata (string field or nested object). */
+export function tenantIdFromPaystackMetadata(
+  metadata: PaystackWebhookPayload["data"] extends { metadata?: infer M } ? M : unknown
+): string | null {
+  if (metadata == null) return null;
+  let parsed: unknown = metadata;
+  if (typeof metadata === "string") {
+    try {
+      parsed = JSON.parse(metadata);
+    } catch {
+      return null;
+    }
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+  const raw = (parsed as Record<string, unknown>).tenantId;
+  if (typeof raw !== "string") return null;
+  const tenantId = raw.trim();
+  return tenantId || null;
+}
+
 function bookingStatusFor(event: HandledEvent): string {
   switch (event) {
     case "charge.success":
@@ -122,11 +147,21 @@ function paymentStatusFor(event: HandledEvent): string {
 async function applyEvent(
   db: PaystackWebhookDb,
   event: HandledEvent,
-  reference: string
-): Promise<{ ok: true; paymentId: string; bookingId: string } | { ok: false; error: string }> {
+  reference: string,
+  metadataTenantId: string | null
+): Promise<
+  | { ok: true; paymentId: string; bookingId: string; tenantId: string }
+  | { ok: false; error: string; tenantId?: string | null }
+> {
+  // Resolve by provider reference first (Paystack refs are globally unique), then
+  // enforce tenant agreement with optional metadata and scope all writes by tenantId.
   const payment = await db.payment.findFirst({ where: { providerRef: reference } });
   if (!payment) {
-    return { ok: false, error: "payment_not_found" };
+    return { ok: false, error: "payment_not_found", tenantId: metadataTenantId };
+  }
+
+  if (metadataTenantId && metadataTenantId !== payment.tenantId) {
+    return { ok: false, error: "tenant_mismatch", tenantId: payment.tenantId };
   }
 
   const paymentStatus = paymentStatusFor(event);
@@ -139,16 +174,21 @@ async function applyEvent(
   }
 
   await db.payment.update({
-    where: { id: payment.id },
+    where: { id: payment.id, tenantId: payment.tenantId },
     data: paymentData,
   });
 
   await db.booking.update({
-    where: { id: payment.bookingId },
+    where: { id: payment.bookingId, tenantId: payment.tenantId },
     data: { status: bookingStatus },
   });
 
-  return { ok: true, paymentId: payment.id, bookingId: payment.bookingId };
+  return {
+    ok: true,
+    paymentId: payment.id,
+    bookingId: payment.bookingId,
+    tenantId: payment.tenantId,
+  };
 }
 
 async function recordDeadLetter(
@@ -207,20 +247,28 @@ export async function handlePaystackWebhook(
   }
 
   if (!HANDLED_EVENTS.has(event as HandledEvent)) {
-    await recordDeadLetter(db, rawBody, event || "unknown", "unhandled_event");
+    await recordDeadLetter(
+      db,
+      rawBody,
+      event || "unknown",
+      "unhandled_event",
+      tenantIdFromPaystackMetadata(data.metadata)
+    );
     return NextResponse.json({ ok: true, deadLetter: true });
   }
 
   const reference = typeof data.reference === "string" ? data.reference.trim() : "";
+  const metadataTenantId = tenantIdFromPaystackMetadata(data.metadata);
   if (!reference) {
-    await recordDeadLetter(db, rawBody, event, "missing_reference");
+    await recordDeadLetter(db, rawBody, event, "missing_reference", metadataTenantId);
     return NextResponse.json({ ok: false, error: "missing_reference" }, { status: 422 });
   }
 
-  const result = await applyEvent(db, event as HandledEvent, reference);
+  const result = await applyEvent(db, event as HandledEvent, reference, metadataTenantId);
   if (!result.ok) {
-    await recordDeadLetter(db, rawBody, event, result.error);
-    return NextResponse.json({ ok: false, error: result.error }, { status: 404 });
+    await recordDeadLetter(db, rawBody, event, result.error, result.tenantId ?? metadataTenantId);
+    const status = result.error === "tenant_mismatch" ? 409 : 404;
+    return NextResponse.json({ ok: false, error: result.error }, { status });
   }
 
   return NextResponse.json({
@@ -228,5 +276,6 @@ export async function handlePaystackWebhook(
     event,
     paymentId: result.paymentId,
     bookingId: result.bookingId,
+    tenantId: result.tenantId,
   });
 }

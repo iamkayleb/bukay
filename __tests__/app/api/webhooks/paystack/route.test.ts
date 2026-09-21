@@ -13,9 +13,12 @@ import { DEAD_LETTER_RETENTION_MS, purgeExpiredDeadLetters } from "@/app/lib/pay
 import {
   __setPaystackWebhookDbForTests,
   handlePaystackWebhook,
+  tenantIdFromPaystackMetadata,
   type PaystackWebhookDb,
 } from "@/app/lib/payments/paystack-webhook";
 import { signPaystackBody, verifyPaystackSignature } from "@/app/lib/payments/signature";
+import * as paystackRoute from "@/app/api/webhooks/paystack/route";
+import { POST as paystackRoutePost } from "@/app/api/webhooks/paystack/route";
 
 const SECRET = "sk_test_paystack_webhook_secret_key";
 
@@ -69,11 +72,14 @@ function createDb(seed?: { payment?: PaymentRow; booking?: BookingRow }) {
 
   const db: PaystackWebhookDb = {
     payment: {
-      findFirst: vi.fn(async ({ where }) =>
-        payment.providerRef === where.providerRef ? { ...payment } : null
-      ),
+      findFirst: vi.fn(async ({ where }) => {
+        if (payment.providerRef !== where.providerRef) return null;
+        if (where.tenantId && payment.tenantId !== where.tenantId) return null;
+        return { ...payment };
+      }),
       update: vi.fn(async ({ where, data }) => {
         if (where.id !== payment.id) throw new Error("payment not found");
+        if (where.tenantId !== payment.tenantId) throw new Error("payment tenant mismatch");
         Object.assign(payment, data);
         paymentUpdates.push({ ...data });
         return { ...payment };
@@ -82,6 +88,7 @@ function createDb(seed?: { payment?: PaymentRow; booking?: BookingRow }) {
     booking: {
       update: vi.fn(async ({ where, data }) => {
         if (where.id !== booking.id) throw new Error("booking not found");
+        if (where.tenantId !== booking.tenantId) throw new Error("booking tenant mismatch");
         Object.assign(booking, data);
         bookingUpdates.push({ ...data });
         return { ...booking };
@@ -159,7 +166,14 @@ function signedRequest(body: unknown, secret = SECRET, signature?: string) {
   });
 }
 
-function eventBody(event: string, overrides: { id?: number | string; reference?: string } = {}) {
+function eventBody(
+  event: string,
+  overrides: {
+    id?: number | string;
+    reference?: string;
+    metadata?: Record<string, unknown> | string | null;
+  } = {}
+) {
   return {
     event,
     data: {
@@ -167,6 +181,7 @@ function eventBody(event: string, overrides: { id?: number | string; reference?:
       reference: overrides.reference ?? "ref-abc",
       amount: 5000,
       currency: "NGN",
+      ...(overrides.metadata !== undefined ? { metadata: overrides.metadata } : {}),
     },
   };
 }
@@ -301,6 +316,7 @@ describe("POST /api/webhooks/paystack", () => {
       event: "charge.success",
       paymentId: "pay-1",
       bookingId: "book-1",
+      tenantId: "tenant-1",
     });
     expect(payment.status).toBe("paid");
     expect(payment.paidAt).toBeInstanceOf(Date);
@@ -457,5 +473,91 @@ describe("POST /api/webhooks/paystack", () => {
       reason: "missing_reference",
       eventType: "charge.success",
     });
+  });
+
+  it("scopes payment and booking updates to the payment tenant", async () => {
+    const { db, payment, booking } = createDb();
+    const res = await handlePaystackWebhook(
+      signedRequest(eventBody("charge.success", { metadata: { tenantId: "tenant-1" } })),
+      { db, idempotency: store, secret: SECRET }
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ tenantId: "tenant-1" });
+    expect(db.payment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: payment.id, tenantId: "tenant-1" },
+      })
+    );
+    expect(db.booking.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: booking.id, tenantId: "tenant-1" },
+      })
+    );
+  });
+
+  it("rejects metadata tenant mismatch without mutating state", async () => {
+    const { db, payment, booking, deadLetters } = createDb();
+    const res = await handlePaystackWebhook(
+      signedRequest(eventBody("charge.success", { metadata: { tenantId: "other-tenant" } })),
+      { db, idempotency: store, secret: SECRET }
+    );
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ ok: false, error: "tenant_mismatch" });
+    expect(payment.status).toBe("pending");
+    expect(booking.status).toBe("pending_payment");
+    expect(db.payment.update).not.toHaveBeenCalled();
+    expect(deadLetters[0]).toMatchObject({
+      reason: "tenant_mismatch",
+      tenantId: "tenant-1",
+    });
+  });
+});
+
+describe("tenantIdFromPaystackMetadata", () => {
+  it("reads tenantId from object or JSON string metadata", () => {
+    expect(tenantIdFromPaystackMetadata({ tenantId: " t-1 " })).toBe("t-1");
+    expect(tenantIdFromPaystackMetadata('{"tenantId":"t-2"}')).toBe("t-2");
+    expect(tenantIdFromPaystackMetadata(null)).toBeNull();
+    expect(tenantIdFromPaystackMetadata({ tenantId: 1 })).toBeNull();
+  });
+});
+
+describe("POST /api/webhooks/paystack route module", () => {
+  const previousSecret = process.env.PAYSTACK_SECRET_KEY;
+
+  afterEach(() => {
+    __setPaystackWebhookDbForTests(null);
+    __resetIdempotencyStoreForTests();
+    if (previousSecret === undefined) {
+      delete process.env.PAYSTACK_SECRET_KEY;
+    } else {
+      process.env.PAYSTACK_SECRET_KEY = previousSecret;
+    }
+  });
+
+  it("exports only Next.js route symbols (no test hooks)", () => {
+    expect(Object.keys(paystackRoute).sort()).toEqual(["POST", "dynamic"].sort());
+    expect(paystackRoute.dynamic).toBe("force-dynamic");
+    expect(
+      Object.prototype.hasOwnProperty.call(paystackRoute, "__setPaystackWebhookDbForTests")
+    ).toBe(false);
+  });
+
+  it("POST applies charge.success through the thin route adapter", async () => {
+    const { db, payment, booking } = createDb();
+    __setPaystackWebhookDbForTests(db);
+    process.env.PAYSTACK_SECRET_KEY = SECRET;
+
+    const res = await paystackRoutePost(signedRequest(eventBody("charge.success")));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      ok: true,
+      event: "charge.success",
+      paymentId: "pay-1",
+      bookingId: "book-1",
+      tenantId: "tenant-1",
+    });
+    expect(payment.status).toBe("paid");
+    expect(booking.status).toBe("confirmed");
   });
 });
