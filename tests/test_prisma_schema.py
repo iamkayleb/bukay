@@ -73,7 +73,6 @@ EXPECTED_RELATIONS: dict[str, tuple[tuple[str, str], ...]] = {
     ),
 }
 
-
 def _strip_prisma_line_comments(schema_text: str) -> str:
     """Remove // and /// comments so `}` inside docs cannot truncate model bodies."""
     return re.sub(r"//.*?$", "", schema_text, flags=re.MULTILINE)
@@ -99,19 +98,6 @@ def _tenant_scoped_models(blocks: dict[str, str]) -> set[str]:
 
 def _has_tenant_id_index(model_body: str) -> bool:
     return re.search(r"@@index\(\[\s*tenantId\s*(?:,|\])", model_body) is not None
-
-
-def _has_relation_field(model_body: str, field_name: str, type_name: str) -> bool:
-    # Optional (`Type?`) and list (`Type[]`) suffixes are part of the declared type.
-    # Avoid trailing `\b`: `?` / `]` are non-word chars, so `\b` would fail to match.
-    return (
-        re.search(
-            rf"^\s*{re.escape(field_name)}\s+{re.escape(type_name)}(?:\s|$)",
-            model_body,
-            re.MULTILINE,
-        )
-        is not None
-    )
 
 
 def _package_version(package: str) -> str:
@@ -221,19 +207,28 @@ def test_every_tenant_scoped_model_has_tenant_index() -> None:
         assert _has_tenant_id_index(body), f"model {name} is missing `@@index([tenantId])`"
 
 
-def test_required_model_relations_are_declared() -> None:
-    blocks = _model_blocks(SCHEMA_PATH.read_text())
-    for model_name, relations in EXPECTED_RELATIONS.items():
-        body = blocks[model_name]
-        for field_name, type_name in relations:
-            assert _has_relation_field(
-                body, field_name, type_name
-            ), f"model {model_name} is missing relation `{field_name} {type_name}`"
-
-
 def test_tenant_model_has_no_tenant_id() -> None:
     blocks = _model_blocks(SCHEMA_PATH.read_text())
     body = blocks["Tenant"]
     assert not re.search(
         r"^\s*tenantId\s+", body, re.MULTILINE
     ), "Tenant model must not carry its own tenantId column"
+
+
+def _has_relation_field(model_body: str, field_name: str, related_type: str) -> bool:
+    """True when the model declares `fieldName RelatedType`."""
+    pattern = re.compile(rf"^\s*{re.escape(field_name)}\s+{re.escape(related_type)}\b", re.MULTILINE)
+    return pattern.search(model_body) is not None
+
+
+def test_required_model_relations_are_declared() -> None:
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    assert set(blocks) >= REQUIRED_MODELS
+
+    for model_name, relations in EXPECTED_RELATIONS.items():
+        body = blocks[model_name]
+        for field_name, related_type in relations:
+            assert _has_relation_field(body, field_name, related_type), (
+                f"model {model_name} is missing relation "
+                f"`{field_name} {related_type}`"
+            )
