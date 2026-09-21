@@ -827,6 +827,103 @@ jobs:
               `issue_body<<${delimiter}\n${issueBody}\n${delimiter}\n`
             );
 
+      # The canonical issue-format contract requires every task to name a
+      # concrete file, symbol, path, config key, job or command. Verifier
+      # concerns are prose, so both the LLM generator and the fallback emit
+      # tasks like "- [ ] Address: <prose>", which fails with
+      #   `Tasks` must name a concrete file, symbol, path, config key, job, or command.
+      # The LLM formatter cannot invent a target either, so auto-pilot pauses
+      # with needs-human and the follow-up never runs — observed on bukay #354
+      # and #378. Bind each untargeted task to a file the PR actually changed,
+      # which is both true and checkable.
+      - name: Bind follow-up tasks to concrete targets
+        id: bind-targets
+        if: >-
+          steps.check-merged.outputs.merged == 'true' &&
+          steps.terminal-artifact.outputs.terminal == 'true' &&
+          steps.chain-check.outputs.exceeded != 'true' &&
+          steps.extract-verdict.outputs.needs_human != 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        env:
+          RAW_BODY: >-
+            ${{ steps.generate.outputs.issue_body ||
+            steps.fallback.outputs.issue_body }}
+        with:
+          github-token: ${{ steps.select-token.outputs.token }}
+          script: |
+            const fs = require('fs');
+            const body = process.env.RAW_BODY || '';
+            if (!body) { core.warning('No follow-up body to bind.'); return; }
+
+            const { owner, repo } = context.repo;
+            const prNumber = context.payload.pull_request.number;
+            let paths = [];
+            try {
+              const files = await github.paginate(github.rest.pulls.listFiles, {
+                owner, repo, pull_number: prNumber, per_page: 100,
+              });
+              paths = files
+                .map((f) => f.filename)
+                .filter((p) => !p.startsWith('.agents/'))
+                .filter((p) => !/(^|\/)(package-lock\.json|pnpm-lock\.yaml)$/.test(p));
+            } catch (error) {
+              core.warning(`Could not list PR files: ${error.message || error}`);
+            }
+            // Prefer source files over tests when guessing a target.
+            const isTest = (p) => /(^|\/)(__tests__|tests|test)\//.test(p)
+              || /\.(test|spec)\./.test(p);
+            const ordered = [...paths].sort((a, b) => Number(isTest(a)) - Number(isTest(b)));
+
+            const hasTarget = (text) => /`[^`]+`/.test(text)
+              || /[\w./-]+\.(ts|tsx|js|jsx|py|sql|prisma|ya?ml|json|sh|md)\b/.test(text);
+            const GENERIC = new Set(['app', 'lib', 'src', 'api', 'test', 'tests',
+              '__tests__', 'scripts', 'public', 'components', 'index', 'route',
+              'page', 'main', 'migration']);
+            const pickTarget = (text) => {
+              const lower = text.toLowerCase();
+              // 1. the concern names the full path, or the file's basename
+              const exact = paths.find((p) => lower.includes(p.toLowerCase())
+                || lower.includes(String(p.split('/').pop()).toLowerCase()));
+              if (exact) return exact;
+              // 2. the concern names a distinctive directory or stem, e.g.
+              //    "Prisma migration ..." -> prisma/schema.prisma
+              let best = '';
+              let bestScore = 0;
+              for (const p of ordered) {
+                const parts = p.toLowerCase().split(/[/.]/)
+                  .filter((s) => s.length >= 4 && !GENERIC.has(s));
+                const score = parts.filter((s) => lower.includes(s)).length;
+                if (score > bestScore) { bestScore = score; best = p; }
+              }
+              return best || ordered[0] || '';
+            };
+
+            // Only rewrite inside "## Tasks". Acceptance criteria are judged by
+            // a different rule and must not be touched.
+            let section = '';
+            let bound = 0;
+            const out = body.split('\n').map((line) => {
+              const heading = line.match(/^##\s+(.+?)\s*$/);
+              if (heading) { section = heading[1].toLowerCase(); return line; }
+              if (section !== 'tasks') return line;
+              const task = line.match(/^(\s*- \[[ xX]\]\s*)(.+)$/);
+              if (!task || hasTarget(task[2])) return line;
+              const target = pickTarget(task[2]);
+              if (!target) return line;
+              bound += 1;
+              return `${task[1]}In \`${target}\`: ${task[2]}`;
+            }).join('\n');
+
+            core.info(`Bound ${bound} task(s) to a concrete file from PR #${prNumber}.`);
+            if (!paths.length) {
+              core.warning(
+                'PR changed no usable files; tasks left unbound and the issue may ' +
+                'fail the issue-format contract.');
+            }
+            const envFile = process.env.GITHUB_OUTPUT;
+            const delimiter = 'EOF_BOUND_BODY';
+            fs.appendFileSync(envFile, `issue_body<<${delimiter}\n${out}\n${delimiter}\n`);
+
       - name: Create follow-up issue
         id: create-issue
         if: >-
@@ -840,7 +937,8 @@ jobs:
             ${{ steps.generate.outputs.issue_title ||
             steps.fallback.outputs.issue_title }}
           ISSUE_BODY: >-
-            ${{ steps.generate.outputs.issue_body ||
+            ${{ steps.bind-targets.outputs.issue_body ||
+            steps.generate.outputs.issue_body ||
             steps.fallback.outputs.issue_body }}
         with:
           github-token: ${{ steps.select-token.outputs.token }}

@@ -454,7 +454,15 @@ def _formatted_output_valid(text: str) -> bool:
     # formatter result after the visible body has already passed validation.
     visible_text = _strip_original_issue_blocks(text)
     try:
-        workspace = os.environ.get("GITHUB_WORKSPACE", "").strip()
+        # Path citations must be judged against the branch that actually holds
+        # the code. A follow-up on a long-lived feature/eval lane cites files
+        # that exist only on that lane, so validating against the checked-out
+        # default branch fails every one of them with "None of the N paths this
+        # issue cites exist in this repository". ISSUE_FORMAT_REPO_ROOT lets the
+        # caller point validation at the right tree; unset, behaviour is
+        # unchanged.
+        override = os.environ.get("ISSUE_FORMAT_REPO_ROOT", "").strip()
+        workspace = override or os.environ.get("GITHUB_WORKSPACE", "").strip()
         repo_root = Path(workspace).resolve() if workspace else Path.cwd().resolve()
         return bool(_issue_format_validator().validate(visible_text, repo_root=repo_root).ok)
     except (ImportError, OSError, RuntimeError, SyntaxError):
