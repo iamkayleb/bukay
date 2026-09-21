@@ -787,6 +787,27 @@ jobs:
           });
           NODE
 
+          # Path citations are validated against the checked-out tree, which is
+          # the default branch. A follow-up on a long-lived lane cites files that
+          # exist only on that lane, so every one of them fails with "None of the
+          # N paths this issue cites exist in this repository" — the formatter
+          # reports needs_refinement, auto-pilot pauses, and the issue never runs
+          # (bukay #354, #378). When the issue declares a base branch, validate
+          # against that branch instead.
+          LANE_REF="$(sed -n 's/.*<!-- *base-branch: *\([^ ]*\) *-->.*/\1/p' \
+            /tmp/issue_body.md | head -1)"
+          if [ -n "$LANE_REF" ]; then
+            if git fetch --depth 1 origin "$LANE_REF" >/dev/null 2>&1; then
+              rm -rf /tmp/lane-root && mkdir -p /tmp/lane-root
+              git archive FETCH_HEAD | tar -x -C /tmp/lane-root
+              export ISSUE_FORMAT_REPO_ROOT=/tmp/lane-root
+              echo "Validating path citations against lane branch $LANE_REF"
+            else
+              echo "::warning::Could not fetch declared base branch $LANE_REF;"
+              echo "::warning::validating path citations against the default branch."
+            fi
+          fi
+
           # Format the issue
           echo "Formatting issue into AGENT_ISSUE_TEMPLATE structure..."
           python scripts/langchain/issue_formatter.py \
