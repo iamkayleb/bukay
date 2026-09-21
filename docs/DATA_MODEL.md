@@ -25,6 +25,7 @@ The tenant-owned models are:
 | `Payment` | Payment ledger row for a booking | `@@index([tenantId])`, `@@index([bookingId])`, `@@index([providerRef])` |
 | `AuditLog` | Append-only tenant activity record | `@@index([tenantId])`, `@@index([tenantId, entityType, entityId])` |
 | `DeadLetter` | Unknown or unhandled webhook (and similar) events | `@@index([source])`, `@@index([eventType])`, `@@index([createdAt])`, `@@index([tenantId])` |
+| `IdempotencyKey` | Durable webhook/request dedupe keys (7-day TTL) | `@@unique([key])`, `@@index([expiresAt])` |
 
 `Tenant` itself is not tenant-scoped and must not carry a `tenantId` column. Deleting a tenant
 cascades to its owned rows through the Prisma relations. `Booking` restricts deletion of referenced
@@ -96,6 +97,13 @@ string so callers can serialize structured context when needed.
 
 `DeadLetter` stores unknown or unhandled inbound events (for example Paystack webhooks) for later
 inspection. `tenantId` is optional so events that cannot be attributed to a tenant still persist.
+Rows older than 30 days are removed by `purgeExpiredDeadLetters` (invoked when recording new
+dead letters) so raw webhook payloads are not retained indefinitely.
+
+### IdempotencyKey
+
+`IdempotencyKey` stores durable webhook/request deduplication keys with a 7-day `expiresAt` TTL
+so replay protection survives process restarts and works across multiple instances.
 
 ## Running Migrations
 
@@ -129,6 +137,7 @@ checked-in migration:
 | `20260611112538_init` | Creates the initial SQLite schema for tenants, users, services, staff, business hours, clients, bookings, payments, and audit logs. It also creates all unique constraints and tenant indexes declared in `schema.prisma`. |
 | `20260915130000_slot_hold` | Adds the `SlotHold` table for durable public-booking holds with expiry indexes. |
 | `20260916120000_dead_letter` | Adds the `DeadLetter` table for unknown or unhandled inbound events. |
+| `20260921194500_idempotency_key` | Adds the `IdempotencyKey` table for durable webhook/request deduplication. |
 
 [`prisma/migrations/migration_lock.toml`](../prisma/migrations/migration_lock.toml) records the
 database provider as `sqlite`. Do not edit generated migration files by hand after they have been

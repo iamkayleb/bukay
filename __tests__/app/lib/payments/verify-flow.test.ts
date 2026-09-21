@@ -5,11 +5,11 @@ import { NextRequest } from "next/server";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { prisma } from "@/app/db/prisma";
+import { GET } from "@/app/api/payments/verify/route";
 import {
-  GET,
   __resetPaymentProviderForTests,
   setPaymentProviderForTests,
-} from "@/app/api/payments/verify/route";
+} from "@/app/lib/payments/resolve-provider";
 import { FakePaymentProvider } from "@/app/lib/payments/fake";
 import { PaystackProvider } from "@/app/lib/payments/paystack";
 import { createPaystackSubaccount } from "@/app/lib/payments/subaccount";

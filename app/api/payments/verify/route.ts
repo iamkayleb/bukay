@@ -1,31 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/app/db/prisma";
-import { FakePaymentProvider } from "@/app/lib/payments/fake";
-import { paystackFromEnv } from "@/app/lib/payments/paystack";
-import type { PaymentProvider } from "@/app/lib/payments/provider";
+import { getPaymentProvider } from "@/app/lib/payments/resolve-provider";
 import { releaseHoldForBooking } from "@/app/lib/slot-hold";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 
 export const dynamic = "force-dynamic";
-
-let providerOverride: PaymentProvider | null = null;
-
-export function setPaymentProviderForTests(next: PaymentProvider): void {
-  providerOverride = next;
-}
-
-export function __resetPaymentProviderForTests(): void {
-  providerOverride = null;
-}
-
-export function getPaymentProvider(): PaymentProvider {
-  if (providerOverride) return providerOverride;
-  if (process.env.PAYMENT_PROVIDER === "paystack") {
-    return paystackFromEnv();
-  }
-  return new FakePaymentProvider();
-}
 
 /**
  * Paystack (and Fake) redirect here after checkout.
