@@ -21,10 +21,10 @@ The tenant-owned models are:
 | `BusinessHour` | Weekly opening hours by day of week | `@@unique([tenantId, dayOfWeek])`, `@@index([tenantId])` |
 | `Client` | Customer profile scoped to a tenant | `@@unique([tenantId, phone])`, `@@index([tenantId])` |
 | `Booking` | Appointment linking client, service, and optional staff | `@@index([tenantId])`, `@@index([tenantId, startsAt])` |
-| `SlotHold` | Durable public-booking hold for a service slot | `@@unique([tenantId, serviceId, startsAt])`, `@@index([tenantId])`, `@@index([expiresAt])` |
+| `SlotHold` | Durable public-booking hold for a service start time | `@@unique([tenantId, serviceId, startsAt])`, `@@index([tenantId])`, `@@index([expiresAt])` |
 | `Payment` | Payment ledger row for a booking | `@@index([tenantId])`, `@@index([bookingId])`, `@@index([providerRef])` |
 | `AuditLog` | Append-only tenant activity record | `@@index([tenantId])`, `@@index([tenantId, entityType, entityId])` |
-| `DeadLetter` | Unhandled webhook (and similar) events for inspection | `@@index([source])`, `@@index([eventType])`, `@@index([tenantId])` |
+| `DeadLetter` | Unknown or unhandled webhook (and similar) events | `@@index([source])`, `@@index([eventType])`, `@@index([createdAt])`, `@@index([tenantId])` |
 
 `Tenant` itself is not tenant-scoped and must not carry a `tenantId` column. Deleting a tenant
 cascades to its owned rows through the Prisma relations. `Booking` restricts deletion of referenced
@@ -73,14 +73,14 @@ relations.
 ### Booking
 
 `Booking` links a client, service, optional staff member, start and end timestamps, status string, and
-optional notes. The tenant/start index supports calendar views. Active bookings may also store a
-`slotLock` value that uniquely identifies the reserved slot within a tenant.
+optional notes. The tenant/start index supports calendar views. Active bookings may also carry a
+`slotLock` value that uniquely reserves a service start time per tenant.
 
 ### SlotHold
 
-`SlotHold` is the source of truth for the public-booking hold window. It stores the service, slot
-start time, session id, optional booking id, and expiry timestamp. Holds are unique per tenant,
-service, and start time.
+`SlotHold` is the durable source of truth for the public-booking hold window. It stores the tenant,
+service, start time, session id, optional booking id, and expiry timestamp so failed payments can
+release capacity without leaving orphaned soft locks.
 
 ### Payment
 
@@ -94,8 +94,8 @@ string so callers can serialize structured context when needed.
 
 ### DeadLetter
 
-`DeadLetter` stores unknown or unhandled inbound events (for example webhook payloads that do not
-match a known event type). `tenantId` is optional when the event cannot be attributed to a tenant.
+`DeadLetter` stores unknown or unhandled inbound events (for example Paystack webhooks) for later
+inspection. `tenantId` is optional so events that cannot be attributed to a tenant still persist.
 
 ## Running Migrations
 
@@ -127,6 +127,8 @@ checked-in migration:
 | Migration | Description |
 |-----------|-------------|
 | `20260611112538_init` | Creates the initial SQLite schema for tenants, users, services, staff, business hours, clients, bookings, payments, and audit logs. It also creates all unique constraints and tenant indexes declared in `schema.prisma`. |
+| `20260915130000_slot_hold` | Adds the `SlotHold` table for durable public-booking holds with expiry indexes. |
+| `20260916120000_dead_letter` | Adds the `DeadLetter` table for unknown or unhandled inbound events. |
 
 [`prisma/migrations/migration_lock.toml`](../prisma/migrations/migration_lock.toml) records the
 database provider as `sqlite`. Do not edit generated migration files by hand after they have been

@@ -22,8 +22,8 @@ MIGRATIONS_DIR = ROOT / "prisma" / "migrations"
 DATA_MODEL_DOC = ROOT / "docs" / "DATA_MODEL.md"
 PACKAGE_JSON = ROOT / "package.json"
 
-# Models the scope requires to exist; mirrors test_prisma_schema.py.
-REQUIRED_MODELS = {
+# Models created by the initial migration (later models land in follow-up migrations).
+INIT_MIGRATION_MODELS = {
     "Tenant",
     "User",
     "Service",
@@ -35,10 +35,15 @@ REQUIRED_MODELS = {
     "AuditLog",
 }
 
+# Every model that must appear in docs/DATA_MODEL.md (mirrors schema).
+REQUIRED_MODELS = INIT_MIGRATION_MODELS | {"SlotHold", "DeadLetter"}
+
 
 def _model_blocks(schema_text: str) -> dict[str, str]:
+    # Strip // comments so `}` inside doc lines (e.g. `${serviceId}`) cannot truncate bodies.
+    stripped = re.sub(r"//.*?$", "", schema_text, flags=re.MULTILINE)
     pattern = re.compile(r"^model\s+(\w+)\s*\{([^}]*)\}", re.MULTILINE | re.DOTALL)
-    return {m.group(1): m.group(2) for m in pattern.finditer(schema_text)}
+    return {m.group(1): m.group(2) for m in pattern.finditer(stripped)}
 
 
 def _initial_migration_dir() -> Path:
@@ -138,18 +143,32 @@ def test_prisma_migrate_dev_runs_on_clean_database(tmp_path: Path) -> None:
 
 
 def test_migration_creates_every_required_model() -> None:
-    """Every model in the schema must have a CREATE TABLE in the initial migration."""
+    """Every init-era model must have a CREATE TABLE in the initial migration."""
     sql = (_initial_migration_dir() / "migration.sql").read_text()
-    for model in REQUIRED_MODELS:
+    for model in INIT_MIGRATION_MODELS:
         assert (
             f'CREATE TABLE "{model}"' in sql
         ), f"initial migration is missing CREATE TABLE for {model}"
 
 
+def test_follow_up_migrations_create_later_models() -> None:
+    """SlotHold and DeadLetter are added after init; ensure their CREATE TABLE exists."""
+    sql_blobs = [
+        (path / "migration.sql").read_text()
+        for path in MIGRATIONS_DIR.iterdir()
+        if (path / "migration.sql").exists()
+    ]
+    combined = "\n".join(sql_blobs)
+    for model in REQUIRED_MODELS - INIT_MIGRATION_MODELS:
+        assert (
+            f'CREATE TABLE "{model}"' in combined
+        ), f"migrations are missing CREATE TABLE for {model}"
+
+
 def test_migration_indexes_tenant_id_on_scoped_tables() -> None:
     """Every tenant-scoped table needs an index on tenantId in the SQL."""
     sql = (_initial_migration_dir() / "migration.sql").read_text()
-    for model in REQUIRED_MODELS - {"Tenant"}:
+    for model in INIT_MIGRATION_MODELS - {"Tenant"}:
         # Prisma emits `CREATE INDEX "<Model>_tenantId_idx" ON "<Model>"("tenantId")`
         # (or a composite index whose first column is tenantId).
         pattern = re.compile(

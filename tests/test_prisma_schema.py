@@ -34,12 +34,56 @@ EXPECTED_TENANT_SCOPED_MODELS = {
 # Models the scope requires to exist at all.
 REQUIRED_MODELS = EXPECTED_TENANT_SCOPED_MODELS | {"Tenant"}
 
+# Relation fields the suite asserts so schema drift cannot drop FK wiring.
+# Values are (field_name, type_with_optional_suffix) tuples.
+EXPECTED_RELATIONS: dict[str, tuple[tuple[str, str], ...]] = {
+    "User": (("tenant", "Tenant"),),
+    "Service": (("tenant", "Tenant"), ("bookings", "Booking[]"), ("slotHolds", "SlotHold[]")),
+    "Staff": (("tenant", "Tenant"), ("bookings", "Booking[]")),
+    "BusinessHour": (("tenant", "Tenant"),),
+    "Client": (("tenant", "Tenant"), ("bookings", "Booking[]")),
+    "Booking": (
+        ("tenant", "Tenant"),
+        ("client", "Client"),
+        ("service", "Service"),
+        ("staff", "Staff?"),
+        ("payments", "Payment[]"),
+    ),
+    "SlotHold": (
+        ("tenant", "Tenant"),
+        ("service", "Service"),
+    ),
+    "Payment": (
+        ("tenant", "Tenant"),
+        ("booking", "Booking"),
+    ),
+    "AuditLog": (("tenant", "Tenant"),),
+    "DeadLetter": (("tenant", "Tenant?"),),
+    "Tenant": (
+        ("users", "User[]"),
+        ("services", "Service[]"),
+        ("staff", "Staff[]"),
+        ("businessHours", "BusinessHour[]"),
+        ("clients", "Client[]"),
+        ("bookings", "Booking[]"),
+        ("payments", "Payment[]"),
+        ("auditLogs", "AuditLog[]"),
+        ("slotHolds", "SlotHold[]"),
+        ("deadLetters", "DeadLetter[]"),
+    ),
+}
+
+def _strip_prisma_line_comments(schema_text: str) -> str:
+    """Remove // and /// comments so `}` inside docs cannot truncate model bodies."""
+    return re.sub(r"//.*?$", "", schema_text, flags=re.MULTILINE)
+
 
 def _model_blocks(schema_text: str) -> dict[str, str]:
     """Return a {model_name: body_text} map from a Prisma schema."""
     blocks: dict[str, str] = {}
+    stripped = _strip_prisma_line_comments(schema_text)
     pattern = re.compile(r"^model\s+(\w+)\s*\{([^}]*)\}", re.MULTILINE | re.DOTALL)
-    for match in pattern.finditer(schema_text):
+    for match in pattern.finditer(stripped):
         blocks[match.group(1)] = match.group(2)
     return blocks
 
@@ -128,7 +172,7 @@ def test_schema_is_syntactically_valid_via_prisma_validate(tmp_path: Path) -> No
     assert re.search(r"\bis valid\b", result.stdout, re.IGNORECASE), result.stdout
 
 
-def test_schema_defines_exactly_required_models() -> None:
+def test_schema_defines_exact_required_models() -> None:
     blocks = _model_blocks(SCHEMA_PATH.read_text())
     assert len(blocks) == len(
         REQUIRED_MODELS
@@ -171,46 +215,9 @@ def test_tenant_model_has_no_tenant_id() -> None:
     ), "Tenant model must not carry its own tenantId column"
 
 
-# Expected Prisma relation fields per model (field name -> related model type
-# prefix). Keeps relation wiring from drifting silently.
-EXPECTED_RELATIONS: dict[str, dict[str, str]] = {
-    "Tenant": {
-        "users": "User",
-        "services": "Service",
-        "staff": "Staff",
-        "businessHours": "BusinessHour",
-        "clients": "Client",
-        "bookings": "Booking",
-        "payments": "Payment",
-        "auditLogs": "AuditLog",
-        "slotHolds": "SlotHold",
-        "deadLetters": "DeadLetter",
-    },
-    "User": {"tenant": "Tenant"},
-    "Service": {"tenant": "Tenant", "bookings": "Booking", "slotHolds": "SlotHold"},
-    "Staff": {"tenant": "Tenant", "bookings": "Booking"},
-    "BusinessHour": {"tenant": "Tenant"},
-    "Client": {"tenant": "Tenant", "bookings": "Booking"},
-    "Booking": {
-        "tenant": "Tenant",
-        "client": "Client",
-        "service": "Service",
-        "staff": "Staff",
-        "payments": "Payment",
-    },
-    "SlotHold": {"tenant": "Tenant", "service": "Service"},
-    "Payment": {"tenant": "Tenant", "booking": "Booking"},
-    "AuditLog": {"tenant": "Tenant"},
-    "DeadLetter": {"tenant": "Tenant"},
-}
-
-
 def _has_relation_field(model_body: str, field_name: str, related_type: str) -> bool:
-    """True when the model declares `fieldName RelatedType` or `RelatedType[]`."""
-    pattern = re.compile(
-        rf"^\s*{re.escape(field_name)}\s+{re.escape(related_type)}\??(?:\[\])?",
-        re.MULTILINE,
-    )
+    """True when the model declares `fieldName RelatedType`."""
+    pattern = re.compile(rf"^\s*{re.escape(field_name)}\s+{re.escape(related_type)}\b", re.MULTILINE)
     return pattern.search(model_body) is not None
 
 
@@ -220,8 +227,8 @@ def test_required_model_relations_are_declared() -> None:
 
     for model_name, relations in EXPECTED_RELATIONS.items():
         body = blocks[model_name]
-        for field_name, related_type in relations.items():
+        for field_name, related_type in relations:
             assert _has_relation_field(body, field_name, related_type), (
                 f"model {model_name} is missing relation "
-                f"`{field_name} {related_type}` (or {related_type}[])"
+                f"`{field_name} {related_type}`"
             )
