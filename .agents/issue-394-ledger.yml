@@ -5,11 +5,12 @@ branch: cursor/issue-394
 tasks:
   - id: task-01
     title: 'Add `app/lib/payments/flutterwave.ts`: add the adapter'
-    status: done
+    status: doing
     started_at: '2026-09-22T14:22:37Z'
-    finished_at: '2026-09-22T14:22:50Z'
-    commit: 9546a5c01bd414d976c0bdb0da8005c0dbdc9bc6
-    notes: []
+    finished_at: null
+    commit: ''
+    notes:
+      - 'Prior finish commit was ledger-only; implementing FlutterwaveProvider for real.'
   - id: task-02
     title: 'Add `app/api/webhooks/flutterwave/route.ts`: implement  with signature
       checks'

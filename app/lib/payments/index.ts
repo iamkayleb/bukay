@@ -14,6 +14,8 @@ export {
 } from "./provider";
 export { PaystackProvider, paystackFromEnv } from "./paystack";
 export type { PaystackConfig } from "./paystack";
+export { FlutterwaveProvider, flutterwaveFromEnv } from "./flutterwave";
+export type { FlutterwaveConfig } from "./flutterwave";
 export { FakePaymentProvider } from "./fake";
 export type { FakePaymentRecord } from "./fake";
 export { createPaystackSubaccount, subaccountFromEnv } from "./subaccount";
