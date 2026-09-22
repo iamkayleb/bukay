@@ -1,0 +1,68 @@
+version: 1
+issue: 395
+base: eval/cursor
+branch: cursor/issue-395
+tasks:
+  - id: task-01
+    title: 'Add `app/lib/whatsapp/provider.ts`: define the port'
+    status: doing
+    started_at: '2026-09-22T14:38:16Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Add `app/lib/whatsapp/meta.ts`: implement the live adapter'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Add `app/lib/whatsapp/fake.ts`: implement the test double'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Add `app/lib/whatsapp/templates.ts`: add the template registry'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Add `docs/WHATSAPP_TEMPLATES.md`: document approval steps'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: A sandbox send returns HTTP 200 with a message id, verified by `pnpm test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Every template in `app/lib/whatsapp/templates.ts` is documented
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: '`app/lib/whatsapp/fake.ts` substitutes for the adapter in tests'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
