@@ -25,7 +25,10 @@ d9c53e8 fix: align pnpm lockfile after conflict resolution
 **Regression gates:**
 
 - CI step `Assert pnpm lockfile (no npm package-lock)` runs **before** install and tests
-- `__tests__/app/api/payments/verify/reverification-386.test.ts` asserts the lockfile is present, tracked, and a pnpm v9 lockfile
+- `__tests__/app/api/payments/verify/reverification-386.test.ts` asserts:
+  - `git cat-file -e <eval/cursor ref>:pnpm-lock.yaml` (base-branch object, not only HEAD)
+  - working-tree lockfile is tracked and pnpm v9
+  - CI assert step order precedes install and `pnpm test`
 - `__tests__/app/api/payments/verify/reverification-363.test.ts` retains the earlier lockfile/CI contracts
 
 ## Concern: structural/textual reverification assertions

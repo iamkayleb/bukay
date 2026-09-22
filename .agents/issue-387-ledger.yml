@@ -6,18 +6,18 @@ tasks:
   - id: task-01
     title: Verify that pnpm-lock.yaml exists in the base branch eval/cursor
     status: done
-    started_at: '2026-09-22T02:28:16Z'
-    finished_at: '2026-09-22T02:41:10Z'
+    started_at: "2026-09-22T02:28:16Z"
+    finished_at: "2026-09-22T02:41:10Z"
     commit: db909f9360faa1df0cd03dc13114d521fac73eb8
     notes:
-      - Confirmed origin/eval/cursor:pnpm-lock.yaml blob 01347dac; evidence in
-        VERIFICATION.md and reverification-386.test.ts
+      - Confirmed origin/eval/cursor:pnpm-lock.yaml via git cat-file; guarded by
+        reverification-386.test.ts base-branch object assertion
   - id: task-02
     title: Add a CI step that explicitly checks for pnpm-lock.yaml presence before
       running tests
     status: done
-    started_at: '2026-09-22T02:40:00Z'
-    finished_at: '2026-09-22T02:41:10Z'
+    started_at: "2026-09-22T02:40:00Z"
+    finished_at: "2026-09-22T02:41:10Z"
     commit: db909f9360faa1df0cd03dc13114d521fac73eb8
     notes:
       - Strengthened Assert pnpm lockfile step; order guarded by
@@ -25,8 +25,8 @@ tasks:
   - id: task-03
     title: Document the lockfile dependency in the implementation notes or PR description
     status: done
-    started_at: '2026-09-22T02:40:00Z'
-    finished_at: '2026-09-22T02:41:10Z'
+    started_at: "2026-09-22T02:40:00Z"
+    finished_at: "2026-09-22T02:41:10Z"
     commit: db909f9360faa1df0cd03dc13114d521fac73eb8
     notes:
       - Documented in VERIFICATION.md and PR body Implementation Notes
@@ -34,16 +34,16 @@ tasks:
     title: Document why structural assertions are used as contract guards in test
       comments
     status: done
-    started_at: '2026-09-22T02:40:00Z'
-    finished_at: '2026-09-22T02:41:10Z'
+    started_at: "2026-09-22T02:40:00Z"
+    finished_at: "2026-09-22T02:41:10Z"
     commit: db909f9360faa1df0cd03dc13114d521fac73eb8
     notes:
       - Comments added in route.test.ts, reverification-363/386, verify-flow
   - id: task-05
     title: Verify that behavioral test coverage exists for all critical paths in route.test.ts
     status: done
-    started_at: '2026-09-22T02:40:00Z'
-    finished_at: '2026-09-22T02:41:10Z'
+    started_at: "2026-09-22T02:40:00Z"
+    finished_at: "2026-09-22T02:41:10Z"
     commit: db909f9360faa1df0cd03dc13114d521fac73eb8
     notes:
       - Critical paths mapped in route.test.ts header and VERIFICATION.md table;
@@ -52,37 +52,37 @@ tasks:
     title: Add a comment in reverification tests explaining the trade-off between
       structural and behavioral testing
     status: done
-    started_at: '2026-09-22T02:40:00Z'
-    finished_at: '2026-09-22T02:41:10Z'
+    started_at: "2026-09-22T02:40:00Z"
+    finished_at: "2026-09-22T02:41:10Z"
     commit: db909f9360faa1df0cd03dc13114d521fac73eb8
     notes:
       - Trade-off documented in reverification-363.test.ts and
-        reverification-386.test.ts headers
+        reverification-386.test.ts headers (structural vs behavioral)
   - id: task-07
-    title: 'In `.github/workflows/ci.yml`: Address: LLM evaluation could not run.'
+    title: "In `.github/workflows/ci.yml`: Address: LLM evaluation could not run."
     status: deferred
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes:
       - Deferred to human per issue #387 (external LLM credentials)
   - id: task-08
-    title: 'In `.github/workflows/ci.yml`: Address: The ''Re-verification passes''
+    title: "In `.github/workflows/ci.yml`: Address: The 'Re-verification passes'
       acceptance criterion is partially an external-evidence item (post-merge verification
       outcome) and cannot be conclusively proven from the diff; code artifacts here
-      do target it directly.'
+      do target it directly."
     status: deferred
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes:
       - Deferred to human per issue #387 (post-merge external evidence)
   - id: task-09
-    title: 'Each verification concern from PR #386 has either a passing test, a code
-      fix with test coverage, or a documented explanation in VERIFICATION.md'
+    title: "Each verification concern from PR #386 has either a passing test, a code
+      fix with test coverage, or a documented explanation in VERIFICATION.md"
     status: done
-    started_at: '2026-09-22T02:40:00Z'
-    finished_at: '2026-09-22T02:41:10Z'
+    started_at: "2026-09-22T02:40:00Z"
+    finished_at: "2026-09-22T02:41:10Z"
     commit: db909f9360faa1df0cd03dc13114d521fac73eb8
     notes:
       - VERIFICATION.md maps each concern; deferred items called out
@@ -90,8 +90,8 @@ tasks:
     title: All modified code paths have corresponding test coverage with at least
       one test per changed function
     status: done
-    started_at: '2026-09-22T02:40:00Z'
-    finished_at: '2026-09-22T02:41:10Z'
+    started_at: "2026-09-22T02:40:00Z"
+    finished_at: "2026-09-22T02:41:10Z"
     commit: db909f9360faa1df0cd03dc13114d521fac73eb8
     notes:
       - New reverification-386 tests cover CI/lockfile assertions
@@ -99,8 +99,8 @@ tasks:
     title: All tests pass locally with 'pnpm test' and no linting errors with 'pnpm
       lint'
     status: done
-    started_at: '2026-09-22T02:41:10Z'
-    finished_at: '2026-09-22T02:42:00Z'
+    started_at: "2026-09-22T02:41:10Z"
+    finished_at: "2026-09-22T02:42:00Z"
     commit: db909f9360faa1df0cd03dc13114d521fac73eb8
     notes:
-      - pnpm test 268 passed; pnpm lint clean
+      - pnpm test 269 passed; pnpm lint clean; format:check clean
