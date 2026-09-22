@@ -99,7 +99,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:01:00Z"
     finished_at: "2026-09-22T16:01:00Z"
-    commit: ""
+    commit: 4cebcb84570a1b627c1a66f8e431a015c6d6e348
     notes:
       - "PR #405 checkboxes + verification comments posted for tasks 01-11."
   - id: task-13
@@ -107,7 +107,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:01:00Z"
     finished_at: "2026-09-22T16:01:00Z"
-    commit: ""
+    commit: 4cebcb84570a1b627c1a66f8e431a015c6d6e348
     notes:
       - Expanded fake/meta/templates tests; added index.test.ts.
   - id: task-14
@@ -115,7 +115,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:01:00Z"
     finished_at: "2026-09-22T16:01:00Z"
-    commit: ""
+    commit: 4cebcb84570a1b627c1a66f8e431a015c6d6e348
     notes:
       - "pnpm test locally: 48 files / 319 tests passed; format:check clean. Awaiting CI on branch."
   - id: task-15
@@ -123,7 +123,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:01:00Z"
     finished_at: "2026-09-22T16:01:00Z"
-    commit: ""
+    commit: 4cebcb84570a1b627c1a66f8e431a015c6d6e348
     notes:
       - Auto-generated metadata line; marked N/A.
   - id: task-16
@@ -211,7 +211,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:01:00Z"
     finished_at: "2026-09-22T16:01:00Z"
-    commit: ""
+    commit: 4cebcb84570a1b627c1a66f8e431a015c6d6e348
     notes:
       - Duplicate of task-12.
   - id: task-27
@@ -219,7 +219,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:01:00Z"
     finished_at: "2026-09-22T16:01:00Z"
-    commit: ""
+    commit: 4cebcb84570a1b627c1a66f8e431a015c6d6e348
     notes:
       - Duplicate of task-13.
   - id: task-28
@@ -227,6 +227,6 @@ tasks:
     status: done
     started_at: "2026-09-22T16:01:00Z"
     finished_at: "2026-09-22T16:01:00Z"
-    commit: ""
+    commit: 4cebcb84570a1b627c1a66f8e431a015c6d6e348
     notes:
       - Duplicate of task-14.
