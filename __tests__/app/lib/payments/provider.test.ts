@@ -8,17 +8,30 @@ import {
 
 describe("PaymentProvider", () => {
   it("exposes the provider operations used by booking payments", () => {
-    expectTypeOf<PaymentProvider>().toMatchTypeOf<{
-      name: string;
-      initialize: (input: {
-        reference: string;
-        amount: number;
-        currency: string;
-        customer: { email: string };
-        callbackUrl: string;
-      }) => Promise<{ authorizationUrl: string }>;
-      verify: (reference: string) => Promise<{ status: PaymentStatus; paidAt: Date | null }>;
-      createSubaccount: (input: { percentageCharge: number }) => Promise<{ code: string }>;
+    expectTypeOf<PaymentProvider["name"]>().toEqualTypeOf<string>();
+
+    expectTypeOf<PaymentProvider["initialize"]>().parameter(0).toMatchTypeOf<{
+      reference: string;
+      amount: number;
+      currency: string;
+      customer: { email: string };
+      callbackUrl: string;
+    }>();
+    expectTypeOf<PaymentProvider["initialize"]>().returns.resolves.toMatchTypeOf<{
+      authorizationUrl: string;
+    }>();
+
+    expectTypeOf<PaymentProvider["verify"]>().parameter(0).toEqualTypeOf<string>();
+    expectTypeOf<PaymentProvider["verify"]>().returns.resolves.toMatchTypeOf<{
+      status: PaymentStatus;
+      paidAt: Date | null;
+    }>();
+
+    expectTypeOf<PaymentProvider["createSubaccount"]>().parameter(0).toMatchTypeOf<{
+      percentageCharge: number;
+    }>();
+    expectTypeOf<PaymentProvider["createSubaccount"]>().returns.resolves.toMatchTypeOf<{
+      code: string;
     }>();
   });
 

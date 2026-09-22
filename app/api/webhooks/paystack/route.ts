@@ -120,20 +120,20 @@ export async function POST(req: NextRequest) {
   const reference = extractReference(data);
   const idempotencyKey = `paystack:${event}:${reference ?? createHash("sha256").update(rawBody).digest("hex")}`;
 
-  if (hasProcessed(idempotencyKey)) {
+  if (await hasProcessed(idempotencyKey)) {
     return NextResponse.json({ ok: true, replayed: true });
   }
 
   if (!(event in PAYMENT_STATUS_BY_EVENT)) {
     await recordDeadLetter(event, rawBody, "unhandled_event_type");
-    markProcessed(idempotencyKey);
+    await markProcessed(idempotencyKey);
     return NextResponse.json({ ok: true, handled: false });
   }
 
   const tenantId = extractTenantId(data);
   if (!reference || !tenantId) {
     await recordDeadLetter(event, rawBody, "missing_reference_or_tenant");
-    markProcessed(idempotencyKey);
+    await markProcessed(idempotencyKey);
     return NextResponse.json({ ok: true, handled: false });
   }
 
@@ -176,6 +176,6 @@ export async function POST(req: NextRequest) {
     await recordDeadLetter(event, rawBody, "payment_not_found");
   }
 
-  markProcessed(idempotencyKey);
+  await markProcessed(idempotencyKey);
   return NextResponse.json({ ok: true, handled });
 }

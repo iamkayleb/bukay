@@ -31,6 +31,7 @@ const state = vi.hoisted(() => ({
     payload: string;
     reason?: string;
   }>,
+  idempotencyKeys: new Map<string, { key: string; expiresAt: Date }>(),
   findPaymentFirst: vi.fn(),
   updatePayment: vi.fn(),
   updateBooking: vi.fn(),
@@ -48,6 +49,24 @@ vi.mock("@/app/db/prisma", () => ({
     },
     deadLetterEvent: {
       create: state.createDeadLetter,
+    },
+    idempotencyKey: {
+      findUnique: async ({ where: { key } }: { where: { key: string } }) =>
+        state.idempotencyKeys.get(key) ?? null,
+      upsert: async ({
+        where: { key },
+        create,
+      }: {
+        where: { key: string };
+        create: { key: string; expiresAt: Date };
+      }) => {
+        const entry = { key, expiresAt: create.expiresAt };
+        state.idempotencyKeys.set(key, entry);
+        return entry;
+      },
+      deleteMany: async () => {
+        state.idempotencyKeys.clear();
+      },
     },
   },
 }));
@@ -90,7 +109,7 @@ function chargeSuccessPayload(overrides: Record<string, unknown> = {}) {
   };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   process.env.PAYSTACK_SECRET_KEY = SECRET;
 
   state.payments = [
@@ -151,7 +170,7 @@ beforeEach(() => {
     }
   );
 
-  __resetIdempotencyStoreForTests();
+  await __resetIdempotencyStoreForTests();
   __resetDomainEventsForTests();
 });
 
