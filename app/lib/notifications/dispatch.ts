@@ -107,7 +107,7 @@ export async function dispatchLifecycleNotification(
   event: LifecycleNotificationEvent,
   deps: DispatchDeps
 ): Promise<DispatchResult> {
-  const backoff = deps.backoff ?? { maxAttempts: 3, baseDelayMs: 0, maxDelayMs: 0 };
+  const backoff = deps.backoff ?? {};
 
   try {
     const result = await withBackoff(
