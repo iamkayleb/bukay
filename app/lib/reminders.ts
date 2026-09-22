@@ -107,6 +107,183 @@ export function dueReminderKinds(
   return kinds;
 }
 
+/**
+ * Durable per-kind claim: a prior `reminderSentAt` near this kind's target
+ * means that window was already dispatched (survives process restarts).
+ */
+export function reminderSentForKind(
+  booking: Pick<ReminderBooking, "startsAt" | "reminderSentAt">,
+  kind: ReminderKind,
+  toleranceMs: number = REMINDER_DISPATCH_TOLERANCE_MS
+): boolean {
+  if (!booking.reminderSentAt) {
+    return false;
+  }
+  const target = reminderTargetAt(booking.startsAt, kind);
+  return Math.abs(booking.reminderSentAt.getTime() - target.getTime()) <= toleranceMs;
+}
+
+/** Minimal Prisma surface used by the production reminder store / cron. */
+export type ReminderPrismaClient = AdvisoryLockDb & {
+  tenant: {
+    findMany: (args: { select: { id: true } }) => Promise<Array<{ id: string }>>;
+    findUnique: (args: {
+      where: { id: string };
+      select: { id: true; name: true; remindersEnabled: true };
+    }) => Promise<{ id: string; name: string; remindersEnabled: boolean } | null>;
+  };
+  booking: {
+    findMany: (args: Record<string, unknown>) => Promise<
+      Array<{
+        id: string;
+        tenantId: string;
+        startsAt: Date;
+        status: string;
+        reminderSentAt: Date | null;
+        client: { name: string; phone: string };
+        service: { name: string };
+        tenant: { name: string };
+      }>
+    >;
+    findFirst: (args: Record<string, unknown>) => Promise<{
+      id: string;
+      tenantId: string;
+      startsAt: Date;
+      reminderSentAt: Date | null;
+    } | null>;
+    update: (args: Record<string, unknown>) => Promise<unknown>;
+  };
+};
+
+type PrismaReminderRow = Awaited<ReturnType<ReminderPrismaClient["booking"]["findMany"]>>[number];
+
+function mapPrismaBooking(row: PrismaReminderRow): ReminderBooking {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    startsAt: new Date(row.startsAt),
+    status: row.status,
+    reminderSentAt: row.reminderSentAt ? new Date(row.reminderSentAt) : null,
+    clientName: row.client.name,
+    clientPhone: row.client.phone,
+    serviceName: row.service.name,
+    businessName: row.tenant.name,
+  };
+}
+
+/**
+ * Prisma-backed booking + claim store for the reminder cron.
+ * Queries per tenant so the tenant-guard extension stays satisfied.
+ */
+export class PrismaReminderStore implements ReminderBookingStore, ReminderClaimStore {
+  private readonly tenantByBookingId = new Map<string, string>();
+
+  constructor(private readonly db: ReminderPrismaClient) {}
+
+  async getTenant(tenantId: string): Promise<ReminderTenant | null> {
+    const tenant = await this.db.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true, name: true, remindersEnabled: true },
+    });
+    return tenant;
+  }
+
+  async listDueCandidates(args: { now: Date; windowMs: number }): Promise<ReminderBooking[]> {
+    const tenants = await this.db.tenant.findMany({ select: { id: true } });
+    const windows = (Object.keys(REMINDER_OFFSETS_MS) as ReminderKind[]).map((kind) => {
+      const offset = REMINDER_OFFSETS_MS[kind];
+      return {
+        gte: new Date(args.now.getTime() + offset - args.windowMs),
+        lte: new Date(args.now.getTime() + offset + args.windowMs),
+      };
+    });
+
+    const out: ReminderBooking[] = [];
+    for (const tenant of tenants) {
+      const rows = await this.db.booking.findMany({
+        where: {
+          tenantId: tenant.id,
+          NOT: { status: "cancelled" },
+          OR: windows.map((w) => ({ startsAt: { gte: w.gte, lte: w.lte } })),
+        },
+        include: {
+          client: { select: { name: true, phone: true } },
+          service: { select: { name: true } },
+          tenant: { select: { name: true } },
+        },
+      });
+      for (const row of rows) {
+        const booking = mapPrismaBooking(row);
+        this.tenantByBookingId.set(booking.id, booking.tenantId);
+        if (dueReminderKinds(booking, args.now, args.windowMs).length > 0) {
+          out.push(booking);
+        }
+      }
+    }
+    return out;
+  }
+
+  async markReminderSent(bookingId: string, sentAt: Date): Promise<void> {
+    const tenantId = this.tenantByBookingId.get(bookingId);
+    if (!tenantId) {
+      return;
+    }
+    await this.db.booking.update({
+      where: { id: bookingId, tenantId },
+      data: { reminderSentAt: sentAt },
+    });
+  }
+
+  async hasClaim(bookingId: string, kind: ReminderKind): Promise<boolean> {
+    const tenantId = this.tenantByBookingId.get(bookingId);
+    if (!tenantId) {
+      return true;
+    }
+    const existing = await this.db.booking.findFirst({
+      where: { id: bookingId, tenantId },
+      select: { id: true, tenantId: true, startsAt: true, reminderSentAt: true },
+    });
+    if (!existing) {
+      return true;
+    }
+    return reminderSentForKind(
+      {
+        startsAt: new Date(existing.startsAt),
+        reminderSentAt: existing.reminderSentAt ? new Date(existing.reminderSentAt) : null,
+      },
+      kind
+    );
+  }
+
+  async claim(bookingId: string, kind: ReminderKind): Promise<boolean> {
+    if (await this.hasClaim(bookingId, kind)) {
+      return false;
+    }
+    return true;
+  }
+}
+
+/**
+ * Production deps for `scripts/reminder-cron.ts`: Prisma store + advisory locks,
+ * optional SMS when Termii env is present (otherwise dry-run send ids).
+ */
+export function createPrismaReminderDeps(args: {
+  prisma: ReminderPrismaClient;
+  sms?: SmsProvider | null;
+  whatsapp?: WhatsAppProvider | null;
+  now?: () => Date;
+}): ReminderDeps {
+  const store = new PrismaReminderStore(args.prisma);
+  return {
+    bookings: store,
+    claims: store,
+    locks: args.prisma,
+    sms: args.sms ?? null,
+    whatsapp: args.whatsapp ?? null,
+    now: args.now,
+  };
+}
+
 function buildSmsBody(booking: ReminderBooking, kind: ReminderKind): string {
   const when = booking.startsAt.toISOString();
   const lead = kind === "t24h" ? "24h" : "2h";

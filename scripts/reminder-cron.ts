@@ -10,12 +10,21 @@
  * via `app/lib/locks.ts` before claiming and sending.
  */
 
-import { REMINDER_CRON_INTERVAL_MS, runReminderPass, type ReminderDeps } from "@/app/lib/reminders";
+import { prisma } from "@/app/db/prisma";
+import {
+  REMINDER_CRON_INTERVAL_MS,
+  createPrismaReminderDeps,
+  runReminderPass,
+  type ReminderDeps,
+  type ReminderPrismaClient,
+} from "@/app/lib/reminders";
+import { termiiFromEnv } from "@/app/lib/sms";
+import type { SmsProvider } from "@/app/lib/sms/provider";
 
 export { REMINDER_CRON_INTERVAL_MS };
 
 export type ReminderCronOptions = {
-  /** Override deps (tests). When omitted, a no-op dry-run pass is used. */
+  /** Override deps (tests). When omitted, Prisma + optional Termii SMS are used. */
   deps?: ReminderDeps;
   /** Interval between ticks. Defaults to 5 minutes. */
   intervalMs?: number;
@@ -34,6 +43,27 @@ export type ReminderCronHandle = {
   stop: () => void;
 };
 
+function optionalSmsFromEnv(): SmsProvider | null {
+  if (!process.env.TERMII_API_KEY || !process.env.TERMII_SENDER_ID) {
+    return null;
+  }
+  try {
+    return termiiFromEnv();
+  } catch {
+    return null;
+  }
+}
+
+/** Default production deps: Prisma bookings/claims/locks + Termii when configured. */
+export function buildDefaultReminderDeps(
+  db: ReminderPrismaClient = prisma as unknown as ReminderPrismaClient
+): ReminderDeps {
+  return createPrismaReminderDeps({
+    prisma: db,
+    sms: optionalSmsFromEnv(),
+  });
+}
+
 /**
  * Start the reminder job. Returns a handle so callers (and tests) can stop it.
  */
@@ -42,23 +72,7 @@ export function startReminderCron(options: ReminderCronOptions = {}): ReminderCr
   const log = options.log ?? ((message: string) => console.log(message));
   const setIntervalFn = options.setIntervalFn ?? setInterval;
   const clearIntervalFn = options.clearIntervalFn ?? clearInterval;
-
-  const emptyDeps: ReminderDeps = {
-    bookings: {
-      async listDueCandidates() {
-        return [];
-      },
-      async getTenant() {
-        return null;
-      },
-      async markReminderSent() {},
-    },
-    claims: {
-      hasClaim: () => false,
-      claim: () => true,
-    },
-  };
-  const deps = options.deps ?? emptyDeps;
+  const deps = options.deps ?? buildDefaultReminderDeps();
 
   let timer: ReturnType<typeof setInterval> | null = null;
   let stopped = false;

@@ -11,12 +11,15 @@ import {
   MemoryReminderStore,
   REMINDER_CRON_INTERVAL_MS,
   REMINDER_DISPATCH_TOLERANCE_MS,
+  createPrismaReminderDeps,
   isWithinDispatchWindow,
+  reminderSentForKind,
   reminderTargetAt,
   runReminderPass,
+  type ReminderPrismaClient,
 } from "@/app/lib/reminders";
 import { MemorySmsProvider } from "@/app/lib/sms/memory";
-import { startReminderCron } from "../scripts/reminder-cron";
+import { buildDefaultReminderDeps, startReminderCron } from "../scripts/reminder-cron";
 
 afterEach(() => {
   __resetMemoryAdvisoryLocksForTests();
@@ -253,5 +256,122 @@ describe("reminder-cron job", () => {
     });
     await handle.done;
     expect(logs.some((l) => l.includes("examined=0"))).toBe(true);
+  });
+
+  it("buildDefaultReminderDeps wires Prisma store and locks", async () => {
+    const now = new Date("2026-09-22T15:00:00.000Z");
+    const startsAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const bookingRow = {
+      id: "booking-db-1",
+      tenantId: "tenant-db",
+      startsAt,
+      status: "confirmed",
+      reminderSentAt: null as Date | null,
+      client: { name: "Ada", phone: "+2348011111111" },
+      service: { name: "Haircut" },
+      tenant: { name: "Demo Salon" },
+    };
+
+    const db: ReminderPrismaClient = {
+      $queryRaw: async () => [{ locked: true }],
+      tenant: {
+        findMany: async () => [{ id: "tenant-db" }],
+        findUnique: async () => ({
+          id: "tenant-db",
+          name: "Demo Salon",
+          remindersEnabled: true,
+        }),
+      },
+      booking: {
+        findMany: async () => [bookingRow],
+        findFirst: async () => ({
+          id: bookingRow.id,
+          tenantId: bookingRow.tenantId,
+          startsAt: bookingRow.startsAt,
+          reminderSentAt: bookingRow.reminderSentAt,
+        }),
+        update: async (args: Record<string, unknown>) => {
+          const data = args.data as { reminderSentAt: Date };
+          bookingRow.reminderSentAt = data.reminderSentAt;
+          return bookingRow;
+        },
+      },
+    };
+
+    const deps = buildDefaultReminderDeps(db);
+    deps.now = () => now;
+    deps.sms = new MemorySmsProvider();
+    // Serialize parallel workers via in-memory advisory locks (pg mock is not concurrent-safe).
+    deps.locks = null;
+
+    const [a, b] = await Promise.all([runReminderPass(deps), runReminderPass(deps)]);
+    expect(a.sent.length + b.sent.length).toBe(1);
+    expect(bookingRow.reminderSentAt?.toISOString()).toBe(now.toISOString());
+  });
+});
+
+describe("prisma reminder store", () => {
+  it("reminderSentForKind treats a nearby reminderSentAt as a durable claim", () => {
+    const startsAt = new Date("2026-09-23T15:00:00.000Z");
+    const t24 = reminderTargetAt(startsAt, "t24h");
+    expect(reminderSentForKind({ startsAt, reminderSentAt: t24 }, "t24h")).toBe(true);
+    expect(reminderSentForKind({ startsAt, reminderSentAt: t24 }, "t2h")).toBe(false);
+    expect(reminderSentForKind({ startsAt, reminderSentAt: null }, "t24h")).toBe(false);
+  });
+
+  it("skips a second pass after reminderSentAt is persisted for the kind", async () => {
+    const now = new Date("2026-09-22T15:00:00.000Z");
+    const startsAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const bookingRow = {
+      id: "booking-db-2",
+      tenantId: "tenant-db",
+      startsAt,
+      status: "confirmed",
+      reminderSentAt: null as Date | null,
+      client: { name: "Chi", phone: "+2348022222222" },
+      service: { name: "Color" },
+      tenant: { name: "Demo Salon" },
+    };
+
+    const db: ReminderPrismaClient = {
+      $queryRaw: async () => [{ locked: true }],
+      tenant: {
+        findMany: async () => [{ id: "tenant-db" }],
+        findUnique: async () => ({
+          id: "tenant-db",
+          name: "Demo Salon",
+          remindersEnabled: true,
+        }),
+      },
+      booking: {
+        findMany: async () => [bookingRow],
+        findFirst: async () => ({
+          id: bookingRow.id,
+          tenantId: bookingRow.tenantId,
+          startsAt: bookingRow.startsAt,
+          reminderSentAt: bookingRow.reminderSentAt,
+        }),
+        update: async (args: Record<string, unknown>) => {
+          const data = args.data as { reminderSentAt: Date };
+          bookingRow.reminderSentAt = data.reminderSentAt;
+          return bookingRow;
+        },
+      },
+    };
+
+    const sms = new MemorySmsProvider();
+    const deps = createPrismaReminderDeps({ prisma: db, sms, now: () => now });
+    deps.locks = null;
+
+    const first = await runReminderPass(deps);
+    expect(first.sent).toHaveLength(1);
+    expect(await deps.claims.hasClaim("booking-db-2", "t24h")).toBe(true);
+
+    // Simulate a fresh store (process restart) reading the persisted timestamp.
+    const restarted = createPrismaReminderDeps({ prisma: db, sms, now: () => now });
+    restarted.locks = null;
+    const second = await runReminderPass(restarted);
+    expect(second.sent).toHaveLength(0);
+    expect(sms.outbox).toHaveLength(1);
   });
 });
