@@ -35,4 +35,14 @@ describe("WhatsApp template registry", () => {
       }
     }
   });
+
+  it("keeps bodyExample placeholder count aligned with bodyPlaceholders", () => {
+    for (const template of listWhatsAppTemplates()) {
+      const matches = template.bodyExample.match(/\{\{\d+\}\}/g) ?? [];
+      expect(matches).toHaveLength(template.bodyPlaceholders.length);
+      matches.forEach((token, index) => {
+        expect(token).toBe(`{{${index + 1}}}`);
+      });
+    }
+  });
 });

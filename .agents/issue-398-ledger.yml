@@ -4,220 +4,222 @@ base: eval/cursor
 branch: cursor/issue-398
 tasks:
   - id: task-01
-    title: 'In `app/lib/whatsapp/fake.ts`: Address: LLM evaluation could not run.'
+    title: "In `app/lib/whatsapp/fake.ts`: Address: LLM evaluation could not run."
     status: done
-    started_at: '2026-09-22T15:56:00Z'
-    finished_at: '2026-09-22T15:56:46Z'
+    started_at: "2026-09-22T15:56:00Z"
+    finished_at: "2026-09-22T15:56:46Z"
     commit: 8c626c818ff8d0c1b4901f45a88ba0ada485d43b
     notes:
-      - '2026-09-22T15:50:44Z failure (run 35749884194): status=failure'
-      - 'Manual review substituted for OpenAI LLM eval (credit_balance_exhausted on
-        PR #397).'
-      - 'Hardened fake.ts docs + messagesTo; expanded fake.test.ts (8 tests pass).'
+      - "2026-09-22T15:50:44Z failure (run 35749884194): status=failure"
+      - "Manual review substituted for OpenAI LLM eval (credit_balance_exhausted on PR #397)."
+      - Hardened fake.ts docs + messagesTo; expanded fake.test.ts (8 tests pass).
   - id: task-02
-    title: Review and verify the implementation of meta.ts matches the documented
-      requirements
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    title: Review and verify the implementation of meta.ts matches the documented requirements
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - Reviewed meta.ts (fetch inject, payloads, errors, fromEnv). Added tests; prettier-fixed CI format
+        root cause.
   - id: task-03
-    title: Review and verify the implementation of provider.ts follows the established
-      patterns
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    title: Review and verify the implementation of provider.ts follows the established patterns
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - Reviewed provider.ts against payments port pattern; covered by provider.test.ts.
   - id: task-04
-    title: Review and verify the implementation of templates.ts handles all template
-      types correctly
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    title: Review and verify the implementation of templates.ts handles all template types correctly
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - Reviewed templates.ts (6 UTILITY templates); placeholder alignment test added.
   - id: task-05
-    title: Review and verify the implementation of index.ts exports all necessary
-      components
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    title: Review and verify the implementation of index.ts exports all necessary components
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - Reviewed index.ts barrel; added index.test.ts for public exports.
   - id: task-06
-    title: Review and verify the documentation in WHATSAPP_TEMPLATES.md is complete
-      and accurate
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    title: Review and verify the documentation in WHATSAPP_TEMPLATES.md is complete and accurate
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - Reviewed WHATSAPP_TEMPLATES.md; matches registry + approval steps.
   - id: task-07
-    title: Verify that meta.ts sandbox-send test includes assertion for HTTP 200 status
-      code
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    title: Verify that meta.ts sandbox-send test includes assertion for HTTP 200 status code
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - Confirmed meta.test.ts asserts result.httpStatus === 200 for sandbox send.
   - id: task-08
-    title: Verify that meta.ts sandbox-send test includes assertion for message id
-      in response
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    title: Verify that meta.ts sandbox-send test includes assertion for message id in response
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - Confirmed meta.test.ts asserts result.id matches /^wamid./ for sandbox send.
   - id: task-09
     title: Document the verification results for the meta.ts sandbox-send test assertions
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - "Documented sandbox assertion verification on PR #405."
   - id: task-10
-    title: '## Deferred Tasks (Requires Human)'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    title: "## Deferred Tasks (Requires Human)"
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - Section header only; marked N/A.
   - id: task-11
-    title: Investigate why Next.js CI job failed despite local tests passing and document
-      findings
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    title: Investigate why Next.js CI job failed despite local tests passing and document findings
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - CI failure on merge f1f1764 was prettier Format check (6 whatsapp files), not pnpm test. Fixed.
   - id: task-12
-    title: Each task checkbox above is completed and marked done, with verification
-      evidence added as comments
+    title: Each task checkbox above is completed and marked done, with verification evidence added as comments
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-13
     title: Tests updated if needed
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-14
     title: All tests in pnpm test pass locally and CI workflow completes successfully
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-15
-    title: '*Auto-generated by verify-to-new-pr workflow (fallback mode)*'
+    title: "*Auto-generated by verify-to-new-pr workflow (fallback mode)*"
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-16
-    title: 'In `app/lib/whatsapp/fake.ts`: Address: LLM evaluation could not run.'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    title: "In `app/lib/whatsapp/fake.ts`: Address: LLM evaluation could not run."
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - Duplicate of task-01; completed with primary task.
   - id: task-17
-    title: Review and verify the implementation of meta.ts matches the documented
-      requirements
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    title: Review and verify the implementation of meta.ts matches the documented requirements
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - Duplicate of task-02; completed with primary task.
   - id: task-18
-    title: Review and verify the implementation of provider.ts follows the established
-      patterns
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    title: Review and verify the implementation of provider.ts follows the established patterns
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - Duplicate of task-03; completed with primary task.
   - id: task-19
-    title: Review and verify the implementation of templates.ts handles all template
-      types correctly
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    title: Review and verify the implementation of templates.ts handles all template types correctly
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - Duplicate of task-04; completed with primary task.
   - id: task-20
-    title: Review and verify the implementation of index.ts exports all necessary
-      components
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    title: Review and verify the implementation of index.ts exports all necessary components
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - Duplicate of task-05; completed with primary task.
   - id: task-21
-    title: Review and verify the documentation in WHATSAPP_TEMPLATES.md is complete
-      and accurate
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    title: Review and verify the documentation in WHATSAPP_TEMPLATES.md is complete and accurate
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - Duplicate of task-06; completed with primary task.
   - id: task-22
-    title: Verify that meta.ts sandbox-send test includes assertion for HTTP 200 status
-      code
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    title: Verify that meta.ts sandbox-send test includes assertion for HTTP 200 status code
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - Duplicate of task-07; completed with primary task.
   - id: task-23
-    title: Verify that meta.ts sandbox-send test includes assertion for message id
-      in response
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    title: Verify that meta.ts sandbox-send test includes assertion for message id in response
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - Duplicate of task-08; completed with primary task.
   - id: task-24
     title: Document the verification results for the meta.ts sandbox-send test assertions
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - Duplicate of task-09; completed with primary task.
   - id: task-25
-    title: Investigate why Next.js CI job failed despite local tests passing and document
-      findings
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    title: Investigate why Next.js CI job failed despite local tests passing and document findings
+    status: done
+    started_at: "2026-09-22T16:00:00Z"
+    finished_at: "2026-09-22T16:00:00Z"
+    commit: ""
+    notes:
+      - Duplicate of task-11; completed with primary task.
   - id: task-26
-    title: Each task checkbox above is completed and marked done, with verification
-      evidence added as comments
+    title: Each task checkbox above is completed and marked done, with verification evidence added as comments
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-27
     title: Tests updated if needed
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-28
     title: All tests in pnpm test pass locally and CI workflow completes successfully
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []

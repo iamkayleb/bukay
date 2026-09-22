@@ -37,9 +37,9 @@ describe("WhatsAppProvider port", () => {
     };
     expect(() => assertWhatsAppSendInput("contract", text)).not.toThrow();
 
-    expect(() =>
-      assertWhatsAppSendInput("contract", { ...text, to: "" })
-    ).toThrow(/'to' is required/);
+    expect(() => assertWhatsAppSendInput("contract", { ...text, to: "" })).toThrow(
+      /'to' is required/
+    );
     expect(() =>
       assertWhatsAppSendInput("contract", {
         to: "+2348012345678",

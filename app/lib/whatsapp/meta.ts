@@ -160,9 +160,7 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
   }
 }
 
-export function metaWhatsAppFromEnv(
-  env: NodeJS.ProcessEnv = process.env
-): MetaWhatsAppProvider {
+export function metaWhatsAppFromEnv(env: NodeJS.ProcessEnv = process.env): MetaWhatsAppProvider {
   const accessToken = env.WHATSAPP_ACCESS_TOKEN ?? env.META_WHATSAPP_ACCESS_TOKEN ?? "";
   const phoneNumberId = env.WHATSAPP_PHONE_NUMBER_ID ?? env.META_WHATSAPP_PHONE_NUMBER_ID ?? "";
   const apiVersion = env.WHATSAPP_API_VERSION ?? env.META_WHATSAPP_API_VERSION;
