@@ -19,6 +19,8 @@ model Tenant {
   currency        String         @default("NGN")
   /// Active PaymentProvider adapter name: "paystack" | "flutterwave" | "fake".
   paymentProvider String         @default("paystack")
+  /// When false, the reminder cron skips T-24h / T-2h sends for this tenant.
+  remindersEnabled Boolean       @default(true)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   users           User[]
@@ -128,6 +130,8 @@ model Booking {
   endsAt    DateTime
   status    String    @default("pending")
   notes     String?
+  /// Timestamp of the most recent T-24h / T-2h reminder send (null = never).
+  reminderSentAt DateTime?
   /// Non-null for active (non-cancelled) bookings. Unique per tenant so the DB
   /// enforces one live reservation per slot. Format: serviceId + '|' + startsAt ISO.
   slotLock  String?
