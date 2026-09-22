@@ -23,6 +23,7 @@ The tenant-owned models are:
 | `Booking` | Appointment linking client, service, and optional staff | `@@index([tenantId])`, `@@index([tenantId, startsAt])` |
 | `SlotHold` | Durable public-booking hold for a service start time | `@@unique([tenantId, serviceId, startsAt])`, `@@index([tenantId])`, `@@index([expiresAt])` |
 | `Payment` | Payment ledger row for a booking | `@@index([tenantId])`, `@@index([bookingId])`, `@@index([providerRef])` |
+| `LedgerEntry` | Append-only money movement (gross / fees / net) | `@@index([tenantId])`, `@@index([paymentId])`, `@@index([reference])`, `@@index([tenantId, createdAt])` |
 | `AuditLog` | Append-only tenant activity record | `@@index([tenantId])`, `@@index([tenantId, entityType, entityId])` |
 | `DeadLetter` | Unknown or unhandled webhook (and similar) events | `@@index([source])`, `@@index([eventType])`, `@@index([createdAt])`, `@@index([tenantId])` |
 | `IdempotencyKey` | Durable webhook/request dedupe keys (7-day TTL) | `@@unique([key])`, `@@index([expiresAt])` |
@@ -43,8 +44,10 @@ with that access pattern while also accelerating calendar-style reads.
 
 ### Tenant
 
-`Tenant` stores the business name, globally unique slug, timezone, currency, and relations to all
-tenant-owned records. The defaults are `Africa/Lagos` for timezone and `NGN` for currency.
+`Tenant` stores the business name, globally unique slug, timezone, currency,
+optional `paymentProvider` selection (`paystack` by default; also `flutterwave` or
+`fake`), and relations to all tenant-owned records. The defaults are `Africa/Lagos`
+for timezone and `NGN` for currency.
 
 ### User
 
@@ -87,6 +90,13 @@ release capacity without leaving orphaned soft locks.
 
 `Payment` links to a booking and stores amount, currency, provider metadata, status string, optional
 paid timestamp, and audit timestamps.
+
+### LedgerEntry
+
+`LedgerEntry` is an append-only money-movement row written after successful payment verification.
+Both Paystack and Flutterwave adapters produce the same field shape (`grossCents`,
+`providerFeeCents`, `platformFeeCents`, `netCents`, `direction`, `currency`, `reference`). Switching
+`Tenant.paymentProvider` must not rewrite or delete existing ledger rows.
 
 ### AuditLog
 
