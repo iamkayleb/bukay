@@ -21,6 +21,7 @@ tasks:
     notes: []
   - id: task-03
     title: 'Add `prisma/schema.prisma`: add the `paymentProvider` column to the `Tenant`
+      model'
     status: done
     started_at: '2026-09-22T14:30:52Z'
     finished_at: '2026-09-22T14:33:47Z'
