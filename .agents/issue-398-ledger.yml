@@ -5,11 +5,12 @@ branch: cursor/issue-398
 tasks:
   - id: task-01
     title: 'In `app/lib/whatsapp/fake.ts`: Address: LLM evaluation could not run.'
-    status: doing
-    started_at: '2026-09-22T15:50:02Z'
+    status: todo
+    started_at: null
     finished_at: null
     commit: ''
-    notes: []
+    notes:
+      - '2026-09-22T15:50:44Z failure (run 35749884194): status=failure'
   - id: task-02
     title: Review and verify the implementation of meta.ts matches the documented
       requirements
