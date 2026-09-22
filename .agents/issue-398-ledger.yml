@@ -5,12 +5,15 @@ branch: cursor/issue-398
 tasks:
   - id: task-01
     title: 'In `app/lib/whatsapp/fake.ts`: Address: LLM evaluation could not run.'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-09-22T15:56:00Z'
+    finished_at: '2026-09-22T15:56:46Z'
+    commit: 8c626c818ff8d0c1b4901f45a88ba0ada485d43b
     notes:
       - '2026-09-22T15:50:44Z failure (run 35749884194): status=failure'
+      - 'Manual review substituted for OpenAI LLM eval (credit_balance_exhausted on
+        PR #397).'
+      - 'Hardened fake.ts docs + messagesTo; expanded fake.test.ts (8 tests pass).'
   - id: task-02
     title: Review and verify the implementation of meta.ts matches the documented
       requirements
