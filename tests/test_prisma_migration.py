@@ -36,7 +36,12 @@ INIT_MIGRATION_MODELS = {
 }
 
 # Every model that must appear in docs/DATA_MODEL.md (mirrors schema).
-REQUIRED_MODELS = INIT_MIGRATION_MODELS | {"SlotHold", "DeadLetter", "IdempotencyKey"}
+REQUIRED_MODELS = INIT_MIGRATION_MODELS | {
+    "SlotHold",
+    "DeadLetter",
+    "IdempotencyKey",
+    "LedgerEntry",
+}
 
 
 def _model_blocks(schema_text: str) -> dict[str, str]:
@@ -152,7 +157,7 @@ def test_migration_creates_every_required_model() -> None:
 
 
 def test_follow_up_migrations_create_later_models() -> None:
-    """SlotHold, DeadLetter, and IdempotencyKey are added after init; ensure CREATE TABLE exists."""
+    """Models added after init must have a CREATE TABLE in some migration."""
     sql_blobs = [
         (path / "migration.sql").read_text()
         for path in MIGRATIONS_DIR.iterdir()
@@ -163,6 +168,19 @@ def test_follow_up_migrations_create_later_models() -> None:
         assert (
             f'CREATE TABLE "{model}"' in combined
         ), f"migrations are missing CREATE TABLE for {model}"
+
+
+def test_tenant_payment_provider_column_migration() -> None:
+    """Tenant.paymentProvider is added after init; ensure ALTER TABLE exists."""
+    sql_blobs = [
+        (path / "migration.sql").read_text()
+        for path in MIGRATIONS_DIR.iterdir()
+        if (path / "migration.sql").exists()
+    ]
+    combined = "\n".join(sql_blobs)
+    assert (
+        'ADD COLUMN "paymentProvider"' in combined
+    ), "migrations are missing Tenant.paymentProvider column"
 
 
 def test_migration_indexes_tenant_id_on_scoped_tables() -> None:

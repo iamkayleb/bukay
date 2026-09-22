@@ -27,6 +27,7 @@ EXPECTED_TENANT_SCOPED_MODELS = {
     "Booking",
     "SlotHold",
     "Payment",
+    "LedgerEntry",
     "AuditLog",
     "DeadLetter",
 }
@@ -56,6 +57,11 @@ EXPECTED_RELATIONS: dict[str, tuple[tuple[str, str], ...]] = {
     "Payment": (
         ("tenant", "Tenant"),
         ("booking", "Booking"),
+        ("ledgerEntries", "LedgerEntry[]"),
+    ),
+    "LedgerEntry": (
+        ("tenant", "Tenant"),
+        ("payment", "Payment?"),
     ),
     "AuditLog": (("tenant", "Tenant"),),
     "DeadLetter": (("tenant", "Tenant?"),),
@@ -67,6 +73,7 @@ EXPECTED_RELATIONS: dict[str, tuple[tuple[str, str], ...]] = {
         ("clients", "Client[]"),
         ("bookings", "Booking[]"),
         ("payments", "Payment[]"),
+        ("ledgerEntries", "LedgerEntry[]"),
         ("auditLogs", "AuditLog[]"),
         ("slotHolds", "SlotHold[]"),
         ("deadLetters", "DeadLetter[]"),
@@ -214,6 +221,14 @@ def test_tenant_model_has_no_tenant_id() -> None:
     assert not re.search(
         r"^\s*tenantId\s+", body, re.MULTILINE
     ), "Tenant model must not carry its own tenantId column"
+
+
+def test_tenant_model_declares_payment_provider() -> None:
+    blocks = _model_blocks(SCHEMA_PATH.read_text())
+    body = blocks["Tenant"]
+    assert re.search(
+        r"^\s*paymentProvider\s+String\b", body, re.MULTILINE
+    ), "Tenant model must declare paymentProvider String for adapter selection"
 
 
 def _has_relation_field(model_body: str, field_name: str, related_type: str) -> bool:
