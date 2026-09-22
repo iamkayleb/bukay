@@ -18,7 +18,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - Reviewed meta.ts (fetch inject, payloads, errors, fromEnv). Added tests; prettier-fixed CI format
         root cause.
@@ -27,7 +27,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - Reviewed provider.ts against payments port pattern; covered by provider.test.ts.
   - id: task-04
@@ -35,7 +35,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - Reviewed templates.ts (6 UTILITY templates); placeholder alignment test added.
   - id: task-05
@@ -43,7 +43,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - Reviewed index.ts barrel; added index.test.ts for public exports.
   - id: task-06
@@ -51,7 +51,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - Reviewed WHATSAPP_TEMPLATES.md; matches registry + approval steps.
   - id: task-07
@@ -59,7 +59,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - Confirmed meta.test.ts asserts result.httpStatus === 200 for sandbox send.
   - id: task-08
@@ -67,7 +67,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - Confirmed meta.test.ts asserts result.id matches /^wamid./ for sandbox send.
   - id: task-09
@@ -75,7 +75,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - "Documented sandbox assertion verification on PR #405."
   - id: task-10
@@ -83,7 +83,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - Section header only; marked N/A.
   - id: task-11
@@ -91,7 +91,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - CI failure on merge f1f1764 was prettier Format check (6 whatsapp files), not pnpm test. Fixed.
   - id: task-12
@@ -127,7 +127,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - Duplicate of task-01; completed with primary task.
   - id: task-17
@@ -135,7 +135,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - Duplicate of task-02; completed with primary task.
   - id: task-18
@@ -143,7 +143,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - Duplicate of task-03; completed with primary task.
   - id: task-19
@@ -151,7 +151,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - Duplicate of task-04; completed with primary task.
   - id: task-20
@@ -159,7 +159,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - Duplicate of task-05; completed with primary task.
   - id: task-21
@@ -167,7 +167,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - Duplicate of task-06; completed with primary task.
   - id: task-22
@@ -175,7 +175,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - Duplicate of task-07; completed with primary task.
   - id: task-23
@@ -183,7 +183,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - Duplicate of task-08; completed with primary task.
   - id: task-24
@@ -191,7 +191,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - Duplicate of task-09; completed with primary task.
   - id: task-25
@@ -199,7 +199,7 @@ tasks:
     status: done
     started_at: "2026-09-22T16:00:00Z"
     finished_at: "2026-09-22T16:00:00Z"
-    commit: ""
+    commit: aeadb0aa4656ead99ac44ddeb8a628414174215e
     notes:
       - Duplicate of task-11; completed with primary task.
   - id: task-26
