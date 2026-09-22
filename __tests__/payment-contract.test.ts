@@ -296,6 +296,7 @@ describe("payment contract — ledger writes", () => {
     tenant.paymentProvider = "flutterwave";
     expect(
       createPaymentProvider(tenant.paymentProvider, {
+        NODE_ENV: "test",
         FLUTTERWAVE_SECRET_KEY: FLW_SECRET,
       }).name
     ).toBe("flutterwave");

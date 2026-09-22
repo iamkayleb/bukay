@@ -85,7 +85,9 @@ describe("MetaWhatsAppProvider", () => {
   });
 
   it("POSTs text messages with a body", async () => {
-    const fetchImpl = vi.fn(async () => jsonResponse({ messages: [{ id: "wamid.text_1" }] }));
+    const fetchImpl = vi.fn(async (_url: string, _init?: RequestInit) =>
+      jsonResponse({ messages: [{ id: "wamid.text_1" }] })
+    );
     const provider = new MetaWhatsAppProvider({
       accessToken: "EAA_sandbox_token_value",
       phoneNumberId: "99",
@@ -147,7 +149,9 @@ describe("MetaWhatsAppProvider", () => {
   });
 
   it("omits template components when bodyParameters are absent", async () => {
-    const fetchImpl = vi.fn(async () => jsonResponse({ messages: [{ id: "wamid.no_params" }] }));
+    const fetchImpl = vi.fn(async (_url: string, _init?: RequestInit) =>
+      jsonResponse({ messages: [{ id: "wamid.no_params" }] })
+    );
     const provider = new MetaWhatsAppProvider({
       accessToken: "EAA_sandbox_token_value",
       phoneNumberId: "99",
@@ -179,6 +183,7 @@ describe("MetaWhatsAppProvider", () => {
 
   it("metaWhatsAppFromEnv reads WHATSAPP_* credentials", () => {
     const provider = metaWhatsAppFromEnv({
+      NODE_ENV: "test",
       WHATSAPP_ACCESS_TOKEN: "EAA_from_env_token",
       WHATSAPP_PHONE_NUMBER_ID: "pnid_1",
       WHATSAPP_API_VERSION: "v22.0",
