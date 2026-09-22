@@ -6,20 +6,22 @@ tasks:
   - id: task-01
     title: 'Add `app/lib/payments/flutterwave.ts`: add the adapter'
     status: done
-    started_at: 2026-09-22T14:22:37Z
+    started_at: '2026-09-22T14:22:37Z'
     finished_at: '2026-09-22T14:28:48Z'
     commit: 7f16eb33aecfb7f702b40b69d577196f1d9bf0ec
     notes:
       - 'FlutterwaveProvider + unit tests; resolve-provider wiring; prior finish was ledger-only.'
   - id: task-02
-    title: 'Add `app/api/webhooks/flutterwave/route.ts`: implement  with signature checks'
-    status: todo
-    started_at: null
+    title: 'Add `app/api/webhooks/flutterwave/route.ts`: implement  with signature
+      checks'
+    status: doing
+    started_at: '2026-09-22T14:29:00Z'
     finished_at: null
     commit: ''
     notes: []
   - id: task-03
-    title: 'Add `prisma/schema.prisma`: add the `paymentProvider` column to the `Tenant` model'
+    title: 'Add `prisma/schema.prisma`: add the `paymentProvider` column to the `Tenant`
+      model'
     status: todo
     started_at: null
     finished_at: null
@@ -33,21 +35,22 @@ tasks:
     commit: ''
     notes: []
   - id: task-05
-    title: 'Both adapters pass `__tests__/payment-contract.test.ts`, verified by `pnpm test`'
+    title: Both adapters pass `__tests__/payment-contract.test.ts`, verified by `pnpm
+      test`
     status: todo
     started_at: null
     finished_at: null
     commit: ''
     notes: []
   - id: task-06
-    title: 'Switching provider preserves existing `LedgerEntry` rows'
+    title: Switching provider preserves existing `LedgerEntry` rows
     status: todo
     started_at: null
     finished_at: null
     commit: ''
     notes: []
   - id: task-07
-    title: 'Ledger writes from both adapters have identical shape'
+    title: Ledger writes from both adapters have identical shape
     status: todo
     started_at: null
     finished_at: null
