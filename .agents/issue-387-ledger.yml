@@ -5,10 +5,10 @@ branch: cursor/issue-387
 tasks:
   - id: task-01
     title: Verify that pnpm-lock.yaml exists in the base branch eval/cursor
-    status: doing
+    status: done
     started_at: '2026-09-22T02:28:16Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-09-22T02:28:30Z'
+    commit: a072bf352c8bebd9940165e5ff1e8362580a7809
     notes: []
   - id: task-02
     title: Add a CI step that explicitly checks for pnpm-lock.yaml presence before
