@@ -28,10 +28,10 @@ tasks:
     notes: []
   - id: task-04
     title: 'Add `__tests__/payment-contract.test.ts`: add the shared suite'
-    status: doing
+    status: done
     started_at: '2026-09-22T14:33:47Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-09-22T14:33:47Z'
+    commit: 2dfd6b982e0e52866a0619ebb9840b39125ac78f
     notes: []
   - id: task-05
     title: Both adapters pass `__tests__/payment-contract.test.ts`, verified by `pnpm
