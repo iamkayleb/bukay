@@ -4,6 +4,12 @@ import path from "node:path";
 import { NextRequest } from "next/server";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+/**
+ * Behavioral coverage for GET /api/payments/verify critical paths.
+ * Complements structural contract guards in route.test.ts / reverification-*.
+ * Prefer adding new payment-status scenarios here rather than string-matching
+ * source files in the reverification suites.
+ */
 import { prisma } from "@/app/db/prisma";
 import { GET } from "@/app/api/payments/verify/route";
 import {

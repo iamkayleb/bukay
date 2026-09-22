@@ -2,6 +2,16 @@
  * Re-verification contract for follow-up #382 / PR #363 CONCERNS.
  * Each case maps to a verification concern; keep this green before marking
  * "Re-verification passes".
+ *
+ * Trade-off — structural vs behavioral testing:
+ * These checks intentionally use structural/textual assertions (file presence,
+ * source length, string contains) as contract guards for reviewability and CI
+ * wiring that unit tests of payment status transitions would miss. They are
+ * brittle by design: a rename or refactor that changes shape should fail here.
+ * Behavioral coverage of confirm/fail/hold-release paths is owned by
+ * verify-flow.test.ts (and the thin surface checks in route.test.ts). Prefer
+ * extending verify-flow for new payment behaviors; extend this file only when
+ * locking a verifier concern about shape, lockfiles, or migrations.
  */
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -13,6 +23,7 @@ import { SLOT_HOLD_TTL_MS } from "@/app/lib/slot-hold";
 
 describe("re-verification: PR #363 concerns", () => {
   it("verify route stays thin so LLM evaluation can run on the adapter", async () => {
+    // Structural contract guard (not a behavioral status-transition test).
     const routePath = path.join(process.cwd(), "app/api/payments/verify/route.ts");
     const source = await fs.readFile(routePath, "utf8");
     expect(source.length).toBeLessThan(1200);
@@ -39,6 +50,7 @@ describe("re-verification: PR #363 concerns", () => {
     expect(source).toContain("pnpm install --frozen-lockfile");
     expect(source).toContain("Assert pnpm lockfile");
     expect(source).toContain("pnpm-lock.yaml");
+    expect(source).toMatch(/\[ ! -f pnpm-lock\.yaml \]|test -f pnpm-lock\.yaml/);
     expect(source).not.toMatch(/npm ci\b/);
   });
 
