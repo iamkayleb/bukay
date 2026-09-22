@@ -32,7 +32,7 @@ EXPECTED_TENANT_SCOPED_MODELS = {
 }
 
 # Models the scope requires to exist at all.
-REQUIRED_MODELS = EXPECTED_TENANT_SCOPED_MODELS | {"Tenant"}
+REQUIRED_MODELS = EXPECTED_TENANT_SCOPED_MODELS | {"Tenant", "IdempotencyKey"}
 
 # Relation fields the suite asserts so schema drift cannot drop FK wiring.
 # Values are (field_name, type_with_optional_suffix) tuples.
@@ -72,6 +72,7 @@ EXPECTED_RELATIONS: dict[str, tuple[tuple[str, str], ...]] = {
         ("deadLetters", "DeadLetter[]"),
     ),
 }
+
 
 def _strip_prisma_line_comments(schema_text: str) -> str:
     """Remove // and /// comments so `}` inside docs cannot truncate model bodies."""
@@ -217,7 +218,12 @@ def test_tenant_model_has_no_tenant_id() -> None:
 
 def _has_relation_field(model_body: str, field_name: str, related_type: str) -> bool:
     """True when the model declares `fieldName RelatedType`."""
-    pattern = re.compile(rf"^\s*{re.escape(field_name)}\s+{re.escape(related_type)}\b", re.MULTILINE)
+    # Do not use \b after the type: Prisma array/optional suffixes (`[]`, `?`) are
+    # non-word characters, so a trailing word-boundary would never match.
+    pattern = re.compile(
+        rf"^\s*{re.escape(field_name)}\s+{re.escape(related_type)}(?:\s|$)",
+        re.MULTILINE,
+    )
     return pattern.search(model_body) is not None
 
 
@@ -229,6 +235,5 @@ def test_required_model_relations_are_declared() -> None:
         body = blocks[model_name]
         for field_name, related_type in relations:
             assert _has_relation_field(body, field_name, related_type), (
-                f"model {model_name} is missing relation "
-                f"`{field_name} {related_type}`"
+                f"model {model_name} is missing relation " f"`{field_name} {related_type}`"
             )
