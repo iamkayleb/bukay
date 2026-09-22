@@ -7,55 +7,64 @@ tasks:
     title: 'Add `scripts/reminder-cron.ts`: add the job running every 5 minutes'
     status: done
     started_at: '2026-09-22T15:38:46Z'
-    finished_at: '2026-09-22T15:38:57Z'
-    commit: 5f360934bec3f064d2cb548d25822872b78c84ec
-    notes: []
+    finished_at: '2026-09-22T15:50:30Z'
+    commit: 7f7b828fcb01a5566c5659b2242b18e376c62ace
+    notes:
+      - 'Implemented scripts/reminder-cron.ts (5-minute interval) + app/lib/reminders.ts dispatch.'
+      - 'Prior ledger finish pointed at a ledger-only commit; retargeted to feature SHA.'
   - id: task-02
     title: 'Add `app/lib/locks.ts`: take Postgres advisory locks'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-22T15:45:00Z'
+    finished_at: '2026-09-22T15:50:30Z'
+    commit: 7f7b828fcb01a5566c5659b2242b18e376c62ace
+    notes:
+      - 'app/lib/locks.ts: pg_try_advisory_lock with in-memory fallback for SQLite/tests.'
   - id: task-03
     title: 'Add `prisma/schema.prisma`: add `reminderSentAt` to the `Booking` model'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-22T15:45:00Z'
+    finished_at: '2026-09-22T15:50:30Z'
+    commit: 7f7b828fcb01a5566c5659b2242b18e376c62ace
+    notes:
+      - 'Booking.reminderSentAt + Tenant.remindersEnabled; migration 20260922160000.'
   - id: task-04
     title: 'Add `app/(app)/settings/page.tsx`: add the tenant toggle'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-22T15:45:00Z'
+    finished_at: '2026-09-22T15:50:30Z'
+    commit: 7f7b828fcb01a5566c5659b2242b18e376c62ace
+    notes:
+      - 'Settings ReminderToggle + setRemindersEnabledAction server action.'
   - id: task-05
     title: Two parallel workers send exactly one reminder, verified by `pnpm test`
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-22T15:48:00Z'
+    finished_at: '2026-09-22T15:50:30Z'
+    commit: 7f7b828fcb01a5566c5659b2242b18e376c62ace
+    notes:
+      - '__tests__/reminders.test.ts parallel pass asserts exactly one SMS send.'
   - id: task-06
     title: Reminder dispatch falls within 5 minutes of the target time
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-22T15:48:00Z'
+    finished_at: '2026-09-22T15:50:30Z'
+    commit: 7f7b828fcb01a5566c5659b2242b18e376c62ace
+    notes:
+      - 'Window helpers + test with |sentAt-target| <= 5 minutes.'
   - id: task-07
     title: Disabling the toggle stops subsequent reminders
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-22T15:48:00Z'
+    finished_at: '2026-09-22T15:50:30Z'
+    commit: 7f7b828fcb01a5566c5659b2242b18e376c62ace
+    notes:
+      - 'Toggle-off path covered in reminders.test.ts (no subsequent sends).'
   - id: task-08
     title: '`pnpm test` passes'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-22T15:48:00Z'
+    finished_at: '2026-09-22T15:50:30Z'
+    commit: 7f7b828fcb01a5566c5659b2242b18e376c62ace
+    notes:
+      - 'pnpm test: 48 files / 320 tests passed'
