@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
-import { MetaWhatsAppProvider, normalizeWhatsAppRecipient } from "@/app/lib/whatsapp/meta";
+import {
+  MetaWhatsAppProvider,
+  metaWhatsAppFromEnv,
+  normalizeWhatsAppRecipient,
+} from "@/app/lib/whatsapp/meta";
 import { WhatsAppProviderError } from "@/app/lib/whatsapp/provider";
 
 function jsonResponse(body: unknown, init: { status?: number } = {}): Response {
@@ -78,9 +82,7 @@ describe("MetaWhatsAppProvider", () => {
   });
 
   it("POSTs text messages with a body", async () => {
-    const fetchImpl = vi.fn(async () =>
-      jsonResponse({ messages: [{ id: "wamid.text_1" }] })
-    );
+    const fetchImpl = vi.fn(async () => jsonResponse({ messages: [{ id: "wamid.text_1" }] }));
     const provider = new MetaWhatsAppProvider({
       accessToken: "EAA_sandbox_token_value",
       phoneNumberId: "99",
@@ -139,5 +141,15 @@ describe("MetaWhatsAppProvider", () => {
     await expect(
       provider.send({ to: "+234", content: { kind: "text", body: "hi" } })
     ).rejects.toThrow(/message id/);
+  });
+
+  it("metaWhatsAppFromEnv reads WHATSAPP_* credentials", () => {
+    const provider = metaWhatsAppFromEnv({
+      WHATSAPP_ACCESS_TOKEN: "EAA_from_env_token_xx",
+      WHATSAPP_PHONE_NUMBER_ID: "555",
+      WHATSAPP_API_VERSION: "v21.0",
+      WHATSAPP_BASE_URL: "https://graph.example.com",
+    });
+    expect(provider.name).toBe("meta");
   });
 });

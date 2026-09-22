@@ -6,15 +6,16 @@ export type {
   WhatsAppTemplateContent,
   WhatsAppTextContent,
 } from "./provider";
-export {
-  WhatsAppProviderError,
-  assertWhatsAppSendInput,
-  redactSecrets,
-} from "./provider";
+export { WhatsAppProviderError, assertWhatsAppSendInput, redactSecrets } from "./provider";
 export { MetaWhatsAppProvider, metaWhatsAppFromEnv, normalizeWhatsAppRecipient } from "./meta";
 export type { MetaWhatsAppConfig } from "./meta";
 export { FakeWhatsAppProvider } from "./fake";
 export type { RecordedWhatsAppMessage } from "./fake";
+export {
+  __resetWhatsAppProviderForTests,
+  getWhatsAppProvider,
+  setWhatsAppProviderForTests,
+} from "./resolve-provider";
 export {
   WHATSAPP_TEMPLATES,
   findWhatsAppTemplateByName,
