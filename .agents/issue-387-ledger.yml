@@ -8,7 +8,7 @@ tasks:
     status: done
     started_at: '2026-09-22T02:28:16Z'
     finished_at: '2026-09-22T02:41:10Z'
-    commit: a072bf352c8bebd9940165e5ff1e8362580a7809
+    commit: db909f9360faa1df0cd03dc13114d521fac73eb8
     notes:
       - Confirmed origin/eval/cursor:pnpm-lock.yaml blob 01347dac; evidence in
         VERIFICATION.md and reverification-386.test.ts
@@ -18,7 +18,7 @@ tasks:
     status: done
     started_at: '2026-09-22T02:40:00Z'
     finished_at: '2026-09-22T02:41:10Z'
-    commit: ''
+    commit: db909f9360faa1df0cd03dc13114d521fac73eb8
     notes:
       - Strengthened Assert pnpm lockfile step; order guarded by
         reverification-386.test.ts
@@ -27,7 +27,7 @@ tasks:
     status: done
     started_at: '2026-09-22T02:40:00Z'
     finished_at: '2026-09-22T02:41:10Z'
-    commit: ''
+    commit: db909f9360faa1df0cd03dc13114d521fac73eb8
     notes:
       - Documented in VERIFICATION.md and PR body Implementation Notes
   - id: task-04
@@ -36,7 +36,7 @@ tasks:
     status: done
     started_at: '2026-09-22T02:40:00Z'
     finished_at: '2026-09-22T02:41:10Z'
-    commit: ''
+    commit: db909f9360faa1df0cd03dc13114d521fac73eb8
     notes:
       - Comments added in route.test.ts, reverification-363/386, verify-flow
   - id: task-05
@@ -44,7 +44,7 @@ tasks:
     status: done
     started_at: '2026-09-22T02:40:00Z'
     finished_at: '2026-09-22T02:41:10Z'
-    commit: ''
+    commit: db909f9360faa1df0cd03dc13114d521fac73eb8
     notes:
       - Critical paths mapped in route.test.ts header and VERIFICATION.md table;
         exercised by verify-flow.test.ts
@@ -54,15 +54,15 @@ tasks:
     status: done
     started_at: '2026-09-22T02:40:00Z'
     finished_at: '2026-09-22T02:41:10Z'
-    commit: ''
+    commit: db909f9360faa1df0cd03dc13114d521fac73eb8
     notes:
       - Trade-off documented in reverification-363.test.ts and
         reverification-386.test.ts headers
   - id: task-07
     title: 'In `.github/workflows/ci.yml`: Address: LLM evaluation could not run.'
-    status: cancelled
+    status: deferred
     started_at: null
-    finished_at: '2026-09-22T02:41:10Z'
+    finished_at: null
     commit: ''
     notes:
       - Deferred to human per issue #387 (external LLM credentials)
@@ -71,9 +71,9 @@ tasks:
       acceptance criterion is partially an external-evidence item (post-merge verification
       outcome) and cannot be conclusively proven from the diff; code artifacts here
       do target it directly.'
-    status: cancelled
+    status: deferred
     started_at: null
-    finished_at: '2026-09-22T02:41:10Z'
+    finished_at: null
     commit: ''
     notes:
       - Deferred to human per issue #387 (post-merge external evidence)
@@ -83,7 +83,7 @@ tasks:
     status: done
     started_at: '2026-09-22T02:40:00Z'
     finished_at: '2026-09-22T02:41:10Z'
-    commit: ''
+    commit: db909f9360faa1df0cd03dc13114d521fac73eb8
     notes:
       - VERIFICATION.md maps each concern; deferred items called out
   - id: task-10
@@ -92,7 +92,7 @@ tasks:
     status: done
     started_at: '2026-09-22T02:40:00Z'
     finished_at: '2026-09-22T02:41:10Z'
-    commit: ''
+    commit: db909f9360faa1df0cd03dc13114d521fac73eb8
     notes:
       - New reverification-386 tests cover CI/lockfile assertions
   - id: task-11
@@ -101,6 +101,6 @@ tasks:
     status: done
     started_at: '2026-09-22T02:41:10Z'
     finished_at: '2026-09-22T02:42:00Z'
-    commit: ''
+    commit: db909f9360faa1df0cd03dc13114d521fac73eb8
     notes:
       - pnpm test 268 passed; pnpm lint clean
