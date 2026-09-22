@@ -224,7 +224,9 @@ model AuditLog {
   @@index([tenantId, entityType, entityId])
 }
 
-/// Unknown / unhandled webhook (and similar) events land here for inspection.
+/// Dead-letter queue for events that could not be processed successfully.
+/// Used for unknown/unhandled inbound webhooks and permanently failed outbound
+/// lifecycle notifications (WhatsApp + SMS exhausted; see app/lib/notifications).
 /// Retention: authenticated Paystack webhooks call `purgeExpiredDeadLetters`
 /// to delete rows older than 30 days (see app/lib/payments/dead-letter.ts).
 model DeadLetter {

@@ -105,10 +105,16 @@ string so callers can serialize structured context when needed.
 
 ### DeadLetter
 
-`DeadLetter` stores unknown or unhandled inbound events (for example Paystack webhooks) for later
-inspection. `tenantId` is optional so events that cannot be attributed to a tenant still persist.
+`DeadLetter` stores events that could not be processed successfully for later inspection:
+
+- unknown or unhandled inbound webhooks (for example Paystack / Flutterwave)
+- permanently failed outbound lifecycle notifications after WhatsApp and SMS retries are exhausted
+  (`source` = `notifications`, see `app/lib/notifications`)
+
+`tenantId` is optional so events that cannot be attributed to a tenant still persist.
 Rows older than 30 days are removed by `purgeExpiredDeadLetters` (invoked when recording new
 dead letters) so raw webhook payloads are not retained indefinitely.
+The admin view at `app/(app)/admin/dlq` lists recent rows for operators.
 
 ### IdempotencyKey
 
