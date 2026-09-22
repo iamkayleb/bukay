@@ -2632,8 +2632,22 @@ jobs:
                   return 'Repository default branch not available in the final snapshot.';
                 }
                 const finalBase = finalPr?.base?.ref || '';
-                if (!finalBase || finalBase !== finalDefaultBranch) {
-                  return `Final base branch ${finalBase || '(unknown)'} does not match ${finalDefaultBranch}.`;
+                // Merging into a non-default branch is refused by default: it is
+                // how a stray automation merge reaches a protected trunk. Repos
+                // that deliberately run long-lived integration branches (an
+                // evaluation lane, a release train) opt a single PR in with an
+                // explicit label. Without this, `automerge` on such a PR can
+                // never succeed and the refusal repeats on every Gate run.
+                const baseOptOut = (finalPr.labels || [])
+                  .map((item) => String(item.name || '').toLowerCase())
+                  .includes('merge:allow-nondefault-base');
+                if (!finalBase) {
+                  return 'Final base branch is unknown.';
+                }
+                if (finalBase !== finalDefaultBranch && !baseOptOut) {
+                  return `Final base branch ${finalBase} does not match ${finalDefaultBranch}. `
+                    + 'Add the `merge:allow-nondefault-base` label if merging into '
+                    + 'that branch is intended.';
                 }
                 const finalMergeableState = String(finalPr.mergeable_state || '').toLowerCase();
                 if (finalPr.draft || finalMergeableState !== 'clean') {
