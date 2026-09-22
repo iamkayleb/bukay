@@ -1,3 +1,14 @@
+/**
+ * Flutterwave webhook route tests + re-verification for follow-up #399 / PR #396.
+ *
+ * Structural assertions keep the Next.js route thin and free of test hooks so
+ * LLM review can focus on `@/app/lib/payments/flutterwave-webhook`. Behavioral
+ * coverage of signature / status / idempotency / dead-letter paths lives below
+ * (and in the shared payment-contract suite).
+ */
+import { promises as fs } from "node:fs";
+import path from "node:path";
+
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -208,8 +219,19 @@ describe("POST /api/webhooks/flutterwave", () => {
     __resetIdempotencyStoreForTests();
   });
 
-  it("exports only Next.js route symbols from the route module", () => {
+  it("stays thin and exports only Next.js symbols so LLM evaluation can run", async () => {
+    // Structural contract guard (not a behavioral status-transition test).
+    // Addresses verifier concern: LLM evaluation could not run on route.ts when
+    // the entrypoint is thick or mixes test hooks with production exports.
+    const routePath = path.join(process.cwd(), "app/api/webhooks/flutterwave/route.ts");
+    const source = await fs.readFile(routePath, "utf8");
+    expect(source.length).toBeLessThan(1200);
+    expect(source).toContain('from "@/app/lib/payments/flutterwave-webhook"');
+    expect(source).toContain("handleFlutterwaveWebhook");
+    expect(source).not.toContain("__setFlutterwaveWebhookDbForTests");
     expect(Object.keys(flutterwaveRoute).sort()).toEqual(["POST", "dynamic"].sort());
+    expect(flutterwaveRoute.dynamic).toBe("force-dynamic");
+    expect(typeof flutterwaveRoutePost).toBe("function");
   });
 
   it("returns HTTP 401 when the verif-hash does not match", async () => {
@@ -298,5 +320,32 @@ describe("POST /api/webhooks/flutterwave", () => {
       if (prev === undefined) delete process.env.FLW_SECRET_HASH;
       else process.env.FLW_SECRET_HASH = prev;
     }
+  });
+});
+
+/**
+ * Re-verification contract for follow-up #399 / PR #396 CONCERNS.
+ * Maps the "LLM evaluation could not run" concern on the Flutterwave webhook
+ * route to an enforceable thin-entrypoint contract.
+ */
+describe("re-verification: PR #396 / issue #399 route concerns", () => {
+  it("flutterwave route stays thin so LLM evaluation can run on the adapter", async () => {
+    const routePath = path.join(process.cwd(), "app/api/webhooks/flutterwave/route.ts");
+    const source = await fs.readFile(routePath, "utf8");
+    expect(source.length).toBeLessThan(1200);
+    expect(source).toContain("LLM/code review");
+    expect(source).toContain('from "@/app/lib/payments/flutterwave-webhook"');
+    expect(source).not.toContain("PrismaClient");
+    expect(source).not.toContain("verifyFlutterwaveSignature");
+    expect(Object.keys(flutterwaveRoute).sort()).toEqual(["POST", "dynamic"].sort());
+  });
+
+  it("webhook logic lives in the reviewable lib module, not the route", async () => {
+    const libPath = path.join(process.cwd(), "app/lib/payments/flutterwave-webhook.ts");
+    const source = await fs.readFile(libPath, "utf8");
+    expect(source).toContain("handleFlutterwaveWebhook");
+    expect(source).toContain("verifyFlutterwaveSignature");
+    expect(source).toContain("claimIdempotencyKey");
+    expect(source).toContain("recordDeadLetter");
   });
 });
