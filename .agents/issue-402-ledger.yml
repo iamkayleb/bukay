@@ -1,0 +1,68 @@
+version: 1
+issue: 402
+base: eval/cursor
+branch: cursor/issue-402
+tasks:
+  - id: task-01
+    title: 'Add `app/lib/notifications/subscribers.ts`: add subscribers'
+    status: doing
+    started_at: '2026-09-22T15:57:27Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Add `app/lib/notifications/dispatch.ts`: implement the dispatcher'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Add `app/lib/notifications/retry.ts`: implement backoff'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Add `prisma/schema.prisma`: define the `DeadLetter` model'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Add `app/(app)/admin/dlq/page.tsx`: render the dead-letter view'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: All four lifecycle events dispatch a message, verified by `pnpm test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: A WhatsApp failure falls back to SMS
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: A permanently failed message appears in `DeadLetter`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
