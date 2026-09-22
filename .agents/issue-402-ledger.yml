@@ -5,11 +5,12 @@ branch: cursor/issue-402
 tasks:
   - id: task-01
     title: 'Add `app/lib/notifications/subscribers.ts`: add subscribers'
-    status: doing
-    started_at: '2026-09-22T15:57:27Z'
+    status: todo
+    started_at: null
     finished_at: null
     commit: ''
-    notes: []
+    notes:
+      - '2026-09-22T15:58:07Z failure (run 35750769516): status=failure'
   - id: task-02
     title: 'Add `app/lib/notifications/dispatch.ts`: implement the dispatcher'
     status: todo
