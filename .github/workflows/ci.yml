@@ -26,6 +26,16 @@ jobs:
           node-version: 20
           cache: pnpm
 
+      # PR #363 deleted package-lock.json without an npm lockfile; this repo
+      # resolves deps via pnpm-lock.yaml. Fail fast if the wrong lockfile returns.
+      - name: Assert pnpm lockfile (no npm package-lock)
+        run: |
+          test -f pnpm-lock.yaml
+          if [ -f package-lock.json ]; then
+            echo "package-lock.json must not exist; use pnpm-lock.yaml" >&2
+            exit 1
+          fi
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
