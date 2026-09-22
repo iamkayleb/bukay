@@ -235,6 +235,82 @@ describe("GET /api/payments/verify", () => {
     );
     expect(missingTenant.status).toBe(400);
   });
+
+  it("returns 404 when the payment reference is unknown for the tenant", async () => {
+    const reference = "orphan_provider_ref";
+    await fake.initialize({
+      amountCents: 10_000_00,
+      currency: "NGN",
+      email: "guest@example.com",
+      reference,
+      callbackUrl: `https://app.test/api/payments/verify?tenantId=${seed.tenantId}`,
+      platformSplitPercentage: 15,
+    });
+    fake.succeed(reference);
+
+    const res = await GET(verifyRequest(reference, seed.tenantId));
+    expect(res.status).toBe(404);
+    await expect(res.json()).resolves.toMatchObject({ ok: false, error: "payment_not_found" });
+  });
+
+  it("returns 502 when the provider verify call throws", async () => {
+    const reference = "pay_provider_boom";
+    await seedPendingBooking(reference);
+    vi.spyOn(fake, "verify").mockRejectedValueOnce(new Error("upstream down"));
+
+    const res = await GET(verifyRequest(reference, seed.tenantId));
+    expect(res.status).toBe(502);
+    await expect(res.json()).resolves.toMatchObject({ ok: false, error: "verification_failed" });
+  });
+
+  it("leaves booking pending when provider status is still pending", async () => {
+    const reference = "pay_pending_1";
+    const { booking, payment } = await seedPendingBooking(reference);
+    // Fake defaults to pending until succeed/fail is called.
+
+    const res = await GET(verifyRequest(reference, seed.tenantId));
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      ok: true,
+      status: "pending",
+      bookingId: booking.id,
+      paymentId: payment.id,
+    });
+
+    await runWithTenantContext({ tenantId: seed.tenantId }, async () => {
+      const updatedBooking = await prisma.booking.findFirst({
+        where: { tenantId: seed.tenantId, id: booking.id },
+      });
+      expect(updatedBooking?.status).toBe("pending_payment");
+    });
+  });
+
+  it("treats abandoned provider status like failure and releases the hold", async () => {
+    const reference = "pay_abandoned_1";
+    const { booking } = await seedPendingBooking(reference);
+    fake.abandon(reference);
+
+    const res = await GET(verifyRequest(reference, seed.tenantId));
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      ok: true,
+      status: "failed",
+      slotReleased: true,
+    });
+
+    await runWithTenantContext({ tenantId: seed.tenantId }, async () => {
+      const hold = await prisma.slotHold.findFirst({
+        where: { tenantId: seed.tenantId, bookingId: booking.id },
+      });
+      expect(hold).toBeNull();
+    });
+  });
+});
+
+describe("slot hold TTL contract", () => {
+  it("uses a 10-minute release window", () => {
+    expect(SLOT_HOLD_TTL_MS).toBe(10 * 60 * 1000);
+  });
 });
 
 describe("releaseHoldForBooking", () => {

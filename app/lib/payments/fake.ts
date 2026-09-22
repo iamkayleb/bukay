@@ -98,6 +98,17 @@ export class FakePaymentProvider implements PaymentProvider {
     record.paidAt = null;
   }
 
+  /** Mark an initialized charge as abandoned (treated like failure by verify). */
+  abandon(reference: string): void {
+    const record = this.charges.get(reference);
+    if (!record) {
+      throw new PaymentProviderError(this.name, `Unknown reference ${reference}`, { status: 404 });
+    }
+    record.status = "abandoned";
+    record.providerStatus = "abandoned";
+    record.paidAt = null;
+  }
+
   reset(): void {
     this.charges.clear();
     this.counter = 0;

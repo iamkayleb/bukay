@@ -36,7 +36,7 @@ INIT_MIGRATION_MODELS = {
 }
 
 # Every model that must appear in docs/DATA_MODEL.md (mirrors schema).
-REQUIRED_MODELS = INIT_MIGRATION_MODELS | {"SlotHold", "DeadLetter"}
+REQUIRED_MODELS = INIT_MIGRATION_MODELS | {"SlotHold", "DeadLetter", "IdempotencyKey"}
 
 
 def _model_blocks(schema_text: str) -> dict[str, str]:
@@ -152,7 +152,7 @@ def test_migration_creates_every_required_model() -> None:
 
 
 def test_follow_up_migrations_create_later_models() -> None:
-    """SlotHold and DeadLetter are added after init; ensure their CREATE TABLE exists."""
+    """SlotHold, DeadLetter, and IdempotencyKey are added after init; ensure CREATE TABLE exists."""
     sql_blobs = [
         (path / "migration.sql").read_text()
         for path in MIGRATIONS_DIR.iterdir()
