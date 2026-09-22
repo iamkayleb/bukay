@@ -1,0 +1,64 @@
+version: 1
+issue: 394
+base: eval/cursor
+branch: cursor/issue-394
+tasks:
+  - id: task-01
+    title: 'Add `app/lib/payments/flutterwave.ts`: add the adapter'
+    status: doing
+    started_at: '2026-09-22T14:22:37Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Add `app/api/webhooks/flutterwave/route.ts`: implement  with signature
+      checks'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Add `prisma/schema.prisma`: add the `paymentProvider` column to the `Tenant`
+      model'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Add `__tests__/payment-contract.test.ts`: add the shared suite'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Both adapters pass `__tests__/payment-contract.test.ts`, verified by `pnpm
+      test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Switching provider preserves existing `LedgerEntry` rows
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Ledger writes from both adapters have identical shape
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
