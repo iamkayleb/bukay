@@ -9,7 +9,7 @@ tasks:
     status: done
     started_at: "2026-09-22T15:56:00Z"
     finished_at: "2026-09-22T15:58:18Z"
-    commit: ""
+    commit: "c6b8b90206063b0f45d91ee1bc744f38369eeaba"
     notes:
       - "Prior finish was ledger-only and failed gate; re-done with route thinness
         contract + re-verification tests (mirrors paystack/verify pattern)."
