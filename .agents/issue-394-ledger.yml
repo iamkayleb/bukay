@@ -37,29 +37,33 @@ tasks:
   - id: task-05
     title: Both adapters pass `__tests__/payment-contract.test.ts`, verified by `pnpm
       test`
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-22T14:34:01Z'
+    finished_at: '2026-09-22T14:34:20Z'
+    commit: 2dfd6b982e0e52866a0619ebb9840b39125ac78f
+    notes:
+      - 'pnpm test: 292 passed including payment-contract (Paystack + Flutterwave).'
   - id: task-06
     title: Switching provider preserves existing `LedgerEntry` rows
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-22T14:34:01Z'
+    finished_at: '2026-09-22T14:34:20Z'
+    commit: 2dfd6b982e0e52866a0619ebb9840b39125ac78f
+    notes:
+      - 'Covered by payment-contract switching-provider test.'
   - id: task-07
     title: Ledger writes from both adapters have identical shape
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-22T14:34:01Z'
+    finished_at: '2026-09-22T14:34:20Z'
+    commit: 2dfd6b982e0e52866a0619ebb9840b39125ac78f
+    notes:
+      - 'Covered by payment-contract identical ledger shape test + shared ledgerEntryFromVerification.'
   - id: task-08
     title: '`pnpm test` passes'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-22T14:34:01Z'
+    finished_at: '2026-09-22T14:34:20Z'
+    commit: 2dfd6b982e0e52866a0619ebb9840b39125ac78f
+    notes:
+      - 'pnpm test: 43 files / 292 tests passed.'
