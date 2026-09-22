@@ -6,7 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/app/db/prisma";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 import { verifyPaystackSignature } from "@/app/lib/payments/signature";
-import { hasProcessed, markProcessed } from "@/app/lib/idempotency";
+import { claimIdempotencyKey } from "@/app/lib/idempotency";
 import { emitBookingConfirmed } from "@/app/lib/events";
 
 export const dynamic = "force-dynamic";
@@ -120,20 +120,18 @@ export async function POST(req: NextRequest) {
   const reference = extractReference(data);
   const idempotencyKey = `paystack:${event}:${reference ?? createHash("sha256").update(rawBody).digest("hex")}`;
 
-  if (await hasProcessed(idempotencyKey)) {
+  if (!(await claimIdempotencyKey(idempotencyKey))) {
     return NextResponse.json({ ok: true, replayed: true });
   }
 
   if (!(event in PAYMENT_STATUS_BY_EVENT)) {
     await recordDeadLetter(event, rawBody, "unhandled_event_type");
-    await markProcessed(idempotencyKey);
     return NextResponse.json({ ok: true, handled: false });
   }
 
   const tenantId = extractTenantId(data);
   if (!reference || !tenantId) {
     await recordDeadLetter(event, rawBody, "missing_reference_or_tenant");
-    await markProcessed(idempotencyKey);
     return NextResponse.json({ ok: true, handled: false });
   }
 
@@ -176,6 +174,5 @@ export async function POST(req: NextRequest) {
     await recordDeadLetter(event, rawBody, "payment_not_found");
   }
 
-  await markProcessed(idempotencyKey);
   return NextResponse.json({ ok: true, handled });
 }

@@ -53,14 +53,22 @@ vi.mock("@/app/db/prisma", () => ({
     idempotencyKey: {
       findUnique: async ({ where: { key } }: { where: { key: string } }) =>
         state.idempotencyKeys.get(key) ?? null,
-      upsert: async ({
+      create: async ({ data }: { data: { key: string; expiresAt: Date } }) => {
+        if (state.idempotencyKeys.has(data.key)) {
+          throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
+        }
+        const entry = { key: data.key, expiresAt: data.expiresAt };
+        state.idempotencyKeys.set(data.key, entry);
+        return entry;
+      },
+      update: async ({
         where: { key },
-        create,
+        data,
       }: {
         where: { key: string };
-        create: { key: string; expiresAt: Date };
+        data: { expiresAt: Date };
       }) => {
-        const entry = { key, expiresAt: create.expiresAt };
+        const entry = { key, expiresAt: data.expiresAt };
         state.idempotencyKeys.set(key, entry);
         return entry;
       },
