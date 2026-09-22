@@ -1,0 +1,61 @@
+version: 1
+issue: 403
+base: eval/cursor
+branch: cursor/issue-403
+tasks:
+  - id: task-01
+    title: 'Add `scripts/reminder-cron.ts`: add the job running every 5 minutes'
+    status: doing
+    started_at: '2026-09-22T15:38:46Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Add `app/lib/locks.ts`: take Postgres advisory locks'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Add `prisma/schema.prisma`: add `reminderSentAt` to the `Booking` model'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Add `app/(app)/settings/page.tsx`: add the tenant toggle'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Two parallel workers send exactly one reminder, verified by `pnpm test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Reminder dispatch falls within 5 minutes of the target time
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Disabling the toggle stops subsequent reminders
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
