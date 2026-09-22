@@ -566,8 +566,34 @@ jobs:
           print('Suggestions applied successfully')
           " || exit 1
 
-          # Keep agents:formatted truthful for apply-phase output too.
-          python workflows-scripts/.github/scripts/issue_format.py /tmp/updated_body.md
+          # Never trade a valid issue for an invalid one. apply_suggestions can
+          # expand a conformant body — e.g. five tasks that each name a file into
+          # twenty-three prose tasks that name none — and the result then fails
+          # `Tasks` must name a concrete file, symbol, path, config key, job, or
+          # command. Auto-pilot pauses on that with needs-human, so optimisation
+          # silently blocks the issue it was meant to improve (bukay #390, #391).
+          # The bare validator call below was informational; its exit status is
+          # now load-bearing, and only in the direction that cannot regress.
+          if python workflows-scripts/.github/scripts/issue_format.py \
+               /tmp/issue_body.md >/dev/null 2>&1; then
+            INPUT_WAS_VALID=1
+          else
+            INPUT_WAS_VALID=0
+          fi
+
+          if python workflows-scripts/.github/scripts/issue_format.py \
+               /tmp/updated_body.md; then
+            OUTPUT_IS_VALID=1
+          else
+            OUTPUT_IS_VALID=0
+          fi
+
+          if [ "$INPUT_WAS_VALID" = "1" ] && [ "$OUTPUT_IS_VALID" = "0" ]; then
+            echo "::warning::Applied suggestions made a conforming issue non-conforming;"
+            echo "::warning::keeping the original body. Re-run with narrower suggestions."
+            echo "Issue body left unchanged"
+            exit 0
+          fi
 
           # Update issue body
           gh issue edit "${ISSUE_NUMBER}" --body-file /tmp/updated_body.md
