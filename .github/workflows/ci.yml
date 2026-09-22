@@ -18,8 +18,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v6.0.10
-        with:
-          version: 10
+        # Version comes from package.json "packageManager" (single source of truth).
 
       - uses: actions/setup-node@v6
         with:
