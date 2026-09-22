@@ -3,78 +3,78 @@ issue: 395
 base: eval/cursor
 branch: cursor/issue-395
 tasks:
-- id: task-01
-  title: 'Add `app/lib/whatsapp/provider.ts`: define the port'
-  status: done
-  started_at: '2026-09-22T14:38:16Z'
-  finished_at: '2026-09-22T14:50:44Z'
-  commit: e60a914ec10a68f5324cf77a807e40e0161d47ac
-  notes:
-  - Implemented app/lib/whatsapp/provider.ts with WhatsAppProvider port,
-  - assertWhatsAppSendInput, WhatsAppProviderError, and redactSecrets;
-  - verified by __tests__/app/lib/whatsapp/provider.test.ts
-- id: task-02
-  title: 'Add `app/lib/whatsapp/meta.ts`: implement the live adapter'
-  status: done
-  started_at: '2026-09-22T14:51:00Z'
-  finished_at: '2026-09-22T14:52:49Z'
-  commit: ec337a64b278aca817f6d341cc9f9f84a3ef4733
-  notes:
-  - Added MetaWhatsAppProvider in app/lib/whatsapp/meta.ts;
-  - sandbox send HTTP 200 + message id covered by meta.test.ts
-- id: task-03
-  title: 'Add `app/lib/whatsapp/fake.ts`: implement the test double'
-  status: done
-  started_at: '2026-09-22T14:51:00Z'
-  finished_at: '2026-09-22T14:52:49Z'
-  commit: 0a987f6d52c9ad14976b069ddb0419f83f1ad0c7
-  notes:
-  - Added FakeWhatsAppProvider; substitutes for WhatsAppProvider in tests
-- id: task-04
-  title: 'Add `app/lib/whatsapp/templates.ts`: add the template registry'
-  status: done
-  started_at: '2026-09-22T14:51:30Z'
-  finished_at: '2026-09-22T14:52:49Z'
-  commit: 08998fe33c16f8e6a2426b85e8e7db26d53bfcba
-  notes:
-  - Template registry with greeting + booking lifecycle templates
-- id: task-05
-  title: 'Add `docs/WHATSAPP_TEMPLATES.md`: document approval steps'
-  status: done
-  started_at: '2026-09-22T14:51:30Z'
-  finished_at: '2026-09-22T14:52:49Z'
-  commit: 08998fe33c16f8e6a2426b85e8e7db26d53bfcba
-  notes:
-  - Documented Meta approval steps and every template in docs/WHATSAPP_TEMPLATES.md
-- id: task-06
-  title: A sandbox send returns HTTP 200 with a message id, verified by `pnpm test`
-  status: done
-  started_at: '2026-09-22T14:51:00Z'
-  finished_at: '2026-09-22T14:52:49Z'
-  commit: ec337a64b278aca817f6d341cc9f9f84a3ef4733
-  notes:
-  - meta.test.ts asserts sandbox template send returns httpStatus 200 and wamid id
-- id: task-07
-  title: Every template in `app/lib/whatsapp/templates.ts` is documented
-  status: done
-  started_at: '2026-09-22T14:51:30Z'
-  finished_at: '2026-09-22T14:52:49Z'
-  commit: 08998fe33c16f8e6a2426b85e8e7db26d53bfcba
-  notes:
-  - templates.test.ts asserts each registry template+bodyExample+placeholders appear in docs
-- id: task-08
-  title: '`app/lib/whatsapp/fake.ts` substitutes for the adapter in tests'
-  status: done
-  started_at: '2026-09-22T14:51:00Z'
-  finished_at: '2026-09-22T14:52:49Z'
-  commit: 0a987f6d52c9ad14976b069ddb0419f83f1ad0c7
-  notes:
-  - fake.test.ts assigns FakeWhatsAppProvider to WhatsAppProvider and sends successfully
-- id: task-09
-  title: '`pnpm test` passes'
-  status: done
-  started_at: '2026-09-22T14:52:22Z'
-  finished_at: '2026-09-22T14:52:49Z'
-  commit: 08998fe33c16f8e6a2426b85e8e7db26d53bfcba
-  notes:
-  - 'pnpm test: 44 files / 287 tests passed'
+  - id: task-01
+    title: "Add `app/lib/whatsapp/provider.ts`: define the port"
+    status: done
+    started_at: "2026-09-22T14:38:16Z"
+    finished_at: "2026-09-22T14:50:44Z"
+    commit: e60a914ec10a68f5324cf77a807e40e0161d47ac
+    notes:
+      - Implemented app/lib/whatsapp/provider.ts with WhatsAppProvider port,
+      - assertWhatsAppSendInput, WhatsAppProviderError, and redactSecrets;
+      - verified by __tests__/app/lib/whatsapp/provider.test.ts
+  - id: task-02
+    title: "Add `app/lib/whatsapp/meta.ts`: implement the live adapter"
+    status: done
+    started_at: "2026-09-22T14:51:00Z"
+    finished_at: "2026-09-22T14:52:49Z"
+    commit: ec337a64b278aca817f6d341cc9f9f84a3ef4733
+    notes:
+      - Added MetaWhatsAppProvider in app/lib/whatsapp/meta.ts;
+      - sandbox send HTTP 200 + message id covered by meta.test.ts
+  - id: task-03
+    title: "Add `app/lib/whatsapp/fake.ts`: implement the test double"
+    status: done
+    started_at: "2026-09-22T14:51:00Z"
+    finished_at: "2026-09-22T14:52:49Z"
+    commit: 0a987f6d52c9ad14976b069ddb0419f83f1ad0c7
+    notes:
+      - Added FakeWhatsAppProvider; substitutes for WhatsAppProvider in tests
+  - id: task-04
+    title: "Add `app/lib/whatsapp/templates.ts`: add the template registry"
+    status: done
+    started_at: "2026-09-22T14:51:30Z"
+    finished_at: "2026-09-22T14:52:49Z"
+    commit: 08998fe33c16f8e6a2426b85e8e7db26d53bfcba
+    notes:
+      - Template registry with greeting + booking lifecycle templates
+  - id: task-05
+    title: "Add `docs/WHATSAPP_TEMPLATES.md`: document approval steps"
+    status: done
+    started_at: "2026-09-22T14:51:30Z"
+    finished_at: "2026-09-22T14:52:49Z"
+    commit: 08998fe33c16f8e6a2426b85e8e7db26d53bfcba
+    notes:
+      - Documented Meta approval steps and every template in docs/WHATSAPP_TEMPLATES.md
+  - id: task-06
+    title: A sandbox send returns HTTP 200 with a message id, verified by `pnpm test`
+    status: done
+    started_at: "2026-09-22T14:51:00Z"
+    finished_at: "2026-09-22T14:52:49Z"
+    commit: ec337a64b278aca817f6d341cc9f9f84a3ef4733
+    notes:
+      - meta.test.ts asserts sandbox template send returns httpStatus 200 and wamid id
+  - id: task-07
+    title: Every template in `app/lib/whatsapp/templates.ts` is documented
+    status: done
+    started_at: "2026-09-22T14:51:30Z"
+    finished_at: "2026-09-22T14:52:49Z"
+    commit: 08998fe33c16f8e6a2426b85e8e7db26d53bfcba
+    notes:
+      - templates.test.ts asserts each registry template+bodyExample+placeholders appear in docs
+  - id: task-08
+    title: "`app/lib/whatsapp/fake.ts` substitutes for the adapter in tests"
+    status: done
+    started_at: "2026-09-22T14:51:00Z"
+    finished_at: "2026-09-22T14:52:49Z"
+    commit: 0a987f6d52c9ad14976b069ddb0419f83f1ad0c7
+    notes:
+      - fake.test.ts assigns FakeWhatsAppProvider to WhatsAppProvider and sends successfully
+  - id: task-09
+    title: "`pnpm test` passes"
+    status: done
+    started_at: "2026-09-22T14:52:22Z"
+    finished_at: "2026-09-22T14:52:49Z"
+    commit: 08998fe33c16f8e6a2426b85e8e7db26d53bfcba
+    notes:
+      - "pnpm test: 44 files / 287 tests passed"

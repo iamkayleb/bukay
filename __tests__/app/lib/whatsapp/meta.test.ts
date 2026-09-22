@@ -78,9 +78,7 @@ describe("MetaWhatsAppProvider", () => {
   });
 
   it("POSTs text messages with a body", async () => {
-    const fetchImpl = vi.fn(async () =>
-      jsonResponse({ messages: [{ id: "wamid.text_1" }] })
-    );
+    const fetchImpl = vi.fn(async () => jsonResponse({ messages: [{ id: "wamid.text_1" }] }));
     const provider = new MetaWhatsAppProvider({
       accessToken: "EAA_sandbox_token_value",
       phoneNumberId: "99",

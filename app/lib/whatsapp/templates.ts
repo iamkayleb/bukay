@@ -27,8 +27,7 @@ export const WHATSAPP_TEMPLATES = {
     name: "greeting",
     language: "en",
     category: "UTILITY",
-    description:
-      "Welcome message for unknown inbound senders starting a booking conversation.",
+    description: "Welcome message for unknown inbound senders starting a booking conversation.",
     bodyPlaceholders: ["business_name"],
     bodyExample:
       "Hi! Welcome to {{1}}. Reply with the service you need or tap Book to get started.",
@@ -48,8 +47,7 @@ export const WHATSAPP_TEMPLATES = {
     category: "UTILITY",
     description: "Sent when the merchant confirms a booking.",
     bodyPlaceholders: ["client_name", "service_name", "starts_at", "business_name"],
-    bodyExample:
-      "Hi {{1}}, your {{2}} appointment on {{3}} at {{4}} is confirmed. See you then!",
+    bodyExample: "Hi {{1}}, your {{2}} appointment on {{3}} at {{4}} is confirmed. See you then!",
   },
   booking_cancelled: {
     name: "booking_cancelled",
@@ -57,8 +55,7 @@ export const WHATSAPP_TEMPLATES = {
     category: "UTILITY",
     description: "Sent when a booking is cancelled by guest or merchant.",
     bodyPlaceholders: ["client_name", "service_name", "starts_at", "business_name"],
-    bodyExample:
-      "Hi {{1}}, your {{2}} appointment on {{3}} at {{4}} has been cancelled.",
+    bodyExample: "Hi {{1}}, your {{2}} appointment on {{3}} at {{4}} has been cancelled.",
   },
   booking_rescheduled: {
     name: "booking_rescheduled",
@@ -72,8 +69,7 @@ export const WHATSAPP_TEMPLATES = {
       "new_starts_at",
       "business_name",
     ],
-    bodyExample:
-      "Hi {{1}}, your {{2}} appointment moved from {{3}} to {{4}} at {{5}}.",
+    bodyExample: "Hi {{1}}, your {{2}} appointment moved from {{3}} to {{4}} at {{5}}.",
   },
   booking_reminder: {
     name: "booking_reminder",
@@ -96,8 +92,6 @@ export function listWhatsAppTemplates(): WhatsAppTemplateDefinition[] {
   return Object.values(WHATSAPP_TEMPLATES);
 }
 
-export function findWhatsAppTemplateByName(
-  name: string
-): WhatsAppTemplateDefinition | undefined {
+export function findWhatsAppTemplateByName(name: string): WhatsAppTemplateDefinition | undefined {
   return listWhatsAppTemplates().find((template) => template.name === name);
 }

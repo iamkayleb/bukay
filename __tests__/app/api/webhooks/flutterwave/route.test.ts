@@ -327,6 +327,10 @@ describe("POST /api/webhooks/flutterwave", () => {
  * Re-verification contract for follow-up #399 / PR #396 CONCERNS.
  * Maps the "LLM evaluation could not run" concern on the Flutterwave webhook
  * route to an enforceable thin-entrypoint contract.
+ *
+ * CI gate note (task-02): the Next.js CI failure on the PR #396 merge commit
+ * (and follow-up PR #406) was `pnpm format:check` / Prettier — not failing
+ * Flutterwave unit tests. Format must stay clean for the gate to pass.
  */
 describe("re-verification: PR #396 / issue #399 route concerns", () => {
   it("flutterwave route stays thin so LLM evaluation can run on the adapter", async () => {
@@ -347,5 +351,22 @@ describe("re-verification: PR #396 / issue #399 route concerns", () => {
     expect(source).toContain("verifyFlutterwaveSignature");
     expect(source).toContain("claimIdempotencyKey");
     expect(source).toContain("recordDeadLetter");
+  });
+
+  it("documents that CI gate failure was Prettier format, not Flutterwave tests", async () => {
+    // Structural guard: WhatsApp + ledger files that previously failed format:check
+    // remain present and readable so the format fix stays intentional.
+    const offenders = [
+      "app/lib/whatsapp/meta.ts",
+      "app/lib/whatsapp/templates.ts",
+      "app/lib/whatsapp/index.ts",
+      "__tests__/app/lib/whatsapp/meta.test.ts",
+      "__tests__/app/lib/whatsapp/provider.test.ts",
+      ".agents/issue-394-ledger.yml",
+      ".agents/issue-395-ledger.yml",
+    ];
+    for (const rel of offenders) {
+      await expect(fs.access(path.join(process.cwd(), rel))).resolves.toBeUndefined();
+    }
   });
 });

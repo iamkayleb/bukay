@@ -17,18 +17,23 @@ tasks:
         in flutterwave-webhook.ts. Vitest: 14 passed."
   - id: task-02
     title: Investigate the root cause of the CI gate failure on the merge commit
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: "2026-09-22T15:59:53Z"
+    finished_at: "2026-09-22T15:59:53Z"
     commit: ""
-    notes: []
+    notes:
+      - "Root cause: Next.js CI Format check failed on prettier (not Flutterwave tests)."
+      - "Run 35741272996 / 35750240871: format:check on whatsapp + .agents ledgers."
+      - "Documented in flutterwave route re-verification test comment + assertion."
   - id: task-03
     title: Fix the failing tests identified in the CI pipeline
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: "2026-09-22T15:59:53Z"
+    finished_at: "2026-09-22T15:59:53Z"
     commit: ""
-    notes: []
+    notes:
+      - "Ran prettier --write on the 8 offending files; prettier --check . is clean."
+      - "No Flutterwave unit-test failures in the CI log; gate was format-only."
   - id: task-04
     title: Verify that pnpm test passes locally before pushing changes
     status: todo
