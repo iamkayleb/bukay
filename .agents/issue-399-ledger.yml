@@ -20,7 +20,7 @@ tasks:
     status: done
     started_at: "2026-09-22T15:59:53Z"
     finished_at: "2026-09-22T15:59:53Z"
-    commit: ""
+    commit: "57f84b7eedd3b72c8955ee07b9d9cebe65baefb6"
     notes:
       - "Root cause: Next.js CI Format check failed on prettier (not Flutterwave tests)."
       - "Run 35741272996 / 35750240871: format:check on whatsapp + .agents ledgers."
@@ -30,7 +30,7 @@ tasks:
     status: done
     started_at: "2026-09-22T15:59:53Z"
     finished_at: "2026-09-22T15:59:53Z"
-    commit: ""
+    commit: "57f84b7eedd3b72c8955ee07b9d9cebe65baefb6"
     notes:
       - "Ran prettier --write on the 8 offending files; prettier --check . is clean."
       - "No Flutterwave unit-test failures in the CI log; gate was format-only."
