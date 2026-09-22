@@ -6,11 +6,12 @@ tasks:
   - id: task-01
     title: 'In `app/api/webhooks/flutterwave/route.ts`: Address: LLM evaluation could
       not run.'
-    status: doing
-    started_at: '2026-09-22T15:50:50Z'
+    status: todo
+    started_at: null
     finished_at: null
     commit: ''
-    notes: []
+    notes:
+      - '2026-09-22T15:51:30Z failure (run 35749973235): status=failure'
   - id: task-02
     title: Investigate the root cause of the CI gate failure on the merge commit
     status: todo
