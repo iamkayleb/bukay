@@ -28,8 +28,8 @@ tasks:
     notes: []
   - id: task-04
     title: 'Add `__tests__/payment-contract.test.ts`: add the shared suite'
-    status: todo
-    started_at: null
+    status: doing
+    started_at: '2026-09-22T14:33:47Z'
     finished_at: null
     commit: ''
     notes: []
