@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import sqlite3
 import subprocess
 from pathlib import Path
 
@@ -31,6 +32,7 @@ REQUIRED_MODELS = {
     "Client",
     "Booking",
     "Payment",
+    "LedgerEntry",
     "AuditLog",
 }
 
@@ -100,8 +102,11 @@ def test_prisma_migrate_dev_runs_on_clean_database(tmp_path: Path) -> None:
 
 
 def test_migration_creates_every_required_model() -> None:
-    """Every model in the schema must have a CREATE TABLE in the initial migration."""
-    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    """Every model in the schema must be created by the checked-in migrations."""
+    sql = "\n".join(
+        migration_file.read_text()
+        for migration_file in sorted(MIGRATIONS_DIR.glob("*/migration.sql"))
+    )
     for model in REQUIRED_MODELS:
         assert (
             f'CREATE TABLE "{model}"' in sql
@@ -110,7 +115,10 @@ def test_migration_creates_every_required_model() -> None:
 
 def test_migration_indexes_tenant_id_on_scoped_tables() -> None:
     """Every tenant-scoped table needs an index on tenantId in the SQL."""
-    sql = (_initial_migration_dir() / "migration.sql").read_text()
+    sql = "\n".join(
+        migration_file.read_text()
+        for migration_file in sorted(MIGRATIONS_DIR.glob("*/migration.sql"))
+    )
     for model in REQUIRED_MODELS - {"Tenant"}:
         # Prisma emits `CREATE INDEX "<Model>_tenantId_idx" ON "<Model>"("tenantId")`
         # (or a composite index whose first column is tenantId).
@@ -140,3 +148,41 @@ def test_schema_and_doc_agree_on_models() -> None:
     assert (
         not missing_in_doc
     ), f"docs/DATA_MODEL.md is missing sections for: {sorted(missing_in_doc)}"
+
+
+def test_ledger_entry_is_append_only_in_database() -> None:
+    """The database, not application code, rejects ledger mutations."""
+    connection = sqlite3.connect(":memory:")
+    connection.executescript((_initial_migration_dir() / "migration.sql").read_text())
+    for migration_dir in sorted(MIGRATIONS_DIR.iterdir()):
+        if (
+            migration_dir == _initial_migration_dir()
+            or not (migration_dir / "migration.sql").exists()
+        ):
+            continue
+        connection.executescript((migration_dir / "migration.sql").read_text())
+
+    connection.execute(
+        'INSERT INTO "Tenant" ("id", "name", "slug", "updatedAt") '
+        "VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
+        ("tenant-1", "Tenant", "tenant-1"),
+    )
+    connection.execute(
+        'INSERT INTO "LedgerEntry" ('
+        '"id", "tenantId", "direction", "entryType", "grossKobo", "netKobo", '
+        '"currency", "reference") VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        ("ledger-1", "tenant-1", "credit", "payment", 10000, 10000, "NGN", "payment-1"),
+    )
+
+    for statement in (
+        'UPDATE "LedgerEntry" SET "netKobo" = 1 WHERE "id" = \'ledger-1\'',
+        'DELETE FROM "LedgerEntry" WHERE "id" = \'ledger-1\'',
+    ):
+        try:
+            connection.execute(statement)
+        except sqlite3.IntegrityError as error:
+            assert "append-only" in str(error)
+        else:
+            raise AssertionError(f"LedgerEntry mutation was allowed: {statement}")
+
+    connection.close()
