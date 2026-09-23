@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: 'Add `prisma/schema.prisma`: add the `LedgerEntry` model with an append-only
       trigger'
-    status: doing
+    status: done
     started_at: '2026-09-23T13:42:11Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-09-23T13:42:24Z'
+    commit: bb2ca10b5aecfe90fa2f9255ebc4379d7b701ace
     notes: []
   - id: task-02
     title: 'Add `app/lib/ledger.ts`: write a ledger entry on payment success'
