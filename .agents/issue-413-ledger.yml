@@ -5,10 +5,10 @@ branch: codex/issue-413
 tasks:
   - id: task-01
     title: 'Add `prisma/schema.prisma`: add deposit columns to the `Service` model'
-    status: doing
+    status: done
     started_at: '2026-09-23T13:43:00Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-09-23T13:43:14Z'
+    commit: 89e4206177714a9e9dc26bf2a3824aa8edd4d955
     notes: []
   - id: task-02
     title: 'Add `app/lib/payments/split.ts`: write the deposit record'
