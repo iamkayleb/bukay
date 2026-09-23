@@ -7,11 +7,12 @@ tasks:
     title: Add `app/api/payments/capture/route.ts` with a `POST` handler that performs
       balance capture, updates the associated booking status to `closed`, and returns
       HTTP 200 on success.
-    status: doing
-    started_at: '2026-09-23T15:32:00Z'
+    status: todo
+    started_at: null
     finished_at: null
     commit: ''
-    notes: []
+    notes:
+      - '2026-09-23T15:32:40Z failure (run 35882190844): status=failure'
   - id: task-02
     title: Add `app/lib/payments/no-show.ts` implementing the no-show fee flow that
       creates a new `LedgerEntry` record in the database.
