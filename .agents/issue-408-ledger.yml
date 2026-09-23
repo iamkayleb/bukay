@@ -58,11 +58,13 @@ tasks:
   - id: task-06
     title: Fix the CI test workflow so that `pnpm test` runs successfully in the repository's
       CI environment, including any required Next.js test setup adjustments.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ""
-    notes: []
+    status: done
+    started_at: "2026-09-23T12:14:48Z"
+    finished_at: "2026-09-23T12:16:45Z"
+    commit: e28f962875f04ac7b103f87815328131b03296b6
+    notes:
+      - "ci.yml already runs pnpm test; tsc/prettier CI fixes on branch (e28f962/303c36b)."
+      - "Verified: local pnpm test 364 passed; GitHub Next.js CI run 35859318003 success."
   - id: task-07
     title: Executing each real booking lifecycle operation for create, confirm, cancel,
       and reschedule causes exactly one corresponding notification event to be emitted
@@ -136,17 +138,19 @@ tasks:
   - id: task-14
     title: The repository CI workflow includes a step that executes `pnpm test`, and
       that command completes successfully in the CI environment for this branch.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ""
-    notes: []
+    status: done
+    started_at: "2026-09-23T12:14:48Z"
+    finished_at: "2026-09-23T12:16:45Z"
+    commit: e28f962875f04ac7b103f87815328131b03296b6
+    notes:
+      - ".github/workflows/ci.yml Test step runs pnpm test; Next.js CI green on this branch."
   - id: task-15
     title: Running `pnpm test` in a clean environment after installing dependencies
       succeeds without Next.js-specific test setup errors that previously caused CI
       failure.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ""
-    notes: []
+    status: done
+    started_at: "2026-09-23T12:14:48Z"
+    finished_at: "2026-09-23T12:16:45Z"
+    commit: e28f962875f04ac7b103f87815328131b03296b6
+    notes:
+      - "Fresh pnpm install --frozen-lockfile + pnpm test: 55 files / 364 tests passed."
