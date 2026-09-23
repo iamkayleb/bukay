@@ -13,11 +13,13 @@ tasks:
     notes: []
   - id: task-02
     title: 'Add `app/lib/ledger.ts`: write a ledger entry on payment success'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-09-23T13:59:00Z'
+    finished_at: '2026-09-23T14:03:00Z'
+    commit: '4e421e8d40b91a815be4d9dfd60eaf2f9b90d933'
+    notes:
+      - Creates an immutable, idempotent payment-success credit entry keyed by provider reference.
+      - Verified with `pnpm test` and `tsc --noEmit`.
   - id: task-03
     title: 'Add `app/lib/ledger.ts`: write a ledger entry on refund'
     status: todo
