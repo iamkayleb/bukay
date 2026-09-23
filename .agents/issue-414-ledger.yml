@@ -8,8 +8,8 @@ tasks:
       trigger'
     status: done
     started_at: '2026-09-23T13:42:11Z'
-    finished_at: '2026-09-23T13:42:24Z'
-    commit: bb2ca10b5aecfe90fa2f9255ebc4379d7b701ace
+    finished_at: '2026-09-23T13:47:56Z'
+    commit: 01548ecc9c06a0f8e5e3d7a23630d72d8c6a0326
     notes: []
   - id: task-02
     title: 'Add `app/lib/ledger.ts`: write a ledger entry on payment success'
