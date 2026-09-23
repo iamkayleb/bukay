@@ -28,6 +28,7 @@ model Tenant {
   bookings      Booking[]
   payments      Payment[]
   auditLogs     AuditLog[]
+  ledgerEntries LedgerEntry[]
 }
 
 model User {
@@ -163,6 +164,33 @@ model DeadLetterEvent {
   createdAt DateTime @default(now())
 
   @@index([provider, eventType])
+}
+
+// Append-only record of every gross/fee/net money movement (payment success,
+// refund, payout). Rows are never mutated or removed once written — a
+// database trigger (see prisma/migrations) rejects UPDATE and DELETE against
+// this table so the ledger stays reconcilable against provider statements.
+model LedgerEntry {
+  id               String   @id @default(cuid())
+  tenantId         String
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entryType        String
+  direction        String
+  paymentId        String?
+  providerRef      String?
+  payoutRef        String?
+  grossCents       Int
+  providerFeeCents Int      @default(0)
+  platformFeeCents Int      @default(0)
+  netCents         Int
+  currency         String   @default("NGN")
+  occurredAt       DateTime @default(now())
+  createdAt        DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, occurredAt])
+  @@index([paymentId])
+  @@index([payoutRef])
 }
 
 model AuditLog {

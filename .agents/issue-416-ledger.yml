@@ -8,9 +8,16 @@ tasks:
       trigger'
     status: done
     started_at: '2026-09-23T13:43:51Z'
-    finished_at: '2026-09-23T13:44:05Z'
-    commit: da6802d70f9aac6a3e9c2fbd9d522139ea5045d2
-    notes: []
+    finished_at: '2026-09-23T13:54:00Z'
+    commit: ''
+    notes:
+      - 'Commit da6802d70f9aac6a3e9c2fbd9d522139ea5045d2 (the prior "finish" commit)
+        only edited this status file and never touched prisma/schema.prisma or
+        added a migration — it was a false completion. This round adds the actual
+        LedgerEntry model, a migration with append-only UPDATE/DELETE triggers, adds
+        LedgerEntry to the tenant-guard allowlist, and a real integration test
+        (test/integration/ledger-append-only.test.ts) that applies the migrations
+        against a temp sqlite db and proves the trigger rejects UPDATE/DELETE.'
   - id: task-02
     title: 'Add `app/lib/ledger.ts`: write a ledger entry on payment success'
     status: todo
@@ -56,11 +63,14 @@ tasks:
     notes: []
   - id: task-08
     title: An UPDATE or DELETE against `LedgerEntry` is rejected by the database
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-09-23T13:43:51Z'
+    finished_at: '2026-09-23T13:54:00Z'
     commit: ''
-    notes: []
+    notes:
+      - 'Verified by test/integration/ledger-append-only.test.ts, which applies the
+        real migrations to a temp sqlite db and asserts both UPDATE and DELETE
+        against LedgerEntry throw.'
   - id: task-09
     title: CSV export returns HTTP 200 for any date range
     status: todo

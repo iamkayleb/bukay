@@ -6,6 +6,7 @@ const TENANT_SCOPED_MODELS = new Set([
   "Booking",
   "BusinessHour",
   "Client",
+  "LedgerEntry",
   "Payment",
   "Service",
   "Staff",
