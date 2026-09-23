@@ -30,20 +30,22 @@ tasks:
     title: "In `app/(app)/admin/dlq/data.ts`: Add or update integration tests that
       drive booking create, confirm, cancel, and reschedule flows and assert that
       the expected notification events are emitted from those operations."
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ""
-    notes: []
+    status: done
+    started_at: "2026-09-23T12:14:00Z"
+    finished_at: "2026-09-23T12:14:21Z"
+    commit: c12d12359ec103859514a55bf9d54d6e62725381
+    notes:
+      - "Verified public-booking create + PATCH confirm/cancel/reschedule emission tests (re-run this round)."
   - id: task-04
     title: "In `app/(app)/admin/dlq/data.ts`: Add an integration test that simulates
       WhatsApp delivery failure during a booking-triggered notification and verifies
       that SMS is attempted as the fallback channel."
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ""
-    notes: []
+    status: done
+    started_at: "2026-09-23T12:14:00Z"
+    finished_at: "2026-09-23T12:14:21Z"
+    commit: f13d4d76e1b77d6c8883b3bf3dfa773bd674190a
+    notes:
+      - "route.test.ts: confirm via PATCH with failAlways WhatsApp asserts SMS send for booking.confirmed."
   - id: task-05
     title: Add a test covering permanent notification failure after all retry/backoff
       attempts and assert that a `DeadLetter` row is written with the expected payload.
@@ -66,37 +68,41 @@ tasks:
       and reschedule causes exactly one corresponding notification event to be emitted
       by the integrated booking flow, without requiring tests to call the notification
       event bus directly.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ""
-    notes: []
+    status: done
+    started_at: "2026-09-23T12:14:00Z"
+    finished_at: "2026-09-23T12:14:21Z"
+    commit: c12d12359ec103859514a55bf9d54d6e62725381
+    notes:
+      - "Each lifecycle test asserts toHaveBeenCalledTimes(1) after the booking handler, not emitLifecycleEvent."
   - id: task-08
     title: For each booking lifecycle operation under test (create, confirm, cancel,
       reschedule), the emitted notification event payload includes the booking identifier
       and the lifecycle-specific event name expected by the notification pipeline.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ""
-    notes: []
+    status: done
+    started_at: "2026-09-23T12:14:00Z"
+    finished_at: "2026-09-23T12:14:21Z"
+    commit: c12d12359ec103859514a55bf9d54d6e62725381
+    notes:
+      - "Assertions cover type + bookingId for created/confirmed/cancelled/rescheduled."
   - id: task-09
     title: When WhatsApp delivery fails during a booking-triggered notification, the
       notification pipeline attempts SMS delivery for the same booking notification
       in the same test scenario.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ""
-    notes: []
+    status: done
+    started_at: "2026-09-23T12:14:00Z"
+    finished_at: "2026-09-23T12:14:21Z"
+    commit: f13d4d76e1b77d6c8883b3bf3dfa773bd674190a
+    notes:
+      - "Confirmed via booking PATCH + registerNotificationSubscribers; SMS outbox length 1."
   - id: task-10
     title: If WhatsApp delivery succeeds for a booking-triggered notification, the
       fallback SMS channel is not attempted for that notification.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ""
-    notes: []
+    status: done
+    started_at: "2026-09-23T12:14:00Z"
+    finished_at: "2026-09-23T12:14:21Z"
+    commit: f13d4d76e1b77d6c8883b3bf3dfa773bd674190a
+    notes:
+      - "Cancel via PATCH with healthy WhatsApp; sms.outbox length 0."
   - id: task-11
     title: After the notification pipeline exhausts all configured retry attempts
       for a failed notification, exactly one `DeadLetter` database row is created
