@@ -273,7 +273,10 @@ describe("reminder-cron job", () => {
     };
 
     const db: ReminderPrismaClient = {
-      $queryRaw: async () => [{ locked: true }],
+      $queryRaw: async <T = unknown>(
+        _query: TemplateStringsArray,
+        ..._values: unknown[]
+      ): Promise<T> => [{ locked: true }] as T,
       tenant: {
         findMany: async () => [{ id: "tenant-db" }],
         findUnique: async () => ({
@@ -334,7 +337,10 @@ describe("prisma reminder store", () => {
     };
 
     const db: ReminderPrismaClient = {
-      $queryRaw: async () => [{ locked: true }],
+      $queryRaw: async <T = unknown>(
+        _query: TemplateStringsArray,
+        ..._values: unknown[]
+      ): Promise<T> => [{ locked: true }] as T,
       tenant: {
         findMany: async () => [{ id: "tenant-db" }],
         findUnique: async () => ({
