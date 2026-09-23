@@ -10,6 +10,16 @@ export {
 export type { LifecycleNotificationHandler, RegisterSubscribersOptions } from "./subscribers";
 
 export {
+  emitBookingLifecycleNotification,
+  lifecycleEventTypeForBookingUpdate,
+} from "./booking-lifecycle";
+export type {
+  BookingLifecycleBooking,
+  BookingLifecycleLookupDb,
+  EmitBookingLifecycleOptions,
+} from "./booking-lifecycle";
+
+export {
   dispatchLifecycleNotification,
   bodyParametersForEvent,
   renderSmsBody,
@@ -23,6 +33,13 @@ export type {
   DispatchSuccess,
   NotificationDeadLetterDb,
 } from "./dispatch";
+
+export {
+  buildNotificationDeadLetterPayload,
+  formatPermanentFailureReason,
+  recordNotificationDeadLetter,
+} from "./dead-letter";
+export type { NotificationDeadLetterPayload } from "./dead-letter";
 
 export { computeBackoffDelay, withBackoff } from "./retry";
 export type { BackoffExhaustedError, BackoffOptions } from "./retry";

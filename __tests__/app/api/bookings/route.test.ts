@@ -2,6 +2,13 @@ import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { __resetDomainEventsForTests, onBookingConfirmed } from "@/app/lib/events";
+import {
+  __resetNotificationSubscribersForTests,
+  onLifecycleEvent,
+  registerNotificationSubscribers,
+} from "@/app/lib/notifications/subscribers";
+import { FakeWhatsAppProvider } from "@/app/lib/whatsapp/fake";
+import { MemorySmsProvider } from "@/app/lib/sms/memory";
 
 type BookingRow = {
   id: string;
@@ -37,6 +44,8 @@ const state = vi.hoisted(() => ({
   findBusinessHourFirst: vi.fn(),
   findBlackoutDateFirst: vi.fn(),
   tenantFindUnique: vi.fn(),
+  clientFindFirst: vi.fn(),
+  serviceFindFirst: vi.fn(),
 }));
 
 vi.mock("@/app/db/prisma", () => ({
@@ -54,6 +63,12 @@ vi.mock("@/app/db/prisma", () => ({
     },
     tenant: {
       findUnique: state.tenantFindUnique,
+    },
+    client: {
+      findFirst: state.clientFindFirst,
+    },
+    service: {
+      findFirst: state.serviceFindFirst,
     },
   },
 }));
@@ -109,6 +124,8 @@ beforeEach(() => {
   state.findBusinessHourFirst.mockReset();
   state.findBlackoutDateFirst.mockReset();
   state.tenantFindUnique.mockReset();
+  state.clientFindFirst.mockReset();
+  state.serviceFindFirst.mockReset();
 
   state.findBookingFirst.mockImplementation(
     async (args: { where: { tenantId: string; id: string } }) =>
@@ -161,10 +178,17 @@ beforeEach(() => {
       ) ?? null
   );
   state.findBlackoutDateFirst.mockResolvedValue(null);
+  state.clientFindFirst.mockResolvedValue({
+    name: "Ada Lovelace",
+    phone: "+2348012345678",
+  });
+  state.serviceFindFirst.mockResolvedValue({ name: "Classic Haircut" });
+  state.tenantFindUnique.mockResolvedValue({ name: "Bukay Demo Salon" });
 });
 
 afterEach(() => {
   __resetDomainEventsForTests();
+  __resetNotificationSubscribersForTests();
 });
 
 describe("PATCH /api/bookings/:id", () => {
@@ -293,5 +317,142 @@ describe("PATCH /api/bookings/:id", () => {
 
     expect(res.status).toBe(200);
     expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("emits a lifecycle notification when a pending booking is confirmed", async () => {
+    state.bookings = [booking({ status: "pending" })];
+    const lifecycle = vi.fn();
+    onLifecycleEvent(lifecycle);
+
+    const res = await PATCH(request("/api/bookings/booking-1", { status: "confirmed" }), {
+      params: { id: "booking-1" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(lifecycle).toHaveBeenCalledTimes(1);
+    expect(lifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "booking.confirmed",
+        bookingId: "booking-1",
+        tenantId: "tenant-1",
+        to: "+2348012345678",
+      })
+    );
+  });
+
+  it("emits a lifecycle notification when a booking is cancelled", async () => {
+    state.bookings = [booking({ status: "confirmed" })];
+    const lifecycle = vi.fn();
+    onLifecycleEvent(lifecycle);
+
+    const res = await PATCH(request("/api/bookings/booking-1", { status: "cancelled" }), {
+      params: { id: "booking-1" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(lifecycle).toHaveBeenCalledTimes(1);
+    expect(lifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "booking.cancelled",
+        bookingId: "booking-1",
+      })
+    );
+  });
+
+  it("emits a lifecycle notification when a booking is rescheduled", async () => {
+    state.bookings = [booking({ status: "confirmed" })];
+    const lifecycle = vi.fn();
+    onLifecycleEvent(lifecycle);
+
+    const res = await PATCH(
+      request("/api/bookings/booking-1", {
+        startsAt: "2026-07-27T11:00:00.000Z",
+        endsAt: "2026-07-27T12:00:00.000Z",
+      }),
+      { params: { id: "booking-1" } }
+    );
+
+    expect(res.status).toBe(200);
+    expect(lifecycle).toHaveBeenCalledTimes(1);
+    expect(lifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "booking.rescheduled",
+        bookingId: "booking-1",
+        startsAt: "2026-07-27T11:00:00.000Z",
+        previousStartsAt: "2026-07-27T10:00:00.000Z",
+      })
+    );
+  });
+
+  it("falls back to SMS when WhatsApp fails for a booking confirm notification", async () => {
+    state.bookings = [booking({ status: "pending" })];
+    const whatsapp = new FakeWhatsAppProvider();
+    whatsapp.failAlways = new Error("whatsapp unavailable");
+    const sms = new MemorySmsProvider();
+    const deadLetters: Array<Record<string, unknown>> = [];
+    const onResult = vi.fn();
+
+    registerNotificationSubscribers({
+      whatsapp,
+      sms,
+      db: {
+        deadLetter: {
+          async create({ data }) {
+            deadLetters.push({ ...data });
+            return data;
+          },
+        },
+      },
+      backoff: { maxAttempts: 1, baseDelayMs: 0, sleep: async () => undefined },
+      onResult,
+    });
+
+    const res = await PATCH(request("/api/bookings/booking-1", { status: "confirmed" }), {
+      params: { id: "booking-1" },
+    });
+
+    expect(res.status).toBe(200);
+    await vi.waitFor(() => expect(onResult).toHaveBeenCalled());
+    expect(onResult.mock.calls[0][0]).toMatchObject({
+      type: "booking.confirmed",
+      bookingId: "booking-1",
+    });
+    expect(onResult.mock.calls[0][1]).toMatchObject({ status: "sent", channel: "sms" });
+    expect(whatsapp.outbox).toHaveLength(0);
+    expect(sms.outbox).toHaveLength(1);
+    expect(sms.outbox[0].to).toBe("+2348012345678");
+    expect(sms.outbox[0].body).toContain("Ada Lovelace");
+    expect(deadLetters).toHaveLength(0);
+  });
+
+  it("does not attempt SMS when WhatsApp succeeds for a booking cancel notification", async () => {
+    state.bookings = [booking({ status: "confirmed" })];
+    const whatsapp = new FakeWhatsAppProvider();
+    const sms = new MemorySmsProvider();
+    const onResult = vi.fn();
+
+    registerNotificationSubscribers({
+      whatsapp,
+      sms,
+      db: {
+        deadLetter: {
+          async create() {
+            throw new Error("DeadLetter should not be written on success");
+          },
+        },
+      },
+      backoff: { maxAttempts: 1, baseDelayMs: 0, sleep: async () => undefined },
+      onResult,
+    });
+
+    const res = await PATCH(request("/api/bookings/booking-1", { status: "cancelled" }), {
+      params: { id: "booking-1" },
+    });
+
+    expect(res.status).toBe(200);
+    await vi.waitFor(() => expect(onResult).toHaveBeenCalled());
+    expect(onResult.mock.calls[0][1]).toMatchObject({ status: "sent", channel: "whatsapp" });
+    expect(whatsapp.outbox).toHaveLength(1);
+    expect(sms.outbox).toHaveLength(0);
   });
 });

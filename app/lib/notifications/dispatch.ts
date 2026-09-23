@@ -1,26 +1,15 @@
 import type { SmsProvider } from "@/app/lib/sms/provider";
 import type { WhatsAppProvider } from "@/app/lib/whatsapp/provider";
 import { WHATSAPP_TEMPLATES, type WhatsAppTemplateKey } from "@/app/lib/whatsapp/templates";
-import { withBackoff, type BackoffOptions } from "./retry";
 import {
-  NOTIFICATION_DEAD_LETTER_SOURCE,
-  type LifecycleEventType,
-  type LifecycleNotificationEvent,
-} from "./types";
+  formatPermanentFailureReason,
+  recordNotificationDeadLetter,
+  type NotificationDeadLetterDb,
+} from "./dead-letter";
+import { withBackoff, type BackoffOptions } from "./retry";
+import { type LifecycleEventType, type LifecycleNotificationEvent } from "./types";
 
-export type NotificationDeadLetterDb = {
-  deadLetter: {
-    create(args: {
-      data: {
-        tenantId?: string | null;
-        source: string;
-        eventType: string;
-        payload: string;
-        reason?: string | null;
-      };
-    }): Promise<unknown>;
-  };
-};
+export type { NotificationDeadLetterDb } from "./dead-letter";
 
 export type DispatchChannel = "whatsapp" | "sms";
 
@@ -78,30 +67,10 @@ export function renderSmsBody(event: LifecycleNotificationEvent): string {
   });
 }
 
-function errorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  return String(err);
-}
-
-async function recordDeadLetter(
-  db: NotificationDeadLetterDb,
-  event: LifecycleNotificationEvent,
-  reason: string
-): Promise<void> {
-  await db.deadLetter.create({
-    data: {
-      tenantId: event.tenantId,
-      source: NOTIFICATION_DEAD_LETTER_SOURCE,
-      eventType: event.type,
-      payload: JSON.stringify(event),
-      reason,
-    },
-  });
-}
-
 /**
  * Send a lifecycle notification: WhatsApp first, SMS on WhatsApp failure.
- * Permanent failure of both channels writes a `DeadLetter` row.
+ * Permanent failure of both channels (after each exhausts retry/backoff) writes
+ * exactly one `DeadLetter` row with the notification payload and booking id.
  */
 export async function dispatchLifecycleNotification(
   event: LifecycleNotificationEvent,
@@ -146,8 +115,8 @@ export async function dispatchLifecycleNotification(
         id: result.id,
       };
     } catch (smsError) {
-      const reason = `whatsapp: ${errorMessage(whatsappError)}; sms: ${errorMessage(smsError)}`;
-      await recordDeadLetter(deps.db, event, reason);
+      const reason = formatPermanentFailureReason(whatsappError, smsError);
+      await recordNotificationDeadLetter(deps.db, event, reason);
       return { status: "dead_lettered", reason };
     }
   }
