@@ -23,6 +23,7 @@ The tenant-owned models are:
 | `Booking` | Appointment linking client, service, and optional staff | `@@index([tenantId])`, `@@index([tenantId, startsAt])` |
 | `SlotHold` | Temporary reservation of an available booking slot | `@unique(slotKey)`, `@@index([tenantId])`, `@@index([expiresAt])` |
 | `Payment` | Payment ledger row for a booking | `@@index([tenantId])`, `@@index([bookingId])`, `@@index([providerRef])` |
+| `LedgerEntry` | Immutable gross, fee, and net money-movement record | `@@index([tenantId])`, `@@index([tenantId, occurredAt])`, `@@index([providerRef])` |
 | `AuditLog` | Append-only tenant activity record | `@@index([tenantId])`, `@@index([tenantId, entityType, entityId])` |
 
 `Tenant` itself is not tenant-scoped and must not carry a `tenantId` column. Deleting a tenant
@@ -76,6 +77,12 @@ the expiry index.
 
 `Payment` links to a booking and stores amount, currency, provider metadata, status string, optional
 paid timestamp, and audit timestamps.
+
+### LedgerEntry
+
+Append-only tenant financial record. `grossKobo`, `providerFeeKobo`, `platformFeeKobo`, and `netKobo`
+preserve the exact provider amounts; `direction` and `entryType` classify the movement. Database
+triggers reject updates and deletes, so corrections must be recorded as new entries.
 
 ### AuditLog
 

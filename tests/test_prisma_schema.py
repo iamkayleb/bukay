@@ -20,6 +20,7 @@ EXPECTED_TENANT_SCOPED_MODELS = {
     "Client",
     "Booking",
     "Payment",
+    "LedgerEntry",
     "AuditLog",
 }
 
