@@ -4,43 +4,43 @@ base: eval/cursor
 branch: cursor/issue-408
 tasks:
   - id: task-01
-    title: 'In `app/(app)/admin/dlq/data.ts`: Wire notification event emission into
+    title: "In `app/(app)/admin/dlq/data.ts`: Wire notification event emission into
       the real booking lifecycle handlers so that create, confirm, cancel, and reschedule
       operations publish the corresponding notification event as part of the booking
-      flow.'
+      flow."
     status: done
-    started_at: '2026-09-23T11:49:37Z'
-    finished_at: '2026-09-23T11:57:30Z'
+    started_at: "2026-09-23T11:49:37Z"
+    finished_at: "2026-09-23T11:57:30Z"
     commit: c12d12359ec103859514a55bf9d54d6e62725381
     notes:
-      - 'Prior finish pointed at ledger-only start commit; corrected with real wiring.'
-      - 'emit booking.created from createPublicBooking; confirm/cancel/reschedule from PATCH via emitBookingLifecycleNotification.'
-      - 'Verified: booking-lifecycle.test.ts, route.test.ts lifecycle cases, public-booking create emission.'
+      - "Prior finish pointed at ledger-only start commit; corrected with real wiring."
+      - "emit booking.created from createPublicBooking; confirm/cancel/reschedule from PATCH via emitBookingLifecycleNotification."
+      - "Verified: booking-lifecycle.test.ts, route.test.ts lifecycle cases, public-booking create emission."
   - id: task-02
     title: Implement permanent failure handling in the notification pipeline so that
       exhausted retry attempts create a `DeadLetter` record in the database.
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-03
-    title: 'In `app/(app)/admin/dlq/data.ts`: Add or update integration tests that
+    title: "In `app/(app)/admin/dlq/data.ts`: Add or update integration tests that
       drive booking create, confirm, cancel, and reschedule flows and assert that
-      the expected notification events are emitted from those operations.'
+      the expected notification events are emitted from those operations."
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-04
-    title: 'In `app/(app)/admin/dlq/data.ts`: Add an integration test that simulates
+    title: "In `app/(app)/admin/dlq/data.ts`: Add an integration test that simulates
       WhatsApp delivery failure during a booking-triggered notification and verifies
-      that SMS is attempted as the fallback channel.'
+      that SMS is attempted as the fallback channel."
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-05
     title: Add a test covering permanent notification failure after all retry/backoff
@@ -48,7 +48,7 @@ tasks:
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-06
     title: Fix the CI test workflow so that `pnpm test` runs successfully in the repository's
@@ -56,7 +56,7 @@ tasks:
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-07
     title: Executing each real booking lifecycle operation for create, confirm, cancel,
@@ -66,7 +66,7 @@ tasks:
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-08
     title: For each booking lifecycle operation under test (create, confirm, cancel,
@@ -75,7 +75,7 @@ tasks:
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-09
     title: When WhatsApp delivery fails during a booking-triggered notification, the
@@ -84,7 +84,7 @@ tasks:
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-10
     title: If WhatsApp delivery succeeds for a booking-triggered notification, the
@@ -92,7 +92,7 @@ tasks:
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-11
     title: After the notification pipeline exhausts all configured retry attempts
@@ -101,7 +101,7 @@ tasks:
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-12
     title: The persisted `DeadLetter` row for an exhausted notification failure contains
@@ -110,7 +110,7 @@ tasks:
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-13
     title: The Prisma schema defines a `DeadLetter` model that can be used by the
@@ -119,7 +119,7 @@ tasks:
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-14
     title: The repository CI workflow includes a step that executes `pnpm test`, and
@@ -127,7 +127,7 @@ tasks:
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-15
     title: Running `pnpm test` in a clean environment after installing dependencies
@@ -136,5 +136,5 @@ tasks:
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
