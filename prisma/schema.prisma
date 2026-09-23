@@ -54,6 +54,11 @@ model Service {
   durationMinutes Int
   priceCents      Int
   currency        String    @default("NGN")
+  /// `none`, `percentage`, or `flat`. `depositValue` is a whole percentage
+  /// for percentage deposits and an amount in the currency's smallest unit
+  /// for flat deposits.
+  depositType     String    @default("none")
+  depositValue    Int       @default(0)
   active          Boolean   @default(true)
   bookings        Booking[]
   createdAt       DateTime  @default(now())
