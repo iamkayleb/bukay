@@ -1,59 +1,20 @@
-import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 
 import { getShopfrontTenant } from "./data";
+import { getShopfrontRouteMetadataForSlug } from "./head";
 
-// Public shopfront pages are the entry point for every booking link, so they
-// are rendered per-request but cached at the edge for a minute (see the
-// stale-while-revalidate headers in next.config.js) rather than served
-// force-dynamic on every hit.
 export const revalidate = 60;
 
 type ShopfrontPageProps = {
   params: { slug: string };
 };
 
+// `head.tsx` provides an explicit tag-level contract for this route. Next's
+// metadata API is the runtime source used to compose the App Router document
+// head for dynamic shopfronts.
 export async function generateMetadata({ params }: ShopfrontPageProps): Promise<Metadata> {
-  const tenant = await getShopfrontTenant(params.slug);
-
-  if (!tenant) {
-    return { title: "Shop not found" };
-  }
-
-  const title = `${tenant.name} | Book with Bukay`;
-  const description =
-    tenant.services.length > 0
-      ? `Book ${tenant.services
-          .slice(0, 3)
-          .map((service) => service.name)
-          .join(", ")} and more with ${tenant.name} on Bukay.`
-      : `Book an appointment with ${tenant.name} on Bukay.`;
-
-  const path = `/${tenant.slug}`;
-  const rootHost = process.env.ROOT_HOST?.trim();
-  // Open Graph requires an absolute og:url, and Lighthouse's canonical audit
-  // flags relative canonicals, so resolve both against metadataBase instead
-  // of emitting a bare path when ROOT_HOST isn't configured.
-  const metadataBase = new URL(rootHost ? `https://${rootHost}` : "http://localhost:3000");
-
-  return {
-    title,
-    description,
-    metadataBase,
-    alternates: { canonical: path },
-    openGraph: {
-      title,
-      description,
-      url: path,
-      siteName: "Bukay",
-      type: "website",
-    },
-    twitter: {
-      card: "summary",
-      title,
-      description,
-    },
-  };
+  return getShopfrontRouteMetadataForSlug(params.slug);
 }
 
 function formatPrice(priceCents: number, currency: string): string {

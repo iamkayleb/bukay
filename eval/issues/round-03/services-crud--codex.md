@@ -1,0 +1,44 @@
+<!-- base-branch: eval/codex -->
+<!-- eval-round: 3 -->
+<!-- eval-spec: services-crud -->
+<!-- eval-agent: codex -->
+
+## Why
+
+Services are the unit customers book, so they must exist before availability or booking work.
+
+## Scope
+
+Owner can create, edit, archive and delete services with fields name, durationMinutes, priceKobo, bufferMinutes and active.
+
+## Non-Goals
+
+Nothing beyond the scope above. Do not modify files under `.github/`.
+
+## Tasks
+
+- [ ] Add `lib/schemas/service.ts`: define Zod schemas
+- [ ] Add `app/api/services/route.ts`: implement tenant-scoped handlers
+- [ ] Add `app/(app)/services/page.tsx`: build the list and form UI
+- [ ] Add `prisma/schema.prisma`: implement soft delete via the `active` column
+- [ ] Add `tests/services.test.ts` covering create, read, update and archive
+
+## Acceptance Criteria
+
+- [ ] Every CRUD path is verified by `pnpm test`
+- [ ] Prices persist as integer kobo in the `Service` table
+- [ ] An invalid payload returns HTTP 400 with inline field errors
+- [ ] Archived services are absent from booking surfaces
+
+## Implementation Notes
+
+Seeded for the `codex` evaluation lane. Work on the branch cut for this issue and open the pull request against `eval/codex`. Keep changes limited to the files named in Tasks.
+
+<details>
+<summary>Original Issue</summary>
+
+```text
+Seeded from eval/rounds/round-03.json, spec `services-crud`, agent `codex`.
+```
+
+</details>

@@ -8,15 +8,25 @@
       "scope": "Receive inbound messages, route by business number to the tenant, and persist conversation history.",
       "tasks": [
         "Add `app/api/webhooks/whatsapp/route.ts`: implement",
-        "Add `lib/whatsapp/routing.ts`: resolve the tenant by number",
-        "Add `prisma/schema.prisma`: add `Conversation` and `Message` models",
-        "Add `lib/whatsapp/templates.ts`: send the greeting template from  for unknown senders"
+        "Add `app/lib/whatsapp/routing.ts`: resolve the tenant by number",
+        "Add `prisma/schema.prisma`: add the `Conversation` model",
+        "Add `prisma/schema.prisma`: add the `Message` model",
+        "Add `app/lib/whatsapp/templates.ts`: send the greeting template from  for unknown senders"
       ],
       "acceptance": [
         "An inbound message persists with the correct `tenantId`, verified by `pnpm test`",
         "An unknown number receives the greeting and returns HTTP 200",
         "A known client resumes without re-identification",
         "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`app/api/webhooks/whatsapp/**`",
+        "`app/lib/whatsapp/**`",
+        "`prisma/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
       ]
     },
     {
@@ -25,10 +35,11 @@
       "why": "Conversational booking is the product's core differentiator.",
       "scope": "Tool-using agent that books a service over chat, with slot holds expiring in 15 minutes.",
       "tasks": [
-        "Add `lib/agent/runtime.ts`: add the runtime and registry",
-        "Add `lib/agent/tools/`: implement the five tools",
-        "Add `lib/agent/prompt.ts`: add the prompt",
-        "Add `tests/agent-booking.test.ts` covering the full path",
+        "Add `app/lib/agent/runtime.ts`: add the agent runtime",
+        "Add `app/lib/agent/runtime.ts`: add the tool registry",
+        "Add `app/lib/agent/tools/`: implement the five tools",
+        "Add `app/lib/agent/prompt.ts`: add the prompt",
+        "Add `__tests__/agent-booking.test.ts` covering the full path",
         "Add `prisma/schema.prisma`: persist transcripts via the `Message` model"
       ],
       "acceptance": [
@@ -36,6 +47,15 @@
         "A tool call for another tenant returns HTTP 403",
         "An unpaid hold releases after 15 minutes",
         "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`__tests__/**`",
+        "`app/lib/agent/**`",
+        "`prisma/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
       ]
     }
   ]
