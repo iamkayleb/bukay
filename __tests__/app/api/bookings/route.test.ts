@@ -5,7 +5,10 @@ import { __resetDomainEventsForTests, onBookingConfirmed } from "@/app/lib/event
 import {
   __resetNotificationSubscribersForTests,
   onLifecycleEvent,
+  registerNotificationSubscribers,
 } from "@/app/lib/notifications/subscribers";
+import { FakeWhatsAppProvider } from "@/app/lib/whatsapp/fake";
+import { MemorySmsProvider } from "@/app/lib/sms/memory";
 
 type BookingRow = {
   id: string;
@@ -379,5 +382,77 @@ describe("PATCH /api/bookings/:id", () => {
         previousStartsAt: "2026-07-27T10:00:00.000Z",
       })
     );
+  });
+
+  it("falls back to SMS when WhatsApp fails for a booking confirm notification", async () => {
+    state.bookings = [booking({ status: "pending" })];
+    const whatsapp = new FakeWhatsAppProvider();
+    whatsapp.failAlways = new Error("whatsapp unavailable");
+    const sms = new MemorySmsProvider();
+    const deadLetters: Array<Record<string, unknown>> = [];
+    const onResult = vi.fn();
+
+    registerNotificationSubscribers({
+      whatsapp,
+      sms,
+      db: {
+        deadLetter: {
+          async create({ data }) {
+            deadLetters.push({ ...data });
+            return data;
+          },
+        },
+      },
+      backoff: { maxAttempts: 1, baseDelayMs: 0, sleep: async () => undefined },
+      onResult,
+    });
+
+    const res = await PATCH(request("/api/bookings/booking-1", { status: "confirmed" }), {
+      params: { id: "booking-1" },
+    });
+
+    expect(res.status).toBe(200);
+    await vi.waitFor(() => expect(onResult).toHaveBeenCalled());
+    expect(onResult.mock.calls[0][0]).toMatchObject({
+      type: "booking.confirmed",
+      bookingId: "booking-1",
+    });
+    expect(onResult.mock.calls[0][1]).toMatchObject({ status: "sent", channel: "sms" });
+    expect(whatsapp.outbox).toHaveLength(0);
+    expect(sms.outbox).toHaveLength(1);
+    expect(sms.outbox[0].to).toBe("+2348012345678");
+    expect(sms.outbox[0].body).toContain("Ada Lovelace");
+    expect(deadLetters).toHaveLength(0);
+  });
+
+  it("does not attempt SMS when WhatsApp succeeds for a booking cancel notification", async () => {
+    state.bookings = [booking({ status: "confirmed" })];
+    const whatsapp = new FakeWhatsAppProvider();
+    const sms = new MemorySmsProvider();
+    const onResult = vi.fn();
+
+    registerNotificationSubscribers({
+      whatsapp,
+      sms,
+      db: {
+        deadLetter: {
+          async create() {
+            throw new Error("DeadLetter should not be written on success");
+          },
+        },
+      },
+      backoff: { maxAttempts: 1, baseDelayMs: 0, sleep: async () => undefined },
+      onResult,
+    });
+
+    const res = await PATCH(request("/api/bookings/booking-1", { status: "cancelled" }), {
+      params: { id: "booking-1" },
+    });
+
+    expect(res.status).toBe(200);
+    await vi.waitFor(() => expect(onResult).toHaveBeenCalled());
+    expect(onResult.mock.calls[0][1]).toMatchObject({ status: "sent", channel: "whatsapp" });
+    expect(whatsapp.outbox).toHaveLength(1);
+    expect(sms.outbox).toHaveLength(0);
   });
 });
