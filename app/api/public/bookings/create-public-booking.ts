@@ -14,6 +14,7 @@ import {
   tryAcquireHold,
 } from "@/app/lib/slot-hold";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
+import { emitLifecycleEvent } from "@/app/lib/notifications/subscribers";
 
 export const PUBLIC_BOOKING_STATUS = "pending_payment" as const;
 
@@ -211,7 +212,21 @@ export async function createPublicBooking(input: CreatePublicBookingInput) {
         return {
           booking,
           holdExpiresAt: hold.expiresAt.toISOString(),
+          serviceName: service.name,
+          clientName: client.name,
+          clientPhone: client.phone,
         };
+      });
+
+      emitLifecycleEvent({
+        type: "booking.created",
+        bookingId: result.booking.id,
+        tenantId: tenant.id,
+        to: result.clientPhone,
+        clientName: result.clientName,
+        serviceName: result.serviceName,
+        businessName: tenant.name,
+        startsAt: result.booking.startsAt.toISOString(),
       });
 
       return {

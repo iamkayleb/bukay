@@ -10,6 +10,16 @@ export {
 export type { LifecycleNotificationHandler, RegisterSubscribersOptions } from "./subscribers";
 
 export {
+  emitBookingLifecycleNotification,
+  lifecycleEventTypeForBookingUpdate,
+} from "./booking-lifecycle";
+export type {
+  BookingLifecycleBooking,
+  BookingLifecycleLookupDb,
+  EmitBookingLifecycleOptions,
+} from "./booking-lifecycle";
+
+export {
   dispatchLifecycleNotification,
   bodyParametersForEvent,
   renderSmsBody,

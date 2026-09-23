@@ -17,6 +17,10 @@ import {
   type BusinessHourRecord,
 } from "@/services/bookingValidation";
 import { emitBookingConfirmed } from "@/app/lib/events";
+import {
+  emitBookingLifecycleNotification,
+  lifecycleEventTypeForBookingUpdate,
+} from "@/app/lib/notifications/booking-lifecycle";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +36,11 @@ type BookingUpdateData = {
   staffId?: string | null;
   status?: string;
   notes?: string | null;
+};
+
+type BookingMutationRecord = BookingRecord & {
+  clientId: string;
+  serviceId: string;
 };
 
 const bookingDateField = z.preprocess(
@@ -61,9 +70,9 @@ const updateBookingSchema = z
   });
 
 const bookingDelegate = prisma.booking as unknown as {
-  findFirst(args: unknown): Promise<BookingRecord | null>;
-  findMany(args: unknown): Promise<BookingRecord[]>;
-  update(args: unknown): Promise<BookingRecord>;
+  findFirst(args: unknown): Promise<BookingMutationRecord | null>;
+  findMany(args: unknown): Promise<BookingMutationRecord[]>;
+  update(args: unknown): Promise<BookingMutationRecord>;
 };
 
 const businessHourDelegate = prisma.businessHour as unknown as {
@@ -184,6 +193,28 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         });
       }
 
+      const lifecycleType = lifecycleEventTypeForBookingUpdate({
+        previousStatus: existingBooking.status,
+        nextStatus: booking.status,
+        previousStartsAt: existingBooking.startsAt,
+        nextStartsAt: booking.startsAt,
+      });
+
+      if (lifecycleType) {
+        await emitBookingLifecycleNotification({
+          type: lifecycleType,
+          booking: {
+            id: booking.id,
+            tenantId: booking.tenantId,
+            clientId: booking.clientId,
+            serviceId: booking.serviceId,
+            startsAt: booking.startsAt,
+          },
+          previousStartsAt:
+            lifecycleType === "booking.rescheduled" ? existingBooking.startsAt : undefined,
+        });
+      }
+
       return NextResponse.json({ ok: true, booking: serializeBooking(booking) });
     } catch (error) {
       if (isMissingRecordError(error)) {
@@ -195,7 +226,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   });
 }
 
-function serializeBooking(booking: BookingRecord) {
+function serializeBooking(booking: BookingMutationRecord) {
   return {
     ...booking,
     startsAt: booking.startsAt.toISOString(),

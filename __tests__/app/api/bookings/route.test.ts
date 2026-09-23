@@ -2,6 +2,10 @@ import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { __resetDomainEventsForTests, onBookingConfirmed } from "@/app/lib/events";
+import {
+  __resetNotificationSubscribersForTests,
+  onLifecycleEvent,
+} from "@/app/lib/notifications/subscribers";
 
 type BookingRow = {
   id: string;
@@ -37,6 +41,8 @@ const state = vi.hoisted(() => ({
   findBusinessHourFirst: vi.fn(),
   findBlackoutDateFirst: vi.fn(),
   tenantFindUnique: vi.fn(),
+  clientFindFirst: vi.fn(),
+  serviceFindFirst: vi.fn(),
 }));
 
 vi.mock("@/app/db/prisma", () => ({
@@ -54,6 +60,12 @@ vi.mock("@/app/db/prisma", () => ({
     },
     tenant: {
       findUnique: state.tenantFindUnique,
+    },
+    client: {
+      findFirst: state.clientFindFirst,
+    },
+    service: {
+      findFirst: state.serviceFindFirst,
     },
   },
 }));
@@ -109,6 +121,8 @@ beforeEach(() => {
   state.findBusinessHourFirst.mockReset();
   state.findBlackoutDateFirst.mockReset();
   state.tenantFindUnique.mockReset();
+  state.clientFindFirst.mockReset();
+  state.serviceFindFirst.mockReset();
 
   state.findBookingFirst.mockImplementation(
     async (args: { where: { tenantId: string; id: string } }) =>
@@ -161,10 +175,17 @@ beforeEach(() => {
       ) ?? null
   );
   state.findBlackoutDateFirst.mockResolvedValue(null);
+  state.clientFindFirst.mockResolvedValue({
+    name: "Ada Lovelace",
+    phone: "+2348012345678",
+  });
+  state.serviceFindFirst.mockResolvedValue({ name: "Classic Haircut" });
+  state.tenantFindUnique.mockResolvedValue({ name: "Bukay Demo Salon" });
 });
 
 afterEach(() => {
   __resetDomainEventsForTests();
+  __resetNotificationSubscribersForTests();
 });
 
 describe("PATCH /api/bookings/:id", () => {
@@ -293,5 +314,70 @@ describe("PATCH /api/bookings/:id", () => {
 
     expect(res.status).toBe(200);
     expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("emits a lifecycle notification when a pending booking is confirmed", async () => {
+    state.bookings = [booking({ status: "pending" })];
+    const lifecycle = vi.fn();
+    onLifecycleEvent(lifecycle);
+
+    const res = await PATCH(request("/api/bookings/booking-1", { status: "confirmed" }), {
+      params: { id: "booking-1" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(lifecycle).toHaveBeenCalledTimes(1);
+    expect(lifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "booking.confirmed",
+        bookingId: "booking-1",
+        tenantId: "tenant-1",
+        to: "+2348012345678",
+      })
+    );
+  });
+
+  it("emits a lifecycle notification when a booking is cancelled", async () => {
+    state.bookings = [booking({ status: "confirmed" })];
+    const lifecycle = vi.fn();
+    onLifecycleEvent(lifecycle);
+
+    const res = await PATCH(request("/api/bookings/booking-1", { status: "cancelled" }), {
+      params: { id: "booking-1" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(lifecycle).toHaveBeenCalledTimes(1);
+    expect(lifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "booking.cancelled",
+        bookingId: "booking-1",
+      })
+    );
+  });
+
+  it("emits a lifecycle notification when a booking is rescheduled", async () => {
+    state.bookings = [booking({ status: "confirmed" })];
+    const lifecycle = vi.fn();
+    onLifecycleEvent(lifecycle);
+
+    const res = await PATCH(
+      request("/api/bookings/booking-1", {
+        startsAt: "2026-07-27T11:00:00.000Z",
+        endsAt: "2026-07-27T12:00:00.000Z",
+      }),
+      { params: { id: "booking-1" } }
+    );
+
+    expect(res.status).toBe(200);
+    expect(lifecycle).toHaveBeenCalledTimes(1);
+    expect(lifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "booking.rescheduled",
+        bookingId: "booking-1",
+        startsAt: "2026-07-27T11:00:00.000Z",
+        previousStartsAt: "2026-07-27T10:00:00.000Z",
+      })
+    );
   });
 });

@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 
 import { NextRequest } from "next/server";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { prisma } from "@/app/db/prisma";
 import { POST } from "@/app/api/public/bookings/route";
@@ -10,6 +10,10 @@ import {
   createPublicBooking,
   PUBLIC_BOOKING_STATUS,
 } from "@/app/api/public/bookings/create-public-booking";
+import {
+  __resetNotificationSubscribersForTests,
+  onLifecycleEvent,
+} from "@/app/lib/notifications/subscribers";
 import { isValidNigerianPhone, validateNigerianPhone } from "@/app/lib/phone";
 import {
   SLOT_HOLD_TTL_MS,
@@ -131,6 +135,10 @@ beforeEach(async () => {
   await resetBookingTables(seed.tenantId);
 });
 
+afterEach(() => {
+  __resetNotificationSubscribersForTests();
+});
+
 describe("app/lib/phone", () => {
   it("validates and normalizes Nigerian numbers", () => {
     expect(isValidNigerianPhone("08031234567")).toBe(true);
@@ -204,6 +212,29 @@ describe("public booking integration", () => {
     );
     expect(clients).toHaveLength(1);
     expect(clients[0]?.phone).toBe("+2348031234567");
+  });
+
+  it("emits booking.created lifecycle notification from the create path", async () => {
+    const lifecycle = vi.fn();
+    onLifecycleEvent(lifecycle);
+
+    const res = await POST(jsonRequest(bookingBody()));
+    expect(res.status).toBe(201);
+    const body = await res.json();
+
+    expect(lifecycle).toHaveBeenCalledTimes(1);
+    expect(lifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "booking.created",
+        bookingId: body.booking.id,
+        tenantId: seed.tenantId,
+        to: "+2348031234567",
+        clientName: "Ada Okonkwo",
+        serviceName: "Classic Haircut",
+        businessName: "Public Booking Test Salon",
+        startsAt: STARTS_AT,
+      })
+    );
   });
 
   it("returns HTTP 409 for a conflicting active hold and does not create a second booking", async () => {
