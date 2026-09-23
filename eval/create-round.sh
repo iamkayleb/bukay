@@ -4,6 +4,19 @@
 #   ./eval/create-round.sh 1            # DRY RUN — prints what it would create
 #   ./eval/create-round.sh 1 --apply
 #   ./eval/create-round.sh 1 --apply --agent claude    # one lane only
+#   ./eval/create-round.sh 9 --apply --no-autopilot    # seed only; dispatch by hand
+#
+# --no-autopilot omits the `agents:auto-pilot` label. Auto-pilot's chain is
+# format -> optimize -> dispatch -> verify, and for a pre-rendered round issue
+# the first two stages have nothing to add: these bodies are already conformant,
+# so the formatter skips them, while the optimizer has rewritten valid tasks into
+# prose ones and paused the issue (bukay #390, #391). Without the label nothing
+# picks the issue up automatically — dispatch the belt yourself:
+#
+#   gh workflow run "Agents 71 Codex Belt Dispatcher" --repo <repo> \
+#     -f agent_key=<lane> -f force_issue=<n> -f base_branch=eval/<lane>
+#
+# or use ./eval/dispatch-round.sh.
 #
 # Idempotent: skips a (round, spec, agent) whose issue already exists, matched on
 # the `<!-- eval-spec: -->` + `<!-- eval-agent: -->` markers, so re-running is safe.
@@ -11,12 +24,14 @@ set -uo pipefail
 REPO="${REPO:-iamkayleb/bukay}"
 ROUND="${1:?usage: create-round.sh <round> [--apply] [--agent <name>] [--spec <id>]}"
 shift || true
-APPLY=0; ONLY=""; ONLYSPEC=""
+APPLY=0; ONLY=""; ONLYSPEC=""; AUTOPILOT=1
 while [ $# -gt 0 ]; do
   case "$1" in
-    --apply) APPLY=1 ;;
-    --agent) shift; ONLY="${1:-}" ;;
-    --spec)  shift; ONLYSPEC="${1:-}" ;;
+    --apply)         APPLY=1 ;;
+    --agent)         shift; ONLY="${1:-}" ;;
+    --spec)          shift; ONLYSPEC="${1:-}" ;;
+    --no-autopilot)  AUTOPILOT=0 ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
   shift || true
 done
@@ -39,7 +54,8 @@ ensure_label() {
   fi
 }
 ensure_label "eval:round-$ROUND" "BFD4F2" "Evaluation round $ROUND"
-ensure_label "agents:auto-pilot" "0E8A16" "Auto-pilot drives this issue end to end"
+[ "$AUTOPILOT" -eq 1 ] && \
+  ensure_label "agents:auto-pilot" "0E8A16" "Auto-pilot drives this issue end to end"
 ALL_AGENTS="claude codex cursor gemini"
 for a in $ALL_AGENTS; do
   ensure_label "agent:$a" "5319E7" "Route this work to $a"
@@ -94,13 +110,16 @@ print(next(r['title'] for r in rows if r['round']==$ROUND and r['spec']=='$spec'
     tried_flags="$tried_flags --label agents:tried-$a"
   done
 
-  echo "  create  $spec / $agent  -> base eval/$agent  (rotation pinned)"
+  autopilot_flag=""
+  [ "$AUTOPILOT" -eq 1 ] && autopilot_flag="--label agents:auto-pilot"
+
+  echo "  create  $spec / $agent  -> base eval/$agent  (rotation pinned$([ "$AUTOPILOT" -eq 0 ] && echo ", no auto-pilot"))"
   if [ "$APPLY" -eq 1 ]; then
     gh issue create --repo "$REPO" \
       --title "$title" \
       --body-file "$f" \
       --label "agent:$agent" \
-      --label "agents:auto-pilot" \
+      $autopilot_flag \
       --label "eval:round-$ROUND" \
       $tried_flags \
       || echo "    ! failed"

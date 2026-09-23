@@ -1,0 +1,166 @@
+# Close the evaluation loop: when verify:compare reports concerns on an
+# eval-lane PR, request the remediation follow-up automatically.
+#
+# Fires on the Provider Comparison Report comment that agents-verifier posts.
+# It reads the NEUTRAL judge's verdict (the cross-family judge — OpenAI/gpt for
+# a Claude PR, and vice versa) because a same-family self-verdict is biased
+# toward PASS. On CONCERNS/FAIL it adds `verify:create-new-pr`, which generates
+# a structured follow-up issue and dispatches the agent again. The follow-up
+# inherits the `<!-- base-branch: eval/<agent> -->` marker, so the remediation
+# PR stays in the same lane.
+#
+# Loop safety: upstream caps the follow-up chain at depth 2, after which it
+# applies needs-human instead of generating another round.
+name: Eval Auto Followup
+
+on:
+  # The verifier posts its Provider Comparison Report with GITHUB_TOKEN, and
+  # GitHub's loop guard means such a comment raises no `issue_comment` event for
+  # other workflows — so this never ran. Trigger on the verifier's own completion
+  # instead, which is independent of who posted the comment.
+  workflow_run:
+    workflows: ["Agents Verifier"]
+    types: [completed]
+  # Retained so a human can still drive it by commenting, and for recovery.
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR to evaluate (blank = scan recent merged eval PRs)'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: eval-followup-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  request-followup:
+    # Only PR comments that look like the verifier's comparison report.
+    # Only the issue_comment path carries a comment to filter on; the other
+    # triggers make the script fetch the report itself.
+    if: >-
+      github.event_name != 'issue_comment' ||
+      (github.event.issue.pull_request &&
+       contains(github.event.comment.body, 'Provider Comparison Report'))
+    runs-on: ubuntu-latest
+    env:
+      WORKFLOWS_APP_ID: ${{ secrets.WORKFLOWS_APP_ID || '' }}
+      WORKFLOWS_APP_PRIVATE_KEY: ${{ secrets.WORKFLOWS_APP_PRIVATE_KEY || '' }}
+      SERVICE_BOT_PAT: ${{ secrets.SERVICE_BOT_PAT || '' }}
+    steps:
+      # Labels applied with GITHUB_TOKEN do NOT trigger other workflows
+      # (GitHub's loop guard), which would make this hand-off inert.
+      - name: Mint GitHub App token
+        id: app_token
+        if: ${{ env.WORKFLOWS_APP_ID != '' && env.WORKFLOWS_APP_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ env.WORKFLOWS_APP_ID }}
+          private-key: ${{ env.WORKFLOWS_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Evaluate neutral verdict and request follow-up
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ steps.app_token.outputs.token || secrets.SERVICE_BOT_PAT || secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+
+            // ---- Which PRs to consider -------------------------------------
+            // issue_comment gives one PR directly. workflow_run and dispatch do
+            // not, so fall back to scanning recently merged eval-lane PRs that
+            // already carry a comparison report and have no follow-up yet.
+            let candidates = [];
+            const dispatched = (context.payload.inputs && context.payload.inputs.pr_number) || '';
+            if (context.eventName === 'issue_comment') {
+              candidates = [context.payload.issue.number];
+            } else if (dispatched) {
+              candidates = [Number(dispatched)];
+            } else {
+              const prs = await github.paginate(github.rest.pulls.list, {
+                owner, repo, state: 'closed', sort: 'updated', direction: 'desc', per_page: 30,
+              });
+              candidates = prs
+                .filter((p) => p.merged_at && String(p.base.ref || '').startsWith('eval/'))
+                .slice(0, 12)
+                .map((p) => p.number);
+            }
+            core.info(`Candidates: ${candidates.join(', ') || '(none)'}`);
+
+            const familyOf = (s) => {
+              const v = String(s).toLowerCase();
+              if (v.includes('openai') || v.includes('gpt')) return 'openai';
+              if (v.includes('anthropic') || v.includes('claude')) return 'anthropic';
+              return 'other';
+            };
+
+            const lines = [];
+            for (const prNumber of candidates) {
+              const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+
+              if (!String(pr.base.ref || '').startsWith('eval/')) { core.info(`#${prNumber}: not an eval lane`); continue; }
+              if (!pr.merged) { core.info(`#${prNumber}: not merged`); continue; }
+
+              const labels = (pr.labels || []).map((l) => l.name);
+              const agent = (labels.find((n) => n.startsWith('agent:')) || '').replace('agent:', '');
+              if (!agent) { core.info(`#${prNumber}: no agent:* label`); continue; }
+              if (labels.includes('verify:create-new-pr')) { core.info(`#${prNumber}: follow-up already requested`); continue; }
+              if (labels.includes('needs-human')) { core.info(`#${prNumber}: needs-human`); continue; }
+
+              // Fetch the newest Provider Comparison Report on the PR.
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner, repo, issue_number: prNumber, per_page: 100,
+              });
+              const report = [...comments].reverse()
+                .find((c) => String(c.body || '').includes('Provider Comparison Report'));
+              if (!report) { core.info(`#${prNumber}: no comparison report yet`); continue; }
+
+              // Parse the provider table.
+              const rows = [];
+              for (const line of String(report.body).split('\n')) {
+                const t = line.trim();
+                if (!t.startsWith('|')) continue;
+                const cells = t.replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
+                if (cells.length < 4) continue;
+                const head = cells[0].toLowerCase();
+                if (head === 'provider' || /^-+$/.test(cells[0].replace(/[: ]/g, ''))) continue;
+                rows.push({ provider: cells[0], model: cells[1], verdict: cells[2].toUpperCase() });
+              }
+              if (!rows.length) { core.info(`#${prNumber}: no table rows parsed`); continue; }
+
+              // Neutral judge = not the agent's own family.
+              const selfFamily = { claude: 'anthropic', codex: 'openai' }[agent] || '';
+              const cross = rows.filter((r) => familyOf(`${r.provider} ${r.model}`) !== selfFamily);
+              const neutral =
+                cross.find((r) => familyOf(`${r.provider} ${r.model}`) === 'openai') || cross[0];
+              if (!neutral) {
+                core.warning(`#${prNumber}: no cross-family judge for '${agent}' — check the verifier has an Anthropic slot.`);
+                lines.push(`#${prNumber} (${agent}): no cross-family judge`);
+                continue;
+              }
+
+              const verdict = neutral.verdict;
+              core.info(`#${prNumber} (${agent}) neutral=${neutral.provider}/${neutral.model} -> ${verdict}`);
+              if (!['CONCERNS', 'FAIL'].includes(verdict)) {
+                lines.push(`#${prNumber} (${agent}): ${verdict} — no follow-up`);
+                continue;
+              }
+
+              await github.rest.issues.addLabels({
+                owner, repo, issue_number: prNumber, labels: ['verify:create-new-pr'],
+              });
+              lines.push(`#${prNumber} (${agent}): **${verdict}** (${neutral.provider}/${neutral.model}) — follow-up requested`);
+            }
+
+            await core.summary
+              .addHeading('Eval auto follow-up')
+              .addRaw(lines.length ? lines.map((l) => `- ${l}`).join('\n') : '- nothing to act on')
+              .write();
