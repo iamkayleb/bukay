@@ -8,10 +8,10 @@ tasks:
       the real booking lifecycle handlers so that create, confirm, cancel, and reschedule
       operations publish the corresponding notification event as part of the booking
       flow.'
-    status: doing
+    status: done
     started_at: '2026-09-23T11:49:37Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-09-23T11:49:51Z'
+    commit: c27038090b4843219f3bdce040838ff688354d00
     notes: []
   - id: task-02
     title: Implement permanent failure handling in the notification pipeline so that
