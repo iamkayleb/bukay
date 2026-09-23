@@ -10,9 +10,12 @@ tasks:
       flow.'
     status: done
     started_at: '2026-09-23T11:49:37Z'
-    finished_at: '2026-09-23T11:49:51Z'
-    commit: c27038090b4843219f3bdce040838ff688354d00
-    notes: []
+    finished_at: '2026-09-23T11:57:30Z'
+    commit: c12d12359ec103859514a55bf9d54d6e62725381
+    notes:
+      - 'Prior finish pointed at ledger-only start commit; corrected with real wiring.'
+      - 'emit booking.created from createPublicBooking; confirm/cancel/reschedule from PATCH via emitBookingLifecycleNotification.'
+      - 'Verified: booking-lifecycle.test.ts, route.test.ts lifecycle cases, public-booking create emission.'
   - id: task-02
     title: Implement permanent failure handling in the notification pipeline so that
       exhausted retry attempts create a `DeadLetter` record in the database.
