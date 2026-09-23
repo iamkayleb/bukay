@@ -19,11 +19,13 @@ tasks:
   - id: task-02
     title: Implement permanent failure handling in the notification pipeline so that
       exhausted retry attempts create a `DeadLetter` record in the database.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ""
-    notes: []
+    status: done
+    started_at: "2026-09-23T12:10:59Z"
+    finished_at: "2026-09-23T12:13:30Z"
+    commit: 687ea1cce968847eeb34c57ddd4119d058c278a5
+    notes:
+      - "Added app/lib/notifications/dead-letter.ts; dispatch writes one DeadLetter after both channels exhaust backoff."
+      - "Verified by dispatch.test.ts permanent-failure + retry-exhaustion cases."
   - id: task-03
     title: "In `app/(app)/admin/dlq/data.ts`: Add or update integration tests that
       drive booking create, confirm, cancel, and reschedule flows and assert that
@@ -45,11 +47,12 @@ tasks:
   - id: task-05
     title: Add a test covering permanent notification failure after all retry/backoff
       attempts and assert that a `DeadLetter` row is written with the expected payload.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ""
-    notes: []
+    status: done
+    started_at: "2026-09-23T12:10:59Z"
+    finished_at: "2026-09-23T12:13:30Z"
+    commit: 687ea1cce968847eeb34c57ddd4119d058c278a5
+    notes:
+      - "dispatch.test.ts covers maxAttempts=3 exhaustion on WA+SMS; asserts single DeadLetter with bookingId payload."
   - id: task-06
     title: Fix the CI test workflow so that `pnpm test` runs successfully in the repository's
       CI environment, including any required Next.js test setup adjustments.
@@ -98,29 +101,32 @@ tasks:
     title: After the notification pipeline exhausts all configured retry attempts
       for a failed notification, exactly one `DeadLetter` database row is created
       for that notification failure.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ""
-    notes: []
+    status: done
+    started_at: "2026-09-23T12:10:59Z"
+    finished_at: "2026-09-23T12:13:30Z"
+    commit: 687ea1cce968847eeb34c57ddd4119d058c278a5
+    notes:
+      - "Verified: db.rows length === 1 after 3 WA + 3 SMS exhausted attempts."
   - id: task-12
     title: The persisted `DeadLetter` row for an exhausted notification failure contains
       the failed notification payload and enough identifying data to associate the
       record to the originating booking-triggered event used in the test.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ""
-    notes: []
+    status: done
+    started_at: "2026-09-23T12:10:59Z"
+    finished_at: "2026-09-23T12:13:30Z"
+    commit: 687ea1cce968847eeb34c57ddd4119d058c278a5
+    notes:
+      - "Payload JSON includes top-level bookingId, eventType, tenantId, to, and full event."
   - id: task-13
     title: The Prisma schema defines a `DeadLetter` model that can be used by the
       notification failure flow exercised in tests, and the application code writes
       to that model when retries are exhausted.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ""
-    notes: []
+    status: done
+    started_at: "2026-09-23T12:10:59Z"
+    finished_at: "2026-09-23T12:13:30Z"
+    commit: 687ea1cce968847eeb34c57ddd4119d058c278a5
+    notes:
+      - "Uses existing DeadLetter model; recordNotificationDeadLetter writes via db.deadLetter.create."
   - id: task-14
     title: The repository CI workflow includes a step that executes `pnpm test`, and
       that command completes successfully in the CI environment for this branch.
