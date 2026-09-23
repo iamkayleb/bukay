@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
-import { MetaWhatsAppProvider, normalizeWhatsAppRecipient } from "@/app/lib/whatsapp/meta";
+import {
+  MetaWhatsAppProvider,
+  metaWhatsAppFromEnv,
+  normalizeWhatsAppRecipient,
+} from "@/app/lib/whatsapp/meta";
 import { WhatsAppProviderError } from "@/app/lib/whatsapp/provider";
 
 function jsonResponse(body: unknown, init: { status?: number } = {}): Response {
@@ -48,7 +52,10 @@ describe("MetaWhatsAppProvider", () => {
       },
     });
 
+    // Acceptance: sandbox send returns HTTP 200 with a message id.
     expect(result.httpStatus).toBe(200);
+    expect(result.id).toBeTruthy();
+    expect(result.id).toMatch(/^wamid\./);
     expect(result.id).toBe("wamid.HBgLMjM0ODAxMjM0NTY3OBUCABIYFjNBMD");
     expect(result.provider).toBe("meta");
 
@@ -78,7 +85,7 @@ describe("MetaWhatsAppProvider", () => {
   });
 
   it("POSTs text messages with a body", async () => {
-    const fetchImpl = vi.fn(async () =>
+    const fetchImpl = vi.fn(async (_url: string, _init?: RequestInit) =>
       jsonResponse({ messages: [{ id: "wamid.text_1" }] })
     );
     const provider = new MetaWhatsAppProvider({
@@ -139,5 +146,49 @@ describe("MetaWhatsAppProvider", () => {
     await expect(
       provider.send({ to: "+234", content: { kind: "text", body: "hi" } })
     ).rejects.toThrow(/message id/);
+  });
+
+  it("omits template components when bodyParameters are absent", async () => {
+    const fetchImpl = vi.fn(async (_url: string, _init?: RequestInit) =>
+      jsonResponse({ messages: [{ id: "wamid.no_params" }] })
+    );
+    const provider = new MetaWhatsAppProvider({
+      accessToken: "EAA_sandbox_token_value",
+      phoneNumberId: "99",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    await provider.send({
+      to: "+2348012345678",
+      content: { kind: "template", name: "greeting", language: "en" },
+    });
+    const body = JSON.parse(fetchImpl.mock.calls[0][1]?.body as string);
+    expect(body.template.components).toBeUndefined();
+  });
+
+  it("throws WhatsAppProviderError on invalid JSON bodies", async () => {
+    const fetchImpl = vi.fn(async () => new Response("not-json", { status: 200 }));
+    const provider = new MetaWhatsAppProvider({
+      accessToken: "EAA_sandbox_token_value",
+      phoneNumberId: "99",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    await expect(
+      provider.send({ to: "+234", content: { kind: "text", body: "hi" } })
+    ).rejects.toMatchObject({
+      name: "WhatsAppProviderError",
+      message: "Invalid JSON from Meta WhatsApp Cloud API",
+      status: 200,
+    });
+  });
+
+  it("metaWhatsAppFromEnv reads WHATSAPP_* credentials", () => {
+    const provider = metaWhatsAppFromEnv({
+      NODE_ENV: "test",
+      WHATSAPP_ACCESS_TOKEN: "EAA_from_env_token",
+      WHATSAPP_PHONE_NUMBER_ID: "pnid_1",
+      WHATSAPP_API_VERSION: "v22.0",
+      WHATSAPP_BASE_URL: "https://graph.env.test",
+    });
+    expect(provider.name).toBe("meta");
   });
 });
