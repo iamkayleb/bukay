@@ -1,0 +1,78 @@
+version: 1
+issue: 402
+base: eval/cursor
+branch: cursor/issue-402
+tasks:
+  - id: task-01
+    title: 'Add `app/lib/notifications/subscribers.ts`: add subscribers'
+    status: done
+    started_at: '2026-09-22T16:03:32Z'
+    finished_at: '2026-09-22T16:06:30Z'
+    commit: ef70f854721bee2f888cb33bd921d0d0c777e7c1
+    notes:
+      - '2026-09-22T15:58:07Z failure (run 35750769516): status=failure'
+      - 'Implemented lifecycle event bus + registerNotificationSubscribers wiring to dispatch; verified by subscribers.test.ts'
+  - id: task-02
+    title: 'Add `app/lib/notifications/dispatch.ts`: implement the dispatcher'
+    status: done
+    started_at: '2026-09-22T16:03:32Z'
+    finished_at: '2026-09-22T16:06:30Z'
+    commit: ef70f854721bee2f888cb33bd921d0d0c777e7c1
+    notes:
+      - 'WhatsApp-first dispatch with SMS fallback and DeadLetter on permanent failure; verified by dispatch.test.ts'
+  - id: task-03
+    title: 'Add `app/lib/notifications/retry.ts`: implement backoff'
+    status: done
+    started_at: '2026-09-22T16:03:32Z'
+    finished_at: '2026-09-22T16:06:30Z'
+    commit: ef70f854721bee2f888cb33bd921d0d0c777e7c1
+    notes:
+      - 'Exponential backoff with injectable sleep/jitter; verified by retry.test.ts'
+  - id: task-04
+    title: 'Add `prisma/schema.prisma`: define the `DeadLetter` model'
+    status: done
+    started_at: '2026-09-22T16:03:32Z'
+    finished_at: '2026-09-22T16:06:30Z'
+    commit: ef70f854721bee2f888cb33bd921d0d0c777e7c1
+    notes:
+      - 'DeadLetter model already present from payments work; documented notification use in schema + DATA_MODEL.md'
+  - id: task-05
+    title: 'Add `app/(app)/admin/dlq/page.tsx`: render the dead-letter view'
+    status: done
+    started_at: '2026-09-22T16:03:32Z'
+    finished_at: '2026-09-22T16:06:30Z'
+    commit: ef70f854721bee2f888cb33bd921d0d0c777e7c1
+    notes:
+      - 'Admin DLQ page lists recent DeadLetter rows; verified by page.test.tsx + data.test.ts'
+  - id: task-06
+    title: All four lifecycle events dispatch a message, verified by `pnpm test`
+    status: done
+    started_at: '2026-09-22T16:03:32Z'
+    finished_at: '2026-09-22T16:06:30Z'
+    commit: ef70f854721bee2f888cb33bd921d0d0c777e7c1
+    notes:
+      - 'subscribers.test.ts + dispatch.test.ts cover created/confirmed/cancelled/rescheduled'
+  - id: task-07
+    title: A WhatsApp failure falls back to SMS
+    status: done
+    started_at: '2026-09-22T16:03:32Z'
+    finished_at: '2026-09-22T16:06:30Z'
+    commit: ef70f854721bee2f888cb33bd921d0d0c777e7c1
+    notes:
+      - 'dispatch.test.ts asserts SMS outbox after WhatsApp nextError'
+  - id: task-08
+    title: A permanently failed message appears in `DeadLetter`
+    status: done
+    started_at: '2026-09-22T16:03:32Z'
+    finished_at: '2026-09-22T16:06:30Z'
+    commit: ef70f854721bee2f888cb33bd921d0d0c777e7c1
+    notes:
+      - 'dispatch.test.ts asserts DeadLetter row when both channels fail'
+  - id: task-09
+    title: '`pnpm test` passes'
+    status: done
+    started_at: '2026-09-22T16:03:32Z'
+    finished_at: '2026-09-22T16:06:30Z'
+    commit: ef70f854721bee2f888cb33bd921d0d0c777e7c1
+    notes:
+      - 'pnpm test: 52 files / 329 tests passed'
