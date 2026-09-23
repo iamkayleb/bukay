@@ -166,5 +166,8 @@ describe("registerNotificationSubscribers dead-letter wiring", () => {
       eventType: "booking.cancelled",
       tenantId: "tenant-1",
     });
+    const payload = JSON.parse(String(db.rows[0].payload));
+    expect(payload.bookingId).toBe("booking-1");
+    expect(payload.event.type).toBe("booking.cancelled");
   });
 });

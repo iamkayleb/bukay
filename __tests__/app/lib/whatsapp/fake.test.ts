@@ -147,4 +147,17 @@ describe("FakeWhatsAppProvider", () => {
     expect(provider.outbox).toHaveLength(0);
     expect(provider.nextError).toBeNull();
   });
+
+  it("failAlways throws on every send for retry-exhaustion tests", async () => {
+    const provider = new FakeWhatsAppProvider();
+    provider.failAlways = new Error("permanent");
+    await expect(
+      provider.send({ to: "+234800", content: { kind: "text", body: "a" } })
+    ).rejects.toThrow("permanent");
+    await expect(
+      provider.send({ to: "+234800", content: { kind: "text", body: "b" } })
+    ).rejects.toThrow("permanent");
+    expect(provider.failAlways).not.toBeNull();
+    expect(provider.outbox).toHaveLength(0);
+  });
 });

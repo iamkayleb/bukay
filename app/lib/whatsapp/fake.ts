@@ -34,9 +34,18 @@ export class FakeWhatsAppProvider implements WhatsAppProvider {
   nextHttpStatus = 200;
   /** When set, the next send throws this error instead of recording. */
   nextError: Error | null = null;
+  /**
+   * When set, every send throws this error (does not clear).
+   * Use for retry-exhaustion / permanent-failure tests; wins over `nextError`.
+   */
+  failAlways: Error | null = null;
 
   async send(input: WhatsAppSendInput): Promise<WhatsAppSendResult> {
     assertWhatsAppSendInput(this.name, input);
+
+    if (this.failAlways) {
+      throw this.failAlways;
+    }
 
     if (this.nextError) {
       const err = this.nextError;
@@ -70,6 +79,7 @@ export class FakeWhatsAppProvider implements WhatsAppProvider {
     this.counter = 0;
     this.nextHttpStatus = 200;
     this.nextError = null;
+    this.failAlways = null;
   }
 
   /** Most recent recorded message for `to`, or undefined. */

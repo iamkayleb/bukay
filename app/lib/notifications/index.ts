@@ -34,5 +34,12 @@ export type {
   NotificationDeadLetterDb,
 } from "./dispatch";
 
+export {
+  buildNotificationDeadLetterPayload,
+  formatPermanentFailureReason,
+  recordNotificationDeadLetter,
+} from "./dead-letter";
+export type { NotificationDeadLetterPayload } from "./dead-letter";
+
 export { computeBackoffDelay, withBackoff } from "./retry";
 export type { BackoffExhaustedError, BackoffOptions } from "./retry";

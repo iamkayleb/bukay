@@ -121,6 +121,50 @@ describe("dispatchLifecycleNotification", () => {
     });
     expect(String(db.rows[0].reason)).toMatch(/wa fail/);
     expect(String(db.rows[0].reason)).toMatch(/sms fail/);
+    const payload = JSON.parse(String(db.rows[0].payload));
+    expect(payload.bookingId).toBe("booking-1");
+    expect(payload.eventType).toBe("booking.rescheduled");
+    expect(payload.event.bookingId).toBe("booking-1");
+  });
+
+  it("writes exactly one DeadLetter after exhausting retry/backoff on both channels", async () => {
+    const whatsapp = new FakeWhatsAppProvider();
+    whatsapp.failAlways = new Error("wa permanent");
+    const smsAttempts: number[] = [];
+    const sms: SmsProvider = {
+      name: "broken",
+      send: async () => {
+        smsAttempts.push(smsAttempts.length + 1);
+        throw new Error("sms permanent");
+      },
+    };
+    const db = memoryDeadLetterDb();
+    const maxAttempts = 3;
+
+    const result = await dispatchLifecycleNotification(event("booking.created"), {
+      whatsapp,
+      sms,
+      db,
+      backoff: {
+        maxAttempts,
+        baseDelayMs: 1,
+        sleep: async () => undefined,
+      },
+    });
+
+    expect(result.status).toBe("dead_lettered");
+    expect(smsAttempts).toEqual([1, 2, 3]);
+    expect(db.rows).toHaveLength(1);
+    expect(String(db.rows[0].reason)).toMatch(/exhausted 3 attempts/);
+    expect(String(db.rows[0].reason)).toMatch(/wa permanent/);
+    expect(String(db.rows[0].reason)).toMatch(/sms permanent/);
+    const payload = JSON.parse(String(db.rows[0].payload));
+    expect(payload).toMatchObject({
+      bookingId: "booking-1",
+      tenantId: "tenant-1",
+      eventType: "booking.created",
+      to: "+2348012345678",
+    });
   });
 
   it("retries WhatsApp with backoff before falling back", async () => {

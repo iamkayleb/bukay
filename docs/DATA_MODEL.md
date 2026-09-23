@@ -109,8 +109,11 @@ string so callers can serialize structured context when needed.
 
 - unknown or unhandled inbound webhooks (for example Paystack / Flutterwave)
 - permanently failed outbound lifecycle notifications after WhatsApp and SMS retries are exhausted
-  (`source` = `notifications`, see `app/lib/notifications`)
+  (`source` = `notifications`, see `app/lib/notifications/dead-letter.ts`)
 
+For notification failures, `payload` is JSON with top-level `bookingId`, `eventType`, `tenantId`,
+`to`, and the full lifecycle `event` object so operators can associate the row with the booking
+that triggered the send.
 `tenantId` is optional so events that cannot be attributed to a tenant still persist.
 Rows older than 30 days are removed by `purgeExpiredDeadLetters` (invoked when recording new
 dead letters) so raw webhook payloads are not retained indefinitely.
