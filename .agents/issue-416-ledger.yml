@@ -1,0 +1,77 @@
+version: 1
+issue: 416
+base: eval/claude
+branch: claude/issue-416
+tasks:
+  - id: task-01
+    title: 'Add `prisma/schema.prisma`: add the `LedgerEntry` model with an append-only
+      trigger'
+    status: done
+    started_at: '2026-09-23T13:43:51Z'
+    finished_at: '2026-09-23T13:44:05Z'
+    commit: da6802d70f9aac6a3e9c2fbd9d522139ea5045d2
+    notes: []
+  - id: task-02
+    title: 'Add `app/lib/ledger.ts`: write a ledger entry on payment success'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Add `app/lib/ledger.ts`: write a ledger entry on refund'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Add `app/lib/ledger.ts`: write a ledger entry on payout'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Add `app/(app)/payouts/page.tsx`: build the dashboard with CSV export'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Add `scripts/reconcile.ts`: add the reconciliation job'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Ledger totals match the provider statement to the kobo, verified by `pnpm
+      test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: An UPDATE or DELETE against `LedgerEntry` is rejected by the database
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: CSV export returns HTTP 200 for any date range
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
