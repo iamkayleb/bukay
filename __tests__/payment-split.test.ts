@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { calculateDepositCents, writeDepositRecord } from "@/app/lib/payments/split";
+import {
+  calculateBalanceCents,
+  calculateDepositCents,
+  writeBalanceRecord,
+  writeDepositRecord,
+} from "@/app/lib/payments/split";
 
 const transaction = () => ({
   payment: { create: vi.fn().mockResolvedValue({ id: "payment-1" }) },
@@ -66,5 +71,30 @@ describe("deposit payment split", () => {
     ).rejects.toThrow("Service does not require a deposit");
     expect(db.payment.create).not.toHaveBeenCalled();
     expect(db.booking.update).not.toHaveBeenCalled();
+  });
+
+  it("writes the remaining balance and closes the booking", async () => {
+    const db = transaction();
+
+    await expect(
+      writeBalanceRecord(db, {
+        tenantId: "tenant-1",
+        bookingId: "booking-1",
+        currency: "NGN",
+        provider: "fake",
+        providerRef: "balance-1",
+        priceCents: 10_000,
+        depositCents: 3_000,
+      })
+    ).resolves.toEqual({ amountCents: 7_000, status: "confirmed" });
+
+    expect(calculateBalanceCents(10_000, 3_000)).toBe(7_000);
+    expect(db.payment.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ amountCents: 7_000 }) })
+    );
+    expect(db.booking.update).toHaveBeenCalledWith({
+      where: { id: "booking-1" },
+      data: { status: "confirmed" },
+    });
   });
 });

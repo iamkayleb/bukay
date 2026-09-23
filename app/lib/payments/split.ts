@@ -19,6 +19,11 @@ export type DepositPaymentInput = {
   service: DepositPolicy;
 };
 
+export type BalancePaymentInput = Omit<DepositPaymentInput, "service"> & {
+  priceCents: number;
+  depositCents: number;
+};
+
 type DepositTransaction = {
   payment: {
     create(args: {
@@ -59,6 +64,17 @@ export function calculateDepositCents({ priceCents, depositType, depositValue }:
   }
 }
 
+/** Returns the amount still due after the recorded deposit. */
+export function calculateBalanceCents(priceCents: number, depositCents: number) {
+  if (!Number.isSafeInteger(priceCents) || priceCents < 0) {
+    throw new Error("Service price must be a non-negative integer");
+  }
+  if (!Number.isSafeInteger(depositCents) || depositCents < 0 || depositCents > priceCents) {
+    throw new Error("Deposit amount must not exceed the service price");
+  }
+  return priceCents - depositCents;
+}
+
 /**
  * Persists a successful deposit and leaves the booking confirmed but with an
  * outstanding balance. Call this inside the same transaction as payment
@@ -90,4 +106,37 @@ export async function writeDepositRecord(
   });
 
   return { amountCents, status: "confirmed_partial" as const };
+}
+
+/**
+ * Persists the final payment and closes the booking. The caller supplies the
+ * already-recorded deposit total, which keeps payment-provider verification
+ * outside this domain operation.
+ */
+export async function writeBalanceRecord(
+  transaction: DepositTransaction,
+  input: BalancePaymentInput
+) {
+  const amountCents = calculateBalanceCents(input.priceCents, input.depositCents);
+  if (amountCents <= 0) throw new Error("Booking has no outstanding balance");
+
+  const paidAt = input.paidAt ?? new Date();
+  await transaction.payment.create({
+    data: {
+      tenantId: input.tenantId,
+      bookingId: input.bookingId,
+      amountCents,
+      currency: input.currency,
+      provider: input.provider,
+      providerRef: input.providerRef,
+      status: "paid",
+      paidAt,
+    },
+  });
+  await transaction.booking.update({
+    where: { id: input.bookingId },
+    data: { status: "confirmed" },
+  });
+
+  return { amountCents, status: "confirmed" as const };
 }
