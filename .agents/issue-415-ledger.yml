@@ -1,0 +1,69 @@
+version: 1
+issue: 415
+base: eval/claude
+branch: claude/issue-415
+tasks:
+  - id: task-01
+    title: 'Add `prisma/schema.prisma`: add deposit columns to the `Service` model'
+    status: doing
+    started_at: '2026-09-23T13:44:25Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Add `app/lib/payments/split.ts`: write the deposit record'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Add `app/lib/payments/split.ts`: write the balance record'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Add `app/api/payments/capture/route.ts`: implement'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Add `app/lib/payments/no-show.ts`: implement the no-show fee path'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: A deposit-only booking holds status `confirmed_partial`, verified by `pnpm
+      test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Balance capture returns HTTP 200 and closes the booking
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: The no-show fee writes a `LedgerEntry` row
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
