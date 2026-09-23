@@ -1,0 +1,137 @@
+version: 1
+issue: 408
+base: eval/cursor
+branch: cursor/issue-408
+tasks:
+  - id: task-01
+    title: 'In `app/(app)/admin/dlq/data.ts`: Wire notification event emission into
+      the real booking lifecycle handlers so that create, confirm, cancel, and reschedule
+      operations publish the corresponding notification event as part of the booking
+      flow.'
+    status: doing
+    started_at: '2026-09-23T11:49:37Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: Implement permanent failure handling in the notification pipeline so that
+      exhausted retry attempts create a `DeadLetter` record in the database.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'In `app/(app)/admin/dlq/data.ts`: Add or update integration tests that
+      drive booking create, confirm, cancel, and reschedule flows and assert that
+      the expected notification events are emitted from those operations.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'In `app/(app)/admin/dlq/data.ts`: Add an integration test that simulates
+      WhatsApp delivery failure during a booking-triggered notification and verifies
+      that SMS is attempted as the fallback channel.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Add a test covering permanent notification failure after all retry/backoff
+      attempts and assert that a `DeadLetter` row is written with the expected payload.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Fix the CI test workflow so that `pnpm test` runs successfully in the repository's
+      CI environment, including any required Next.js test setup adjustments.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Executing each real booking lifecycle operation for create, confirm, cancel,
+      and reschedule causes exactly one corresponding notification event to be emitted
+      by the integrated booking flow, without requiring tests to call the notification
+      event bus directly.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: For each booking lifecycle operation under test (create, confirm, cancel,
+      reschedule), the emitted notification event payload includes the booking identifier
+      and the lifecycle-specific event name expected by the notification pipeline.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: When WhatsApp delivery fails during a booking-triggered notification, the
+      notification pipeline attempts SMS delivery for the same booking notification
+      in the same test scenario.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: If WhatsApp delivery succeeds for a booking-triggered notification, the
+      fallback SMS channel is not attempted for that notification.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: After the notification pipeline exhausts all configured retry attempts
+      for a failed notification, exactly one `DeadLetter` database row is created
+      for that notification failure.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: The persisted `DeadLetter` row for an exhausted notification failure contains
+      the failed notification payload and enough identifying data to associate the
+      record to the originating booking-triggered event used in the test.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: The Prisma schema defines a `DeadLetter` model that can be used by the
+      notification failure flow exercised in tests, and the application code writes
+      to that model when retries are exhausted.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: The repository CI workflow includes a step that executes `pnpm test`, and
+      that command completes successfully in the CI environment for this branch.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: Running `pnpm test` in a clean environment after installing dependencies
+      succeeds without Next.js-specific test setup errors that previously caused CI
+      failure.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
