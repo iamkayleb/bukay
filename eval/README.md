@@ -80,3 +80,17 @@ judge; discount same-family self-verdicts.
 - **Rate limits pace throughput.** Two agents times N issues will queue across
   session-cap windows. This is the real ceiling, not the automation.
 - **Follow-up chains cap at depth 2**, then apply `needs-human` by design.
+
+## Evaluation failure runbook
+
+The OpenAI evaluation for PR #440 did not execute because the evaluator's API
+request received HTTP 429 with `credit_balance_exhausted`. This is an
+organization billing/quota condition, not a failure in the PR, its test suite,
+or the evaluation prompt.
+
+The repository cannot remediate this by changing application dependencies or
+workflow configuration. A billing administrator must restore API credits (or
+move the evaluator to an organization with available quota), then rerun the
+provider comparison. Do not treat a fallback or an Anthropic-only verdict as a
+successful OpenAI evaluation: confirm that the report contains an OpenAI model
+verdict without an invocation error before closing the concern.

@@ -171,6 +171,23 @@ describe("ledgerEntriesToCsv", () => {
     }
   );
 
+  it("defuses formulas in every caller-controlled text column", () => {
+    const csv = ledgerEntriesToCsv([
+      entry({
+        id: "=ledger-id",
+        type: "+payment_success",
+        currency: "-NGN",
+        sourceRef: "@source-ref",
+        bookingId: "\tbooking-id",
+        paymentId: "\rpayment-id",
+      }),
+    ]);
+
+    expect(csv.trim().split("\n")[1]).toBe(
+      "'=ledger-id,'+payment_success,1000,'-NGN,'@source-ref,'\tbooking-id,'\rpayment-id,2026-01-15T12:00:00.000Z"
+    );
+  });
+
   it("does not alter fields that don't start with a formula-trigger character", () => {
     const csv = ledgerEntriesToCsv([entry({ sourceRef: "normal-ref-123" })]);
     expect(csv).toContain("normal-ref-123");
