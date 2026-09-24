@@ -94,6 +94,13 @@ describe("GET /api/payouts/export", () => {
     expect(await response.json()).toEqual({ ok: false, error: "invalid_date_range" });
   });
 
+  it("rejects February 29 in a non-leap year", async () => {
+    const response = await GET(request("?start=2026-02-29&end=2026-02-29"));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ ok: false, error: "invalid_date_range" });
+  });
+
   it("returns 400 for a malformed date format", async () => {
     const response = await GET(request("?start=01/01/2026&end=2026-01-31"));
     expect(response.status).toBe(400);
