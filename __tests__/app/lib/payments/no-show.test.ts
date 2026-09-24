@@ -16,9 +16,11 @@ type LedgerEntryRow = {
   id: string;
   tenantId: string;
   bookingId: string | null;
+  paymentId: string | null;
   type: string;
   amountCents: number;
   currency: string;
+  sourceRef: string;
   notes: string | null;
 };
 
@@ -90,9 +92,11 @@ describe("chargeNoShowFee", () => {
     expect(result?.ledgerEntry).toMatchObject({
       tenantId: "tenant-1",
       bookingId: "booking-1",
+      paymentId: "payment-deposit-1",
       type: "no_show_fee",
       amountCents: 3000,
       currency: "NGN",
+      sourceRef: "payment-deposit-1",
     });
     expect(state.ledgerEntries).toHaveLength(1);
     expect(state.bookings[0].status).toBe("no_show");

@@ -166,7 +166,7 @@ export async function POST(req: NextRequest) {
     try {
       const validationIssue = await validateBookingInterval(
         buildValidationStore(),
-        { id: "__new__", tenantId, staffId, startsAt, endsAt },
+        { id: "__new__", tenantId, staffId, startsAt, endsAt, status: "pending_payment" },
         { startsAt, endsAt, staffId }
       );
       if (validationIssue) {

@@ -1,0 +1,5 @@
+[
+  { "type": "payment_success", "currency": "NGN", "totalAmountCents": 700000 },
+  { "type": "refund", "currency": "NGN", "totalAmountCents": 30000 },
+  { "type": "payout", "currency": "NGN", "totalAmountCents": 400000 }
+]

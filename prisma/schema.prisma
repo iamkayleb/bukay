@@ -142,43 +142,57 @@ model Booking {
 }
 
 model Payment {
-  id          String    @id @default(cuid())
-  tenantId    String
-  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  bookingId   String
-  booking     Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  id            String        @id @default(cuid())
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bookingId     String
+  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   // "deposit" | "balance" | "full" — distinguishes a split deposit/balance
   // pair from a single full-amount payment.
-  kind        String    @default("full")
-  amountCents Int
-  currency    String    @default("NGN")
-  provider    String?
-  providerRef String?
-  status      String    @default("pending")
-  paidAt      DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  kind          String        @default("full")
+  amountCents   Int
+  currency      String        @default("NGN")
+  provider      String?
+  providerRef   String?
+  status        String        @default("pending")
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  ledgerEntries LedgerEntry[]
 
   @@index([tenantId])
   @@index([bookingId])
   @@index([providerRef])
 }
 
+// Append-only financial ledger. Rows are never updated or deleted — see the
+// append-only trigger migration. `type` holds one of the LedgerEntryType
+// values from app/lib/ledger.ts ("payment_success" | "refund" | "payout" |
+// "no_show_fee"); it is a plain String because the sqlite connector Prisma
+// targets here does not support enums, so the allowed values are enforced
+// with a CHECK constraint at the database level instead.
 model LedgerEntry {
   id          String   @id @default(cuid())
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   bookingId   String?
   booking     Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-  // e.g. "no_show_fee"
+  paymentId   String?
+  payment     Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
   type        String
   amountCents Int
   currency    String   @default("NGN")
+  // Dedup key for the originating payment/refund/payout event (e.g. a
+  // Payment id or a provider payout reference). Unique together with `type`
+  // so retried webhooks or reconciliation runs can't double-append.
+  sourceRef   String
   notes       String?
   createdAt   DateTime @default(now())
 
+  @@unique([type, sourceRef])
   @@index([tenantId])
   @@index([bookingId])
+  @@index([tenantId, type, createdAt])
 }
 
 model DeadLetterEvent {
