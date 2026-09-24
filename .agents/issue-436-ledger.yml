@@ -1,0 +1,182 @@
+version: 1
+issue: 436
+base: eval/codex
+branch: codex/issue-436
+tasks:
+  - id: task-01
+    title: Fix the code issues causing Next.js CI failure in ci.yml workflow
+    status: doing
+    started_at: '2026-09-24T13:14:48Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: Create the app/lib/payments/no-show.ts file with basic structure and exports
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Implement the no-show fee calculation logic in the no-show module
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Add LedgerEntry creation functionality to record no-show fees
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Integrate the no-show fee flow with the existing payment capture system
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Create __tests__/payment-capture.test.ts with test structure and setup
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Add tests verifying successful payment capture returns HTTP 200
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Add tests verifying booking status is set to closed after capture
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Create __tests__/no-show.test.ts with test structure and setup
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: Add tests verifying no-show fee calculation logic
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: Add tests verifying LedgerEntry creation for no-show fees
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: Write automated tests verifying the capture endpoint returns HTTP 200 on
+      success
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: Write automated tests verifying booking status transitions to closed after
+      capture
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: Add integration tests validating the capture route against the data layer
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: Document the data layer validation approach in implementation notes
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: "Address: The branch scope criterion ('only these files with changes: route.ts,\
+      \ no-show.ts, and the two test files') is violated \u2014 the diff includes\
+      \ an unrelated `.agents/issue-432-ledger.yml` planning file whose internal task\
+      \ list still marks every task as `todo`, indicating the work was not completed."
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: 'Review app/lib/payments/split.ts for code from issue #414 that needs cleanup'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: Remove or refactor obsolete code patterns from split.ts identified in review
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: 'Document any intentional decisions to keep issue #414 code in split.ts'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: Add inline comments explaining the relationship between split.ts and the
+      new no-show flow
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-21
+    title: 'In `app/api/payments/capture/route.ts`: Address: LLM evaluation could
+      not run.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-22
+    title: 'Each verification concern from PR #434 has either a merged fix commit
+      or an entry in KNOWN_ISSUES.md explaining why it cannot be fixed'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-23
+    title: Tests updated if needed
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-24
+    title: "Re-verification achieves minimum scores: Correctness \u22657/10, Completeness\
+      \ \u22657/10, Testing \u22657/10, and CI passes all checks"
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
