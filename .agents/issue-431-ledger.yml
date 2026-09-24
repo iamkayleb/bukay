@@ -1,0 +1,312 @@
+version: 1
+issue: 431
+base: eval/codex
+branch: codex/issue-431
+tasks:
+  - id: task-01
+    title: Implement refund ledger persistence in `app/lib/ledger.ts` by adding a
+      `recordRefund` function with input validation and idempotency behavior consistent
+      with existing payment ledger writes.
+    status: doing
+    started_at: '2026-09-24T13:04:08Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: Implement payout ledger persistence in `app/lib/ledger.ts` by adding a
+      `recordPayout` function that validates inputs and writes payout ledger entries
+      in the same append-only pattern as other ledger events.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Identify the webhook handler or payment finalization function that processes
+      successful payment events in the codebase.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Add a call to recordPaymentSuccess in the identified payment finalization
+      path with appropriate error handling.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Add an integration test that triggers a successful payment event and verifies
+      exactly one ledger entry is created.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Add an integration test that processes the same payment event twice and
+      verifies no duplicate ledger entries are created.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Create test fixtures with at least one payment entry, one refund entry,
+      and one payout entry with known amounts.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Persist the test fixtures to the live test database using the recordPayment,
+      recordRefund, and recordPayout functions.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Create a simulated provider statement with expected totals matching the
+      seeded test data.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: Execute the reconciliation logic against the seeded ledger entries and
+      assert totals match the simulated statement.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: Add assertions that verify each transaction type total and the net total
+      separately.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: Add a negative test case that verifies reconciliation fails when a seeded
+      entry is intentionally omitted.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: Add a live-database integration test that attempts `UPDATE` and `DELETE`
+      operations against `LedgerEntry` records and asserts that both operations are
+      rejected.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: Create the payouts page component at app/(app)/payouts/page.tsx with basic
+      layout structure.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: Implement a database query that fetches only payout-type ledger entries
+      ordered by occurred-at timestamp.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: Add UI rendering logic that displays payout entries with relevant fields
+      like amount, currency, and timestamp.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: Add date range input controls for start date and end date selection.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: Implement a link or button that navigates to the CSV export endpoint with
+      selected date range parameters.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: Add an integration test that verifies the payouts page excludes non-payout
+      ledger entries from the rendered list.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: Create a CSV export endpoint route that accepts start date and end date
+      query parameters.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-21
+    title: _(5 further tasks elided; split this issue)_
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-22
+    title: '`app/lib/ledger.ts` exports a `recordRefund` function that rejects calls
+      missing a refund identifier, payment identifier, currency, amount, or occurred-at
+      timestamp, and does not persist a `LedgerEntry` when validation fails.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-23
+    title: Calling `recordRefund` twice with the same provider refund identifier creates
+      exactly one refund ledger entry in the database.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-24
+    title: A successful `recordRefund` call persists exactly one append-only `LedgerEntry`
+      with type `refund` (or the project's canonical refund event type), the provided
+      amount, currency, external refund identifier, related payment identifier, and
+      occurred-at timestamp.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-25
+    title: '`app/lib/ledger.ts` exports a `recordPayout` function that rejects calls
+      missing a payout identifier, currency, amount, or occurred-at timestamp, and
+      does not persist a `LedgerEntry` when validation fails.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-26
+    title: A successful `recordPayout` call persists exactly one append-only `LedgerEntry`
+      with type `payout` (or the project's canonical payout event type), the provided
+      amount, currency, external payout identifier, and occurred-at timestamp.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-27
+    title: Calling `recordPayout` twice with the same provider payout identifier creates
+      exactly one payout ledger entry in the database if payment ledger writes are
+      already idempotent by external identifier; otherwise it must match the documented
+      idempotency behavior used by existing payment ledger writes.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-28
+    title: When a payment is finalized through the real successful payment flow or
+      webhook handler, exactly one payment ledger entry is created for that payment
+      in the database.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-29
+    title: Re-processing the same successful payment event through the real payment
+      flow or webhook handler does not create duplicate payment ledger entries.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-30
+    title: An integration test persists at least one payment entry, one refund entry,
+      and one payout entry to the live test database and verifies that the reconciliation
+      logic produces totals exactly equal to a simulated provider statement for each
+      transaction type and for the net total.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-31
+    title: The reconciliation integration test fails if any seeded payment, refund,
+      or payout entry is omitted from reconciliation totals.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-32
+    title: Executing a direct `UPDATE` statement against an existing `LedgerEntry`
+      row on the live test database is rejected by the database engine.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-33
+    title: Executing a direct `DELETE` statement against an existing `LedgerEntry`
+      row on the live test database is rejected by the database engine.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-34
+    title: After attempted `UPDATE` and `DELETE` operations are rejected, the original
+      `LedgerEntry` row remains present and unchanged in the database.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-35
+    title: The payouts page includes a date range selector with start-date and end-date
+      inputs and a button or link that navigates to the CSV export endpoint with the
+      selected date range as query parameters.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-36
+    title: The payouts page excludes non-payout ledger entries from the rendered payout
+      list.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-37
+    title: _(1 further criteria elided; split this issue)_
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
