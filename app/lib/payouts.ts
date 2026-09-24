@@ -46,11 +46,26 @@ export function parseDateRange(
 
   const start = new Date(`${startInput}T00:00:00.000Z`);
   const end = new Date(`${endInput}T23:59:59.999Z`);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
+  if (
+    Number.isNaN(start.getTime()) ||
+    Number.isNaN(end.getTime()) ||
+    start > end ||
+    !isSameUtcDate(start, startInput) ||
+    !isSameUtcDate(end, endInput)
+  ) {
     return null;
   }
 
   return { start, end };
+}
+
+/**
+ * Guards against JS Date's silent overflow of out-of-range calendar dates
+ * (e.g. "2026-02-30" rolls forward to March 2 instead of throwing), which
+ * would otherwise let an invalid date silently resolve to the wrong range.
+ */
+function isSameUtcDate(date: Date, input: string): boolean {
+  return date.toISOString().slice(0, 10) === input;
 }
 
 export async function loadLedgerEntriesForRange(
@@ -74,8 +89,16 @@ const CSV_COLUMNS = [
   "createdAt",
 ] as const;
 
+const FORMULA_TRIGGER_CHARS = /^[=+\-@\t\r]/;
+
 function csvField(value: string): string {
-  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+  // Prefix values that a spreadsheet app would interpret as a formula
+  // (CSV/"formula" injection) with a leading apostrophe so they render as
+  // literal text instead of executing when the export is opened in Excel,
+  // Sheets, etc. This runs before quoting so a formula-triggering value that
+  // also needs quoting (e.g. contains a comma) still gets defused.
+  const safeValue = FORMULA_TRIGGER_CHARS.test(value) ? `'${value}` : value;
+  return /[",\n]/.test(safeValue) ? `"${safeValue.replace(/"/g, '""')}"` : safeValue;
 }
 
 /** Serializes ledger entries to CSV with a header row, even when empty. */

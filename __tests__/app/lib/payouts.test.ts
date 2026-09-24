@@ -94,6 +94,22 @@ describe("parseDateRange", () => {
   it("returns null when the range is inverted", () => {
     expect(parseDateRange("2026-02-01", "2026-01-01")).toBeNull();
   });
+
+  it("returns null for a calendar-invalid day instead of silently rolling over", () => {
+    // Date parses "2026-02-30" by rolling it forward to March 2 rather than
+    // throwing; parseDateRange must reject it instead of accepting a caller
+    // error and quietly exporting the wrong date range.
+    expect(parseDateRange("2026-02-30", "2026-02-30")).toBeNull();
+  });
+
+  it("returns null for a calendar-invalid month", () => {
+    expect(parseDateRange("2026-13-01", "2026-13-31")).toBeNull();
+  });
+
+  it("returns null for a zero day or month", () => {
+    expect(parseDateRange("2026-00-01", "2026-01-31")).toBeNull();
+    expect(parseDateRange("2026-01-00", "2026-01-31")).toBeNull();
+  });
 });
 
 describe("defaultDateRangeInputs", () => {
@@ -140,6 +156,25 @@ describe("ledgerEntriesToCsv", () => {
   it("quotes fields containing commas", () => {
     const csv = ledgerEntriesToCsv([entry({ sourceRef: "ref,with,commas" })]);
     expect(csv).toContain('"ref,with,commas"');
+  });
+
+  it.each(["=cmd|'/bin/calc'!A1", "+1+1", "-1+1", "@SUM(1,1)", "\t=1+1"])(
+    "defuses formula-injection payloads in exported fields (%s)",
+    (payload) => {
+      const csv = ledgerEntriesToCsv([entry({ sourceRef: payload })]);
+      const dataLine = csv.trim().split("\n")[1];
+
+      // A spreadsheet app must render this as literal text, not evaluate it
+      // as a formula: the exported field has to start with an apostrophe
+      // (optionally after an opening quote for CSV-special characters).
+      expect(dataLine).toMatch(/,"?'/);
+    }
+  );
+
+  it("does not alter fields that don't start with a formula-trigger character", () => {
+    const csv = ledgerEntriesToCsv([entry({ sourceRef: "normal-ref-123" })]);
+    expect(csv).toContain("normal-ref-123");
+    expect(csv).not.toContain("'normal-ref-123");
   });
 });
 
