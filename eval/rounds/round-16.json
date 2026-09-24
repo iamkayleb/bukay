@@ -7,16 +7,26 @@
       "why": "Turning no-show history into an automatic deposit requirement is the payoff for tracking it.",
       "scope": "Compute a client risk score and require deposits from high-risk clients, with per-tenant thresholds.",
       "tasks": [
-        "Add `lib/risk.ts`: implement `computeRiskScore()`",
+        "Add `app/lib/risk.ts`: implement `computeRiskScore()`",
         "Add `prisma/schema.prisma`: add threshold columns to the `Tenant` model",
         "Add `app/api/public/bookings/route.ts`: enforce the deposit",
-        "Add `tests/risk.test.ts` covering boundary cases"
+        "Add `__tests__/risk.test.ts` covering boundary cases"
       ],
       "acceptance": [
         "`computeRiskScore()` is deterministic for identical input, verified by `pnpm test`",
         "A high-risk booking without deposit returns HTTP 402",
         "An owner override in `app/(app)/calendar/page.tsx` bypasses the gate",
         "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`__tests__/**`",
+        "`app/api/public/bookings/**`",
+        "`app/lib/**`",
+        "`prisma/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
       ]
     },
     {
@@ -26,8 +36,9 @@
       "scope": "On cancellation, notify waitlisted clients in order; the first to pay keeps the slot.",
       "tasks": [
         "Add `prisma/schema.prisma`: add the `Waitlist` model",
-        "Add `app/[slug]/book/page.tsx`: add enrollment and `lib/agent/tools/`",
-        "Add `lib/waitlist.ts`: implement the dispatcher",
+        "Add `app/[slug]/book/page.tsx`: implement waitlist enrollment",
+        "Add `app/lib/agent/tools/waitlist.ts`: expose the waitlist tool",
+        "Add `app/lib/waitlist.ts`: implement the dispatcher",
         "Add `prisma/migrations/`: add a unique claim constraint"
       ],
       "acceptance": [
@@ -35,6 +46,16 @@
         "Notifications dispatch in enrollment order",
         "An unclaimed slot returns to open availability after 30 minutes",
         "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`app/[slug]/book/**`",
+        "`app/lib/**`",
+        "`app/lib/agent/tools/**`",
+        "`prisma/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
       ]
     }
   ]

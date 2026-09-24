@@ -454,7 +454,15 @@ def _formatted_output_valid(text: str) -> bool:
     # formatter result after the visible body has already passed validation.
     visible_text = _strip_original_issue_blocks(text)
     try:
-        workspace = os.environ.get("GITHUB_WORKSPACE", "").strip()
+        # Path citations must be judged against the branch that actually holds
+        # the code. A follow-up on a long-lived feature/eval lane cites files
+        # that exist only on that lane, so validating against the checked-out
+        # default branch fails every one of them with "None of the N paths this
+        # issue cites exist in this repository". ISSUE_FORMAT_REPO_ROOT lets the
+        # caller point validation at the right tree; unset, behaviour is
+        # unchanged.
+        override = os.environ.get("ISSUE_FORMAT_REPO_ROOT", "").strip()
+        workspace = override or os.environ.get("GITHUB_WORKSPACE", "").strip()
         repo_root = Path(workspace).resolve() if workspace else Path.cwd().resolve()
         return bool(_issue_format_validator().validate(visible_text, repo_root=repo_root).ok)
     except (ImportError, OSError, RuntimeError, SyntaxError):
@@ -729,6 +737,40 @@ def _reuse_already_formatted(issue_body: str, workflow: str) -> dict[str, Any] |
     return None
 
 
+_LEADING_MARKER_RE = re.compile(r"^\s*(<!--[^>]*-->\s*)+", re.S)
+
+
+def _preserve_leading_markers(original: str, formatted: str) -> str:
+    """Carry the original body's leading HTML comments into formatted output.
+
+    Routing metadata is written as HTML comments at the top of an issue body —
+    `<!-- base-branch: X -->` tells the auto-pilot which branch the work targets
+    and which tree to resolve path citations against, and `<!-- meta:issue:N -->`
+    binds a PR to its issue. An LLM rewrite drops them silently, because they are
+    invisible in the rendered issue and nothing in the prompt asks for them.
+
+    Losing `base-branch` is not cosmetic: the caller then validates citations
+    against the default branch, every path that only exists on the lane fails to
+    resolve, the body is judged non-conformant and auto-pilot pauses the issue
+    with needs-human. The issue is stuck and the reason is two levels removed
+    from the symptom.
+
+    Markers already present in the formatted body are left alone, so this cannot
+    duplicate them.
+    """
+    match = _LEADING_MARKER_RE.match(original or "")
+    if not match:
+        return formatted
+    kept = [
+        line
+        for line in match.group(0).strip().splitlines()
+        if line.strip() and line.strip() not in (formatted or "")
+    ]
+    if not kept:
+        return formatted
+    return "\n".join(kept) + "\n" + (formatted or "")
+
+
 def format_issue_body(issue_body: str, *, use_llm: bool = True) -> dict[str, Any]:
     if not issue_body:
         issue_body = ""
@@ -809,6 +851,7 @@ def format_issue_body(issue_body: str, *, use_llm: bool = True) -> dict[str, Any
                     # which uses LLM for intelligent splitting. Don't do heuristic
                     # splitting here - it causes task explosion (issue #805, #1143).
                     formatted, audit = _validate_and_refine_tasks(formatted, use_llm=use_llm)
+                    formatted = _preserve_leading_markers(issue_body, formatted)
                     formatted = _append_raw_issue_section(formatted, issue_body)
                     formatted = _with_reuse_marker(formatted)
                     result = {
@@ -829,6 +872,7 @@ def format_issue_body(issue_body: str, *, use_llm: bool = True) -> dict[str, Any
     # which uses LLM for intelligent splitting. Don't do heuristic
     # splitting here - it causes task explosion (issue #805, #1143).
     formatted, audit = _validate_and_refine_tasks(formatted, use_llm=use_llm)
+    formatted = _preserve_leading_markers(issue_body, formatted)
     formatted = _append_raw_issue_section(formatted, issue_body)
     formatted = _with_reuse_marker(formatted)
     needs_refinement = not _formatted_output_valid(formatted)
