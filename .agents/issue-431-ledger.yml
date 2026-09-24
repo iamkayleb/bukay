@@ -7,10 +7,10 @@ tasks:
     title: Implement refund ledger persistence in `app/lib/ledger.ts` by adding a
       `recordRefund` function with input validation and idempotency behavior consistent
       with existing payment ledger writes.
-    status: doing
+    status: done
     started_at: '2026-09-24T13:04:08Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-09-24T13:04:21Z'
+    commit: cfecf09ff486c1da52e2edca856708b670d091db
     notes: []
   - id: task-02
     title: Implement payout ledger persistence in `app/lib/ledger.ts` by adding a
