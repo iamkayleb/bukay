@@ -18,6 +18,27 @@ export type NoShowFeeResult = {
   ledgerReference: string;
 };
 
+export type NoShowFeeTransaction = {
+  booking: {
+    update(args: { where: { id: string }; data: { status: "no_show" } }): Promise<unknown>;
+  };
+  ledgerEntry: {
+    create(args: {
+      data: {
+        tenantId: string;
+        direction: "credit";
+        entryType: "no_show_fee";
+        grossKobo: number;
+        providerFeeKobo: number;
+        platformFeeKobo: number;
+        netKobo: number;
+        currency: string;
+        reference: string;
+      };
+    }): Promise<unknown>;
+  };
+};
+
 /**
  * Calculates the fee forfeited when a customer does not attend a booking.
  *
@@ -35,4 +56,40 @@ export function calculateNoShowFeeCents(priceCents: number, depositCents: number
   }
 
   return depositCents;
+}
+
+/**
+ * Records a forfeited deposit as immutable revenue and marks the booking as a
+ * no-show. Call this inside the surrounding database transaction so either
+ * both writes succeed or neither does.
+ */
+export async function writeNoShowFeeRecord(
+  transaction: NoShowFeeTransaction,
+  input: NoShowFeeInput
+): Promise<NoShowFeeResult> {
+  const amountCents = calculateNoShowFeeCents(input.priceCents, input.depositCents);
+  if (amountCents <= 0) {
+    throw new Error("Booking has no deposit to forfeit");
+  }
+
+  const ledgerReference = `no-show:${input.bookingId}`;
+  await transaction.ledgerEntry.create({
+    data: {
+      tenantId: input.tenantId,
+      direction: "credit",
+      entryType: "no_show_fee",
+      grossKobo: amountCents,
+      providerFeeKobo: 0,
+      platformFeeKobo: 0,
+      netKobo: amountCents,
+      currency: input.currency,
+      reference: ledgerReference,
+    },
+  });
+  await transaction.booking.update({
+    where: { id: input.bookingId },
+    data: { status: "no_show" },
+  });
+
+  return { amountCents, bookingStatus: "no_show", ledgerReference };
 }
