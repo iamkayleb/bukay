@@ -1,0 +1,145 @@
+version: 1
+issue: 432
+base: eval/codex
+branch: codex/issue-432
+tasks:
+  - id: task-01
+    title: Add `app/api/payments/capture/route.ts` with a `POST` handler that performs
+      balance capture, updates the associated booking status to `closed`, and returns
+      HTTP 200 on success.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes:
+      - '2026-09-23T15:32:40Z failure (run 35882190844): status=failure'
+  - id: task-02
+    title: Add `app/lib/payments/no-show.ts` implementing the no-show fee flow that
+      creates a new `LedgerEntry` record in the database.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Add automated tests for the capture endpoint that send a `POST` request,
+      assert an HTTP 200 response, and verify the booking status is updated to `closed`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Add automated tests for the no-show fee module that invoke the no-show
+      fee function and verify a `LedgerEntry` row is created.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Review app/lib/payments/split.ts to identify all code changes related
+      to issue #414 ledger and reconciliation functionality'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Remove any issue #414 ledger reconciliation code from app/lib/payments/split.ts
+      that is not required for capture or no-show flows'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: 'Verify that app/lib/payments/split.ts only contains code directly supporting
+      issue #413 capture and no-show payment behavior'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Run pnpm test on __tests__/payment-capture.test.ts and fix any failures
+      in the capture endpoint implementation
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Run pnpm test on __tests__/no-show.test.ts and fix any failures in the
+      no-show fee implementation
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: Verify that both __tests__/payment-capture.test.ts and __tests__/no-show.test.ts
+      pass when run together using pnpm test
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: A file exists at `app/api/payments/capture/route.ts` that exports a `POST`
+      handler for the capture endpoint.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: When the capture endpoint receives a valid `POST` request in the automated
+      test, it responds with HTTP status `200`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: When the capture endpoint succeeds, the associated booking's persisted
+      status is updated to exactly `closed`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: A file exists at `app/lib/payments/no-show.ts` that exports the no-show
+      fee implementation used by the automated test.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: Invoking the no-show fee function creates exactly one new `LedgerEntry`
+      row in the database in the automated test scenario.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: 'The branch contains only these files with changes: app/api/payments/capture/route.ts,
+      app/lib/payments/no-show.ts, __tests__/payment-capture.test.ts, __tests__/no-show.test.ts,
+      and any files directly imported by these four files for capture or no-show functionality.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: 'The targeted payment tests for this follow-up issue pass under the project
+      test runner: `__tests__/payment-capture.test.ts` and `__tests__/no-show.test.ts`
+      both succeed.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
