@@ -20,9 +20,11 @@ type LedgerEntryRow = {
   id: string;
   tenantId: string;
   bookingId: string | null;
+  paymentId: string | null;
   type: string;
   amountCents: number;
   currency: string;
+  sourceRef: string;
   notes: string | null;
 };
 
@@ -77,9 +79,12 @@ export async function chargeNoShowFee(
     data: {
       tenantId,
       bookingId,
+      paymentId: deposit.id,
       type: "no_show_fee",
       amountCents: deposit.amountCents,
       currency: deposit.currency,
+      // Dedups against the forfeited deposit — one no-show fee per deposit.
+      sourceRef: deposit.id,
       notes: `Deposit forfeited for no-show on booking ${bookingId}`,
     },
   });

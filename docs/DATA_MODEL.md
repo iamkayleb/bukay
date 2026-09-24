@@ -22,6 +22,7 @@ The tenant-owned models are:
 | `Client` | Customer profile scoped to a tenant | `@@unique([tenantId, phone])`, `@@index([tenantId])` |
 | `Booking` | Appointment linking client, service, and optional staff | `@@index([tenantId])`, `@@index([tenantId, startsAt])` |
 | `Payment` | Payment ledger row for a booking | `@@index([tenantId])`, `@@index([bookingId])`, `@@index([providerRef])` |
+| `LedgerEntry` | Append-only financial ledger row for a payment, refund, or payout event | `@@unique([type, sourceRef])`, `@@index([tenantId])`, `@@index([bookingId])`, `@@index([tenantId, type, createdAt])` |
 | `AuditLog` | Append-only tenant activity record | `@@index([tenantId])`, `@@index([tenantId, entityType, entityId])` |
 
 `Tenant` itself is not tenant-scoped and must not carry a `tenantId` column. Deleting a tenant
@@ -69,6 +70,18 @@ optional notes. The tenant/start index supports calendar views.
 
 `Payment` links to a booking and stores amount, currency, provider metadata, status string, optional
 paid timestamp, and audit timestamps.
+
+### LedgerEntry
+
+`LedgerEntry` is an append-only record of payment, refund, and payout events. Rows are never
+updated or deleted after insert — see the append-only trigger migration. `type` holds one of the
+`LedgerEntryType` values from `app/lib/ledger.ts` (`payment_success`, `refund`, `payout`, or
+`no_show_fee`); it is stored as a plain string because the sqlite connector does not support Prisma
+enums. `paymentId` optionally links a `payment_success` or `refund` entry back to its originating
+`Payment` row, and `bookingId` optionally links entries tied to a specific booking (e.g.
+`no_show_fee`). `sourceRef` is a dedup key for the originating event (a `Payment` id or a provider
+payout reference) and is unique together with `type`, so retried webhooks or reconciliation runs
+cannot double-append the same event.
 
 ### DeadLetterEvent
 
