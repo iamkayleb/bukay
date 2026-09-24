@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 
-import { recordPaymentSuccess, recordRefund } from "@/app/lib/ledger";
+import { recordPaymentSuccess, recordPayout, recordRefund } from "@/app/lib/ledger";
 
 function createLedgerClient() {
   return {
@@ -167,6 +167,71 @@ describe("recordRefund", () => {
     const input = { ...refundInput, [field]: value } as Record<string, unknown>;
 
     await expect(recordRefund(input as never, client)).rejects.toThrow("required");
+    expect(client.ledgerEntry.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("recordPayout", () => {
+  const payoutInput = {
+    tenantId: "tenant-1",
+    amountKobo: 7_500,
+    currency: "ngn",
+    provider: "paystack",
+    payoutReference: "payout-1",
+    occurredAt: new Date("2026-09-24T13:00:00.000Z"),
+  };
+
+  it("creates an immutable debit entry using the provider payout reference", async () => {
+    const client = createLedgerClient();
+    const entry = { id: "ledger-payout-1", reference: "payout:paystack:payout-1" };
+    client.ledgerEntry.create.mockResolvedValue(entry);
+
+    await expect(recordPayout(payoutInput, client)).resolves.toEqual(entry);
+
+    expect(client.ledgerEntry.create).toHaveBeenCalledWith({
+      data: {
+        tenantId: "tenant-1",
+        direction: "debit",
+        entryType: "payout",
+        grossKobo: 7_500,
+        providerFeeKobo: 0,
+        platformFeeKobo: 0,
+        netKobo: -7_500,
+        currency: "NGN",
+        provider: "paystack",
+        providerRef: "payout-1",
+        reference: "payout:paystack:payout-1",
+        occurredAt: payoutInput.occurredAt,
+      },
+    });
+  });
+
+  it("returns the existing entry when a payout event is retried", async () => {
+    const client = createLedgerClient();
+    const duplicate = new Prisma.PrismaClientKnownRequestError("duplicate", {
+      code: "P2002",
+      clientVersion: "test",
+    });
+    const entry = { id: "ledger-payout-1", reference: "payout:paystack:payout-1" };
+    client.ledgerEntry.create.mockRejectedValue(duplicate);
+    client.ledgerEntry.findUnique.mockResolvedValue(entry);
+
+    await expect(recordPayout(payoutInput, client)).resolves.toEqual(entry);
+    expect(client.ledgerEntry.findUnique).toHaveBeenCalledWith({
+      where: { reference: "payout:paystack:payout-1" },
+    });
+  });
+
+  it.each([
+    ["payoutReference", undefined],
+    ["currency", undefined],
+    ["amountKobo", undefined],
+    ["occurredAt", undefined],
+  ])("rejects a missing %s before writing", async (field, value) => {
+    const client = createLedgerClient();
+    const input = { ...payoutInput, [field]: value } as Record<string, unknown>;
+
+    await expect(recordPayout(input as never, client)).rejects.toThrow("required");
     expect(client.ledgerEntry.create).not.toHaveBeenCalled();
   });
 });

@@ -13,7 +13,7 @@ type LedgerClient = {
       data: {
         tenantId: string;
         direction: "credit" | "debit";
-        entryType: "payment" | "refund";
+        entryType: "payment" | "refund" | "payout";
         grossKobo: number;
         providerFeeKobo: number;
         platformFeeKobo: number;
@@ -48,6 +48,15 @@ export type RecordRefundInput = {
   provider: string;
   refundReference: string;
   paymentReference: string;
+  occurredAt: Date;
+};
+
+export type RecordPayoutInput = {
+  tenantId: string;
+  amountKobo: number;
+  currency: string;
+  provider: string;
+  payoutReference: string;
   occurredAt: Date;
 };
 
@@ -170,6 +179,55 @@ export async function recordRefund(
         provider,
         providerRef: refundReference,
         relatedPaymentRef: paymentReference,
+        reference,
+        occurredAt,
+      },
+    });
+  } catch (error) {
+    if (!isUniqueConstraintError(error)) {
+      throw error;
+    }
+
+    const existingEntry = await client.ledgerEntry.findUnique({ where: { reference } });
+    if (!existingEntry) {
+      throw error;
+    }
+    return existingEntry;
+  }
+}
+
+/**
+ * Records a provider payout as one immutable debit entry.
+ *
+ * The provider payout reference is the idempotency key, so a delivered-again
+ * payout notification returns the original entry instead of creating another
+ * withdrawal from the ledger.
+ */
+export async function recordPayout(
+  input: RecordPayoutInput,
+  client: LedgerClient = prisma
+): Promise<LedgerEntry> {
+  const tenantId = requiredValue(input.tenantId, "tenantId");
+  const provider = requiredValue(input.provider, "provider");
+  const payoutReference = requiredValue(input.payoutReference, "payoutReference");
+  const currency = requiredValue(input.currency, "currency").toUpperCase();
+  const grossKobo = nonNegativeKobo(input.amountKobo, "amountKobo");
+  const occurredAt = requiredDate(input.occurredAt, "occurredAt");
+  const reference = `payout:${provider}:${payoutReference}`;
+
+  try {
+    return await client.ledgerEntry.create({
+      data: {
+        tenantId,
+        direction: "debit",
+        entryType: "payout",
+        grossKobo,
+        providerFeeKobo: 0,
+        platformFeeKobo: 0,
+        netKobo: -grossKobo,
+        currency,
+        provider,
+        providerRef: payoutReference,
         reference,
         occurredAt,
       },
