@@ -5,10 +5,10 @@ branch: codex/issue-436
 tasks:
   - id: task-01
     title: Fix the code issues causing Next.js CI failure in ci.yml workflow
-    status: doing
+    status: done
     started_at: '2026-09-24T13:14:48Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-09-24T13:15:02Z'
+    commit: e40b2e3297138e9bf29aa5b99a06988f38b58500
     notes: []
   - id: task-02
     title: Create the app/lib/payments/no-show.ts file with basic structure and exports
