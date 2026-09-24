@@ -424,16 +424,51 @@ jobs:
               }
             }
 
+            // The pattern above only recognises the legacy `agents/codex-<n>.md`
+            // placeholder. The belt now also writes `.agents/issue-<n>-ledger.yml`,
+            // and a run that starts and finishes a task without producing code
+            // leaves a PR whose ONLY file is that ledger — 77 lines of YAML that
+            // do not match the placeholder pattern, so bootstrapOnly is false and
+            // this job merges it. That is how bukay #428 reached eval/claude
+            // claiming task-01 done with no implementation behind it, and each
+            // such merge then draws a metered verifier run and a follow-up issue.
+            //
+            // Ask the question the placeholder check was standing in for: did this
+            // PR change anything that is not the belt's own bookkeeping?
+            const BOOKKEEPING = [
+              /^\.agents\//,
+              /^agents\//,
+              /^langsmith-fleet-[\w-]*\.json$/,
+              /^\.github\/agent-telemetry\//,
+            ];
+            const workFiles = files
+              .map((file) => String(file.filename || ''))
+              .filter((name) => !BOOKKEEPING.some((pattern) => pattern.test(name)));
+            const hasWork = workFiles.length > 0;
+
             const summary = core.summary;
             if (bootstrapOnly) {
               summary.addRaw('Detected bootstrap-only Codex PR; merge deferred until real changes are present.').addEOL();
             }
+            if (!hasWork) {
+              summary
+                .addRaw('Refusing to merge: every changed file is belt bookkeeping. '
+                  + 'The ledger may record tasks as done, but no implementation is present.')
+                .addEOL();
+              core.warning(
+                `PR #${prNumber} changes only belt bookkeeping (${files.length} file(s)); refusing to merge.`);
+            }
             await summary.write();
 
             core.setOutput('bootstrap', bootstrapOnly ? 'true' : 'false');
+            core.setOutput('has_work', hasWork ? 'true' : 'false');
+            core.setOutput('work_file_count', String(workFiles.length));
 
       - name: Merge PR with squash
-        if: ${{ steps.mode.outputs.dry_run != 'true' && steps.bootstrap.outputs.bootstrap != 'true' }}
+        if: >-
+          ${{ steps.mode.outputs.dry_run != 'true'
+              && steps.bootstrap.outputs.bootstrap != 'true'
+              && steps.bootstrap.outputs.has_work == 'true' }}
         id: merge
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:

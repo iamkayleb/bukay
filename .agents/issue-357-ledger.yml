@@ -4,54 +4,54 @@ base: eval/claude
 branch: claude/issue-357
 tasks:
   - id: task-01
-    title: 'Add `app/lib/payments/provider.ts`: define the `PaymentProvider` port'
+    title: "Add `app/lib/payments/provider.ts`: define the `PaymentProvider` port"
     status: done
-    started_at: '2026-09-16T11:59:20Z'
-    finished_at: '2026-09-16T11:59:32Z'
+    started_at: "2026-09-16T11:59:20Z"
+    finished_at: "2026-09-16T11:59:32Z"
     commit: c7e6bb7a5cd7cfff83c0eee03f12dcabca810abf
     notes: []
   - id: task-02
-    title: 'Add `app/lib/payments/paystack.ts`: add the adapter and a fake in `app/lib/payments/fake.ts`'
+    title: "Add `app/lib/payments/paystack.ts`: add the adapter and a fake in `app/lib/payments/fake.ts`"
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-03
-    title: 'Add `app/lib/payments/paystack.ts`: add the adapter (verify: confirm completion
-      in repo)'
+    title: "Add `app/lib/payments/paystack.ts`: add the adapter (verify: confirm completion
+      in repo)"
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-04
-    title: 'a fake in `app/lib/payments/fake.ts` (verify: confirm completion in repo)'
+    title: "a fake in `app/lib/payments/fake.ts` (verify: confirm completion in repo)"
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-05
-    title: 'Add `app/api/payments/verify/route.ts`: implement the callback'
+    title: "Add `app/api/payments/verify/route.ts`: implement the callback"
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-06
-    title: 'Add `app/lib/payments/subaccount.ts`: create subaccounts during setup'
+    title: "Add `app/lib/payments/subaccount.ts`: create subaccounts during setup"
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-07
-    title: 'Add `app/lib/slot-hold.ts`: release held slots on failure'
+    title: "Add `app/lib/slot-hold.ts`: release held slots on failure"
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-08
     title: A test-mode payment moves the booking to `confirmed`, verified by `pnpm
@@ -59,26 +59,26 @@ tasks:
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-09
     title: A failed payment releases the slot within 10 minutes
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-10
     title: The subaccount split matches the configured percentage
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []
   - id: task-11
     title: No secret value appears in logs, verified by `pnpm test`
     status: todo
     started_at: null
     finished_at: null
-    commit: ''
+    commit: ""
     notes: []

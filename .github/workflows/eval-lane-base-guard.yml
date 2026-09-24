@@ -1,0 +1,99 @@
+# Enforce the lane invariant at the pull request, not at each creator.
+#
+# Every agent branch is named `<agent>/issue-<n>`, so the correct base is always
+# `eval/<agent>`. Previously that was reached only if a `<!-- base-branch: X -->`
+# marker was written into the issue AND read by whichever component happened to
+# open the PR — the bridge, the belt dispatcher, auto-pilot, or the follow-up
+# generator. Four components, four separate bugs, each found only after a PR
+# landed on the wrong branch.
+#
+# This closes the class: whatever opened the PR and whatever it chose, the base
+# is corrected here from the branch name.
+name: Eval Lane Base Guard
+
+on:
+  pull_request_target:
+    types: [opened, reopened, edited, synchronize]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+concurrency:
+  group: eval-lane-base-guard-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  enforce-base:
+    # Only ever touches branches named for an agent lane.
+    if: >-
+      startsWith(github.event.pull_request.head.ref, 'claude/') ||
+      startsWith(github.event.pull_request.head.ref, 'codex/') ||
+      startsWith(github.event.pull_request.head.ref, 'cursor/')
+    runs-on: ubuntu-latest
+    env:
+      WORKFLOWS_APP_ID: ${{ secrets.WORKFLOWS_APP_ID || '' }}
+      WORKFLOWS_APP_PRIVATE_KEY: ${{ secrets.WORKFLOWS_APP_PRIVATE_KEY || '' }}
+      SERVICE_BOT_PAT: ${{ secrets.SERVICE_BOT_PAT || '' }}
+    steps:
+      - name: Mint GitHub App token
+        id: app_token
+        if: ${{ env.WORKFLOWS_APP_ID != '' && env.WORKFLOWS_APP_PRIVATE_KEY != '' }}
+        continue-on-error: true
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ env.WORKFLOWS_APP_ID }}
+          private-key: ${{ env.WORKFLOWS_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Correct the base branch
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ steps.app_token.outputs.token || secrets.SERVICE_BOT_PAT || secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            const head = String(pr.head.ref || '');
+            const base = String(pr.base.ref || '');
+
+            const m = head.match(/^(claude|codex|cursor)\//);
+            if (!m) { core.info(`Head '${head}' is not an agent branch.`); return; }
+            const lane = `eval/${m[1]}`;
+
+            if (base === lane) {
+              core.info(`#${pr.number}: base is already ${lane}.`);
+              return;
+            }
+
+            // Never retarget a PR that is already merged or closed.
+            if (pr.merged || pr.state !== 'open') {
+              core.info(`#${pr.number}: not open; leaving base alone.`);
+              return;
+            }
+
+            // Refuse if the lane does not exist, rather than pointing at nothing.
+            try {
+              await github.rest.repos.getBranch({ owner, repo, branch: lane });
+            } catch (e) {
+              core.warning(`Lane '${lane}' does not exist; leaving base '${base}'.`);
+              return;
+            }
+
+            core.info(`#${pr.number}: retargeting ${base} -> ${lane}`);
+            await github.rest.pulls.update({ owner, repo, pull_number: pr.number, base: lane });
+
+            await github.rest.issues.createComment({
+              owner, repo, issue_number: pr.number,
+              body: [
+                `Retargeted this pull request from \`${base}\` to \`${lane}\`.`,
+                '',
+                `The head branch is \`${head}\`, so its work belongs in the ${m[1]} evaluation`,
+                'lane. Merging it into the default branch would put one agent\'s code on the',
+                'shared branch and break per-agent attribution.',
+                '',
+                '<sub>Eval Lane Base Guard — enforced from the branch name, independent of',
+                'whichever component opened the pull request.</sub>',
+              ].join('\n'),
+            });
+
+            core.summary.addRaw(`Retargeted #${pr.number}: \`${base}\` -> \`${lane}\``).write();

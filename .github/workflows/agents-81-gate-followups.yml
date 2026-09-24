@@ -684,6 +684,15 @@ jobs:
             needs.evaluate.outputs.action != 'conflict' }}
       prompt_file: ${{ needs.evaluate.outputs.prompt_file }}
       mode: keepalive
+      # Codex sandboxes with bubblewrap under `workspace-write`, and bwrap cannot
+      # create a loopback interface on a GitHub-hosted runner:
+      #   bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted
+      # Every shell command then fails before it runs, so Codex correctly refuses
+      # the task and reports "Blocked" having executed 0 commands and written 0
+      # files — which reads as the agent producing nothing. The runner is an
+      # ephemeral, single-tenant VM that is already the isolation boundary, so
+      # dropping Codex's inner sandbox costs nothing here.
+      sandbox: danger-full-access
       pr_number: ${{ needs.evaluate.outputs.pr_number }}
       pr_ref: ${{ needs.evaluate.outputs.pr_ref }}
       appendix: ${{ needs.evaluate.outputs.task_appendix }}
@@ -1653,6 +1662,8 @@ jobs:
     with:
       prompt_file: .github/codex/prompts/autofix_from_ci_failure.md
       mode: autofix
+      # Same bubblewrap failure as run-codex; see the note there.
+      sandbox: danger-full-access
       pr_number: ${{ needs.prepare.outputs.pr_number }}
       pr_ref: ${{ needs.prepare.outputs.head_ref }}
       appendix: ${{ needs.prepare.outputs.appendix }}
@@ -2112,6 +2123,52 @@ jobs:
                 };
             const { withRetry, paginateWithRetry } = await createTokenAwareRetry({ github, core });
             const summary = core.summary;
+
+            // Refusal reasons used to land only in this job's summary table, so
+            // a PR auto-merge had declined looked identical to one nothing had
+            // looked at yet. Mirror the outcome onto the PR: one comment,
+            // updated in place, plus an `automerge:blocked` label cleared when
+            // it passes.
+            const BLOCKED_LABEL = 'automerge:blocked';
+            const OUTCOME_MARK = '<!-- automerge-outcome -->';
+            async function reportOutcome(prNumber, status, note) {
+              try {
+                const blocked = status !== 'merged' && Boolean(note);
+                const body = [
+                  OUTCOME_MARK,
+                  blocked ? '### Auto-merge declined' : '### Auto-merge',
+                  '',
+                  blocked ? note : `Result: \`${status}\`${note ? ` — ${note}` : ''}`,
+                  '',
+                  '_Posted by the guarded merger; this comment is updated in place._',
+                ].join('\n');
+                const comments = await paginateWithRetry(
+                  github.rest.issues.listComments,
+                  { owner, repo, issue_number: prNumber, per_page: 100 });
+                const existing = (comments || [])
+                  .find((c) => String(c.body || '').includes(OUTCOME_MARK));
+                if (existing) {
+                  await withRetry((client) => (client || github).rest.issues.updateComment(
+                    { owner, repo, comment_id: existing.id, body }));
+                } else {
+                  await withRetry((client) => (client || github).rest.issues.createComment(
+                    { owner, repo, issue_number: prNumber, body }));
+                }
+                if (blocked) {
+                  await withRetry((client) => (client || github).rest.issues.addLabels(
+                    { owner, repo, issue_number: prNumber, labels: [BLOCKED_LABEL] }));
+                } else {
+                  try {
+                    await withRetry((client) => (client || github).rest.issues.removeLabel(
+                      { owner, repo, issue_number: prNumber, name: BLOCKED_LABEL }));
+                  } catch (_) { /* label absent */ }
+                }
+              } catch (error) {
+                // Reporting must never be why a merge run fails.
+                core.warning(
+                  `Could not report auto-merge outcome on #${prNumber}: ${error.message || error}`);
+              }
+            }
             const { owner, repo } = context.repo;
 
             // Resolve the default branch (agent PRs must target it).
@@ -2230,9 +2287,24 @@ jobs:
                 }
                 unchecked += countUnchecked(linkedIssueSnapshot.body);
               }
-              return unchecked > 0
-                ? 'Refusing auto-merge: linked issue/PR has unchecked tasks.'
-                : '';
+              if (unchecked === 0) return '';
+              // Some repos track completion outside the checkboxes — an agent
+              // belt ledger, an external tracker — and their issue bodies carry
+              // a spec whose boxes are never ticked. For those this guard can
+              // never pass and auto-merge is structurally impossible. Honour an
+              // explicit per-PR opt-out rather than weakening the default.
+              const optOut = (pr?.labels || [])
+                .map((l) => (typeof l === 'string' ? l : l && l.name) || '')
+                .includes('merge:allow-unchecked-tasks');
+              if (optOut) {
+                core.info(
+                  `#${pr?.number}: ${unchecked} unchecked task(s) ignored via `
+                  + 'merge:allow-unchecked-tasks.');
+                return '';
+              }
+              return `Refusing auto-merge: linked issue/PR has ${unchecked} unchecked `
+                + 'task(s). Tick them, or add the `merge:allow-unchecked-tasks` label '
+                + 'if completion is tracked elsewhere.';
             }
 
             async function loadPullRequest(prNumber) {
@@ -2560,8 +2632,22 @@ jobs:
                   return 'Repository default branch not available in the final snapshot.';
                 }
                 const finalBase = finalPr?.base?.ref || '';
-                if (!finalBase || finalBase !== finalDefaultBranch) {
-                  return `Final base branch ${finalBase || '(unknown)'} does not match ${finalDefaultBranch}.`;
+                // Merging into a non-default branch is refused by default: it is
+                // how a stray automation merge reaches a protected trunk. Repos
+                // that deliberately run long-lived integration branches (an
+                // evaluation lane, a release train) opt a single PR in with an
+                // explicit label. Without this, `automerge` on such a PR can
+                // never succeed and the refusal repeats on every Gate run.
+                const baseOptOut = (finalPr.labels || [])
+                  .map((item) => String(item.name || '').toLowerCase())
+                  .includes('merge:allow-nondefault-base');
+                if (!finalBase) {
+                  return 'Final base branch is unknown.';
+                }
+                if (finalBase !== finalDefaultBranch && !baseOptOut) {
+                  return `Final base branch ${finalBase} does not match ${finalDefaultBranch}. `
+                    + 'Add the `merge:allow-nondefault-base` label if merging into '
+                    + 'that branch is intended.';
                 }
                 const finalMergeableState = String(finalPr.mergeable_state || '').toLowerCase();
                 if (finalPr.draft || finalMergeableState !== 'clean') {
@@ -2861,6 +2947,7 @@ jobs:
                 note = `Unhandled error: ${error.message || error}`;
               }
               rows.push([`#${prNumber}`, status, note || '']);
+              await reportOutcome(prNumber, status, note);
             }
 
             summary.addTable([

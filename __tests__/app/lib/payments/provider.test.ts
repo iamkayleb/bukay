@@ -8,17 +8,36 @@ import {
 
 describe("PaymentProvider", () => {
   it("exposes the provider operations used by booking payments", () => {
-    expectTypeOf<PaymentProvider>().toMatchTypeOf<{
-      name: string;
-      initialize: (input: {
-        reference: string;
-        amount: number;
-        currency: string;
-        customer: { email: string };
-        callbackUrl: string;
-      }) => Promise<{ authorizationUrl: string }>;
-      verify: (reference: string) => Promise<{ status: PaymentStatus; paidAt: Date | null }>;
-      createSubaccount: (input: { percentageCharge: number }) => Promise<{ code: string }>;
+    // Checked as separate parameter/return assertions rather than one big
+    // object literal: comparing several method-shorthand properties at once
+    // through expect-type's toMatchTypeOf trips a TS/expect-type interaction
+    // where bivariant method-parameter checking gets lost for some
+    // properties, producing spurious "Expected: function, Actual: never"
+    // errors under the TypeScript version this repo pins.
+    expectTypeOf<PaymentProvider["name"]>().toBeString();
+
+    expectTypeOf<Parameters<PaymentProvider["initialize"]>[0]>().toMatchTypeOf<{
+      reference: string;
+      amount: number;
+      currency: string;
+      customer: { email: string };
+      callbackUrl: string;
+    }>();
+    expectTypeOf<Awaited<ReturnType<PaymentProvider["initialize"]>>>().toMatchTypeOf<{
+      authorizationUrl: string;
+    }>();
+
+    expectTypeOf<Parameters<PaymentProvider["verify"]>[0]>().toBeString();
+    expectTypeOf<Awaited<ReturnType<PaymentProvider["verify"]>>>().toMatchTypeOf<{
+      status: PaymentStatus;
+      paidAt: Date | null;
+    }>();
+
+    expectTypeOf<Parameters<PaymentProvider["createSubaccount"]>[0]>().toMatchTypeOf<{
+      percentageCharge: number;
+    }>();
+    expectTypeOf<Awaited<ReturnType<PaymentProvider["createSubaccount"]>>>().toMatchTypeOf<{
+      code: string;
     }>();
   });
 
