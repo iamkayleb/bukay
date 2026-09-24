@@ -177,21 +177,22 @@ model Payment {
 /// An immutable record of money movement. Corrections are represented by a new
 /// reversing entry rather than modifying an existing row.
 model LedgerEntry {
-  id               String   @id @default(cuid())
-  tenantId         String
-  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  direction        String
-  entryType        String
-  grossKobo        Int
-  providerFeeKobo  Int      @default(0)
-  platformFeeKobo  Int      @default(0)
-  netKobo          Int
-  currency         String   @default("NGN")
-  provider         String?
-  providerRef      String?
-  reference        String   @unique
-  occurredAt       DateTime @default(now())
-  createdAt        DateTime @default(now())
+  id                String   @id @default(cuid())
+  tenantId          String
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  direction         String
+  entryType         String
+  grossKobo         Int
+  providerFeeKobo   Int      @default(0)
+  platformFeeKobo   Int      @default(0)
+  netKobo           Int
+  currency          String   @default("NGN")
+  provider          String?
+  providerRef       String?
+  relatedPaymentRef String?
+  reference         String   @unique
+  occurredAt        DateTime @default(now())
+  createdAt         DateTime @default(now())
 
   @@index([tenantId])
   @@index([tenantId, occurredAt])

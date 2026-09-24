@@ -12,8 +12,8 @@ type LedgerClient = {
     create(args: {
       data: {
         tenantId: string;
-        direction: "credit";
-        entryType: "payment";
+        direction: "credit" | "debit";
+        entryType: "payment" | "refund" | "payout";
         grossKobo: number;
         providerFeeKobo: number;
         platformFeeKobo: number;
@@ -21,6 +21,7 @@ type LedgerClient = {
         currency: string;
         provider: string;
         providerRef: string;
+        relatedPaymentRef?: string;
         reference: string;
         occurredAt?: Date;
       };
@@ -40,7 +41,29 @@ export type RecordPaymentSuccessInput = {
   platformFeeKobo?: number;
 };
 
-function requiredValue(value: string, field: string): string {
+export type RecordRefundInput = {
+  tenantId: string;
+  amountKobo: number;
+  currency: string;
+  provider: string;
+  refundReference: string;
+  paymentReference: string;
+  occurredAt: Date;
+};
+
+export type RecordPayoutInput = {
+  tenantId: string;
+  amountKobo: number;
+  currency: string;
+  provider: string;
+  payoutReference: string;
+  occurredAt: Date;
+};
+
+function requiredValue(value: string | undefined, field: string): string {
+  if (typeof value !== "string") {
+    throw new Error(`${field} is required`);
+  }
   const normalized = value.trim();
   if (!normalized) {
     throw new Error(`${field} is required`);
@@ -48,7 +71,17 @@ function requiredValue(value: string, field: string): string {
   return normalized;
 }
 
-function nonNegativeKobo(value: number, field: string): number {
+function requiredDate(value: Date | undefined, field: string): Date {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+    throw new Error(`${field} is required and must be a valid date`);
+  }
+  return value;
+}
+
+function nonNegativeKobo(value: number | undefined, field: string): number {
+  if (value === undefined) {
+    throw new Error(`${field} is required`);
+  }
   if (!Number.isSafeInteger(value) || value < 0) {
     throw new Error(`${field} must be a non-negative integer number of kobo`);
   }
@@ -98,6 +131,105 @@ export async function recordPaymentSuccess(
         providerRef: providerReference,
         reference,
         ...(input.paidAt ? { occurredAt: input.paidAt } : {}),
+      },
+    });
+  } catch (error) {
+    if (!isUniqueConstraintError(error)) {
+      throw error;
+    }
+
+    const existingEntry = await client.ledgerEntry.findUnique({ where: { reference } });
+    if (!existingEntry) {
+      throw error;
+    }
+    return existingEntry;
+  }
+}
+
+/**
+ * Records a provider refund as one immutable debit entry.
+ *
+ * The refund reference is the idempotency key, while the payment reference is
+ * retained to make the reversal traceable to its original charge.
+ */
+export async function recordRefund(
+  input: RecordRefundInput,
+  client: LedgerClient = prisma
+): Promise<LedgerEntry> {
+  const tenantId = requiredValue(input.tenantId, "tenantId");
+  const provider = requiredValue(input.provider, "provider");
+  const refundReference = requiredValue(input.refundReference, "refundReference");
+  const paymentReference = requiredValue(input.paymentReference, "paymentReference");
+  const currency = requiredValue(input.currency, "currency").toUpperCase();
+  const grossKobo = nonNegativeKobo(input.amountKobo, "amountKobo");
+  const occurredAt = requiredDate(input.occurredAt, "occurredAt");
+  const reference = `refund:${provider}:${refundReference}`;
+
+  try {
+    return await client.ledgerEntry.create({
+      data: {
+        tenantId,
+        direction: "debit",
+        entryType: "refund",
+        grossKobo,
+        providerFeeKobo: 0,
+        platformFeeKobo: 0,
+        netKobo: -grossKobo,
+        currency,
+        provider,
+        providerRef: refundReference,
+        relatedPaymentRef: paymentReference,
+        reference,
+        occurredAt,
+      },
+    });
+  } catch (error) {
+    if (!isUniqueConstraintError(error)) {
+      throw error;
+    }
+
+    const existingEntry = await client.ledgerEntry.findUnique({ where: { reference } });
+    if (!existingEntry) {
+      throw error;
+    }
+    return existingEntry;
+  }
+}
+
+/**
+ * Records a provider payout as one immutable debit entry.
+ *
+ * The provider payout reference is the idempotency key, so a delivered-again
+ * payout notification returns the original entry instead of creating another
+ * withdrawal from the ledger.
+ */
+export async function recordPayout(
+  input: RecordPayoutInput,
+  client: LedgerClient = prisma
+): Promise<LedgerEntry> {
+  const tenantId = requiredValue(input.tenantId, "tenantId");
+  const provider = requiredValue(input.provider, "provider");
+  const payoutReference = requiredValue(input.payoutReference, "payoutReference");
+  const currency = requiredValue(input.currency, "currency").toUpperCase();
+  const grossKobo = nonNegativeKobo(input.amountKobo, "amountKobo");
+  const occurredAt = requiredDate(input.occurredAt, "occurredAt");
+  const reference = `payout:${provider}:${payoutReference}`;
+
+  try {
+    return await client.ledgerEntry.create({
+      data: {
+        tenantId,
+        direction: "debit",
+        entryType: "payout",
+        grossKobo,
+        providerFeeKobo: 0,
+        platformFeeKobo: 0,
+        netKobo: -grossKobo,
+        currency,
+        provider,
+        providerRef: payoutReference,
+        reference,
+        occurredAt,
       },
     });
   } catch (error) {
