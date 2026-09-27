@@ -796,6 +796,7 @@ jobs:
           # against that branch instead.
           LANE_REF="$(sed -n 's/.*<!-- *base-branch: *\([^ ]*\) *-->.*/\1/p' \
             /tmp/issue_body.md | head -1)"
+          LANE_NOTE=""
           if [ -n "$LANE_REF" ]; then
             if git fetch --depth 1 origin "$LANE_REF" >/dev/null 2>&1; then
               rm -rf /tmp/lane-root && mkdir -p /tmp/lane-root
@@ -803,10 +804,16 @@ jobs:
               export ISSUE_FORMAT_REPO_ROOT=/tmp/lane-root
               echo "Validating path citations against lane branch $LANE_REF"
             else
-              echo "::warning::Could not fetch declared base branch $LANE_REF;"
-              echo "::warning::validating path citations against the default branch."
+              echo "::error::Declared base branch $LANE_REF could not be fetched."
+              echo "::error::Path citations will be checked against the default branch,"
+              echo "::error::so files that exist only on $LANE_REF will look missing."
+              LANE_NOTE="The issue declares \`base-branch: $LANE_REF\`, but that branch could not be fetched, so path citations were checked against the default branch. Files that exist only on $LANE_REF will have been reported as missing."
             fi
+          else
+            echo "::notice::No <!-- base-branch: ... --> marker; citations checked against the default branch."
+            LANE_NOTE="This issue has no \`<!-- base-branch: ... -->\` marker, so path citations were checked against the default branch. If the work targets a long-lived branch, add the marker as the first line of the body and re-run."
           fi
+          export LANE_NOTE
 
           # Format the issue
           echo "Formatting issue into AGENT_ISSUE_TEMPLATE structure..."
@@ -912,6 +919,12 @@ jobs:
           # reports that its final output fails the canonical contract.
           if [ -f /tmp/needs_refinement ]; then
             echo "⚠️ Formatter requires human refinement; pausing auto-pilot."
+            # A pause that names only the contract is a dead end for whoever
+            # reads it. When the citation check ran against the wrong tree, say
+            # so here rather than leaving them to infer it.
+            if [ -n "${LANE_NOTE:-}" ]; then
+              printf '\n\n%s\n' "$LANE_NOTE" >>/tmp/needs_refinement
+            fi
             FORMAT_REFINEMENT_REASON="$(cat /tmp/needs_refinement)" node - <<'REFINEMENT_NODE'
             (async () => {
               const { Octokit } = require('@octokit/rest');
