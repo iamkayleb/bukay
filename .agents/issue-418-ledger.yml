@@ -1,0 +1,139 @@
+version: 1
+issue: 418
+base: eval/codex
+branch: codex/issue-418
+tasks:
+  - id: task-01
+    title: Define the WhatsAppProvider interface with all required method signatures
+    status: doing
+    started_at: '2026-10-01T10:49:00Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: Specify the input and output types for each provider method
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Document the error handling contract for the provider interface
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Add TypeScript type definitions for message templates and parameters
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Implement authentication and credential management for Meta Cloud API
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Create request formatting logic for sending WhatsApp messages
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Implement response parsing and message ID extraction from API responses
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Add error handling and retry logic for API failures
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Configure API endpoint URLs and request headers for Meta Cloud API
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: 'Add `app/lib/whatsapp/fake.ts`: implement the test double'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: Define the template data structure with all required fields
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: Implement template registration and lookup functions
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: Add validation logic for template parameters and structure
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: Create helper functions for template parameter substitution
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: 'Add `docs/WHATSAPP_TEMPLATES.md`: document approval steps'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: A sandbox send returns HTTP 200 with a message id, verified by `pnpm test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: Every template in `app/lib/whatsapp/templates.ts` has JSDoc comments describing
+      its purpose, required parameters, and an example usage
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: '`app/lib/whatsapp/fake.ts` substitutes for the adapter in tests'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
