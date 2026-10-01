@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: Define the WhatsAppProvider interface with method signatures for sending
       messages
-    status: doing
+    status: done
     started_at: '2026-10-01T10:53:16Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-10-01T10:53:31Z'
+    commit: 27a7e7b2c9e1fcfa963e7de720a95604ca20a60d
     notes: []
   - id: task-02
     title: Specify the input types for message parameters including recipient and
