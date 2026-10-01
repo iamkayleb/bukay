@@ -5,10 +5,10 @@ branch: codex/issue-418
 tasks:
   - id: task-01
     title: Define the WhatsAppProvider interface with all required method signatures
-    status: doing
+    status: done
     started_at: '2026-10-01T10:49:00Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-10-01T10:49:11Z'
+    commit: ec8d253ead14cd1e7a5134ce9aa5e70ace8016e8
     notes: []
   - id: task-02
     title: Specify the input and output types for each provider method
