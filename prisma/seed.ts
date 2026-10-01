@@ -46,12 +46,14 @@ async function main() {
       name: "Bukay Demo Salon",
       timezone: "Africa/Lagos",
       currency: "NGN",
+      paymentProvider: "PAYSTACK",
     },
     create: {
       slug: DEMO_TENANT_SLUG,
       name: "Bukay Demo Salon",
       timezone: "Africa/Lagos",
       currency: "NGN",
+      paymentProvider: "PAYSTACK",
     },
   });
 

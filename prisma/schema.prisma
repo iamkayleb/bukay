@@ -17,6 +17,8 @@ model Tenant {
   slug          String         @unique
   timezone      String         @default("Africa/Lagos")
   currency      String         @default("NGN")
+  /// Restricted to `PAYSTACK` or `FLUTTERWAVE` by the SQLite migration's CHECK constraint.
+  paymentProvider String         @default("PAYSTACK")
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   users         User[]
