@@ -5,6 +5,7 @@ import type {
   WhatsAppProvider,
   WhatsAppSendResult,
 } from "@/app/lib/whatsapp/provider";
+import { WhatsAppProviderError } from "@/app/lib/whatsapp/provider";
 
 describe("WhatsAppProvider", () => {
   it("requires an asynchronous template send operation", async () => {
@@ -26,6 +27,23 @@ describe("WhatsAppProvider", () => {
       id: "wamid.test-1",
       provider: "test",
       to: "+2348012345678",
+    });
+  });
+
+  it("exposes retry details without exposing provider response objects", () => {
+    const cause = new Error("gateway timeout");
+    const error = new WhatsAppProviderError("meta", "Meta Cloud API timed out", {
+      status: 504,
+      retryable: true,
+      cause,
+    });
+
+    expect(error).toMatchObject({
+      name: "WhatsAppProviderError",
+      provider: "meta",
+      status: 504,
+      retryable: true,
+      cause,
     });
   });
 });

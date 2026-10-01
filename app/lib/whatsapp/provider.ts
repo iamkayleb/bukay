@@ -24,11 +24,38 @@ export type WhatsAppSendResult = {
 };
 
 /**
+ * A failure returned by a WhatsApp provider implementation.
+ *
+ * Callers may retry only errors marked as `retryable`; validation and other
+ * permanent failures must be surfaced to the caller without another send.
+ * Implementations preserve the original error in `cause` when one is available.
+ */
+export class WhatsAppProviderError extends Error {
+  readonly provider: string;
+  readonly status?: number;
+  readonly retryable: boolean;
+  readonly cause?: unknown;
+
+  constructor(
+    provider: string,
+    message: string,
+    options: { status?: number; retryable?: boolean; cause?: unknown } = {}
+  ) {
+    super(message);
+    this.name = "WhatsAppProviderError";
+    this.provider = provider;
+    this.status = options.status;
+    this.retryable = options.retryable ?? false;
+    this.cause = options.cause;
+  }
+}
+
+/**
  * Boundary for sending approved WhatsApp templates.
  *
  * Implementations must resolve only after the provider accepts the request and return the
- * provider-issued message id. Failures are rejected so callers can apply their own retry or
- * fallback policy.
+ * provider-issued message id. Failures are rejected as `WhatsAppProviderError` so callers can
+ * inspect their HTTP status and retry only errors marked as retryable.
  */
 export interface WhatsAppProvider {
   readonly name: string;
