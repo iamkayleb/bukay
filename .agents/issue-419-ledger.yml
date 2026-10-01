@@ -1,0 +1,170 @@
+version: 1
+issue: 419
+base: eval/claude
+branch: claude/issue-419
+tasks:
+  - id: task-01
+    title: Define the FlutterwaveAdapter class implementing the PaymentProvider interface
+    status: done
+    started_at: '2026-10-01T10:52:04Z'
+    finished_at: '2026-10-01T10:52:18Z'
+    commit: 695bcc928e1e6335134021d064209bd704b75a25
+    notes: []
+  - id: task-02
+    title: Implement the initializePayment method with Flutterwave API integration
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Implement the verifyPayment method with transaction verification logic
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Add error handling and response mapping for Flutterwave API calls
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Define TypeScript types for Flutterwave request and response payloads
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Create the POST route handler for Flutterwave webhook events
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Implement webhook signature verification using Flutterwave secret hash
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Parse and validate the incoming webhook payload structure
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Handle successful payment events and update ledger entries
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: Add error responses for invalid signatures or malformed payloads
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: Add paymentProvider enum field to the Tenant model in schema.prisma
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: Generate the Prisma migration for the new paymentProvider column
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: Define default value or migration strategy for existing Tenant records
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: Update Prisma client types by running prisma generate
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: Create the shared contract test suite structure with describe blocks
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: Implement test cases for successful payment initialization across both
+      providers
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: Implement test cases for payment verification with valid transactions
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: Implement test cases for webhook signature validation for both providers
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: Add test cases verifying ledger entry creation has identical shape
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: Both adapters pass `__tests__/payment-contract.test.ts`, verified by `pnpm
+      test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-21
+    title: Switching provider preserves existing `LedgerEntry` rows
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-22
+    title: Ledger writes from both adapters create LedgerEntry records with the same
+      required fields (amount, currency, status, metadata structure) as verified by
+      schema validation tests
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-23
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
