@@ -5,10 +5,10 @@ branch: codex/issue-417
 tasks:
   - id: task-01
     title: Define the FlutterwaveAdapter class implementing the PaymentProvider interface
-    status: doing
+    status: done
     started_at: '2026-10-01T10:44:54Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-10-01T10:45:08Z'
+    commit: fb5009ca1de9cbac7dcaeeb11011f3f757e88d85
     notes: []
   - id: task-02
     title: Implement the payment initialization method with Flutterwave API integration
