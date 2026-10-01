@@ -1,0 +1,153 @@
+version: 1
+issue: 417
+base: eval/codex
+branch: codex/issue-417
+tasks:
+  - id: task-01
+    title: Define the FlutterwaveAdapter class implementing the PaymentProvider interface
+    status: doing
+    started_at: '2026-10-01T10:44:54Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: Implement the payment initialization method with Flutterwave API integration
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Implement the payment verification method using Flutterwave transaction
+      endpoints
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Add error handling and response mapping for Flutterwave-specific error
+      codes
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Configure Flutterwave SDK initialization with tenant-specific credentials
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Implement Flutterwave webhook signature verification using their secret
+      hash
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Parse and validate incoming webhook payload structure from Flutterwave
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Map Flutterwave webhook events to internal payment status updates
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Create LedgerEntry records from successful payment webhook notifications
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: Add error handling and logging for webhook processing failures
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: 'Add `prisma/schema.prisma`: add the `paymentProvider` column to the `Tenant`
+      model'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: Create parameterized test suite that runs against both payment providers
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: Define test cases for successful payment initialization and verification
+      flows
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: Add test cases for webhook signature validation for both providers
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: Verify LedgerEntry creation produces identical shapes across both providers
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: Add test cases for error handling and invalid input scenarios
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: Both adapters pass `__tests__/payment-contract.test.ts`, verified by `pnpm
+      test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: Switching provider preserves existing `LedgerEntry` rows
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: LedgerEntry records created by both adapters contain the same fields (amount,
+      currency, status, metadata structure) as verified by schema comparison in contract
+      tests
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
