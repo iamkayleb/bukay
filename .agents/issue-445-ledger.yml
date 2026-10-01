@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: Add required `Tenant.paymentProvider` support in `prisma/schema.prisma`,
       a Prisma migration, and Tenant create/update/select flows in `src/**/*.ts`.
-    status: doing
+    status: done
     started_at: '2026-10-01T11:28:13Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-10-01T11:28:25Z'
+    commit: ce2a288d074651580671263885e904903e3e6fde
     notes: []
   - id: task-02
     title: Implement `src/payments/adapters/FlutterwaveAdapter.ts` conforming to `PaymentProvider`,
