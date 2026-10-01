@@ -1,0 +1,365 @@
+version: 1
+issue: 445
+base: eval/codex
+branch: codex/issue-445
+tasks:
+  - id: task-01
+    title: Add required `Tenant.paymentProvider` support in `prisma/schema.prisma`,
+      a Prisma migration, and Tenant create/update/select flows in `src/**/*.ts`.
+    status: doing
+    started_at: '2026-10-01T11:28:13Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: Implement `src/payments/adapters/FlutterwaveAdapter.ts` conforming to `PaymentProvider`,
+      including initialization, verification, `LedgerEntry` data, and normalized error
+      mapping.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Update `src/payments/providerFactory.ts` to select providers from `Tenant.paymentProvider`
+      and load tenant-scoped Flutterwave credentials.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Implement `src/payments/webhooks/flutterwave.ts` with signature verification,
+      payload validation, event/status mapping, and `LedgerEntry` create/update logic.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Create `__tests__/payment-contract.test.ts` parameterizing initialization,
+      verification, `LedgerEntry` schema, and tenant provider-switching tests across
+      both adapters.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Add `__tests__/flutterwave-webhook.test.ts` and `__tests__/flutterwave-adapter.test.ts`
+      for webhook failure paths and Flutterwave error mapping.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: '`prisma/schema.prisma` defines required constrained `Tenant.paymentProvider`,
+      and a migration under `prisma/migrations/*` adds it to Tenant.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Tenant create, update, and payment-configuration load paths persist and
+      expose `paymentProvider`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: '`src/payments/adapters/FlutterwaveAdapter.ts` exports a `PaymentProvider`-compatible
+      adapter without breaking the existing adapter.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: '`__tests__/payment-contract.test.ts` runs initialization and verification
+      cases against both adapters and compares `LedgerEntry.amount`, `currency`, `status`,
+      and metadata structure.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: '`src/payments/providerFactory.ts` selects the existing provider or `FlutterwaveAdapter`
+      from `Tenant.paymentProvider` and uses tenant-scoped Flutterwave credentials.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: Flutterwave API and validation failures match the existing application
+      payment error format, verified by failing-response and invalid-input cases in
+      `__tests__/flutterwave-adapter.test.ts`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: '`src/payments/webhooks/flutterwave.ts` rejects invalid signatures and
+      malformed payloads without writing `LedgerEntry` records.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: Supported Flutterwave webhook events map to internal statuses and apply
+      corresponding `LedgerEntry` create-or-update behavior.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: Provider-switching tests preserve historical `LedgerEntry` `amount`, `currency`,
+      `status`, and `metadata` while changing only subsequent provider selection.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: '`pnpm prisma validate`, `pnpm tsc --noEmit`, targeted payment tests, and
+      `pnpm test` pass.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: Add a `paymentProvider` field to the `Tenant` model in `prisma/schema.prisma`
+      and update any generated types or repository code that reads/writes Tenant records
+      to support selecting a payment provider per tenant.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: Implement a `FlutterwaveAdapter` that conforms to the existing `PaymentProvider`
+      interface, including payment initialization, transaction verification, and creation
+      of `LedgerEntry` data with the same field shape used by the existing adapter.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: Add tenant-specific Flutterwave credential loading and adapter construction
+      logic in the payment-provider selection layer so the correct provider is instantiated
+      from `Tenant.paymentProvider` and configured with tenant credentials.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: Implement Flutterwave-specific error mapping in the adapter so API and
+      validation failures are translated into the application's standard payment error
+      format used by the existing provider.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-21
+    title: Add Flutterwave webhook handling code, including signature verification,
+      payload validation, event-to-internal-status mapping, and `LedgerEntry` creation/update
+      logic for webhook-driven payment events.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-22
+    title: Create `__tests__/payment-contract.test.ts` as a parameterized contract
+      test suite that runs against both the existing payment adapter and `FlutterwaveAdapter`,
+      covering payment initialization, transaction verification, and schema comparison
+      of produced `LedgerEntry` records.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-23
+    title: Add a test case in the contract suite that switches a tenant from the existing
+      provider to Flutterwave and verifies previously created `LedgerEntry` rows remain
+      unchanged in amount, currency, status, and metadata.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-24
+    title: Add unit tests for Flutterwave webhook signature verification, invalid
+      payload handling, and provider-specific error mapping to cover failure paths
+      independently of the contract suite.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-25
+    title: The Prisma `Tenant` model defines a required `paymentProvider` field whose
+      type restricts values to the supported providers used by the application, and
+      a Prisma migration exists that adds this field to the Tenant table.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-26
+    title: Code paths that create or update Tenant records include support for persisting
+      `paymentProvider`, and code paths that load Tenant records expose `paymentProvider`
+      to the payment-provider selection layer.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-27
+    title: '`src/payments/adapters/FlutterwaveAdapter.ts` exports an adapter that
+      satisfies the existing `PaymentProvider` interface without requiring interface
+      changes that break the existing adapter implementation.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-28
+    title: The contract test suite `__tests__/payment-contract.test.ts` runs the same
+      initialization and transaction-verification test cases against both the existing
+      adapter and `FlutterwaveAdapter` using parameterized test inputs.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-29
+    title: 'For the same successful payment scenario in `__tests__/payment-contract.test.ts`,
+      the existing adapter and `FlutterwaveAdapter` each produce `LedgerEntry` data
+      containing the same required top-level fields: `amount`, `currency`, `status`,
+      and `metadata`.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-30
+    title: The contract test suite asserts that the `metadata` value produced in `LedgerEntry`
+      records by both adapters has the same structural shape for equivalent scenarios,
+      rather than only checking that the field exists.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-31
+    title: The payment-provider factory/selection layer instantiates the existing
+      provider when `Tenant.paymentProvider` is set to the existing provider value,
+      and instantiates `FlutterwaveAdapter` when `Tenant.paymentProvider` is set to
+      the Flutterwave value.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-32
+    title: When the payment-provider factory creates a `FlutterwaveAdapter`, it reads
+      Flutterwave credentials from tenant-scoped configuration rather than using a
+      single global credential set.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-33
+    title: Flutterwave API failures and validation failures are translated by `FlutterwaveAdapter`
+      into the same application error format used by the existing payment provider,
+      including the same error class or normalized error shape expected by shared
+      payment flows.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-34
+    title: '`__tests__/flutterwave-adapter.test.ts` includes at least one failing-API-response
+      case and at least one invalid-input/validation case that each assert the mapped
+      error matches the application''s standard payment error contract.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-35
+    title: A Flutterwave webhook handler exists at `src/payments/webhooks/flutterwave.ts`
+      and rejects requests with an invalid signature before any payment-status update
+      or `LedgerEntry` write occurs.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-36
+    title: The Flutterwave webhook handler validates required payload fields and returns
+      a failure result for malformed or incomplete webhook payloads without creating
+      or updating `LedgerEntry` records.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-37
+    title: For each supported Flutterwave webhook event handled by the implementation,
+      the webhook layer maps the provider event/status to an internal payment status
+      and applies the corresponding `LedgerEntry` create-or-update logic.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-38
+    title: '`__tests__/payment-contract.test.ts` includes a provider-switching scenario
+      where a tenant first creates `LedgerEntry` rows using the existing provider,
+      then switches `Tenant.paymentProvider` to Flutterwave, and previously created
+      rows remain unchanged for `amount`, `currency`, `status`, and `metadata`.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-39
+    title: The provider-switching test verifies that switching `Tenant.paymentProvider`
+      affects only subsequent provider selection and does not retroactively rewrite
+      or migrate historical `LedgerEntry` rows.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-40
+    title: 'All new and affected payment tests pass together: `__tests__/payment-contract.test.ts`,
+      `__tests__/flutterwave-webhook.test.ts`, and `__tests__/flutterwave-adapter.test.ts`.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-41
+    title: The full repository test suite passes after the multi-provider Flutterwave
+      changes are integrated.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
