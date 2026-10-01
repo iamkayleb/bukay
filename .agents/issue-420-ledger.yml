@@ -1,0 +1,170 @@
+version: 1
+issue: 420
+base: eval/claude
+branch: claude/issue-420
+tasks:
+  - id: task-01
+    title: Define the WhatsAppProvider interface with method signatures for sending
+      messages
+    status: doing
+    started_at: '2026-10-01T10:53:16Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: Specify the input types for message parameters including recipient and
+      content
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Specify the output types including message identifiers and status responses
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Document error handling contracts for network failures and API errors
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Implement authentication mechanism for Meta Cloud API using credentials
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Create HTTP client wrapper for Meta Cloud API endpoints
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Implement message sending logic that conforms to the provider interface
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Add error handling and retry logic for API failures
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Configure environment variables for API credentials and endpoints
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: Create a fake adapter class that implements the WhatsAppProvider interface
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: Implement in-memory storage for tracking sent messages during tests
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: Add methods to simulate successful message delivery responses
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: Add methods to simulate API error conditions for testing
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: Provide helper methods to verify messages were sent with expected parameters
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: Define the template data structure including name and parameter schema
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: Create a registry object containing all approved WhatsApp message templates
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: Implement template lookup function by template name or identifier
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: Add validation logic to ensure template parameters match schema
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: 'Add `docs/WHATSAPP_TEMPLATES.md`: document approval steps'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: A sandbox send returns HTTP 200 with a message id, verified by `pnpm test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-21
+    title: Every template in `app/lib/whatsapp/templates.ts` has a corresponding entry
+      in `docs/WHATSAPP_TEMPLATES.md` with name, purpose, parameters, and approval
+      status
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-22
+    title: '`app/lib/whatsapp/fake.ts` substitutes for the adapter in tests'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-23
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
