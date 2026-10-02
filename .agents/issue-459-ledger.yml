@@ -5,10 +5,10 @@ branch: codex/issue-459
 tasks:
   - id: task-01
     title: 'Add `app/lib/payments/flutterwave.ts`: add the adapter'
-    status: doing
+    status: done
     started_at: '2026-10-02T09:25:07Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-10-02T09:25:21Z'
+    commit: cde2bb8b49e2c6fa5554595c1de9419e3119f039
     notes: []
   - id: task-02
     title: 'Add `app/api/webhooks/flutterwave/route.ts`: implement  with signature
