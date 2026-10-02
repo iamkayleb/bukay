@@ -213,7 +213,12 @@ export class FlutterwavePaymentProvider implements PaymentProvider {
       });
     }
 
-    const payload = (await response.json()) as unknown;
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new PaymentProviderError(this.name, "Payment provider returned an invalid response");
+    }
     if (!isRecord(payload) || payload.status !== "success" || !payload.data) {
       throw new PaymentProviderError(this.name, "Payment provider returned an invalid response");
     }

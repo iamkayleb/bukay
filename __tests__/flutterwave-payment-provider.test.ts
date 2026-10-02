@@ -363,4 +363,20 @@ describe("FlutterwavePaymentProvider", () => {
       })
     );
   });
+
+  it("normalizes an invalid JSON response to a provider error", async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValue(
+        new Response("not json", { headers: { "content-type": "application/json" } })
+      );
+    const provider = new FlutterwavePaymentProvider("api-key", request);
+
+    await expect(provider.verify("booking-1")).rejects.toEqual(
+      expect.objectContaining<Partial<PaymentProviderError>>({
+        name: "PaymentProviderError",
+        provider: "flutterwave",
+      })
+    );
+  });
 });
