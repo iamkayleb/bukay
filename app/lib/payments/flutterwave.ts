@@ -31,6 +31,16 @@ function toFlutterwaveAmount(amountCents: number): number {
   return amountCents / 100;
 }
 
+function toFlutterwaveSplitRatio(percentageCharge: number): number {
+  if (!Number.isFinite(percentageCharge) || percentageCharge < 0 || percentageCharge > 100) {
+    throw new PaymentProviderError(
+      "flutterwave",
+      "Subaccount percentage must be between zero and one hundred"
+    );
+  }
+  return percentageCharge / 100;
+}
+
 /** Converts Flutterwave's currency-unit amount to this port's minor units. */
 export function flutterwaveAmountToCents(amount: number | string): number {
   if (typeof amount !== "number" && typeof amount !== "string") {
@@ -122,7 +132,7 @@ export class FlutterwavePaymentProvider implements PaymentProvider {
       account_bank: input.settlementBank,
       account_number: input.accountNumber,
       split_type: "percentage",
-      split_value: input.percentageCharge / 100,
+      split_value: toFlutterwaveSplitRatio(input.percentageCharge),
     });
     if (!isRecord(data)) {
       throw new PaymentProviderError(this.name, "Payment provider returned an invalid response");

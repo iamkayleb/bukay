@@ -114,6 +114,24 @@ describe("FlutterwavePaymentProvider", () => {
     ).resolves.toEqual({ code: "RS_123", percentageCharge: 35 });
   });
 
+  it.each([-1, 101, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejects an invalid split percentage before requesting Flutterwave: %s",
+    async (percentageCharge) => {
+      const request = vi.fn();
+      const provider = new FlutterwavePaymentProvider("api-key", request);
+
+      await expect(
+        provider.createSubaccount({
+          businessName: "Bukay Salon",
+          settlementBank: "044",
+          accountNumber: "0690000037",
+          percentageCharge,
+        })
+      ).rejects.toEqual(expect.objectContaining({ provider: "flutterwave" }));
+      expect(request).not.toHaveBeenCalled();
+    }
+  );
+
   it("rejects malformed checkout and subaccount responses", async () => {
     const request = vi
       .fn()
