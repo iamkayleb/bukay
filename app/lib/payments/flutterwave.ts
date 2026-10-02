@@ -74,7 +74,10 @@ export function flutterwaveAmountToCents(amount: number | string, currency: stri
     throw new PaymentProviderError("flutterwave", "Payment provider returned an invalid amount");
   }
 
-  if (typeof amount === "string" && !amount.trim()) {
+  // Number() accepts hexadecimal and exponential strings. Those are not valid
+  // Flutterwave currency amounts and would make the ledger accept an ambiguous
+  // provider response.
+  if (typeof amount === "string" && !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(amount)) {
     throw new PaymentProviderError("flutterwave", "Payment provider returned an invalid amount");
   }
 
