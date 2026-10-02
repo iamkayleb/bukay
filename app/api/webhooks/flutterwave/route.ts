@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
   }
 
   const tenantId = tenantIdFromMetadata(parsed.data.data.meta);
-  const amountKobo = flutterwaveAmountToCents(parsed.data.data.amount);
+  const amountKobo = flutterwaveAmountToCents(parsed.data.data.amount, parsed.data.data.currency);
   if (!tenantId || !Number.isSafeInteger(amountKobo) || amountKobo < 0) {
     return NextResponse.json({ error: "INVALID_WEBHOOK" }, { status: 400 });
   }

@@ -69,7 +69,7 @@ function toFlutterwaveSplitRatio(percentageCharge: number): number {
 }
 
 /** Converts Flutterwave's currency-unit amount to this port's minor units. */
-export function flutterwaveAmountToCents(amount: number | string): number {
+export function flutterwaveAmountToCents(amount: number | string, currency: string): number {
   if (typeof amount !== "number" && typeof amount !== "string") {
     throw new PaymentProviderError("flutterwave", "Payment provider returned an invalid amount");
   }
@@ -78,7 +78,7 @@ export function flutterwaveAmountToCents(amount: number | string): number {
     throw new PaymentProviderError("flutterwave", "Payment provider returned an invalid amount");
   }
 
-  const minorUnits = Number(amount) * 100;
+  const minorUnits = Number(amount) * currencyMinorUnitDivisor(currency);
   const cents = Math.round(minorUnits);
   if (
     !Number.isSafeInteger(cents) ||
@@ -140,6 +140,8 @@ export class FlutterwavePaymentProvider implements PaymentProvider {
       throw new PaymentProviderError(this.name, "Payment provider returned an invalid response");
     }
 
+    const currency = normalizeCurrency(data.currency);
+
     return {
       reference: data.tx_ref,
       status:
@@ -148,8 +150,8 @@ export class FlutterwavePaymentProvider implements PaymentProvider {
           : data.status === "failed"
             ? "failed"
             : "pending",
-      amountCents: flutterwaveAmountToCents(data.amount),
-      currency: data.currency,
+      amountCents: flutterwaveAmountToCents(data.amount, currency),
+      currency,
       ...(paidAt ? { paidAt } : {}),
     };
   }

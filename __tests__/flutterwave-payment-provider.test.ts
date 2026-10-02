@@ -135,6 +135,26 @@ describe("FlutterwavePaymentProvider", () => {
     );
   });
 
+  it("uses the verified currency's minor-unit exponent", async () => {
+    const request = vi.fn().mockResolvedValue(
+      jsonResponse({
+        status: "success",
+        data: {
+          tx_ref: "booking-ugx",
+          status: "successful",
+          amount: "15000",
+          currency: "ugx",
+        },
+      })
+    );
+    const provider = new FlutterwavePaymentProvider("api-key", request);
+
+    await expect(provider.verify("booking-ugx")).resolves.toMatchObject({
+      amountCents: 15_000,
+      currency: "UGX",
+    });
+  });
+
   it("creates split subaccounts and converts Flutterwave ratios to percentages", async () => {
     const request = vi
       .fn()

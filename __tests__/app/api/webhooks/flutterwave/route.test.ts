@@ -55,6 +55,23 @@ describe("POST /api/webhooks/flutterwave", () => {
     });
   });
 
+  it("uses the webhook currency when normalizing zero-decimal amounts", async () => {
+    const response = await POST(
+      webhook(
+        {
+          ...completedCharge,
+          data: { ...completedCharge.data, amount: "15000", currency: "UGX" },
+        },
+        "expected-webhook-hash"
+      )
+    );
+
+    expect(response.status).toBe(200);
+    expect(state.recordPaymentSuccess).toHaveBeenCalledWith(
+      expect.objectContaining({ amountKobo: 15_000, currency: "UGX" })
+    );
+  });
+
   it("acknowledges signed events that do not represent successful charges", async () => {
     const response = await POST(
       webhook(
