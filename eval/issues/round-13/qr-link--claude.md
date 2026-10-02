@@ -1,21 +1,21 @@
 <!-- base-branch: eval/claude -->
 <!-- eval-round: 13 -->
-<!-- eval-spec: agent-reschedule -->
+<!-- eval-spec: qr-link -->
 <!-- eval-agent: claude -->
 
 ## Why
 
-Most real conversations are changes to existing bookings, not new ones.
+Merchants convert walk-in traffic by displaying a scannable link in the shop.
 
 ## Scope
 
-Extend the agent with find, reschedule and cancel tools honouring the tenant cancellation policy.
+Generate a branded booking URL and a downloadable QR image and PDF.
 
 **Allowed paths:**
 
-- `__tests__/**`
+- `app/(app)/settings/**`
+- `app/api/qr/[slug]/**`
 - `app/lib/**`
-- `app/lib/agent/**`
 - `__tests__/**` and `tests/**` for the tests that prove the criteria
 - `prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support
 - `docs/**` for documentation the change makes stale
@@ -23,20 +23,19 @@ Extend the agent with find, reschedule and cancel tools honouring the tenant can
 
 ## Non-Goals
 
-Nothing beyond the scope above. Leave repository automation configuration untouched.
+No new branding system. The PDF uses the tenant name and slug that already exist.
 
 ## Tasks
 
-- [ ] Add `app/lib/agent/tools/`: add the three tools
-- [ ] Add `app/lib/policy.ts`: implement the policy evaluator
-- [ ] Add `app/lib/agent/prompt.ts`: add disambiguation flows
-- [ ] Add `__tests__/agent-reschedule.test.ts`
+- [ ] Add `app/api/qr/[slug]/route.ts`: implement
+- [ ] Add `app/lib/qr-pdf.ts`: build the branded PDF
+- [ ] Add `app/(app)/settings/page.tsx`: add the download control
 
 ## Acceptance Criteria
 
-- [ ] Cancelling inside the policy window issues a refund, verified by `pnpm test`
-- [ ] Cancelling outside the window retains the deposit per `app/lib/policy.ts`
-- [ ] Rescheduling updates the booking and notifies the owner
+- [ ] The generated code resolves to `/{slug}`, verified by `pnpm test`
+- [ ] `app/api/qr/[slug]/route.ts` returns HTTP 200 with a PDF body
+- [ ] The owner receives the file over WhatsApp after setup
 - [ ] `pnpm test` passes
 
 ## Implementation Notes
@@ -47,7 +46,7 @@ Seeded for the claude evaluation lane. Work on the branch cut for this issue and
 <summary>Original Issue</summary>
 
 ```text
-Seeded from the round 13 specification, spec agent-reschedule, agent claude.
+Seeded from the round 13 specification, spec qr-link, agent claude.
 ```
 
 </details>

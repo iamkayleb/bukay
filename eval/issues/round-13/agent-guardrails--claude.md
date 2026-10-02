@@ -23,16 +23,14 @@ Defences against prompt injection, cross-tenant calls, abuse and runaway usage, 
 
 ## Non-Goals
 
-Nothing beyond the scope above. Leave repository automation configuration untouched.
+Do not change the booking flow itself. Tests must not require a live provider or a real phone number.
 
 ## Tasks
 
-- [ ] Add `app/lib/agent/prompt.ts`: harden the system prompt
 - [ ] Add `app/lib/agent/runtime.ts`: assert tenant scope before every tool call
 - [ ] Add `app/lib/rate-limit.ts`: add per-number rate limiting
-- [ ] Add `app/lib/agent/filters.ts`: add the abuse filter
-- [ ] Add `app/lib/agent/handoff.ts`: implement handoff
-- [ ] Add `__tests__/agent-redteam.test.ts`
+- [ ] Add `app/lib/agent/handoff.ts`: hand off to a human on repeated failure
+- [ ] Add `__tests__/agent-redteam.test.ts`: cover cross-tenant access attempts
 
 ## Acceptance Criteria
 

@@ -23,15 +23,15 @@ Receive inbound messages, route by business number to the tenant, and persist co
 
 ## Non-Goals
 
-Nothing beyond the scope above. Leave repository automation configuration untouched.
+Outbound sending already exists from the provider port. Do not add agent reasoning here; this issue only receives, routes and records.
 
 ## Tasks
 
-- [ ] Add `app/api/webhooks/whatsapp/route.ts`: implement
+- [ ] Add `app/api/webhooks/whatsapp/route.ts`: implement the inbound webhook
 - [ ] Add `app/lib/whatsapp/routing.ts`: resolve the tenant by number
 - [ ] Add `prisma/schema.prisma`: add the `Conversation` model
 - [ ] Add `prisma/schema.prisma`: add the `Message` model
-- [ ] Add `app/lib/whatsapp/templates.ts`: send the greeting template from  for unknown senders
+- [ ] Add `app/lib/whatsapp/templates.ts`: send the greeting template to unknown senders
 
 ## Acceptance Criteria
 

@@ -1,7 +1,7 @@
-<!-- base-branch: eval/claude -->
-<!-- eval-round: 15 -->
+<!-- base-branch: eval/cursor -->
+<!-- eval-round: 13 -->
 <!-- eval-spec: qr-link -->
-<!-- eval-agent: claude -->
+<!-- eval-agent: cursor -->
 
 ## Why
 
@@ -23,7 +23,7 @@ Generate a branded booking URL and a downloadable QR image and PDF.
 
 ## Non-Goals
 
-Nothing beyond the scope above. Leave repository automation configuration untouched.
+No new branding system. The PDF uses the tenant name and slug that already exist.
 
 ## Tasks
 
@@ -40,13 +40,13 @@ Nothing beyond the scope above. Leave repository automation configuration untouc
 
 ## Implementation Notes
 
-Seeded for the claude evaluation lane. Work on the branch cut for this issue and open the pull request against the claude lane branch. Keep changes within the allowed paths listed under Scope; the acceptance verifier reports anything outside them as out of scope. Application code lives under the app directory and tests under the repository test directory; follow the existing layout rather than starting a parallel tree.
+Seeded for the cursor evaluation lane. Work on the branch cut for this issue and open the pull request against the cursor lane branch. Keep changes within the allowed paths listed under Scope; the acceptance verifier reports anything outside them as out of scope. Application code lives under the app directory and tests under the repository test directory; follow the existing layout rather than starting a parallel tree.
 
 <details>
 <summary>Original Issue</summary>
 
 ```text
-Seeded from the round 15 specification, spec qr-link, agent claude.
+Seeded from the round 13 specification, spec qr-link, agent cursor.
 ```
 
 </details>

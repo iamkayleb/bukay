@@ -7,11 +7,11 @@
       "why": "Two-way messaging is the precondition for the conversational booking agent.",
       "scope": "Receive inbound messages, route by business number to the tenant, and persist conversation history.",
       "tasks": [
-        "Add `app/api/webhooks/whatsapp/route.ts`: implement",
+        "Add `app/api/webhooks/whatsapp/route.ts`: implement the inbound webhook",
         "Add `app/lib/whatsapp/routing.ts`: resolve the tenant by number",
         "Add `prisma/schema.prisma`: add the `Conversation` model",
         "Add `prisma/schema.prisma`: add the `Message` model",
-        "Add `app/lib/whatsapp/templates.ts`: send the greeting template from  for unknown senders"
+        "Add `app/lib/whatsapp/templates.ts`: send the greeting template to unknown senders"
       ],
       "acceptance": [
         "An inbound message persists with the correct `tenantId`, verified by `pnpm test`",
@@ -35,12 +35,11 @@
       "why": "Conversational booking is the product's core differentiator.",
       "scope": "Tool-using agent that books a service over chat, with slot holds expiring in 15 minutes.",
       "tasks": [
-        "Add `app/lib/agent/runtime.ts`: add the agent runtime",
-        "Add `app/lib/agent/runtime.ts`: add the tool registry",
-        "Add `app/lib/agent/tools/`: implement the five tools",
-        "Add `app/lib/agent/prompt.ts`: add the prompt",
-        "Add `__tests__/agent-booking.test.ts` covering the full path",
-        "Add `prisma/schema.prisma`: persist transcripts via the `Message` model"
+        "Add `app/lib/agent/runtime.ts`: add the agent runtime with a tool registry",
+        "Add `app/lib/agent/tools/availability.ts`: expose the availability lookup tool",
+        "Add `app/lib/agent/tools/book.ts`: expose the create-booking tool",
+        "Add `app/lib/agent/prompt.ts`: add the system prompt",
+        "Add `__tests__/agent-booking.test.ts`: cover the happy path end to end"
       ],
       "acceptance": [
         "The scripted conversation reaches a confirmed booking, verified by `pnpm test`",
@@ -51,7 +50,7 @@
       "scope_paths": [
         "`__tests__/**`",
         "`app/lib/agent/**`",
-        "`prisma/**`",
+        "`app/lib/agent/tools/**`",
         "`__tests__/**` and `tests/**` for the tests that prove the criteria",
         "`prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support",
         "`docs/**` for documentation the change makes stale",

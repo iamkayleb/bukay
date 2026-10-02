@@ -1,22 +1,21 @@
 <!-- base-branch: eval/codex -->
-<!-- eval-round: 14 -->
-<!-- eval-spec: setup-agent -->
+<!-- eval-round: 13 -->
+<!-- eval-spec: qr-link -->
 <!-- eval-agent: codex -->
 
 ## Why
 
-Self-serve onboarding is what lets the product scale without hand-holding each merchant.
+Merchants convert walk-in traffic by displaying a scannable link in the shop.
 
 ## Scope
 
-Chat surface extracting business type, location, hours, services, provider and deposit policy into a draft config.
+Generate a branded booking URL and a downloadable QR image and PDF.
 
 **Allowed paths:**
 
-- `app/lib/agent/**`
-- `app/lib/whatsapp/**`
-- `app/start/**`
-- `prisma/**`
+- `app/(app)/settings/**`
+- `app/api/qr/[slug]/**`
+- `app/lib/**`
 - `__tests__/**` and `tests/**` for the tests that prove the criteria
 - `prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support
 - `docs/**` for documentation the change makes stale
@@ -24,20 +23,19 @@ Chat surface extracting business type, location, hours, services, provider and d
 
 ## Non-Goals
 
-Nothing beyond the scope above. Leave repository automation configuration untouched.
+No new branding system. The PDF uses the tenant name and slug that already exist.
 
 ## Tasks
 
-- [ ] Add `app/lib/agent/setup-prompt.ts`: add the extraction prompt
-- [ ] Add `app/start/page.tsx`: build the widget
-- [ ] Add `app/lib/whatsapp/routing.ts`: route the WhatsApp entry point
-- [ ] Add `prisma/schema.prisma`: add the `PendingTenant` model
+- [ ] Add `app/api/qr/[slug]/route.ts`: implement
+- [ ] Add `app/lib/qr-pdf.ts`: build the branded PDF
+- [ ] Add `app/(app)/settings/page.tsx`: add the download control
 
 ## Acceptance Criteria
 
-- [ ] A single descriptive message yields a complete draft, verified by `pnpm test`
-- [ ] A missing field triggers a follow-up question
-- [ ] A dropped session resumes from `PendingTenant`
+- [ ] The generated code resolves to `/{slug}`, verified by `pnpm test`
+- [ ] `app/api/qr/[slug]/route.ts` returns HTTP 200 with a PDF body
+- [ ] The owner receives the file over WhatsApp after setup
 - [ ] `pnpm test` passes
 
 ## Implementation Notes
@@ -48,7 +46,7 @@ Seeded for the codex evaluation lane. Work on the branch cut for this issue and 
 <summary>Original Issue</summary>
 
 ```text
-Seeded from the round 14 specification, spec setup-agent, agent codex.
+Seeded from the round 13 specification, spec qr-link, agent codex.
 ```
 
 </details>

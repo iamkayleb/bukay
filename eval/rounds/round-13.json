@@ -2,20 +2,20 @@
   "round": 13,
   "specs": [
     {
-      "id": "agent-reschedule",
-      "title": "Booking agent reschedule and cancel",
-      "why": "Most real conversations are changes to existing bookings, not new ones.",
-      "scope": "Extend the agent with find, reschedule and cancel tools honouring the tenant cancellation policy.",
+      "id": "agent-guardrails",
+      "title": "Agent guardrails",
+      "why": "An agent with booking and payment tools on a public channel is an attack surface.",
+      "scope": "Defences against prompt injection, cross-tenant calls, abuse and runaway usage, with human handoff.",
       "tasks": [
-        "Add `app/lib/agent/tools/`: add the three tools",
-        "Add `app/lib/policy.ts`: implement the policy evaluator",
-        "Add `app/lib/agent/prompt.ts`: add disambiguation flows",
-        "Add `__tests__/agent-reschedule.test.ts`"
+        "Add `app/lib/agent/runtime.ts`: assert tenant scope before every tool call",
+        "Add `app/lib/rate-limit.ts`: add per-number rate limiting",
+        "Add `app/lib/agent/handoff.ts`: hand off to a human on repeated failure",
+        "Add `__tests__/agent-redteam.test.ts`: cover cross-tenant access attempts"
       ],
       "acceptance": [
-        "Cancelling inside the policy window issues a refund, verified by `pnpm test`",
-        "Cancelling outside the window retains the deposit per `app/lib/policy.ts`",
-        "Rescheduling updates the booking and notifies the owner",
+        "Every case in `__tests__/agent-redteam.test.ts` is blocked, verified by `pnpm test`",
+        "A flooding sender receives HTTP 429",
+        "The handoff command halts the agent and alerts the owner",
         "`pnpm test` passes"
       ],
       "scope_paths": [
@@ -29,28 +29,25 @@
       ]
     },
     {
-      "id": "agent-guardrails",
-      "title": "Agent guardrails",
-      "why": "An agent with booking and payment tools on a public channel is an attack surface.",
-      "scope": "Defences against prompt injection, cross-tenant calls, abuse and runaway usage, with human handoff.",
+      "id": "qr-link",
+      "title": "Booking link and QR generation",
+      "why": "Merchants convert walk-in traffic by displaying a scannable link in the shop.",
+      "scope": "Generate a branded booking URL and a downloadable QR image and PDF.",
       "tasks": [
-        "Add `app/lib/agent/prompt.ts`: harden the system prompt",
-        "Add `app/lib/agent/runtime.ts`: assert tenant scope before every tool call",
-        "Add `app/lib/rate-limit.ts`: add per-number rate limiting",
-        "Add `app/lib/agent/filters.ts`: add the abuse filter",
-        "Add `app/lib/agent/handoff.ts`: implement handoff",
-        "Add `__tests__/agent-redteam.test.ts`"
+        "Add `app/api/qr/[slug]/route.ts`: implement",
+        "Add `app/lib/qr-pdf.ts`: build the branded PDF",
+        "Add `app/(app)/settings/page.tsx`: add the download control"
       ],
       "acceptance": [
-        "Every case in `__tests__/agent-redteam.test.ts` is blocked, verified by `pnpm test`",
-        "A flooding sender receives HTTP 429",
-        "The handoff command halts the agent and alerts the owner",
+        "The generated code resolves to `/{slug}`, verified by `pnpm test`",
+        "`app/api/qr/[slug]/route.ts` returns HTTP 200 with a PDF body",
+        "The owner receives the file over WhatsApp after setup",
         "`pnpm test` passes"
       ],
       "scope_paths": [
-        "`__tests__/**`",
+        "`app/(app)/settings/**`",
+        "`app/api/qr/[slug]/**`",
         "`app/lib/**`",
-        "`app/lib/agent/**`",
         "`__tests__/**` and `tests/**` for the tests that prove the criteria",
         "`prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support",
         "`docs/**` for documentation the change makes stale",

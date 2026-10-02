@@ -15,7 +15,7 @@ Tool-using agent that books a service over chat, with slot holds expiring in 15 
 
 - `__tests__/**`
 - `app/lib/agent/**`
-- `prisma/**`
+- `app/lib/agent/tools/**`
 - `__tests__/**` and `tests/**` for the tests that prove the criteria
 - `prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support
 - `docs/**` for documentation the change makes stale
@@ -23,16 +23,15 @@ Tool-using agent that books a service over chat, with slot holds expiring in 15 
 
 ## Non-Goals
 
-Nothing beyond the scope above. Leave repository automation configuration untouched.
+Reschedule and cancel are out of scope. Use the fake provider in tests; no live WhatsApp number is required.
 
 ## Tasks
 
-- [ ] Add `app/lib/agent/runtime.ts`: add the agent runtime
-- [ ] Add `app/lib/agent/runtime.ts`: add the tool registry
-- [ ] Add `app/lib/agent/tools/`: implement the five tools
-- [ ] Add `app/lib/agent/prompt.ts`: add the prompt
-- [ ] Add `__tests__/agent-booking.test.ts` covering the full path
-- [ ] Add `prisma/schema.prisma`: persist transcripts via the `Message` model
+- [ ] Add `app/lib/agent/runtime.ts`: add the agent runtime with a tool registry
+- [ ] Add `app/lib/agent/tools/availability.ts`: expose the availability lookup tool
+- [ ] Add `app/lib/agent/tools/book.ts`: expose the create-booking tool
+- [ ] Add `app/lib/agent/prompt.ts`: add the system prompt
+- [ ] Add `__tests__/agent-booking.test.ts`: cover the happy path end to end
 
 ## Acceptance Criteria
 
