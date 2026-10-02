@@ -95,6 +95,37 @@ describe("FlutterwavePaymentProvider", () => {
     ).resolves.toEqual({ code: "RS_123", percentageCharge: 35 });
   });
 
+  it("rejects malformed checkout and subaccount responses", async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({ status: "success", data: { link: "javascript:alert(1)" } })
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ status: "success", data: { subaccount_id: "RS_123", split_value: 1.5 } })
+      );
+    const provider = new FlutterwavePaymentProvider("api-key", request);
+
+    await expect(
+      provider.initialize({
+        reference: "booking-1",
+        amountCents: 15_000,
+        currency: "NGN",
+        customerEmail: "customer@example.com",
+        callbackUrl: "https://bukay.test/payment-complete",
+      })
+    ).rejects.toEqual(expect.objectContaining({ provider: "flutterwave" }));
+
+    await expect(
+      provider.createSubaccount({
+        businessName: "Bukay Salon",
+        settlementBank: "044",
+        accountNumber: "0690000037",
+        percentageCharge: 35,
+      })
+    ).rejects.toEqual(expect.objectContaining({ provider: "flutterwave" }));
+  });
+
   it("returns provider errors without leaking transport details", async () => {
     const request = vi.fn().mockResolvedValue(jsonResponse({ status: "error" }, 401));
     const provider = new FlutterwavePaymentProvider("api-key", request);

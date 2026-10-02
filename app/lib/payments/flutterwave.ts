@@ -64,6 +64,10 @@ export class FlutterwavePaymentProvider {
         : {}),
     });
 
+    if (typeof data.link !== "string" || !isAbsoluteHttpUrl(data.link)) {
+      throw new PaymentProviderError(this.name, "Payment provider returned an invalid response");
+    }
+
     return { reference: input.reference, authorizationUrl: data.link };
   }
 
@@ -102,7 +106,18 @@ export class FlutterwavePaymentProvider {
       split_type: "percentage",
       split_value: input.percentageCharge / 100,
     });
-    return { code: data.subaccount_id, percentageCharge: Number(data.split_value) * 100 };
+    const percentageCharge = Number(data.split_value) * 100;
+    if (
+      typeof data.subaccount_id !== "string" ||
+      !data.subaccount_id ||
+      !Number.isFinite(percentageCharge) ||
+      percentageCharge < 0 ||
+      percentageCharge > 100
+    ) {
+      throw new PaymentProviderError(this.name, "Payment provider returned an invalid response");
+    }
+
+    return { code: data.subaccount_id, percentageCharge };
   }
 
   private async get<T>(path: string): Promise<T> {
@@ -141,5 +156,14 @@ export class FlutterwavePaymentProvider {
       throw new PaymentProviderError(this.name, "Payment provider returned an invalid response");
     }
     return payload.data;
+  }
+}
+
+function isAbsoluteHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
   }
 }
