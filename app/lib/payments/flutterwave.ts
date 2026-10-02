@@ -68,6 +68,23 @@ function toFlutterwaveSplitRatio(percentageCharge: number): number {
   return percentageCharge / 100;
 }
 
+function flutterwaveSplitRatioToPercentage(splitValue: number | string): number {
+  if (typeof splitValue !== "number" && typeof splitValue !== "string") {
+    throw new PaymentProviderError("flutterwave", "Payment provider returned an invalid response");
+  }
+
+  if (typeof splitValue === "string" && !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(splitValue)) {
+    throw new PaymentProviderError("flutterwave", "Payment provider returned an invalid response");
+  }
+
+  const ratio = Number(splitValue);
+  if (!Number.isFinite(ratio) || ratio < 0 || ratio > 1) {
+    throw new PaymentProviderError("flutterwave", "Payment provider returned an invalid response");
+  }
+
+  return ratio * 100;
+}
+
 /** Converts Flutterwave's currency-unit amount to this port's minor units. */
 export function flutterwaveAmountToCents(amount: number | string, currency: string): number {
   if (typeof amount !== "number" && typeof amount !== "string") {
@@ -182,13 +199,11 @@ export class FlutterwavePaymentProvider implements PaymentProvider {
       throw new PaymentProviderError(this.name, "Payment provider returned an invalid response");
     }
 
-    const percentageCharge = Number(data.split_value) * 100;
+    const percentageCharge = flutterwaveSplitRatioToPercentage(data.split_value);
     if (
       typeof data.subaccount_id !== "string" ||
       !data.subaccount_id ||
-      !Number.isFinite(percentageCharge) ||
-      percentageCharge < 0 ||
-      percentageCharge > 100
+      !Number.isFinite(percentageCharge)
     ) {
       throw new PaymentProviderError(this.name, "Payment provider returned an invalid response");
     }

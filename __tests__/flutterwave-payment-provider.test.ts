@@ -260,6 +260,28 @@ describe("FlutterwavePaymentProvider", () => {
     ).rejects.toEqual(expect.objectContaining({ provider: "flutterwave" }));
   });
 
+  it.each([null, "0x1", "1e-1", " 0.35", "0.35 "])(
+    "rejects an ambiguous subaccount split value: %j",
+    async (splitValue) => {
+      const request = vi.fn().mockResolvedValue(
+        jsonResponse({
+          status: "success",
+          data: { subaccount_id: "RS_123", split_value: splitValue },
+        })
+      );
+      const provider = new FlutterwavePaymentProvider("api-key", request);
+
+      await expect(
+        provider.createSubaccount({
+          businessName: "Bukay Salon",
+          settlementBank: "044",
+          accountNumber: "0690000037",
+          percentageCharge: 35,
+        })
+      ).rejects.toEqual(expect.objectContaining({ provider: "flutterwave" }));
+    }
+  );
+
   it("returns provider errors without leaking transport details", async () => {
     const request = vi.fn().mockResolvedValue(jsonResponse({ status: "error" }, 401));
     const provider = new FlutterwavePaymentProvider("api-key", request);
