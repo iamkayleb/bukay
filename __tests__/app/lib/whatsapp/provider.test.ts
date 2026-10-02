@@ -5,7 +5,7 @@ import type {
   WhatsAppProvider,
   WhatsAppSendResult,
 } from "@/app/lib/whatsapp/provider";
-import { WhatsAppProviderError } from "@/app/lib/whatsapp/provider";
+import { isWhatsAppProviderError, WhatsAppProviderError } from "@/app/lib/whatsapp/provider";
 
 describe("WhatsAppProvider", () => {
   it("requires an asynchronous template send operation", async () => {
@@ -45,5 +45,17 @@ describe("WhatsAppProvider", () => {
       retryable: true,
       cause,
     });
+    expect(isWhatsAppProviderError(error)).toBe(true);
+  });
+
+  it("does not mistake unrelated failures for provider errors", () => {
+    expect(isWhatsAppProviderError(new Error("network failure"))).toBe(false);
+    expect(
+      isWhatsAppProviderError({
+        name: "WhatsAppProviderError",
+        provider: "meta",
+        retryable: "yes",
+      })
+    ).toBe(false);
   });
 });

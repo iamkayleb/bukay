@@ -51,6 +51,21 @@ export class WhatsAppProviderError extends Error {
 }
 
 /**
+ * Narrows an unknown failure to the portable error contract exposed by this
+ * module. This is safer than relying on `instanceof` when errors cross module
+ * or execution-context boundaries.
+ */
+export function isWhatsAppProviderError(error: unknown): error is WhatsAppProviderError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { name?: unknown }).name === "WhatsAppProviderError" &&
+    typeof (error as { provider?: unknown }).provider === "string" &&
+    typeof (error as { retryable?: unknown }).retryable === "boolean"
+  );
+}
+
+/**
  * Boundary for sending approved WhatsApp templates.
  *
  * Implementations must resolve only after the provider accepts the request and return the
