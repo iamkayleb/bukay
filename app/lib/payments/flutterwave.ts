@@ -30,6 +30,9 @@ type FlutterwaveSubaccount = {
 
 /** Flutterwave amounts are expressed in whole currency units, unlike this port. */
 function toFlutterwaveAmount(amountCents: number): number {
+  if (!Number.isSafeInteger(amountCents) || amountCents < 0) {
+    throw new PaymentProviderError("flutterwave", "Payment amount must be a non-negative integer");
+  }
   return amountCents / 100;
 }
 

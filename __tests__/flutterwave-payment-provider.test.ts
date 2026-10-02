@@ -49,6 +49,25 @@ describe("FlutterwavePaymentProvider", () => {
     });
   });
 
+  it.each([-1, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejects an invalid minor-unit checkout amount before requesting Flutterwave: %s",
+    async (amountCents) => {
+      const request = vi.fn();
+      const provider = new FlutterwavePaymentProvider("api-key", request);
+
+      await expect(
+        provider.initialize({
+          reference: "booking-1",
+          amountCents,
+          currency: "NGN",
+          customerEmail: "customer@example.com",
+          callbackUrl: "https://bukay.test/payment-complete",
+        })
+      ).rejects.toEqual(expect.objectContaining({ provider: "flutterwave" }));
+      expect(request).not.toHaveBeenCalled();
+    }
+  );
+
   it("normalizes Flutterwave verification results", async () => {
     const request = vi.fn().mockResolvedValue(
       jsonResponse({
