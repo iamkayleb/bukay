@@ -72,6 +72,21 @@ describe("POST /api/webhooks/flutterwave", () => {
     );
   });
 
+  it("rejects signed webhooks whose amount cannot be represented in minor units", async () => {
+    const response = await POST(
+      webhook(
+        {
+          ...completedCharge,
+          data: { ...completedCharge.data, amount: "150.001" },
+        },
+        "expected-webhook-hash"
+      )
+    );
+
+    expect(response.status).toBe(400);
+    expect(state.recordPaymentSuccess).not.toHaveBeenCalled();
+  });
+
   it("acknowledges signed events that do not represent successful charges", async () => {
     const response = await POST(
       webhook(
