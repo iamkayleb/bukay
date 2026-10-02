@@ -38,6 +38,8 @@ describe("WhatsAppProvider", () => {
       cause,
     });
 
+    expect(error).toBeInstanceOf(WhatsAppProviderError);
+    expect(error).toBeInstanceOf(Error);
     expect(error).toMatchObject({
       name: "WhatsAppProviderError",
       provider: "meta",
