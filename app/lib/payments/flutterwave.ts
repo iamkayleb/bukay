@@ -76,7 +76,7 @@ export class FlutterwavePaymentProvider implements PaymentProvider {
     const data = await this.get<FlutterwaveTransaction>(
       `/transactions/verify_by_reference?tx_ref=${encodeURIComponent(reference)}`
     );
-    if (!data.tx_ref || !data.currency) {
+    if (data.tx_ref !== reference || !data.currency) {
       throw new PaymentProviderError(this.name, "Payment provider returned an invalid response");
     }
 

@@ -160,4 +160,26 @@ describe("FlutterwavePaymentProvider", () => {
       })
     );
   });
+
+  it("rejects a verification response for a different payment reference", async () => {
+    const request = vi.fn().mockResolvedValue(
+      jsonResponse({
+        status: "success",
+        data: {
+          tx_ref: "another-booking",
+          status: "successful",
+          amount: "150",
+          currency: "NGN",
+        },
+      })
+    );
+    const provider = new FlutterwavePaymentProvider("api-key", request);
+
+    await expect(provider.verify("booking-1")).rejects.toEqual(
+      expect.objectContaining<Partial<PaymentProviderError>>({
+        name: "PaymentProviderError",
+        provider: "flutterwave",
+      })
+    );
+  });
 });
