@@ -386,6 +386,28 @@ describe("FlutterwavePaymentProvider", () => {
     );
   });
 
+  it("rejects a verification response with a non-string status", async () => {
+    const request = vi.fn().mockResolvedValue(
+      jsonResponse({
+        status: "success",
+        data: {
+          tx_ref: "booking-1",
+          status: { state: "successful" },
+          amount: "150",
+          currency: "NGN",
+        },
+      })
+    );
+    const provider = new FlutterwavePaymentProvider("api-key", request);
+
+    await expect(provider.verify("booking-1")).rejects.toEqual(
+      expect.objectContaining<Partial<PaymentProviderError>>({
+        name: "PaymentProviderError",
+        provider: "flutterwave",
+      })
+    );
+  });
+
   it.each([
     { data: null },
     { data: { tx_ref: "booking-1", status: "successful", amount: "150", currency: 566 } },

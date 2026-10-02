@@ -142,6 +142,7 @@ export class FlutterwavePaymentProvider implements PaymentProvider {
       !isRecord(data) ||
       typeof data.tx_ref !== "string" ||
       data.tx_ref !== reference ||
+      typeof data.status !== "string" ||
       typeof data.currency !== "string" ||
       !data.currency.trim()
     ) {
