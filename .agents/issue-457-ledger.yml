@@ -13,8 +13,8 @@ tasks:
   - id: task-02
     title: 'Add `app/api/webhooks/flutterwave/route.ts`: implement  with signature
       checks'
-    status: todo
-    started_at: null
+    status: doing
+    started_at: '2026-10-02T12:03:24Z'
     finished_at: null
     commit: ''
     notes: []
