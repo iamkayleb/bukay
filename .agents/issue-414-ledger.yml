@@ -16,7 +16,7 @@ tasks:
     status: done
     started_at: '2026-09-23T13:59:00Z'
     finished_at: '2026-09-23T14:03:00Z'
-    commit: '4e421e8d40b91a815be4d9dfd60eaf2f9b90d933'
+    commit: b8a93431e0a5a36b4152f98c3a894e779f781640
     notes:
       - Creates an immutable, idempotent payment-success credit entry keyed by provider reference.
       - Verified with `pnpm test` and `tsc --noEmit`.
