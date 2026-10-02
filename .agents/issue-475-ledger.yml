@@ -5,10 +5,10 @@ branch: codex/issue-475
 tasks:
   - id: task-01
     title: 'Add `app/lib/whatsapp/provider.ts`: define the port'
-    status: doing
+    status: done
     started_at: '2026-10-02T12:33:28Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-10-02T12:33:39Z'
+    commit: 12f138121457839a4a34b1c7715c04cb2b7fb3f6
     notes: []
   - id: task-02
     title: 'Add `app/lib/whatsapp/meta.ts`: implement the live adapter'
