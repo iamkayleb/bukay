@@ -3,6 +3,7 @@ import {
   type CreateSubaccountInput,
   type InitializedPayment,
   type InitializePaymentInput,
+  type PaymentProvider,
   PaymentProviderError,
   type VerifiedPayment,
 } from "./provider";
@@ -42,7 +43,7 @@ export function flutterwaveAmountToCents(amount: number | string): number {
 }
 
 /** Adapter for Flutterwave's hosted checkout, transaction, and split APIs. */
-export class FlutterwavePaymentProvider {
+export class FlutterwavePaymentProvider implements PaymentProvider {
   readonly name = "flutterwave";
 
   constructor(
