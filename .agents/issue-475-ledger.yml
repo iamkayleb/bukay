@@ -33,36 +33,36 @@ tasks:
     notes: []
   - id: task-05
     title: 'Add `docs/WHATSAPP_TEMPLATES.md`: document approval steps'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-10-02T13:36:00Z'
+    finished_at: '2026-10-02T13:37:05Z'
+    commit: pending
     notes: []
   - id: task-06
     title: A sandbox send returns HTTP 200 with a message id, verified by `pnpm test`
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-10-02T13:34:06Z'
+    finished_at: '2026-10-02T13:37:05Z'
+    commit: a40cd0e
     notes: []
   - id: task-07
     title: Every template in `app/lib/whatsapp/templates.ts` is documented
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-10-02T13:36:00Z'
+    finished_at: '2026-10-02T13:37:05Z'
+    commit: pending
     notes: []
   - id: task-08
     title: '`app/lib/whatsapp/fake.ts` substitutes for the adapter in tests'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-10-02T13:34:06Z'
+    finished_at: '2026-10-02T13:37:05Z'
+    commit: 861fcf1
     notes: []
   - id: task-09
     title: '`pnpm test` passes'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-10-02T13:35:13Z'
+    finished_at: '2026-10-02T13:37:05Z'
+    commit: pending
     notes: []

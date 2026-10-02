@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -38,5 +41,18 @@ describe("WhatsApp template registry", () => {
     expect(() => templateParameters(WHATSAPP_TEMPLATES.otp_code, {})).toThrow(
       "Template 'otp_code' is missing parameter 'code'"
     );
+  });
+
+  it("documents every registered template and parameter", () => {
+    const documentation = readFileSync(join(process.cwd(), "docs/WHATSAPP_TEMPLATES.md"), "utf8");
+
+    for (const template of Object.values(WHATSAPP_TEMPLATES)) {
+      expect(documentation).toContain(`\`${template.name}\``);
+      expect(documentation).toContain(`\`${template.category}\``);
+      expect(documentation).toContain(`\`${template.language}\``);
+      for (const parameter of template.parameters) {
+        expect(documentation).toContain(`\`${parameter}\``);
+      }
+    }
   });
 });
