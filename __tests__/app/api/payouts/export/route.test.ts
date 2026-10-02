@@ -88,6 +88,24 @@ describe("GET /api/payouts/export", () => {
     expect(response.status).toBe(400);
   });
 
+  it("returns 400 for a calendar-invalid date instead of silently rolling over", async () => {
+    const response = await GET(request("?start=2026-02-30&end=2026-02-30"));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ ok: false, error: "invalid_date_range" });
+  });
+
+  it("rejects February 29 in a non-leap year", async () => {
+    const response = await GET(request("?start=2026-02-29&end=2026-02-29"));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ ok: false, error: "invalid_date_range" });
+  });
+
+  it("returns 400 for a malformed date format", async () => {
+    const response = await GET(request("?start=01/01/2026&end=2026-01-31"));
+    expect(response.status).toBe(400);
+  });
+
   it("scopes exported rows to the resolved tenant", async () => {
     const response = await GET(
       request("?start=2026-01-01&end=2026-01-31", { "x-tenant-id": "other-tenant" })

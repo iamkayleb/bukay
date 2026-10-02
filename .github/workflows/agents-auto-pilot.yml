@@ -787,6 +787,34 @@ jobs:
           });
           NODE
 
+          # Path citations are validated against the checked-out tree, which is
+          # the default branch. A follow-up on a long-lived lane cites files that
+          # exist only on that lane, so every one of them fails with "None of the
+          # N paths this issue cites exist in this repository" — the formatter
+          # reports needs_refinement, auto-pilot pauses, and the issue never runs
+          # (bukay #354, #378). When the issue declares a base branch, validate
+          # against that branch instead.
+          LANE_REF="$(sed -n 's/.*<!-- *base-branch: *\([^ ]*\) *-->.*/\1/p' \
+            /tmp/issue_body.md | head -1)"
+          LANE_NOTE=""
+          if [ -n "$LANE_REF" ]; then
+            if git fetch --depth 1 origin "$LANE_REF" >/dev/null 2>&1; then
+              rm -rf /tmp/lane-root && mkdir -p /tmp/lane-root
+              git archive FETCH_HEAD | tar -x -C /tmp/lane-root
+              export ISSUE_FORMAT_REPO_ROOT=/tmp/lane-root
+              echo "Validating path citations against lane branch $LANE_REF"
+            else
+              echo "::error::Declared base branch $LANE_REF could not be fetched."
+              echo "::error::Path citations will be checked against the default branch,"
+              echo "::error::so files that exist only on $LANE_REF will look missing."
+              LANE_NOTE="The issue declares \`base-branch: $LANE_REF\`, but that branch could not be fetched, so path citations were checked against the default branch. Files that exist only on $LANE_REF will have been reported as missing."
+            fi
+          else
+            echo "::notice::No <!-- base-branch: ... --> marker; citations checked against the default branch."
+            LANE_NOTE="This issue has no \`<!-- base-branch: ... -->\` marker, so path citations were checked against the default branch. If the work targets a long-lived branch, add the marker as the first line of the body and re-run."
+          fi
+          export LANE_NOTE
+
           # Format the issue
           echo "Formatting issue into AGENT_ISSUE_TEMPLATE structure..."
           python scripts/langchain/issue_formatter.py \
@@ -891,6 +919,12 @@ jobs:
           # reports that its final output fails the canonical contract.
           if [ -f /tmp/needs_refinement ]; then
             echo "⚠️ Formatter requires human refinement; pausing auto-pilot."
+            # A pause that names only the contract is a dead end for whoever
+            # reads it. When the citation check ran against the wrong tree, say
+            # so here rather than leaving them to infer it.
+            if [ -n "${LANE_NOTE:-}" ]; then
+              printf '\n\n%s\n' "$LANE_NOTE" >>/tmp/needs_refinement
+            fi
             FORMAT_REFINEMENT_REASON="$(cat /tmp/needs_refinement)" node - <<'REFINEMENT_NODE'
             (async () => {
               const { Octokit } = require('@octokit/rest');
@@ -2888,11 +2922,52 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo
             }));
-            const baseBranch = repoInfo.default_branch;
-            if (!baseBranch) {
+            const defaultBranch = repoInfo.default_branch;
+            if (!defaultBranch) {
               core.setFailed('Repository default branch not available');
               return;
             }
+
+            // Resolve the pull request base the same way the issue bridge and the
+            // belt dispatcher do: the issue's `<!-- base-branch: X -->` marker
+            // wins over the repository default. Auto-pilot opens the pull request
+            // itself, so without this the marker is honoured when the branch is
+            // cut and then ignored when the PR is opened — the PR lands on the
+            // default branch and any per-lane workflow silently collapses.
+            let baseBranch = defaultBranch;
+            let baseSource = 'default';
+            try {
+              const { data: baseIssue } = await withRetry((client) =>
+                client.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                }));
+              const marker = String(baseIssue.body || '')
+                .match(/<!--\s*base-branch:\s*([^\s>]+)\s*-->/);
+              if (marker) {
+                const candidate = marker[1].trim();
+                if (candidate && candidate !== defaultBranch) {
+                  try {
+                    await withRetry((client) => client.rest.repos.getBranch({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      branch: candidate,
+                    }));
+                    baseBranch = candidate;
+                    baseSource = 'issue-marker';
+                  } catch (branchError) {
+                    core.warning(
+                      `Base branch '${candidate}' from the issue marker was not found; ` +
+                      `falling back to '${defaultBranch}'.`);
+                    baseSource = 'default-fallback';
+                  }
+                }
+              }
+            } catch (markerError) {
+              core.warning(`Could not read issue #${issueNumber} for a base-branch marker: ${markerError.message}`);
+            }
+            core.info(`Base branch: ${baseBranch} (source: ${baseSource})`);
 
             // If a PR already exists for this branch, stop create-pr loop
             try {
@@ -3759,11 +3834,52 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo
             }));
-            const baseBranch = repoInfo.default_branch;
-            if (!baseBranch) {
+            const defaultBranch = repoInfo.default_branch;
+            if (!defaultBranch) {
               core.setFailed('Repository default branch not available');
               return;
             }
+
+            // Resolve the pull request base the same way the issue bridge and the
+            // belt dispatcher do: the issue's `<!-- base-branch: X -->` marker
+            // wins over the repository default. Auto-pilot opens the pull request
+            // itself, so without this the marker is honoured when the branch is
+            // cut and then ignored when the PR is opened — the PR lands on the
+            // default branch and any per-lane workflow silently collapses.
+            let baseBranch = defaultBranch;
+            let baseSource = 'default';
+            try {
+              const { data: baseIssue } = await withRetry((client) =>
+                client.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                }));
+              const marker = String(baseIssue.body || '')
+                .match(/<!--\s*base-branch:\s*([^\s>]+)\s*-->/);
+              if (marker) {
+                const candidate = marker[1].trim();
+                if (candidate && candidate !== defaultBranch) {
+                  try {
+                    await withRetry((client) => client.rest.repos.getBranch({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      branch: candidate,
+                    }));
+                    baseBranch = candidate;
+                    baseSource = 'issue-marker';
+                  } catch (branchError) {
+                    core.warning(
+                      `Base branch '${candidate}' from the issue marker was not found; ` +
+                      `falling back to '${defaultBranch}'.`);
+                    baseSource = 'default-fallback';
+                  }
+                }
+              }
+            } catch (markerError) {
+              core.warning(`Could not read issue #${issueNumber} for a base-branch marker: ${markerError.message}`);
+            }
+            core.info(`Base branch: ${baseBranch} (source: ${baseSource})`);
 
             const scriptsPath = process.env.WORKFLOWS_SCRIPTS_PATH || process.env.GITHUB_WORKSPACE;
             const { redispatchForceStep } = require(

@@ -7,9 +7,9 @@
       "why": "Self-serve onboarding is what lets the product scale without hand-holding each merchant.",
       "scope": "Chat surface extracting business type, location, hours, services, provider and deposit policy into a draft config.",
       "tasks": [
-        "Add `lib/agent/setup-prompt.ts`: add the extraction prompt",
+        "Add `app/lib/agent/setup-prompt.ts`: add the extraction prompt",
         "Add `app/start/page.tsx`: build the widget",
-        "Add `lib/whatsapp/routing.ts`: route the WhatsApp entry point",
+        "Add `app/lib/whatsapp/routing.ts`: route the WhatsApp entry point",
         "Add `prisma/schema.prisma`: add the `PendingTenant` model"
       ],
       "acceptance": [
@@ -17,6 +17,16 @@
         "A missing field triggers a follow-up question",
         "A dropped session resumes from `PendingTenant`",
         "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`app/lib/agent/**`",
+        "`app/lib/whatsapp/**`",
+        "`app/start/**`",
+        "`prisma/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
       ]
     },
     {
@@ -26,15 +36,24 @@
       "scope": "Preview the parsed config, accept natural-language edits, and create the tenant on confirmation.",
       "tasks": [
         "Add `components/ConfigPreview.tsx`: build the preview card",
-        "Add `lib/agent/edit-config.ts`: implement the edit handler",
-        "Add `lib/tenant-provision.ts`: implement tenant creation",
-        "Add `lib/telemetry.ts`: record timings"
+        "Add `app/lib/agent/edit-config.ts`: implement the edit handler",
+        "Add `app/lib/tenant-provision.ts`: implement tenant creation",
+        "Add `app/lib/telemetry.ts`: record timings"
       ],
       "acceptance": [
         "The scripted round trip completes in under 5 minutes, verified by `pnpm test`",
         "A natural-language edit updates the draft in `PendingTenant`",
         "Confirmation creates tenant, services, hours and booking link",
         "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`app/lib/**`",
+        "`app/lib/agent/**`",
+        "`components/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`prisma/schema.prisma` and `prisma/migrations/**` when the work needs schema support",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
       ]
     }
   ]
