@@ -32,7 +32,8 @@ function toFlutterwaveAmount(amountCents: number): number {
   return amountCents / 100;
 }
 
-function toAmountCents(amount: number | string): number {
+/** Converts Flutterwave's currency-unit amount to this port's minor units. */
+export function flutterwaveAmountToCents(amount: number | string): number {
   return Math.round(Number(amount) * 100);
 }
 
@@ -74,7 +75,7 @@ export class FlutterwavePaymentProvider {
           : data.status === "failed"
             ? "failed"
             : "pending",
-      amountCents: toAmountCents(data.amount),
+      amountCents: flutterwaveAmountToCents(data.amount),
       currency: data.currency,
       ...(data.created_at ? { paidAt: new Date(data.created_at) } : {}),
     };
