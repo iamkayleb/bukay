@@ -180,6 +180,28 @@ describe("FlutterwavePaymentProvider", () => {
     );
   });
 
+  it.each([null, {}, []])("rejects non-numeric verification amounts: %j", async (amount) => {
+    const request = vi.fn().mockResolvedValue(
+      jsonResponse({
+        status: "success",
+        data: {
+          tx_ref: "booking-1",
+          status: "successful",
+          amount,
+          currency: "NGN",
+        },
+      })
+    );
+    const provider = new FlutterwavePaymentProvider("api-key", request);
+
+    await expect(provider.verify("booking-1")).rejects.toEqual(
+      expect.objectContaining<Partial<PaymentProviderError>>({
+        name: "PaymentProviderError",
+        provider: "flutterwave",
+      })
+    );
+  });
+
   it("rejects verification amounts with fractions smaller than a minor unit", async () => {
     const request = vi.fn().mockResolvedValue(
       jsonResponse({

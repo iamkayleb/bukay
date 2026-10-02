@@ -38,6 +38,10 @@ function toFlutterwaveAmount(amountCents: number): number {
 
 /** Converts Flutterwave's currency-unit amount to this port's minor units. */
 export function flutterwaveAmountToCents(amount: number | string): number {
+  if (typeof amount !== "number" && typeof amount !== "string") {
+    throw new PaymentProviderError("flutterwave", "Payment provider returned an invalid amount");
+  }
+
   if (typeof amount === "string" && !amount.trim()) {
     throw new PaymentProviderError("flutterwave", "Payment provider returned an invalid amount");
   }
