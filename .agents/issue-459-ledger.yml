@@ -13,10 +13,10 @@ tasks:
   - id: task-02
     title: 'Add `app/api/webhooks/flutterwave/route.ts`: implement  with signature
       checks'
-    status: doing
+    status: done
     started_at: '2026-10-02T12:03:33Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-10-02T12:03:45Z'
+    commit: bd66a70e7437b2a6fd31f4ac99626be03104c653
     notes: []
   - id: task-03
     title: 'Add `prisma/schema.prisma`: add the `paymentProvider` column to the `Tenant`
