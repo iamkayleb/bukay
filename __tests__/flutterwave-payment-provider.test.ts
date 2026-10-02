@@ -107,4 +107,26 @@ describe("FlutterwavePaymentProvider", () => {
       })
     );
   });
+
+  it("rejects malformed amounts before they can reach ledger writes", async () => {
+    const request = vi.fn().mockResolvedValue(
+      jsonResponse({
+        status: "success",
+        data: {
+          tx_ref: "booking-1",
+          status: "successful",
+          amount: "not-a-number",
+          currency: "NGN",
+        },
+      })
+    );
+    const provider = new FlutterwavePaymentProvider("api-key", request);
+
+    await expect(provider.verify("booking-1")).rejects.toEqual(
+      expect.objectContaining<Partial<PaymentProviderError>>({
+        name: "PaymentProviderError",
+        provider: "flutterwave",
+      })
+    );
+  });
 });

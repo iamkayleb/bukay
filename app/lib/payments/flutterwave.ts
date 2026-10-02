@@ -34,7 +34,11 @@ function toFlutterwaveAmount(amountCents: number): number {
 
 /** Converts Flutterwave's currency-unit amount to this port's minor units. */
 export function flutterwaveAmountToCents(amount: number | string): number {
-  return Math.round(Number(amount) * 100);
+  const cents = Math.round(Number(amount) * 100);
+  if (!Number.isSafeInteger(cents) || cents < 0) {
+    throw new PaymentProviderError("flutterwave", "Payment provider returned an invalid amount");
+  }
+  return cents;
 }
 
 /** Adapter for Flutterwave's hosted checkout, transaction, and split APIs. */
@@ -67,6 +71,15 @@ export class FlutterwavePaymentProvider {
     const data = await this.get<FlutterwaveTransaction>(
       `/transactions/verify_by_reference?tx_ref=${encodeURIComponent(reference)}`
     );
+    if (!data.tx_ref || !data.currency) {
+      throw new PaymentProviderError(this.name, "Payment provider returned an invalid response");
+    }
+
+    const paidAt = data.created_at ? new Date(data.created_at) : undefined;
+    if (paidAt && Number.isNaN(paidAt.getTime())) {
+      throw new PaymentProviderError(this.name, "Payment provider returned an invalid response");
+    }
+
     return {
       reference: data.tx_ref,
       status:
@@ -77,7 +90,7 @@ export class FlutterwavePaymentProvider {
             : "pending",
       amountCents: flutterwaveAmountToCents(data.amount),
       currency: data.currency,
-      ...(data.created_at ? { paidAt: new Date(data.created_at) } : {}),
+      ...(paidAt ? { paidAt } : {}),
     };
   }
 
