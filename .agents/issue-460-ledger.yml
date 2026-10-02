@@ -12,8 +12,8 @@ tasks:
     notes: []
   - id: task-02
     title: 'Add `app/lib/whatsapp/meta.ts`: implement the live adapter'
-    status: todo
-    started_at: null
+    status: doing
+    started_at: '2026-10-02T12:03:48Z'
     finished_at: null
     commit: ''
     notes: []
