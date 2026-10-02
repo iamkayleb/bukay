@@ -36,6 +36,10 @@ export type CreateSubaccountInput = {
   businessName: string;
   settlementBank: string;
   accountNumber: string;
+  /** ISO 3166-1 alpha-2 country code required by some settlement providers. */
+  country?: string;
+  /** Contact phone number required by some settlement providers. */
+  businessMobile?: string;
   /** Percentage of each transaction to settle to this subaccount. */
   percentageCharge: number;
 };
