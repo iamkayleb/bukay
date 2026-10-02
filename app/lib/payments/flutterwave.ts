@@ -24,11 +24,38 @@ type FlutterwaveSubaccount = {
 };
 
 /** Flutterwave amounts are expressed in whole currency units, unlike this port. */
-function toFlutterwaveAmount(amountCents: number): number {
+function toFlutterwaveAmount(amountCents: number, currency: string): number {
   if (!Number.isSafeInteger(amountCents) || amountCents < 0) {
     throw new PaymentProviderError("flutterwave", "Payment amount must be a non-negative integer");
   }
-  return amountCents / 100;
+  return amountCents / currencyMinorUnitDivisor(currency);
+}
+
+function normalizeCurrency(currency: string): string {
+  if (typeof currency !== "string" || !/^[a-z]{3}$/i.test(currency)) {
+    throw new PaymentProviderError("flutterwave", "Payment currency must be a three-letter code");
+  }
+  return currency.toUpperCase();
+}
+
+function currencyMinorUnitDivisor(currency: string): number {
+  const normalizedCurrency = normalizeCurrency(currency);
+  try {
+    const fractionDigits = new Intl.NumberFormat("en", {
+      style: "currency",
+      currency: normalizedCurrency,
+    }).resolvedOptions().maximumFractionDigits;
+    if (
+      typeof fractionDigits !== "number" ||
+      !Number.isSafeInteger(fractionDigits) ||
+      fractionDigits < 0
+    ) {
+      throw new PaymentProviderError("flutterwave", "Payment currency is not supported");
+    }
+    return 10 ** fractionDigits;
+  } catch {
+    throw new PaymentProviderError("flutterwave", "Payment currency is not supported");
+  }
 }
 
 function toFlutterwaveSplitRatio(percentageCharge: number): number {
@@ -74,10 +101,11 @@ export class FlutterwavePaymentProvider implements PaymentProvider {
   ) {}
 
   async initialize(input: InitializePaymentInput): Promise<InitializedPayment> {
+    const currency = normalizeCurrency(input.currency);
     const data = await this.post<{ link: string }>("/payments", {
       tx_ref: input.reference,
-      amount: toFlutterwaveAmount(input.amountCents),
-      currency: input.currency,
+      amount: toFlutterwaveAmount(input.amountCents, currency),
+      currency,
       redirect_url: input.callbackUrl,
       customer: { email: input.customerEmail },
       meta: input.metadata,

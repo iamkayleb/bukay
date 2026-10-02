@@ -68,6 +68,45 @@ describe("FlutterwavePaymentProvider", () => {
     }
   );
 
+  it("uses the currency's minor-unit exponent for zero-decimal markets", async () => {
+    const request = vi.fn().mockResolvedValue(
+      jsonResponse({
+        status: "success",
+        data: { link: "https://checkout.flutterwave.com/pay/test" },
+      })
+    );
+    const provider = new FlutterwavePaymentProvider("api-key", request);
+
+    await provider.initialize({
+      reference: "booking-ugx",
+      amountCents: 15_000,
+      currency: "ugx",
+      customerEmail: "customer@example.com",
+      callbackUrl: "https://bukay.test/payment-complete",
+    });
+
+    expect(JSON.parse(request.mock.calls[0][1].body)).toMatchObject({
+      amount: 15_000,
+      currency: "UGX",
+    });
+  });
+
+  it("rejects malformed currency codes before requesting Flutterwave", async () => {
+    const request = vi.fn();
+    const provider = new FlutterwavePaymentProvider("api-key", request);
+
+    await expect(
+      provider.initialize({
+        reference: "booking-1",
+        amountCents: 15_000,
+        currency: "NGN ",
+        customerEmail: "customer@example.com",
+        callbackUrl: "https://bukay.test/payment-complete",
+      })
+    ).rejects.toEqual(expect.objectContaining({ provider: "flutterwave" }));
+    expect(request).not.toHaveBeenCalled();
+  });
+
   it("normalizes Flutterwave verification results", async () => {
     const request = vi.fn().mockResolvedValue(
       jsonResponse({
