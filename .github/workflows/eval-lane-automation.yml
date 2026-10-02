@@ -9,8 +9,9 @@
 #      guarded-merge refuses these outright ("Base branch eval/claude does not
 #      match main") because it only merges into the DEFAULT branch, so the lane
 #      needs its own merger. Guards mirror it: automerge + agent label, not
-#      draft, no needs-human/agents:paused, zero unchecked tasks in the PR
-#      body, mergeable, and every check-run/commit-status green.
+#      draft, no needs-human/agents:paused, at least one changed file that is
+#      NOT belt bookkeeping, mergeable, and every check-run/commit-status
+#      green. Deliberately no checkbox rule — see the note in the job.
 #
 #   3. PR merged into eval/*              -> add `verify:compare`
 #      agents-verifier is label-gated and wants a merged PR, so this is the
@@ -38,6 +39,11 @@ on:
         required: false
         type: string
         default: ''
+      dry_run:
+        description: 'Report what would merge without merging anything'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -136,6 +142,25 @@ jobs:
               core.info('Not an agent PR; skipping verification.');
               return;
             }
+
+            // verify:compare spends metered API credit on both judge slots. A PR
+            // whose whole diff is belt bookkeeping has nothing to grade, and a
+            // judge run against it returns CONCERNS, which generates a follow-up
+            // issue, which consumes an agent round. That loop is the single
+            // largest source of wasted credit in this evaluation. Do not start it.
+            const BOOKKEEPING = [/^\.agents\//, /^agents\//, /^langsmith-fleet-[\w-]*\.json$/];
+            const names = (await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            })).map((f) => f.filename);
+            if (names.length > 0 && names.every((n) => BOOKKEEPING.some((rx) => rx.test(n)))) {
+              core.warning(
+                `PR #${pr.number} merged with only belt bookkeeping (${names.length} file(s)); `
+                + 'not requesting verify:compare.');
+              return;
+            }
             if (labels.includes('verify:compare')) {
               core.info('verify:compare already requested.');
               return;
@@ -174,6 +199,7 @@ jobs:
         uses: actions/github-script@v9
         env:
           INPUT_PR: ${{ github.event.inputs.pr_number || '' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
         with:
           github-token: ${{ steps.app_token.outputs.token || secrets.SERVICE_BOT_PAT || secrets.GITHUB_TOKEN }}
           script: |
@@ -230,16 +256,53 @@ jobs:
                 refuse('needs-human/agents:paused'); continue;
               }
 
-              // Unchecked tasks in the PR body ONLY.
+              // NO checkbox rule. It was tried on the PR body and it failed in
+              // both directions on the same day:
               //
-              // Deliberately NOT the linked issue. In this pipeline the seeded
-              // issue is the immutable spec — nothing ever ticks its boxes —
-              // while the PR body is the live checklist the keepalive
-              // reconciles as the agent works. Counting the issue makes this
-              // guard permanently unsatisfiable (PR at 15/15 was refused for
-              // "12 unchecked task(s)" that lived only in the issue).
-              const unchecked = countUnchecked(pr.body);
-              if (unchecked > 0) { refuse(`${unchecked} unchecked task(s) in the PR body`); continue; }
+              //   #461  Claude, 8 files of real WhatsApp provider work, carried a
+              //         9-item checklist nothing ever ticks  -> REFUSED
+              //   #465  Codex, one ledger file and no code, so no checklist and
+              //         nothing unchecked                     -> MERGED
+              //
+              // A checkbox is not a completion signal in this pipeline: nothing
+              // reliably ticks it, so the rule rewards a PR with no work and
+              // punishes one that did the work. What a merge actually needs to
+              // know is whether code landed and whether it is sound, which the
+              // checks below answer directly.
+              const uncheckedForInfo = countUnchecked(pr.body);
+              if (uncheckedForInfo > 0) {
+                core.info(`#${n}: ${uncheckedForInfo} unchecked box(es) in the PR body (not blocking).`);
+              }
+
+              // Refuse a PR that changed nothing but the belt's own bookkeeping.
+              // The belt writes `.agents/issue-<n>-ledger.yml` when it starts and
+              // finishes a task; a run that records completions without producing
+              // code leaves that file alone in the diff. Such a PR has no unchecked
+              // boxes of its own and every check passes, because there is nothing to
+              // fail — so every other guard here waves it through. bukay #447 merged
+              // 170 lines of ledger into eval/claude this way while its keepalive
+              // still reported "Task progress 0/23".
+              const BOOKKEEPING = [
+                /^\.agents\//,
+                /^agents\//,
+                /^langsmith-fleet-[\w-]*\.json$/,
+              ];
+              let prFileNames = [];
+              try {
+                prFileNames = (await github.paginate(github.rest.pulls.listFiles, {
+                  owner, repo, pull_number: pr.number, per_page: 100,
+                })).map((f) => f.filename);
+              } catch (error) {
+                refuse(`could not list files (${error.message || error})`); continue;
+              }
+              const workFiles = prFileNames.filter(
+                (n) => !BOOKKEEPING.some((rx) => rx.test(n)));
+              if (prFileNames.length > 0 && workFiles.length === 0) {
+                refuse(
+                  `all ${prFileNames.length} changed file(s) are belt bookkeeping; `
+                  + 'the ledger may say done but no implementation landed');
+                continue;
+              }
 
               if (pr.mergeable === false || pr.mergeable_state === 'dirty') {
                 refuse(`not mergeable (${pr.mergeable_state})`); continue;
@@ -267,13 +330,18 @@ jobs:
 
               // Merge (not squash) so per-agent commit counts stay intact for
               // the evaluation scorecard.
+              if (String(process.env.DRY_RUN || 'false') === 'true') {
+                rows.push([n, 'would-merge',
+                  `${workFiles.length} work file(s) -> ${pr.base.ref}`]);
+                continue;
+              }
               try {
                 await github.rest.pulls.merge({
                   owner, repo, pull_number: n,
                   merge_method: 'merge',
                   commit_title: `${pr.title} (#${n})`,
                 });
-                rows.push([n, 'merged', `into ${pr.base.ref}`]);
+                rows.push([n, 'merged', `${workFiles.length} work file(s) -> ${pr.base.ref}`]);
               } catch (e) {
                 rows.push([n, 'failed', String(e.message || e).slice(0, 120)]);
               }
