@@ -1,0 +1,110 @@
+import { describe, expect, it, vi } from "vitest";
+
+import { FlutterwavePaymentProvider } from "@/app/lib/payments/flutterwave";
+import { PaymentProviderError } from "@/app/lib/payments/provider";
+
+const jsonResponse = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+
+describe("FlutterwavePaymentProvider", () => {
+  it("initializes a hosted checkout using the provider-neutral payment shape", async () => {
+    const request = vi.fn().mockResolvedValue(
+      jsonResponse({
+        status: "success",
+        data: { link: "https://checkout.flutterwave.com/pay/test" },
+      })
+    );
+    const provider = new FlutterwavePaymentProvider("api-key", request);
+
+    await expect(
+      provider.initialize({
+        reference: "booking-1",
+        amountCents: 15_000,
+        currency: "NGN",
+        customerEmail: "customer@example.com",
+        callbackUrl: "https://bukay.test/payment-complete",
+        metadata: { bookingId: "booking-1" },
+        subaccountCode: "RS_123",
+      })
+    ).resolves.toEqual({
+      reference: "booking-1",
+      authorizationUrl: "https://checkout.flutterwave.com/pay/test",
+    });
+
+    expect(request).toHaveBeenCalledWith("https://api.flutterwave.com/v3/payments", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer api-key" },
+      body: JSON.stringify({
+        tx_ref: "booking-1",
+        amount: 15_000,
+        currency: "NGN",
+        redirect_url: "https://bukay.test/payment-complete",
+        customer: { email: "customer@example.com" },
+        meta: { bookingId: "booking-1" },
+        subaccounts: [{ id: "RS_123", transaction_split_ratio: 1 }],
+      }),
+    });
+  });
+
+  it("normalizes Flutterwave verification results", async () => {
+    const request = vi.fn().mockResolvedValue(
+      jsonResponse({
+        status: "success",
+        data: {
+          tx_ref: "booking 1",
+          status: "successful",
+          amount: "15000",
+          currency: "NGN",
+          created_at: "2026-10-02T10:00:00.000Z",
+        },
+      })
+    );
+    const provider = new FlutterwavePaymentProvider("api-key", request);
+
+    await expect(provider.verify("booking 1")).resolves.toEqual({
+      reference: "booking 1",
+      status: "succeeded",
+      amountCents: 15_000,
+      currency: "NGN",
+      paidAt: new Date("2026-10-02T10:00:00.000Z"),
+    });
+    expect(request).toHaveBeenCalledWith(
+      "https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=booking%201",
+      { method: "GET", headers: { authorization: "Bearer api-key" } }
+    );
+  });
+
+  it("creates split subaccounts and converts Flutterwave ratios to percentages", async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse({ status: "success", data: { subaccount_id: "RS_123", split_value: 0.35 } })
+      );
+    const provider = new FlutterwavePaymentProvider("api-key", request);
+
+    await expect(
+      provider.createSubaccount({
+        businessName: "Bukay Salon",
+        settlementBank: "044",
+        accountNumber: "0690000037",
+        percentageCharge: 35,
+      })
+    ).resolves.toEqual({ code: "RS_123", percentageCharge: 35 });
+  });
+
+  it("returns provider errors without leaking transport details", async () => {
+    const request = vi.fn().mockResolvedValue(jsonResponse({ status: "error" }, 401));
+    const provider = new FlutterwavePaymentProvider("api-key", request);
+
+    await expect(provider.verify("booking-1")).rejects.toEqual(
+      expect.objectContaining<Partial<PaymentProviderError>>({
+        name: "PaymentProviderError",
+        provider: "flutterwave",
+        status: 401,
+      })
+    );
+  });
+});
