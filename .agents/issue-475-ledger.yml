@@ -26,10 +26,10 @@ tasks:
     notes: []
   - id: task-04
     title: 'Add `app/lib/whatsapp/templates.ts`: add the template registry'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-10-02T13:34:06Z'
+    finished_at: '2026-10-02T13:35:44Z'
+    commit: pending
     notes: []
   - id: task-05
     title: 'Add `docs/WHATSAPP_TEMPLATES.md`: document approval steps'
