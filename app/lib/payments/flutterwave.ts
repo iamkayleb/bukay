@@ -27,6 +27,15 @@ type FlutterwaveSubaccount = {
   split_value: number | string;
 };
 
+/** Flutterwave amounts are expressed in whole currency units, unlike this port. */
+function toFlutterwaveAmount(amountCents: number): number {
+  return amountCents / 100;
+}
+
+function toAmountCents(amount: number | string): number {
+  return Math.round(Number(amount) * 100);
+}
+
 /** Adapter for Flutterwave's hosted checkout, transaction, and split APIs. */
 export class FlutterwavePaymentProvider {
   readonly name = "flutterwave";
@@ -40,7 +49,7 @@ export class FlutterwavePaymentProvider {
   async initialize(input: InitializePaymentInput): Promise<InitializedPayment> {
     const data = await this.post<{ link: string }>("/payments", {
       tx_ref: input.reference,
-      amount: input.amountCents,
+      amount: toFlutterwaveAmount(input.amountCents),
       currency: input.currency,
       redirect_url: input.callbackUrl,
       customer: { email: input.customerEmail },
@@ -65,7 +74,7 @@ export class FlutterwavePaymentProvider {
           : data.status === "failed"
             ? "failed"
             : "pending",
-      amountCents: Number(data.amount),
+      amountCents: toAmountCents(data.amount),
       currency: data.currency,
       ...(data.created_at ? { paidAt: new Date(data.created_at) } : {}),
     };

@@ -39,7 +39,7 @@ describe("FlutterwavePaymentProvider", () => {
       headers: { "content-type": "application/json", authorization: "Bearer api-key" },
       body: JSON.stringify({
         tx_ref: "booking-1",
-        amount: 15_000,
+        amount: 150,
         currency: "NGN",
         redirect_url: "https://bukay.test/payment-complete",
         customer: { email: "customer@example.com" },
@@ -56,7 +56,7 @@ describe("FlutterwavePaymentProvider", () => {
         data: {
           tx_ref: "booking 1",
           status: "successful",
-          amount: "15000",
+          amount: "150",
           currency: "NGN",
           created_at: "2026-10-02T10:00:00.000Z",
         },
