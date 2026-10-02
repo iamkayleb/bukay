@@ -10,11 +10,6 @@ import {
 
 type Fetch = typeof fetch;
 
-type FlutterwaveResponse<T> = {
-  status: "success" | "error" | string;
-  data?: T;
-};
-
 type FlutterwaveTransaction = {
   tx_ref: string;
   status: "successful" | "failed" | string;
@@ -81,7 +76,7 @@ export class FlutterwavePaymentProvider implements PaymentProvider {
         : {}),
     });
 
-    if (typeof data.link !== "string" || !isAbsoluteHttpUrl(data.link)) {
+    if (!isRecord(data) || typeof data.link !== "string" || !isAbsoluteHttpUrl(data.link)) {
       throw new PaymentProviderError(this.name, "Payment provider returned an invalid response");
     }
 
@@ -92,7 +87,13 @@ export class FlutterwavePaymentProvider implements PaymentProvider {
     const data = await this.get<FlutterwaveTransaction>(
       `/transactions/verify_by_reference?tx_ref=${encodeURIComponent(reference)}`
     );
-    if (data.tx_ref !== reference || !data.currency) {
+    if (
+      !isRecord(data) ||
+      typeof data.tx_ref !== "string" ||
+      data.tx_ref !== reference ||
+      typeof data.currency !== "string" ||
+      !data.currency.trim()
+    ) {
       throw new PaymentProviderError(this.name, "Payment provider returned an invalid response");
     }
 
@@ -123,6 +124,10 @@ export class FlutterwavePaymentProvider implements PaymentProvider {
       split_type: "percentage",
       split_value: input.percentageCharge / 100,
     });
+    if (!isRecord(data)) {
+      throw new PaymentProviderError(this.name, "Payment provider returned an invalid response");
+    }
+
     const percentageCharge = Number(data.split_value) * 100;
     if (
       typeof data.subaccount_id !== "string" ||
@@ -168,11 +173,11 @@ export class FlutterwavePaymentProvider implements PaymentProvider {
       });
     }
 
-    const payload = (await response.json()) as FlutterwaveResponse<T>;
-    if (payload.status !== "success" || !payload.data) {
+    const payload = (await response.json()) as unknown;
+    if (!isRecord(payload) || payload.status !== "success" || !payload.data) {
       throw new PaymentProviderError(this.name, "Payment provider returned an invalid response");
     }
-    return payload.data;
+    return payload.data as T;
   }
 }
 
@@ -183,4 +188,8 @@ function isAbsoluteHttpUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

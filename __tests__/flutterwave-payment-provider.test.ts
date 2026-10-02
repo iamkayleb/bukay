@@ -145,6 +145,20 @@ describe("FlutterwavePaymentProvider", () => {
     ).rejects.toEqual(expect.objectContaining({ provider: "flutterwave" }));
   });
 
+  it("rejects a non-object subaccount response", async () => {
+    const request = vi.fn().mockResolvedValue(jsonResponse({ status: "success", data: [] }));
+    const provider = new FlutterwavePaymentProvider("api-key", request);
+
+    await expect(
+      provider.createSubaccount({
+        businessName: "Bukay Salon",
+        settlementBank: "044",
+        accountNumber: "0690000037",
+        percentageCharge: 35,
+      })
+    ).rejects.toEqual(expect.objectContaining({ provider: "flutterwave" }));
+  });
+
   it("returns provider errors without leaking transport details", async () => {
     const request = vi.fn().mockResolvedValue(jsonResponse({ status: "error" }, 401));
     const provider = new FlutterwavePaymentProvider("api-key", request);
@@ -236,6 +250,33 @@ describe("FlutterwavePaymentProvider", () => {
         },
       })
     );
+    const provider = new FlutterwavePaymentProvider("api-key", request);
+
+    await expect(provider.verify("booking-1")).rejects.toEqual(
+      expect.objectContaining<Partial<PaymentProviderError>>({
+        name: "PaymentProviderError",
+        provider: "flutterwave",
+      })
+    );
+  });
+
+  it.each([
+    { data: null },
+    { data: { tx_ref: "booking-1", status: "successful", amount: "150", currency: 566 } },
+  ])("rejects malformed verification response data: %j", async (response) => {
+    const request = vi.fn().mockResolvedValue(jsonResponse({ status: "success", ...response }));
+    const provider = new FlutterwavePaymentProvider("api-key", request);
+
+    await expect(provider.verify("booking-1")).rejects.toEqual(
+      expect.objectContaining<Partial<PaymentProviderError>>({
+        name: "PaymentProviderError",
+        provider: "flutterwave",
+      })
+    );
+  });
+
+  it("rejects a malformed response envelope", async () => {
+    const request = vi.fn().mockResolvedValue(jsonResponse(null));
     const provider = new FlutterwavePaymentProvider("api-key", request);
 
     await expect(provider.verify("booking-1")).rejects.toEqual(
