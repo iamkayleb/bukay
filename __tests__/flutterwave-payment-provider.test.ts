@@ -28,6 +28,7 @@ describe("FlutterwavePaymentProvider", () => {
         callbackUrl: "https://bukay.test/payment-complete",
         metadata: { bookingId: "booking-1" },
         subaccountCode: "RS_123",
+        subaccountPercentage: 35,
       })
     ).resolves.toEqual({
       reference: "booking-1",
@@ -44,8 +45,31 @@ describe("FlutterwavePaymentProvider", () => {
         redirect_url: "https://bukay.test/payment-complete",
         customer: { email: "customer@example.com" },
         meta: { bookingId: "booking-1" },
-        subaccounts: [{ id: "RS_123", transaction_split_ratio: 1 }],
+        subaccounts: [{ id: "RS_123", transaction_split_ratio: 0.35 }],
       }),
+    });
+  });
+
+  it("uses a full split only when no subaccount percentage is specified", async () => {
+    const request = vi.fn().mockResolvedValue(
+      jsonResponse({
+        status: "success",
+        data: { link: "https://checkout.flutterwave.com/pay/test" },
+      })
+    );
+    const provider = new FlutterwavePaymentProvider("api-key", request);
+
+    await provider.initialize({
+      reference: "booking-1",
+      amountCents: 15_000,
+      currency: "NGN",
+      customerEmail: "customer@example.com",
+      callbackUrl: "https://bukay.test/payment-complete",
+      subaccountCode: "RS_123",
+    });
+
+    expect(JSON.parse(request.mock.calls[0][1].body)).toMatchObject({
+      subaccounts: [{ id: "RS_123", transaction_split_ratio: 1 }],
     });
   });
 

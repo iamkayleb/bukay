@@ -113,7 +113,17 @@ export class FlutterwavePaymentProvider implements PaymentProvider {
       customer: { email: input.customerEmail },
       meta: input.metadata,
       ...(input.subaccountCode
-        ? { subaccounts: [{ id: input.subaccountCode, transaction_split_ratio: 1 }] }
+        ? {
+            subaccounts: [
+              {
+                id: input.subaccountCode,
+                transaction_split_ratio:
+                  input.subaccountPercentage === undefined
+                    ? 1
+                    : toFlutterwaveSplitRatio(input.subaccountPercentage),
+              },
+            ],
+          }
         : {}),
     });
 
