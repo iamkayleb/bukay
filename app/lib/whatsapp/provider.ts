@@ -43,6 +43,10 @@ export class WhatsAppProviderError extends Error {
   ) {
     super(message);
     this.name = "WhatsAppProviderError";
+    // Keep error classification reliable when this class is transpiled to an
+    // older JavaScript target, where subclassing built-ins does not preserve
+    // the prototype chain automatically.
+    Object.setPrototypeOf(this, new.target.prototype);
     this.provider = provider;
     this.status = options.status;
     this.retryable = options.retryable ?? false;
