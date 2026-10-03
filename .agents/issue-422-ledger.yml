@@ -5,10 +5,10 @@ branch: codex/issue-422
 tasks:
   - id: task-01
     title: 'Add `scripts/reminder-cron.ts`: add the job running every 5 minutes'
-    status: doing
+    status: done
     started_at: '2026-10-03T23:28:10Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-10-03T23:28:22Z'
+    commit: a9ce5a4e84a5ceeaa5a98f7d1f384081cb4ab534
     notes: []
   - id: task-02
     title: 'Add `app/lib/locks.ts`: take Postgres advisory locks'
