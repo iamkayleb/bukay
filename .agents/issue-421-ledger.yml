@@ -5,10 +5,10 @@ branch: codex/issue-421
 tasks:
   - id: task-01
     title: 'Add `app/lib/notifications/subscribers.ts`: add subscribers'
-    status: doing
+    status: done
     started_at: '2026-10-03T23:28:46Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-10-03T23:28:58Z'
+    commit: 61e075675c3ccc2b2c56be882f85485f0087a52d
     notes: []
   - id: task-02
     title: 'Add `app/lib/notifications/dispatch.ts`: implement the dispatcher'
