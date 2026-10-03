@@ -12,24 +12,25 @@ datasource db {
 }
 
 model Tenant {
-  id              String         @id @default(cuid())
-  name            String
-  slug            String         @unique
-  timezone        String         @default("Africa/Lagos")
-  currency        String         @default("NGN")
-  paymentProvider String         @default("paystack")
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  users           User[]
-  services        Service[]
-  staff           Staff[]
-  businessHours   BusinessHour[]
-  clients         Client[]
-  bookings        Booking[]
-  slotHolds       SlotHold[]
-  payments        Payment[]
-  ledgerEntries   LedgerEntry[]
-  auditLogs       AuditLog[]
+  id               String         @id @default(cuid())
+  name             String
+  slug             String         @unique
+  timezone         String         @default("Africa/Lagos")
+  currency         String         @default("NGN")
+  paymentProvider  String         @default("paystack")
+  remindersEnabled Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  users            User[]
+  services         Service[]
+  staff            Staff[]
+  businessHours    BusinessHour[]
+  clients          Client[]
+  bookings         Booking[]
+  slotHolds        SlotHold[]
+  payments         Payment[]
+  ledgerEntries    LedgerEntry[]
+  auditLogs        AuditLog[]
 }
 
 model User {
