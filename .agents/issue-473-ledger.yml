@@ -12,10 +12,10 @@ tasks:
     notes: []
   - id: task-02
     title: 'Add `app/lib/whatsapp/meta.ts`: implement the live adapter'
-    status: doing
+    status: done
     started_at: '2026-10-03T14:09:48Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-10-03T14:10:01Z'
+    commit: 82450dd09afa2c434c031b2d35b68a504e35d516
     notes: []
   - id: task-03
     title: 'Add `app/lib/whatsapp/fake.ts`: implement the test double'
