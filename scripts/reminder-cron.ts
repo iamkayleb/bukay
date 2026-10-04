@@ -1,5 +1,6 @@
 /** The cadence that bounds reminder delivery lateness. */
 export const REMINDER_CRON_INTERVAL_MS = 5 * 60 * 1000;
+export const MAX_REMINDER_DISPATCH_DELAY_MS = REMINDER_CRON_INTERVAL_MS;
 
 export type ReminderJob = () => Promise<void>;
 
@@ -27,8 +28,14 @@ export function startReminderCron(
   } = {}
 ): ReminderCron {
   const intervalMs = options.intervalMs ?? REMINDER_CRON_INTERVAL_MS;
-  if (!Number.isFinite(intervalMs) || intervalMs <= 0) {
-    throw new Error("Reminder cron interval must be a positive finite number of milliseconds");
+  if (
+    !Number.isFinite(intervalMs) ||
+    intervalMs <= 0 ||
+    intervalMs > MAX_REMINDER_DISPATCH_DELAY_MS
+  ) {
+    throw new Error(
+      "Reminder cron interval must be a positive finite number no greater than five minutes"
+    );
   }
 
   const onError =

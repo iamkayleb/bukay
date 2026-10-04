@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { REMINDER_CRON_INTERVAL_MS, startReminderCron } from "../../scripts/reminder-cron";
+import {
+  MAX_REMINDER_DISPATCH_DELAY_MS,
+  REMINDER_CRON_INTERVAL_MS,
+  startReminderCron,
+} from "../../scripts/reminder-cron";
 
 describe("reminder cron", () => {
   it("runs immediately and schedules subsequent scans every five minutes", async () => {
@@ -67,9 +71,14 @@ describe("reminder cron", () => {
     expect(job).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects a non-positive cadence that could miss a reminder target", () => {
+  it("rejects an invalid cadence that could miss a reminder target", () => {
     expect(() => startReminderCron(vi.fn(), { intervalMs: 0 })).toThrow(
-      "Reminder cron interval must be a positive finite number of milliseconds"
+      "Reminder cron interval must be a positive finite number no greater than five minutes"
+    );
+    expect(() =>
+      startReminderCron(vi.fn(), { intervalMs: MAX_REMINDER_DISPATCH_DELAY_MS + 1 })
+    ).toThrow(
+      "Reminder cron interval must be a positive finite number no greater than five minutes"
     );
   });
 });
