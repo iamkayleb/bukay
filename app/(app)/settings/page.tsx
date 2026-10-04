@@ -14,7 +14,7 @@ async function currentTenant() {
   if (!tenant.tenantSlug) return null;
   return prisma.tenant.findUnique({
     where: { slug: tenant.tenantSlug },
-    select: { id: true, remindersEnabled: true },
+    select: { id: true, name: true, slug: true, remindersEnabled: true },
   });
 }
 
@@ -80,6 +80,21 @@ export default async function SettingsPage() {
           Save reminder preference
         </button>
       </form>
+
+      <section className="mt-8 rounded-lg border border-slate-800 bg-slate-900/40 p-5">
+        <h3 className="text-base font-semibold text-white">Shop booking QR code</h3>
+        <p className="mt-2 max-w-xl text-sm text-slate-300">
+          Print this QR code and place it in your shop so walk-in customers can book with{" "}
+          {tenant.name}.
+        </p>
+        <a
+          className="mt-5 inline-flex rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-400"
+          download={`${tenant.slug}-booking-qr.pdf`}
+          href={`/api/qr/${encodeURIComponent(tenant.slug)}`}
+        >
+          Download booking QR PDF
+        </a>
+      </section>
     </section>
   );
 }

@@ -1,0 +1,54 @@
+version: 1
+issue: 499
+base: eval/codex
+branch: codex/issue-499
+tasks:
+  - id: task-01
+    title: 'Add `app/api/qr/[slug]/route.ts`: implement'
+    status: done
+    started_at: '2026-10-04T09:52:44Z'
+    finished_at: '2026-10-04T09:52:54Z'
+    commit: 61335cc286188aecfbc41c54de916ef6d5e045b4
+    notes: []
+  - id: task-02
+    title: 'Add `app/lib/qr-pdf.ts`: build the branded PDF'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Add `app/(app)/settings/page.tsx`: add the download control'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: The generated code resolves to `/{slug}`, verified by `pnpm test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: '`app/api/qr/[slug]/route.ts` returns HTTP 200 with a PDF body'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: The owner receives the file over WhatsApp after setup
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
