@@ -52,4 +52,13 @@ describe("GET /api/qr/[slug]", () => {
     expect(response.status).toBe(400);
     expect(state.findUnique).not.toHaveBeenCalled();
   });
+
+  it("returns 400 when the slug is not valid percent-encoding", async () => {
+    const response = await GET(new NextRequest("http://app.test/api/qr/placeholder"), {
+      params: { slug: "%" },
+    });
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ ok: false, error: "invalid_slug" });
+    expect(state.findUnique).not.toHaveBeenCalled();
+  });
 });

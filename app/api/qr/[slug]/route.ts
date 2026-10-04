@@ -21,7 +21,7 @@ export async function GET(
   try {
     slug = normalizeBookingSlug(decodeURIComponent(context.params.slug ?? ""));
   } catch (error) {
-    if (error instanceof QrPdfError) {
+    if (error instanceof QrPdfError || error instanceof URIError) {
       return jsonError("invalid_slug", 400);
     }
     throw error;
