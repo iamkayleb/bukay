@@ -1,0 +1,63 @@
+version: 1
+issue: 496
+base: eval/claude
+branch: claude/issue-496
+tasks:
+  - id: task-01
+    title: 'Add `app/lib/agent/runtime.ts`: assert tenant scope before every tool
+      call'
+    status: doing
+    started_at: '2026-10-04T09:52:17Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Add `app/lib/rate-limit.ts`: add per-number rate limiting'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Add `app/lib/agent/handoff.ts`: hand off to a human on repeated failure'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Add `__tests__/agent-redteam.test.ts`: cover cross-tenant access attempts'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Every case in `__tests__/agent-redteam.test.ts` is blocked, verified by
+      `pnpm test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: A flooding sender receives HTTP 429
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: The handoff command halts the agent and alerts the owner
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
