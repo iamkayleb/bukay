@@ -1,0 +1,1 @@
+ALTER TABLE "Tenant" ADD COLUMN "remindersEnabled" BOOLEAN NOT NULL DEFAULT true;
