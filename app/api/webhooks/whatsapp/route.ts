@@ -16,24 +16,29 @@ const inboundWebhookSchema = z.object({
     z.object({
       changes: z.array(
         z.object({
-          field: z.literal("messages"),
-          value: z.object({
-            metadata: z.object({ display_phone_number: z.string().min(1) }),
-            messages: z
-              .array(
-                z.object({
-                  id: z.string().min(1),
-                  from: z.string().min(1),
-                  type: z.string().min(1),
-                  text: z.object({ body: z.string().min(1) }).optional(),
-                })
-              )
-              .optional(),
-          }),
+          field: z.string(),
+          value: z.unknown(),
         })
       ),
     })
   ),
+});
+
+const messagesChangeSchema = z.object({
+  field: z.literal("messages"),
+  value: z.object({
+    metadata: z.object({ display_phone_number: z.string().min(1) }),
+    messages: z
+      .array(
+        z.object({
+          id: z.string().min(1),
+          from: z.string().min(1),
+          type: z.string().min(1),
+          text: z.object({ body: z.string().min(1) }).optional(),
+        })
+      )
+      .optional(),
+  }),
 });
 
 type Tenant = { id: string; name: string };
@@ -83,12 +88,19 @@ export async function POST(request: NextRequest) {
 
   for (const entry of parsed.data.entry) {
     for (const change of entry.changes) {
+      if (change.field !== "messages") continue;
+
+      const messageChange = messagesChangeSchema.safeParse(change);
+      // A malformed messages update cannot be processed, but must not prevent
+      // Meta from receiving a successful acknowledgement for the whole batch.
+      if (!messageChange.success) continue;
+
       const tenant = await resolveTenantByWhatsAppNumber(
-        change.value.metadata.display_phone_number
+        messageChange.data.value.metadata.display_phone_number
       );
       if (!tenant) continue;
 
-      for (const message of change.value.messages ?? []) {
+      for (const message of messageChange.data.value.messages ?? []) {
         if (!isInboundTextMessage(message)) continue;
         await recordInboundMessage(tenant, message);
       }

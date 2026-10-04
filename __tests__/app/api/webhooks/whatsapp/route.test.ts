@@ -112,6 +112,21 @@ describe("POST /api/webhooks/whatsapp", () => {
     );
   });
 
+  it("ignores delivery-status changes batched with an inbound message", async () => {
+    const mixedPayload = structuredClone(payload);
+    mixedPayload.entry[0].changes.unshift({
+      field: "statuses",
+      value: { statuses: [{ id: "wamid.outbound-1", status: "delivered" }] },
+    });
+
+    const response = await POST(webhook(mixedPayload));
+
+    expect(response.status).toBe(200);
+    expect(state.messageCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({ providerMessageId: "wamid.1", direction: "inbound" }),
+    });
+  });
+
   it("greets an unknown sender and acknowledges the webhook", async () => {
     const response = await POST(webhook(payload));
 
