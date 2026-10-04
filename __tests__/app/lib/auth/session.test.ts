@@ -20,6 +20,7 @@ describe("session signing", () => {
     const now = Date.now();
     const payload = {
       sub: "user:+2348031234567",
+      tenantId: "tenant-1",
       phone: "+2348031234567",
       iat: now,
       exp: now + SESSION_TTL_MS,
@@ -30,7 +31,13 @@ describe("session signing", () => {
 
   it("rejects a tampered token", () => {
     const now = Date.now();
-    const token = signSession({ sub: "user", phone: "+234803", iat: now, exp: now + 60_000 });
+    const token = signSession({
+      sub: "user",
+      tenantId: "tenant-1",
+      phone: "+234803",
+      iat: now,
+      exp: now + 60_000,
+    });
     const tampered = token.slice(0, -2) + "aa";
     expect(verifySession(tampered)).toBeNull();
   });
@@ -38,7 +45,7 @@ describe("session signing", () => {
   it("rejects a token signed with a different secret", () => {
     const now = Date.now();
     const token = signSession(
-      { sub: "u", phone: "+234", iat: now, exp: now + 60_000 },
+      { sub: "u", tenantId: "tenant-1", phone: "+234", iat: now, exp: now + 60_000 },
       "another-very-long-secret"
     );
     expect(verifySession(token)).toBeNull();
@@ -46,7 +53,13 @@ describe("session signing", () => {
 
   it("rejects an expired token", () => {
     const past = Date.now() - 10_000;
-    const token = signSession({ sub: "u", phone: "+234", iat: past - 60_000, exp: past });
+    const token = signSession({
+      sub: "u",
+      tenantId: "tenant-1",
+      phone: "+234",
+      iat: past - 60_000,
+      exp: past,
+    });
     expect(verifySession(token)).toBeNull();
   });
 });
