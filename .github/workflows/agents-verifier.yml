@@ -20,8 +20,13 @@ name: Agents Verifier
 
 on:
   pull_request_target:
+    # `labeled` alone is not enough. GitHub raises it only when a label is newly
+    # added, so a verify:* label applied while the PR is still open never fires
+    # again at merge time, and re-adding it by hand raises nothing because the
+    # label is already present. `closed` makes the merge itself a trigger.
     types:
       - labeled
+      - closed
   workflow_dispatch:
     inputs:
       pr_number:
@@ -61,6 +66,14 @@ on:
           - openai
           - anthropic
         default: 'auto'
+      force:
+        description: >-
+          Ignore the unchanged-state fingerprint and verify anyway. Needed
+          because identical inputs hash identically, so a repeat dispatch is
+          otherwise dropped with no visible run.
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -81,7 +94,13 @@ jobs:
       model2: ${{ steps.check.outputs.model2 }}
       provider: ${{ steps.check.outputs.provider }}
       pr_number: ${{ steps.check.outputs.pr_number }}
-      fingerprint_should_run: ${{ steps.fingerprint.outputs.should_run || 'true' }}
+      # A debounce with no override is not a debounce, it is a dead end: the
+      # fingerprint hashes mode+model+provider+diff, so a repeat dispatch with
+      # identical inputs is dropped with no visible run. `force` is the escape hatch.
+      fingerprint_should_run: >-
+        ${{ (github.event_name == 'workflow_dispatch'
+             && github.event.inputs.force == 'true') && 'true'
+            || (steps.fingerprint.outputs.should_run || 'true') }}
       fingerprint_reason: ${{ steps.fingerprint.outputs.reason }}
       fingerprint_current_hash: ${{ steps.fingerprint.outputs.current_hash }}
     steps:
@@ -165,9 +184,8 @@ jobs:
               }
             }
 
-            // Handle pull_request_target trigger (label added)
+            // Handle pull_request_target trigger (label added, or PR merged)
             const pr = context.payload.pull_request;
-            const label = context.payload.label;
 
             // Must be a merged PR
             if (!pr || !pr.merged) {
@@ -176,13 +194,28 @@ jobs:
               return;
             }
 
-            // Must be a verify:* label
-            const labelName = label?.name || '';
             const verifyModes = {
               'verify:checkbox': 'checkbox',
               'verify:evaluate': 'evaluate',
               'verify:compare': 'compare',
             };
+
+            // On `closed` there is no payload label: read the verify mode off
+            // the PR's current labels instead, so a label applied before the
+            // merge still takes effect once the PR is merged.
+            let labelName = context.payload.label?.name || '';
+            if (context.payload.action === 'closed') {
+              const present = (pr.labels || [])
+                .map((l) => (typeof l === 'string' ? l : l && l.name) || '')
+                .filter((n) => verifyModes[n]);
+              labelName = present[0] || '';
+              if (!labelName) {
+                core.info('Merged without a verify:* label; skipping verifier.');
+                core.setOutput('should_run', 'false');
+                return;
+              }
+              core.info(`Merged with '${labelName}' already applied; verifying.`);
+            }
 
             const mode = verifyModes[labelName];
             if (!mode) {
@@ -291,9 +324,43 @@ jobs:
             --inputs "$(cat /tmp/state-fingerprint-inputs.json)" \
             --storage pr-comment
 
+      # Say so on the PR, not only in a job log nobody opens. A verifier that
+      # declines silently is indistinguishable from one that never ran, which is
+      # how several rounds were lost.
       - name: Report unchanged state skip
         if: steps.fingerprint.outputs.should_run == 'false'
-        run: echo "Skipped - ${{ steps.fingerprint.outputs.reason }}"
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        env:
+          PR_NUMBER: ${{ steps.check.outputs.pr_number }}
+          SKIP_REASON: ${{ steps.fingerprint.outputs.reason }}
+        with:
+          script: |
+            const prNumber = Number(process.env.PR_NUMBER || 0);
+            const reason = process.env.SKIP_REASON || 'unchanged state';
+            core.info(`Skipped - ${reason}`);
+            if (!prNumber) return;
+            const MARK = '<!-- verifier-skip-notice -->';
+            const body = [
+              MARK,
+              '### Verifier did not run',
+              '',
+              'Reason: `' + reason + '`',
+              '',
+              'The verifier debounces on a fingerprint of mode, model, provider and',
+              'diff, so an identical request is dropped. To run it anyway: **Actions',
+              '-> Agents Verifier -> Run workflow**, set `pr_number` to `' + prNumber + '`',
+              'and `force` to `true`.',
+            ].join('\n');
+            const { owner, repo } = context.repo;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number: prNumber, per_page: 100,
+            });
+            const existing = comments.find((c) => String(c.body || '').includes(MARK));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
+            }
 
   verifier:
     needs: check
