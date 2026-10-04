@@ -130,6 +130,16 @@ async function recordInboundMessage(tenant: Tenant, message: InboundMessage) {
   }
 
   if (!client) {
+    const existingGreeting = await prisma.message.findFirst({
+      where: {
+        conversationId: conversation.id,
+        direction: "outbound",
+        body: "Greeting template: welcome",
+      },
+      select: { id: true },
+    });
+    if (existingGreeting) return;
+
     const greeting = await sendGreeting(phone, tenant.name);
     await prisma.message.create({
       data: {

@@ -5,6 +5,7 @@ const state = vi.hoisted(() => ({
   resolveTenant: vi.fn(),
   sendTemplate: vi.fn(),
   messageFindUnique: vi.fn(),
+  messageFindFirst: vi.fn(),
   clientFindUnique: vi.fn(),
   conversationUpsert: vi.fn(),
   messageCreate: vi.fn(),
@@ -12,7 +13,11 @@ const state = vi.hoisted(() => ({
 
 vi.mock("@/app/db/prisma", () => ({
   prisma: {
-    message: { findUnique: state.messageFindUnique, create: state.messageCreate },
+    message: {
+      findUnique: state.messageFindUnique,
+      findFirst: state.messageFindFirst,
+      create: state.messageCreate,
+    },
     client: { findUnique: state.clientFindUnique },
     conversation: { upsert: state.conversationUpsert },
   },
@@ -59,6 +64,7 @@ beforeEach(() => {
   state.resolveTenant.mockReset().mockResolvedValue({ id: "tenant-1", name: "Bukay Salon" });
   state.sendTemplate.mockReset().mockResolvedValue({ id: "outbound-1" });
   state.messageFindUnique.mockReset().mockResolvedValue(null);
+  state.messageFindFirst.mockReset().mockResolvedValue(null);
   state.clientFindUnique.mockReset().mockResolvedValue(null);
   state.conversationUpsert.mockReset().mockResolvedValue({ id: "conversation-1" });
   state.messageCreate.mockReset().mockResolvedValue({ id: "message-1" });
@@ -103,6 +109,26 @@ describe("POST /api/webhooks/whatsapp", () => {
         body: "Greeting template: welcome",
         providerMessageId: "outbound-1",
       },
+    });
+  });
+
+  it("does not greet the same unknown conversation more than once", async () => {
+    state.messageFindFirst.mockResolvedValue({ id: "prior-greeting" });
+    const laterMessage = structuredClone(payload);
+    laterMessage.entry[0].changes[0].value.messages[0].id = "wamid.2";
+
+    const response = await POST(webhook(laterMessage));
+
+    expect(response.status).toBe(200);
+    expect(state.sendTemplate).not.toHaveBeenCalled();
+    expect(state.messageCreate).toHaveBeenCalledTimes(1);
+    expect(state.messageFindFirst).toHaveBeenCalledWith({
+      where: {
+        conversationId: "conversation-1",
+        direction: "outbound",
+        body: "Greeting template: welcome",
+      },
+      select: { id: true },
     });
   });
 
