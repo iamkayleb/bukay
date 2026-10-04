@@ -22,8 +22,6 @@ import {
   OtpStore,
   setOtpStoreForTests,
 } from "@/app/lib/auth/otp";
-import { SESSION_COOKIE_NAME } from "@/app/lib/auth/session";
-import { __resetOtpStoreForTests, getOtpStore } from "@/app/lib/auth/otp";
 import { SESSION_COOKIE_NAME, verifySession } from "@/app/lib/auth/session";
 
 function jsonRequest(url: string, body: unknown, init?: { cookie?: string }): NextRequest {
@@ -96,6 +94,24 @@ beforeEach(() => {
 });
 
 describe("end-to-end auth flow", () => {
+  it("verifies a login-issued code after the route store is replaced", async () => {
+    const codes = new MemoryOtpCodes();
+    setOtpStoreForTests(new OtpStore(undefined, codes));
+
+    const loginRes = await login(jsonRequest("http://test/api/auth/login", { phone: PHONE_LOCAL }));
+    expect(loginRes.status).toBe(200);
+    const code = extractCode(sms.lastTo(PHONE_E164)!.body);
+
+    // Simulate the verify handler running in a separate module/server instance.
+    setOtpStoreForTests(new OtpStore(undefined, codes));
+    const verifyRes = await verify(
+      jsonRequest("http://test/api/auth/verify", { phone: PHONE_LOCAL, code })
+    );
+
+    expect(verifyRes.status).toBe(200);
+    expect(await verifyRes.json()).toMatchObject({ ok: true, phone: PHONE_E164 });
+  });
+
   it("signs up + logs in: phone -> OTP -> session cookie -> /me returns user", async () => {
     const loginRes = await login(jsonRequest("http://test/api/auth/login", { phone: PHONE_LOCAL }));
     expect(loginRes.status).toBe(200);
