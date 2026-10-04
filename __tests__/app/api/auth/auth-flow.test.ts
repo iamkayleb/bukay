@@ -48,6 +48,7 @@ beforeEach(() => {
   __resetSmsProviderForTests();
   sms = new MemorySmsProvider();
   setSmsProviderForTests(sms);
+  account.findOrCreateAccount.mockReset();
   account.findOrCreateAccount.mockResolvedValue({ userId: "user-1", tenantId: "tenant-1" });
 });
 
@@ -71,6 +72,8 @@ describe("end-to-end auth flow", () => {
     expect(verifyBody.ok).toBe(true);
     expect(verifyBody.userId).toBe("user-1");
     expect(verifyBody.tenantId).toBe("tenant-1");
+    expect(account.findOrCreateAccount).toHaveBeenCalledTimes(1);
+    expect(account.findOrCreateAccount).toHaveBeenCalledWith(PHONE_E164);
 
     const setCookie = extractSetCookie(verifyRes);
     expect(setCookie).toContain(`${SESSION_COOKIE_NAME}=`);
@@ -103,6 +106,7 @@ describe("end-to-end auth flow", () => {
     const body = await res.json();
     expect(body.ok).toBe(false);
     expect(body.error).toBe("mismatch");
+    expect(account.findOrCreateAccount).not.toHaveBeenCalled();
   });
 
   it("rejects a used OTP on second verify", async () => {
