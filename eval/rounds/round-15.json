@@ -1,0 +1,71 @@
+{
+  "round": 15,
+  "specs": [
+    {
+      "id": "tenant-signup",
+      "title": "Create the tenant and user on first sign-in",
+      "why": "Verifying a code mints a session for a synthetic id built from the phone string, and no database row is ever written. There is no signup, so a signed-in merchant has no tenant and every dashboard screen has nothing to scope to.",
+      "scope": "On a first successful verification, create the tenant and its owner, link the session to those real rows, and reuse them on later sign-ins. Add the phone column the lookup needs.",
+      "non_goals": "No invite flow, no multi-user tenants, no role management. Do not change the OTP exchange itself or the session cookie format.",
+      "tasks": [
+        "Add `prisma/schema.prisma`: add a unique `phone` column to the `User` model",
+        "Add `prisma/migrations/`: generate the migration for the new column",
+        "Add `app/lib/auth/account.ts`: look up an existing user by phone",
+        "Add `app/lib/auth/account.ts`: create a tenant with a generated unique slug when no user matches",
+        "Add `app/lib/auth/account.ts`: create the owner user linked to that tenant",
+        "Add `app/api/auth/verify/route.ts`: put the real user id in the session payload",
+        "Add `app/api/auth/verify/route.ts`: put the tenant id in the session payload",
+        "Add `__tests__/app/lib/auth/account.test.ts`: cover a first sign-in creating both rows",
+        "Add `__tests__/app/lib/auth/account.test.ts`: cover a repeat sign-in reusing them"
+      ],
+      "acceptance": [
+        "A first verification writes one tenant row and one user row, verified by `pnpm test`",
+        "A second verification for the same phone writes no new rows, verified by `pnpm test`",
+        "The session payload carries the persisted user id rather than a string built from the phone, verified by `pnpm test`",
+        "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`__tests__/app/lib/auth/**`",
+        "`app/api/auth/verify/**`",
+        "`app/lib/auth/**`",
+        "`prisma/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`prisma/schema.prisma` and `prisma/migrations/**` for the schema support this work needs",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
+      ]
+    },
+    {
+      "id": "durable-otp",
+      "title": "Persist one-time codes instead of holding them in memory",
+      "why": "Codes live in a module-level Map. Separate route handlers can hold separate instances of that module, so a code issued by the login route is not found by the verify route, and nothing survives a restart or a second server instance.",
+      "scope": "Move the one-time code store to the database, keeping the existing hashing, expiry, attempt limit and rate limit behaviour.",
+      "non_goals": "Do not change the code format, the expiry window, the attempt limit or the rate-limit thresholds. No Redis, no new dependency.",
+      "tasks": [
+        "Add `prisma/schema.prisma`: add an `OtpCode` model keyed by phone",
+        "Add `prisma/migrations/`: generate the migration for the new model",
+        "Add `app/lib/auth/otp.ts`: write an issued code to the database",
+        "Add `app/lib/auth/otp.ts`: read the stored row when verifying",
+        "Add `app/lib/auth/otp.ts`: delete the row once a code is consumed",
+        "Add `app/lib/auth/otp.ts`: keep the existing expiry behaviour against the stored row",
+        "Add `app/lib/auth/otp.ts`: keep the existing attempt limit against the stored row",
+        "Add `__tests__/app/lib/auth/otp.test.ts`: cover verification in a separate call from issuance"
+      ],
+      "acceptance": [
+        "A code issued through the login route verifies through the verify route in a separate request, verified by `pnpm test`",
+        "An expired stored code is rejected, verified by `pnpm test`",
+        "Exceeding the attempt limit rejects further tries, verified by `pnpm test`",
+        "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`__tests__/app/lib/auth/**`",
+        "`app/lib/auth/**`",
+        "`prisma/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`prisma/schema.prisma` and `prisma/migrations/**` for the schema support this work needs",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
+      ]
+    }
+  ]
+}
