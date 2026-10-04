@@ -18,6 +18,8 @@ model Tenant {
   timezone      String         @default("Africa/Lagos")
   currency      String         @default("NGN")
   active        Boolean        @default(true)
+  // Per-tenant toggle for T-24h / T-2h booking reminders.
+  remindersEnabled Boolean     @default(true)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   users         User[]
@@ -129,6 +131,9 @@ model Booking {
   endsAt        DateTime
   status        String        @default("pending")
   notes         String?
+  // Last reminder dispatched (T-24h or T-2h); the claim compares it against
+  // each reminder's target time so every kind is sent exactly once.
+  reminderSentAt DateTime?
   payments      Payment[]
   ledgerEntries LedgerEntry[]
   createdAt     DateTime      @default(now())

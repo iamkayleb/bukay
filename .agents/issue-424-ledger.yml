@@ -1,0 +1,61 @@
+version: 1
+issue: 424
+base: eval/claude
+branch: claude/issue-424
+tasks:
+  - id: task-01
+    title: 'Add `scripts/reminder-cron.ts`: add the job running every 5 minutes'
+    status: done
+    started_at: '2026-10-03T23:26:53Z'
+    finished_at: '2026-10-03T23:27:06Z'
+    commit: 0e785afcb394cb04e2f360368ca3d58f692688d1
+    notes: []
+  - id: task-02
+    title: 'Add `app/lib/locks.ts`: take Postgres advisory locks'
+    status: done
+    started_at: '2026-10-04T01:30:00Z'
+    finished_at: '2026-10-04T01:35:00Z'
+    commit: 'e32fa93826a46fbd02876928d391a03f7a57b7a5'
+    notes: []
+  - id: task-03
+    title: 'Add `prisma/schema.prisma`: add `reminderSentAt` to the `Booking` model'
+    status: done
+    started_at: '2026-10-04T01:30:00Z'
+    finished_at: '2026-10-04T01:35:00Z'
+    commit: 'e32fa93826a46fbd02876928d391a03f7a57b7a5'
+    notes: []
+  - id: task-04
+    title: 'Add `app/(app)/settings/page.tsx`: add the tenant toggle'
+    status: done
+    started_at: '2026-10-04T01:30:00Z'
+    finished_at: '2026-10-04T01:35:00Z'
+    commit: '6a5343f1f212d4592fcd8ec5ec831110c6241704'
+    notes: []
+  - id: task-05
+    title: Two parallel workers send exactly one reminder, verified by `pnpm test`
+    status: done
+    started_at: '2026-10-04T01:30:00Z'
+    finished_at: '2026-10-04T01:35:00Z'
+    commit: '50a27e8303fb08e78961f103ee3febb6a5c42b7c'
+    notes: []
+  - id: task-06
+    title: Reminder dispatch falls within 5 minutes of the target time
+    status: done
+    started_at: '2026-10-04T01:30:00Z'
+    finished_at: '2026-10-04T01:35:00Z'
+    commit: '6821ad7ccc7c1a792776b95ba04ab26fcdc7cd13'
+    notes: []
+  - id: task-07
+    title: Disabling the toggle stops subsequent reminders
+    status: done
+    started_at: '2026-10-04T01:30:00Z'
+    finished_at: '2026-10-04T01:35:00Z'
+    commit: '50a27e8303fb08e78961f103ee3febb6a5c42b7c'
+    notes: []
+  - id: task-08
+    title: '`pnpm test` passes'
+    status: done
+    started_at: '2026-10-04T01:30:00Z'
+    finished_at: '2026-10-04T01:35:00Z'
+    commit: '50a27e8303fb08e78961f103ee3febb6a5c42b7c'
+    notes: []
