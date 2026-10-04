@@ -66,18 +66,27 @@ const repository: BookingToolRepository = {
       });
       if (conflict) throw new AgentSlotUnavailableError();
 
-      const client = await transaction.client.upsert({
-        where: {
-          tenantId_phone: { tenantId: input.tenantId, phone: input.customerPhone },
-        },
-        update: { name: input.customerName },
-        create: {
-          tenantId: input.tenantId,
-          name: input.customerName,
-          phone: input.customerPhone,
-        },
+      const existingClient = await transaction.client.findFirst({
+        where: { tenantId: input.tenantId, phone: input.customerPhone },
         select: { id: true },
       });
+      const client = existingClient
+        ? await transaction.client.update({
+            // Include the tenant even though the id is globally unique. This
+            // is required by the tenant guard and documents the ownership
+            // check at the write boundary.
+            where: { id: existingClient.id, tenantId: input.tenantId },
+            data: { name: input.customerName },
+            select: { id: true },
+          })
+        : await transaction.client.create({
+            data: {
+              tenantId: input.tenantId,
+              name: input.customerName,
+              phone: input.customerPhone,
+            },
+            select: { id: true },
+          });
       return transaction.booking.create({
         data: {
           tenantId: input.tenantId,
