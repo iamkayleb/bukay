@@ -125,6 +125,15 @@ describe("POST /api/webhooks/whatsapp", () => {
     expect(state.conversationUpsert).not.toHaveBeenCalled();
     expect(state.sendTemplate).not.toHaveBeenCalled();
   });
+
+  it("acknowledges a retry that races with another delivery", async () => {
+    state.messageCreate.mockRejectedValueOnce(
+      Object.assign(new Error("already recorded"), { code: "P2002" })
+    );
+
+    await expect(POST(webhook(payload))).resolves.toMatchObject({ status: 200 });
+    expect(state.sendTemplate).not.toHaveBeenCalled();
+  });
 });
 
 describe("GET /api/webhooks/whatsapp", () => {

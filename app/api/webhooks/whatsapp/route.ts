@@ -112,15 +112,22 @@ async function recordInboundMessage(tenant: Tenant, message: InboundMessage) {
     create: { tenantId: tenant.id, phone, ...(client ? { clientId: client.id } : {}) },
     update: client ? { clientId: client.id } : {},
   });
-  await prisma.message.create({
-    data: {
-      tenantId: tenant.id,
-      conversationId: conversation.id,
-      direction: "inbound",
-      body: message.text.body,
-      providerMessageId: message.id,
-    },
-  });
+  try {
+    await prisma.message.create({
+      data: {
+        tenantId: tenant.id,
+        conversationId: conversation.id,
+        direction: "inbound",
+        body: message.text.body,
+        providerMessageId: message.id,
+      },
+    });
+  } catch (error) {
+    // The initial lookup makes ordinary Meta retries cheap. The unique index is
+    // still authoritative when two retry deliveries race each other.
+    if (isUniqueConstraintError(error)) return;
+    throw error;
+  }
 
   if (!client) {
     const greeting = await sendGreeting(phone, tenant.name);
@@ -154,4 +161,10 @@ function parseJson(body: string): unknown {
   } catch {
     return null;
   }
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2002"
+  );
 }
