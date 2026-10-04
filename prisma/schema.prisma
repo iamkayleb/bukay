@@ -43,6 +43,9 @@ model User {
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   email     String
+  // Sign-in identity in E.164. Nullable so pre-existing rows survive the
+  // migration; SQLite allows many NULLs under a unique index.
+  phone     String?  @unique
   name      String
   role      String   @default("owner")
   createdAt DateTime @default(now())

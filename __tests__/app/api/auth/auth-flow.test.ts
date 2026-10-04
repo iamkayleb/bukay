@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { otpTable } from "../../../fixtures/fake-otp-prisma";
+
+vi.mock("@/app/lib/auth/account", () => ({
+  findOrCreateAccount: async () => ({
+    userId: "user_real_1",
+    tenantId: "tenant_real_1",
+    created: true,
+  }),
+}));
 import { NextRequest } from "next/server";
 
 import { POST as login } from "@/app/api/auth/login/route";
@@ -10,7 +18,7 @@ import { GET as me } from "@/app/api/auth/me/route";
 import { MemorySmsProvider } from "@/app/lib/sms/memory";
 import { __resetSmsProviderForTests, setSmsProviderForTests } from "@/app/lib/auth/sms";
 import { __resetOtpStoreForTests, getOtpStore } from "@/app/lib/auth/otp";
-import { SESSION_COOKIE_NAME } from "@/app/lib/auth/session";
+import { SESSION_COOKIE_NAME, verifySession } from "@/app/lib/auth/session";
 
 vi.mock("@/app/db/prisma", async () => ({
   prisma: (await import("../../../fixtures/fake-otp-prisma")).fakePrisma,
@@ -68,7 +76,9 @@ describe("end-to-end auth flow", () => {
     expect(verifyRes.status).toBe(200);
     const verifyBody = await verifyRes.json();
     expect(verifyBody.ok).toBe(true);
-    expect(verifyBody.userId).toBe(`user:${PHONE_E164}`);
+    expect(verifyBody.userId).toBe("user_real_1");
+    const payload = verifySession(extractSetCookie(verifyRes)!.split(";")[0].split("=")[1]);
+    expect(payload).toMatchObject({ sub: "user_real_1", tenantId: "tenant_real_1" });
 
     const setCookie = extractSetCookie(verifyRes);
     expect(setCookie).toContain(`${SESSION_COOKIE_NAME}=`);
@@ -80,7 +90,7 @@ describe("end-to-end auth flow", () => {
     );
     expect(meRes.status).toBe(200);
     const meBody = await meRes.json();
-    expect(meBody.userId).toBe(`user:${PHONE_E164}`);
+    expect(meBody.userId).toBe("user_real_1");
     expect(meBody.phone).toBe(PHONE_E164);
 
     // session persists across "reloads" — second /me call still works
