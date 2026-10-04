@@ -51,6 +51,7 @@ vi.mock("@/app/db/prisma", () => ({ prisma: db.prisma }));
 vi.mock("@/app/lib/whatsapp/meta", () => ({ metaWhatsAppFromEnv: () => provider }));
 
 import { GET, POST } from "@/app/api/webhooks/whatsapp/route";
+import { RATE_LIMIT_MAX, __resetRateLimitsForTests } from "@/app/lib/rate-limit";
 
 function payload(opts: { from?: string; to?: string; id?: string; text?: string } = {}) {
   return {
@@ -88,6 +89,7 @@ function request(body: unknown, signature?: string) {
 }
 
 beforeEach(() => {
+  __resetRateLimitsForTests();
   process.env.WHATSAPP_APP_SECRET = SECRET;
   process.env.WHATSAPP_VERIFY_TOKEN = "verify-me";
   Object.assign(db.state, {
@@ -197,5 +199,19 @@ describe("WhatsApp inbound webhook", () => {
       new NextRequest("http://app.test/api/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=x")
     );
     expect(bad.status).toBe(403);
+  });
+
+  it("answers 429 to a flooding sender without affecting other numbers", async () => {
+    for (let i = 0; i < RATE_LIMIT_MAX; i++) {
+      const ok = await POST(request(payload({ id: `wamid.flood-${i}` })));
+      expect(ok.status).toBe(200);
+    }
+    const limited = await POST(request(payload({ id: "wamid.flood-over" })));
+    expect(limited.status).toBe(429);
+    expect(Number(limited.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(db.state.messages.some((m) => m.providerMessageId === "wamid.flood-over")).toBe(false);
+
+    const other = await POST(request(payload({ from: "+2348033333333", id: "wamid.other" })));
+    expect(other.status).toBe(200);
   });
 });

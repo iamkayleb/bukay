@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/app/db/prisma";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
+import { consumeRateLimit } from "@/app/lib/rate-limit";
 import { metaWhatsAppFromEnv } from "@/app/lib/whatsapp/meta";
 import { normalizeWhatsAppNumber, resolveTenantByNumber } from "@/app/lib/whatsapp/routing";
 import { verifyMetaSignature } from "@/app/lib/whatsapp/signature";
@@ -186,6 +187,7 @@ export async function POST(req: NextRequest) {
   }
 
   let processed = 0;
+  let retryAfter = 0;
   for (const entry of parsed.data.entry) {
     for (const change of entry.changes) {
       const { metadata, messages } = change.value;
@@ -200,6 +202,12 @@ export async function POST(req: NextRequest) {
       for (const raw of messages) {
         const message = inboundMessageSchema.safeParse(raw);
         if (!message.success) continue;
+        // Flooding senders are dropped before any storage or agent work.
+        const limit = consumeRateLimit(`whatsapp:${normalizeWhatsAppNumber(message.data.from)}`);
+        if (!limit.allowed) {
+          retryAfter = Math.max(retryAfter, limit.retryAfterSeconds);
+          continue;
+        }
         try {
           await handleInbound(tenant, message.data);
           processed += 1;
@@ -210,6 +218,13 @@ export async function POST(req: NextRequest) {
         }
       }
     }
+  }
+
+  if (retryAfter > 0) {
+    return NextResponse.json(
+      { ok: false, error: "rate_limited", processed },
+      { status: 429, headers: { "retry-after": String(retryAfter) } }
+    );
   }
 
   return NextResponse.json({ ok: true, processed });
