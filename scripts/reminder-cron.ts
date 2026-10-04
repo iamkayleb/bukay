@@ -27,14 +27,19 @@ export function startReminderCron(
   } = {}
 ): ReminderCron {
   const intervalMs = options.intervalMs ?? REMINDER_CRON_INTERVAL_MS;
+  if (!Number.isFinite(intervalMs) || intervalMs <= 0) {
+    throw new Error("Reminder cron interval must be a positive finite number of milliseconds");
+  }
+
   const onError =
     options.onError ?? ((error: unknown) => console.error("Reminder job failed", error));
   const setIntervalFn = options.setIntervalFn ?? setInterval;
   const clearIntervalFn = options.clearIntervalFn ?? clearInterval;
   let running = false;
+  let stopped = false;
 
   const run = async (): Promise<void> => {
-    if (running) return;
+    if (running || stopped) return;
 
     running = true;
     try {
@@ -51,6 +56,7 @@ export function startReminderCron(
 
   return {
     stop() {
+      stopped = true;
       clearIntervalFn(timer);
     },
   };

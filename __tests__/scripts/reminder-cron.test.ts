@@ -49,4 +49,27 @@ describe("reminder cron", () => {
     finishJob?.();
     await vi.waitFor(() => expect(finishJob).toBeDefined());
   });
+
+  it("does not start another scan after it has been stopped", async () => {
+    let tick: (() => void) | undefined;
+    const job = vi.fn().mockResolvedValue(undefined);
+    const cron = startReminderCron(job, {
+      setIntervalFn: (callback: () => void) => {
+        tick = callback;
+        return 1 as unknown as ReturnType<typeof setInterval>;
+      },
+    });
+
+    await vi.waitFor(() => expect(job).toHaveBeenCalledTimes(1));
+    cron.stop();
+    tick?.();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(job).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a non-positive cadence that could miss a reminder target", () => {
+    expect(() => startReminderCron(vi.fn(), { intervalMs: 0 })).toThrow(
+      "Reminder cron interval must be a positive finite number of milliseconds"
+    );
+  });
 });
