@@ -13,51 +13,58 @@ tasks:
     notes: []
   - id: task-02
     title: 'Add `app/lib/rate-limit.ts`: add per-number rate limiting'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-10-04T09:58:00Z'
+    finished_at: '2026-10-04T10:00:30Z'
+    commit: 612c7fa402c202903e61357107f9b70b6327507c
+    notes:
+      - 'SenderRateLimiter denies the sixth message in the window with status 429.'
   - id: task-03
     title: 'Add `app/lib/agent/handoff.ts`: hand off to a human on repeated failure'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-10-04T10:00:40Z'
+    finished_at: '2026-10-04T10:01:40Z'
+    commit: 79f56bd3ae2109567b6bac88fed117929645c28e
+    notes:
+      - 'Three consecutive failed tool calls halt the agent and record one owner alert.'
   - id: task-04
     title: 'Add `__tests__/agent-redteam.test.ts`: cover cross-tenant access attempts'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-10-04T10:00:40Z'
+    finished_at: '2026-10-04T10:01:40Z'
+    commit: 79f56bd3ae2109567b6bac88fed117929645c28e
+    notes:
+      - 'Availability lookup, booking hold, and confirmation for another tenant return 403.'
   - id: task-05
     title: Every case in `__tests__/agent-redteam.test.ts` is blocked, verified by
       `pnpm test`
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-10-04T10:01:12Z'
+    finished_at: '2026-10-04T10:01:24Z'
+    commit: 79f56bd3ae2109567b6bac88fed117929645c28e
+    notes:
+      - 'pnpm test: 3 red-team cases blocked with tenant_forbidden / HTTP 403.'
   - id: task-06
     title: A flooding sender receives HTTP 429
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-10-04T09:58:00Z'
+    finished_at: '2026-10-04T10:00:30Z'
+    commit: 612c7fa402c202903e61357107f9b70b6327507c
+    notes:
+      - 'WhatsApp webhook test: third message from one number returns HTTP 429 with Retry-After.'
   - id: task-07
     title: The handoff command halts the agent and alerts the owner
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-10-04T10:00:40Z'
+    finished_at: '2026-10-04T10:01:40Z'
+    commit: 79f56bd3ae2109567b6bac88fed117929645c28e
+    notes:
+      - '/handoff skips the planner, sets halted, and records a command alert for the owner.'
   - id: task-08
     title: '`pnpm test` passes'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-10-04T10:01:12Z'
+    finished_at: '2026-10-04T10:01:24Z'
+    commit: 79f56bd3ae2109567b6bac88fed117929645c28e
+    notes:
+      - 'pnpm test: 61 files, 390 tests passed.'
