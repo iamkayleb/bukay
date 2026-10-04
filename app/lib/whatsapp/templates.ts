@@ -20,6 +20,13 @@ export type WhatsAppTemplate = {
  * approval; see docs/WHATSAPP_TEMPLATES.md for the operational process.
  */
 export const WHATSAPP_TEMPLATES = {
+  welcome: {
+    name: "welcome",
+    language: "en_US",
+    category: "UTILITY",
+    parameters: ["businessName"],
+    description: "Sent when an unknown sender first messages a business.",
+  },
   booking_confirmation: {
     name: "booking_confirmation",
     language: "en_US",

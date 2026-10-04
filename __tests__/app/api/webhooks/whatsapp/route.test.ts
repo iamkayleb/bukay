@@ -1,0 +1,287 @@
+import { createHmac } from "node:crypto";
+
+import { NextRequest } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const state = vi.hoisted(() => ({
+  resolveTenant: vi.fn(),
+  sendTemplate: vi.fn(),
+  messageFindUnique: vi.fn(),
+  messageFindFirst: vi.fn(),
+  clientFindUnique: vi.fn(),
+  conversationUpsert: vi.fn(),
+  messageCreate: vi.fn(),
+}));
+
+vi.mock("@/app/db/prisma", () => ({
+  prisma: {
+    message: {
+      findUnique: state.messageFindUnique,
+      findFirst: state.messageFindFirst,
+      create: state.messageCreate,
+    },
+    client: { findUnique: state.clientFindUnique },
+    conversation: { upsert: state.conversationUpsert },
+  },
+}));
+vi.mock("@/app/lib/whatsapp/routing", () => ({
+  resolveTenantByWhatsAppNumber: state.resolveTenant,
+  normalizeWhatsAppNumber: (phone: string) => `+${phone.replace(/\D/g, "")}`,
+}));
+vi.mock("@/app/lib/whatsapp/meta", () => ({
+  metaWhatsAppFromEnv: () => ({ name: "fake", sendTemplate: state.sendTemplate }),
+}));
+
+import { GET, POST, hasValidWhatsAppSignature } from "@/app/api/webhooks/whatsapp/route";
+
+const payload = {
+  object: "whatsapp_business_account",
+  entry: [
+    {
+      changes: [
+        {
+          field: "messages",
+          value: {
+            metadata: { display_phone_number: "+234 800 000 0000" },
+            messages: [
+              { id: "wamid.1", from: "2348012345678", type: "text", text: { body: "Hello" } },
+            ],
+          },
+        },
+      ],
+    },
+  ],
+};
+
+function webhook(body: unknown) {
+  return new NextRequest("http://bukay.test/api/webhooks/whatsapp", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+function signedWebhook(body: unknown, secret: string, signature = true) {
+  const rawBody = JSON.stringify(body);
+  const digest = createHmac("sha256", secret).update(rawBody).digest("hex");
+  return new NextRequest("http://bukay.test/api/webhooks/whatsapp", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-hub-signature-256": signature ? `sha256=${digest}` : "sha256=invalid",
+    },
+    body: rawBody,
+  });
+}
+
+beforeEach(() => {
+  delete process.env.META_WHATSAPP_APP_SECRET;
+  state.resolveTenant.mockReset().mockResolvedValue({ id: "tenant-1", name: "Bukay Salon" });
+  state.sendTemplate.mockReset().mockResolvedValue({ id: "outbound-1" });
+  state.messageFindUnique.mockReset().mockResolvedValue(null);
+  state.messageFindFirst.mockReset().mockResolvedValue(null);
+  state.clientFindUnique.mockReset().mockResolvedValue(null);
+  state.conversationUpsert.mockReset().mockResolvedValue({ id: "conversation-1" });
+  state.messageCreate.mockReset().mockResolvedValue({ id: "message-1" });
+});
+
+describe("POST /api/webhooks/whatsapp", () => {
+  it("rejects an invalid configured webhook signature before persisting messages", async () => {
+    process.env.META_WHATSAPP_APP_SECRET = "webhook-secret";
+
+    const response = await POST(signedWebhook(payload, "webhook-secret", false));
+
+    expect(response.status).toBe(401);
+    expect(state.resolveTenant).not.toHaveBeenCalled();
+    expect(state.messageCreate).not.toHaveBeenCalled();
+  });
+
+  it("accepts a valid configured webhook signature", async () => {
+    process.env.META_WHATSAPP_APP_SECRET = "webhook-secret";
+
+    const response = await POST(signedWebhook(payload, "webhook-secret"));
+
+    expect(response.status).toBe(200);
+    expect(state.messageCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ providerMessageId: "wamid.1", direction: "inbound" }),
+      })
+    );
+  });
+
+  it("persists inbound messages against the business number's tenant", async () => {
+    const response = await POST(webhook(payload));
+
+    expect(response.status).toBe(200);
+    expect(state.conversationUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tenantId_phone: { tenantId: "tenant-1", phone: "+2348012345678" } },
+      })
+    );
+    expect(state.messageCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        tenantId: "tenant-1",
+        conversationId: "conversation-1",
+        providerMessageId: "wamid.1",
+        direction: "inbound",
+        body: "Hello",
+      }),
+    });
+  });
+
+  it("acknowledges unsupported message types without blocking later text messages", async () => {
+    const mixedPayload = structuredClone(payload);
+    mixedPayload.entry[0].changes[0].value.messages.unshift({
+      id: "wamid.image-1",
+      from: "2348012345678",
+      type: "image",
+    } as never);
+
+    const response = await POST(webhook(mixedPayload));
+
+    expect(response.status).toBe(200);
+    expect(state.messageCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({ providerMessageId: "wamid.1", direction: "inbound" }),
+    });
+    expect(state.messageCreate).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ providerMessageId: "wamid.image-1" }),
+      })
+    );
+  });
+
+  it("ignores delivery-status changes batched with an inbound message", async () => {
+    const mixedPayload = structuredClone(payload);
+    mixedPayload.entry[0].changes.unshift({
+      field: "statuses",
+      value: { statuses: [{ id: "wamid.outbound-1", status: "delivered" }] },
+    } as never);
+
+    const response = await POST(webhook(mixedPayload));
+
+    expect(response.status).toBe(200);
+    expect(state.messageCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({ providerMessageId: "wamid.1", direction: "inbound" }),
+    });
+  });
+
+  it("greets an unknown sender and acknowledges the webhook", async () => {
+    const response = await POST(webhook(payload));
+
+    expect(response.status).toBe(200);
+    expect(state.sendTemplate).toHaveBeenCalledWith({
+      to: "+2348012345678",
+      template: "welcome",
+      language: "en_US",
+      parameters: ["Bukay Salon"],
+    });
+    expect(state.messageCreate).toHaveBeenLastCalledWith({
+      data: {
+        tenantId: "tenant-1",
+        conversationId: "conversation-1",
+        direction: "outbound",
+        body: "Greeting template: welcome",
+        providerMessageId: "outbound-1",
+      },
+    });
+  });
+
+  it("does not greet the same unknown conversation more than once", async () => {
+    state.messageFindFirst.mockResolvedValue({ id: "prior-greeting" });
+    const laterMessage = structuredClone(payload);
+    laterMessage.entry[0].changes[0].value.messages[0].id = "wamid.2";
+
+    const response = await POST(webhook(laterMessage));
+
+    expect(response.status).toBe(200);
+    expect(state.sendTemplate).not.toHaveBeenCalled();
+    expect(state.messageCreate).toHaveBeenCalledTimes(1);
+    expect(state.messageFindFirst).toHaveBeenCalledWith({
+      where: {
+        conversationId: "conversation-1",
+        direction: "outbound",
+        body: "Greeting template: welcome",
+      },
+      select: { id: true },
+    });
+  });
+
+  it("acknowledges a greeting record already persisted by another delivery", async () => {
+    state.messageCreate
+      .mockResolvedValueOnce({ id: "message-1" })
+      .mockRejectedValueOnce(
+        Object.assign(new Error("greeting already recorded"), { code: "P2002" })
+      );
+
+    await expect(POST(webhook(payload))).resolves.toMatchObject({ status: 200 });
+    expect(state.sendTemplate).toHaveBeenCalledTimes(1);
+  });
+
+  it("associates a known client and does not ask them to identify again", async () => {
+    state.clientFindUnique.mockResolvedValue({ id: "client-1" });
+
+    const response = await POST(webhook(payload));
+
+    expect(response.status).toBe(200);
+    expect(state.conversationUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ create: expect.objectContaining({ clientId: "client-1" }) })
+    );
+    expect(state.sendTemplate).not.toHaveBeenCalled();
+  });
+
+  it("does not repeat processing for a retried provider message", async () => {
+    state.messageFindUnique.mockResolvedValue({ id: "message-1" });
+    state.messageFindFirst.mockResolvedValue({ id: "prior-greeting" });
+
+    await expect(POST(webhook(payload))).resolves.toMatchObject({ status: 200 });
+    expect(state.messageCreate).not.toHaveBeenCalled();
+    expect(state.sendTemplate).not.toHaveBeenCalled();
+  });
+
+  it("retries a missing greeting without duplicating a persisted inbound message", async () => {
+    state.messageFindUnique.mockResolvedValue({ id: "message-1" });
+
+    await expect(POST(webhook(payload))).resolves.toMatchObject({ status: 200 });
+
+    expect(state.messageCreate).toHaveBeenCalledTimes(1);
+    expect(state.messageCreate).toHaveBeenCalledWith({
+      data: {
+        tenantId: "tenant-1",
+        conversationId: "conversation-1",
+        direction: "outbound",
+        body: "Greeting template: welcome",
+        providerMessageId: "outbound-1",
+      },
+    });
+    expect(state.sendTemplate).toHaveBeenCalledTimes(1);
+  });
+
+  it("acknowledges a retry that races with another delivery", async () => {
+    state.messageCreate.mockRejectedValueOnce(
+      Object.assign(new Error("already recorded"), { code: "P2002" })
+    );
+
+    await expect(POST(webhook(payload))).resolves.toMatchObject({ status: 200 });
+    expect(state.sendTemplate).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/webhooks/whatsapp", () => {
+  it("returns Meta's verified challenge", async () => {
+    process.env.META_WHATSAPP_VERIFY_TOKEN = "verify-me";
+    const response = await GET(
+      new NextRequest(
+        "http://bukay.test/api/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=verify-me&hub.challenge=123"
+      )
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.text()).resolves.toBe("123");
+  });
+});
+
+describe("hasValidWhatsAppSignature", () => {
+  it("rejects a signature with the wrong length", () => {
+    expect(hasValidWhatsAppSignature("body", "sha256=short", "secret")).toBe(false);
+  });
+});
