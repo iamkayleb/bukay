@@ -5,10 +5,10 @@ branch: codex/issue-486
 tasks:
   - id: task-01
     title: 'Add `app/lib/agent/runtime.ts`: add the agent runtime with a tool registry'
-    status: doing
+    status: done
     started_at: '2026-10-04T06:56:20Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-10-04T06:56:30Z'
+    commit: 29c45b7de5879ef8919930519067df15ba615b7d
     notes: []
   - id: task-02
     title: 'Add `app/lib/agent/tools/availability.ts`: expose the availability lookup
