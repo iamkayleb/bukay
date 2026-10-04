@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: 'Add `app/lib/agent/runtime.ts`: assert tenant scope before every tool
       call'
-    status: doing
+    status: done
     started_at: '2026-10-04T09:55:09Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-10-04T09:55:22Z'
+    commit: c0637d9f2e26a8b146c4727c318ae33170a9e147
     notes: []
   - id: task-02
     title: 'Add `app/lib/rate-limit.ts`: add per-number rate limiting'
