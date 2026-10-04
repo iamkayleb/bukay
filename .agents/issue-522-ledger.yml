@@ -5,10 +5,10 @@ branch: codex/issue-522
 tasks:
   - id: task-01
     title: 'Add `prisma/schema.prisma`: add an `OtpCode` model keyed by phone'
-    status: doing
+    status: done
     started_at: '2026-10-04T14:27:19Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-10-04T14:27:31Z'
+    commit: fafab5b825a770e48725cb836d8db9336a59696f
     notes: []
   - id: task-02
     title: 'Add `prisma/migrations/`: generate the migration for the new model'
