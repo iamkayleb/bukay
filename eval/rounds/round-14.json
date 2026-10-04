@@ -1,0 +1,63 @@
+{
+  "round": 14,
+  "specs": [
+    {
+      "id": "login-form",
+      "title": "Working sign-in form",
+      "why": "The sign-in page describes the API in prose instead of offering a form, so no merchant can reach the dashboard. The endpoints already work; only the interface is missing.",
+      "scope": "Replace the placeholder sign-in page with a working two-step form: request a code, then submit it. Use the existing endpoints unchanged.",
+      "non_goals": "Do not change the auth API, the OTP store, or the session cookie format. No password login, no social login, no new dependencies.",
+      "tasks": [
+        "Add `app/login/login-form.tsx`: build the client component with a phone step",
+        "Add `app/login/login-form.tsx`: add the code step shown after a phone is accepted",
+        "Add `app/login/page.tsx`: render the client component in place of the current description",
+        "Add `app/login/login-form.tsx`: post the phone to the login endpoint, surfacing the server error text",
+        "Add `app/login/login-form.tsx`: post the code to the verify endpoint, redirecting on success",
+        "Add `__tests__/app/login/login-form.test.tsx`: cover the success path",
+        "Add `__tests__/app/login/login-form.test.tsx`: cover one rejected code"
+      ],
+      "acceptance": [
+        "The page renders a phone input and a submit control, verified by `pnpm test`",
+        "Submitting a valid phone advances the form to the code step, verified by `pnpm test`",
+        "A rejected code leaves the user on the code step and shows a message, verified by `pnpm test`",
+        "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`__tests__/app/login/**`",
+        "`app/login/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
+      ]
+    },
+    {
+      "id": "merchant-shell",
+      "title": "Services and today list backed by real data",
+      "why": "The dashboard pages are placeholders, so a signed-in merchant sees nothing. Services and today's bookings are the two screens that make the product demonstrable.",
+      "scope": "Make the services page list and create real records, and make the today page list real bookings for the signed-in tenant.",
+      "non_goals": "No new models and no schema change. Editing and deleting services are out of scope; listing and creating are enough. Do not touch the public booking flow.",
+      "tasks": [
+        "Add `app/(app)/services/services-list.tsx`: render the tenant's services from the database",
+        "Add `app/(app)/services/service-form.tsx`: build the create form posting to the services endpoint",
+        "Add `app/(app)/services/page.tsx`: render the list above the form",
+        "Add `app/(app)/today/page.tsx`: list today's bookings for the signed-in tenant",
+        "Add `__tests__/app/(app)/services/services-list.test.tsx`: cover a tenant with two services",
+        "Add `__tests__/app/(app)/services/services-list.test.tsx`: cover a tenant with none"
+      ],
+      "acceptance": [
+        "The services page lists every service belonging to the signed-in tenant, verified by `pnpm test`",
+        "Submitting the create form adds a service and it appears in the list, verified by `pnpm test`",
+        "A service belonging to another tenant never appears, verified by `pnpm test`",
+        "`pnpm test` passes"
+      ],
+      "scope_paths": [
+        "`__tests__/app/(app)/services/**`",
+        "`app/(app)/services/**`",
+        "`app/(app)/today/**`",
+        "`__tests__/**` and `tests/**` for the tests that prove the criteria",
+        "`docs/**` for documentation the change makes stale",
+        "`.agents/**`, `package.json`, `package-lock.json` and `pnpm-lock.yaml` as toolchain output"
+      ]
+    }
+  ]
+}
