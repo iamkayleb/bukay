@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Prisma } from "@prisma/client";
 
 type TenantRow = { id: string; name: string; slug: string };
 type UserRow = { id: string; tenantId: string; phone: string };
@@ -72,6 +73,26 @@ describe("findOrCreateAccount", () => {
     expect(second).toEqual(first);
     expect(state.tenants).toHaveLength(1);
     expect(state.users).toHaveLength(1);
+    expect(state.tenantCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it("reuses the account created by a concurrent verification", async () => {
+    state.tenantCreate.mockImplementationOnce(async () => {
+      state.users.push({
+        id: "user-created-concurrently",
+        tenantId: "tenant-created-concurrently",
+        phone: "+2348031234567",
+      });
+      throw new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+        code: "P2002",
+        clientVersion: "test",
+      });
+    });
+
+    await expect(findOrCreateAccount("+2348031234567")).resolves.toEqual({
+      userId: "user-created-concurrently",
+      tenantId: "tenant-created-concurrently",
+    });
     expect(state.tenantCreate).toHaveBeenCalledTimes(1);
   });
 });
