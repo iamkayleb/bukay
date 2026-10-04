@@ -8,7 +8,14 @@ import { GET as me } from "@/app/api/auth/me/route";
 
 import { MemorySmsProvider } from "@/app/lib/sms/memory";
 import { __resetSmsProviderForTests, setSmsProviderForTests } from "@/app/lib/auth/sms";
-import { __resetOtpStoreForTests, getOtpStore } from "@/app/lib/auth/otp";
+import {
+  __resetOtpStoreForTests,
+  getOtpStore,
+  type OtpCodeDelegate,
+  type OtpRecord,
+  OtpStore,
+  setOtpStoreForTests,
+} from "@/app/lib/auth/otp";
 import { SESSION_COOKIE_NAME } from "@/app/lib/auth/session";
 
 function jsonRequest(url: string, body: unknown, init?: { cookie?: string }): NextRequest {
@@ -36,9 +43,43 @@ const PHONE_E164 = "+2348031234567";
 
 let sms: MemorySmsProvider;
 
+class MemoryOtpCodes implements OtpCodeDelegate {
+  readonly rows = new Map<string, OtpRecord>();
+
+  async upsert(args: unknown): Promise<void> {
+    const { where, create, update } = args as {
+      where: { phone: string };
+      create: OtpRecord & { phone: string };
+      update: Partial<OtpRecord>;
+    };
+    const existing = this.rows.get(where.phone);
+    this.rows.set(where.phone, existing ? { ...existing, ...update } : create);
+  }
+
+  async findUnique(args: unknown): Promise<OtpRecord | null> {
+    const record = this.rows.get((args as { where: { phone: string } }).where.phone);
+    return record ? { ...record } : null;
+  }
+
+  async update(args: unknown): Promise<void> {
+    const { where, data } = args as {
+      where: { phone: string };
+      data: { attempts: { increment: number } };
+    };
+    const record = this.rows.get(where.phone);
+    if (!record) throw new Error("record not found");
+    this.rows.set(where.phone, { ...record, attempts: record.attempts + data.attempts.increment });
+  }
+
+  async delete(args: unknown): Promise<void> {
+    this.rows.delete((args as { where: { phone: string } }).where.phone);
+  }
+}
+
 beforeEach(() => {
   process.env.SESSION_SECRET = "test-secret-must-be-long-enough";
   __resetOtpStoreForTests();
+  setOtpStoreForTests(new OtpStore(undefined, new MemoryOtpCodes()));
   __resetSmsProviderForTests();
   sms = new MemorySmsProvider();
   setSmsProviderForTests(sms);

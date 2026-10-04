@@ -254,3 +254,15 @@ model Message {
   @@index([tenantId])
   @@index([conversationId, createdAt])
 }
+
+/// A one-time authentication code, keyed by the normalized recipient phone number.
+model OtpCode {
+  phone      String   @id
+  hash       String
+  expiresAt  DateTime
+  attempts   Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([expiresAt])
+}
