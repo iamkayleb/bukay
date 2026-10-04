@@ -26,6 +26,8 @@ The tenant-owned models are:
 | `LedgerEntry` | Append-only money movement (gross / fees / net) | `@@index([tenantId])`, `@@index([paymentId])`, `@@index([reference])`, `@@index([tenantId, createdAt])` |
 | `AuditLog` | Append-only tenant activity record | `@@index([tenantId])`, `@@index([tenantId, entityType, entityId])` |
 | `DeadLetter` | Unknown or unhandled webhook (and similar) events | `@@index([source])`, `@@index([eventType])`, `@@index([createdAt])`, `@@index([tenantId])` |
+| `Conversation` | WhatsApp thread for one customer phone on a tenant | `@@unique([tenantId, customerPhone])`, `@@index([tenantId])`, `@@index([clientId])` |
+| `Message` | Inbound or outbound WhatsApp message on a conversation | `@@index([tenantId])`, `@@index([conversationId])`, unique `externalId` |
 | `IdempotencyKey` | Durable webhook/request dedupe keys (7-day TTL) | `@@unique([key])`, `@@index([expiresAt])` |
 
 `Tenant` itself is not tenant-scoped and must not carry a `tenantId` column. Deleting a tenant
@@ -46,7 +48,8 @@ with that access pattern while also accelerating calendar-style reads.
 
 `Tenant` stores the business name, globally unique slug, timezone, currency,
 optional `paymentProvider` selection (`paystack` by default; also `flutterwave` or
-`fake`), and relations to all tenant-owned records. The defaults are `Africa/Lagos`
+`fake`), an optional digits-only `whatsappNumber` used to route inbound WhatsApp
+webhooks, and relations to all tenant-owned records. The defaults are `Africa/Lagos`
 for timezone and `NGN` for currency.
 
 ### User
@@ -124,6 +127,20 @@ The admin view at `app/(app)/admin/dlq` lists recent rows for operators.
 `IdempotencyKey` stores durable webhook/request deduplication keys with a 7-day `expiresAt` TTL
 so replay protection survives process restarts and works across multiple instances.
 
+### Conversation
+
+`Conversation` is one WhatsApp thread between a tenant business number and a customer phone.
+`customerPhone` is stored in E.164 for Nigerian mobiles. `clientId` is set when that phone
+matches an existing `Client` for the tenant, and stays null for unknown senders. A tenant and
+phone pair is unique so later messages resume the same thread.
+
+### Message
+
+`Message` stores one inbound or outbound WhatsApp payload on a conversation. `direction` is
+`inbound` or `outbound`. `kind` is `text`, `template`, or another provider type. `externalId`
+is the provider message id and is unique so webhook retries do not insert a second row.
+Every row carries `tenantId` for the business that received or sent the message.
+
 ## Running Migrations
 
 The schema uses SQLite with `url = "file:./dev.db"`, so local migrations create
@@ -157,6 +174,7 @@ checked-in migration:
 | `20260915130000_slot_hold` | Adds the `SlotHold` table for durable public-booking holds with expiry indexes. |
 | `20260916120000_dead_letter` | Adds the `DeadLetter` table for unknown or unhandled inbound events. |
 | `20260921194500_idempotency_key` | Adds the `IdempotencyKey` table for durable webhook/request deduplication. |
+| `20261004120000_whatsapp_conversation` | Adds `Tenant.whatsappNumber` plus `Conversation` and `Message` for inbound WhatsApp history. |
 
 [`prisma/migrations/migration_lock.toml`](../prisma/migrations/migration_lock.toml) records the
 database provider as `sqlite`. Do not edit generated migration files by hand after they have been
