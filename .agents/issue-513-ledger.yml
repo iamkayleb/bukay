@@ -1,0 +1,83 @@
+version: 1
+issue: 513
+base: eval/cursor
+branch: cursor/issue-513
+tasks:
+  - id: task-01
+    title: 'Add `app/(app)/services/services-list.tsx`: render the tenant''s services
+      from the database'
+    status: doing
+    started_at: '2026-10-04T12:17:15Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Add `app/(app)/services/service-form.tsx`: build the create form posting
+      to the services endpoint'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Add `app/(app)/services/page.tsx`: render the list above the form'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Add `app/(app)/today/page.tsx`: list today''s bookings for the signed-in
+      tenant'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Add `__tests__/app/(app)/services/services-list.test.tsx`: cover a tenant
+      with two services'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Add `__tests__/app/(app)/services/services-list.test.tsx`: cover a tenant
+      with none'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: The services page lists every service belonging to the signed-in tenant,
+      verified by `pnpm test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Submitting the create form adds a service and it appears in the list, verified
+      by `pnpm test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: A service belonging to another tenant never appears, verified by `pnpm
+      test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
