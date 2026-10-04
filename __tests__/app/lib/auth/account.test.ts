@@ -7,14 +7,13 @@ const state = vi.hoisted(() => ({
   tenants: [] as TenantRow[],
   users: [] as UserRow[],
   tenantCreate: vi.fn(),
-  userCreate: vi.fn(),
   userFindUnique: vi.fn(),
 }));
 
-vi.mock("@/app/db/prisma", () => ({
-  prisma: {
+vi.mock("@/app/lib/auth/account-db", () => ({
+  accountPrisma: {
     tenant: { create: state.tenantCreate },
-    user: { create: state.userCreate, findUnique: state.userFindUnique },
+    user: { findUnique: state.userFindUnique },
   },
 }));
 
@@ -24,23 +23,29 @@ beforeEach(() => {
   state.tenants = [];
   state.users = [];
   state.tenantCreate.mockReset();
-  state.userCreate.mockReset();
   state.userFindUnique.mockReset();
 
   state.userFindUnique.mockImplementation(
     async ({ where }: { where: { phone: string } }) =>
       state.users.find((user) => user.phone === where.phone) ?? null
   );
-  state.tenantCreate.mockImplementation(async ({ data }: { data: Omit<TenantRow, "id"> }) => {
-    const tenant = { id: `tenant-${state.tenants.length + 1}`, ...data };
-    state.tenants.push(tenant);
-    return tenant;
-  });
-  state.userCreate.mockImplementation(async ({ data }: { data: Omit<UserRow, "id"> }) => {
-    const user = { id: `user-${state.users.length + 1}`, ...data };
-    state.users.push(user);
-    return user;
-  });
+  state.tenantCreate.mockImplementation(
+    async ({
+      data,
+    }: {
+      data: Omit<TenantRow, "id"> & { users: { create: Omit<UserRow, "id" | "tenantId"> } };
+    }) => {
+      const tenant = { id: `tenant-${state.tenants.length + 1}`, ...data };
+      state.tenants.push(tenant);
+      const user = {
+        id: `user-${state.users.length + 1}`,
+        tenantId: tenant.id,
+        ...data.users.create,
+      };
+      state.users.push(user);
+      return { ...tenant, users: [{ id: user.id }] };
+    }
+  );
 });
 
 describe("findOrCreateAccount", () => {
@@ -68,6 +73,5 @@ describe("findOrCreateAccount", () => {
     expect(state.tenants).toHaveLength(1);
     expect(state.users).toHaveLength(1);
     expect(state.tenantCreate).toHaveBeenCalledTimes(1);
-    expect(state.userCreate).toHaveBeenCalledTimes(1);
   });
 });
