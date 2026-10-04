@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { GET, POST } from "@/app/api/webhooks/whatsapp/route";
+import { SenderRateLimiter } from "@/app/lib/rate-limit";
 import { FakeWhatsAppProvider } from "@/app/lib/whatsapp/fake";
 import {
   __setWhatsAppInboundDepsForTests,
@@ -261,6 +262,56 @@ describe("WhatsApp inbound webhook", () => {
     expect(inbound.every((message) => message.conversationId === store.conversations[0]?.id)).toBe(
       true
     );
+  });
+
+  it("returns HTTP 429 when a sender floods the webhook", async () => {
+    const provider = new FakeWhatsAppProvider();
+    const { db, store } = createDb({
+      tenants: [{ id: "tenant-ada", name: "Ada Salon", whatsappNumber: "2348099990001" }],
+    });
+    const limiter = new SenderRateLimiter(2, 60_000, { now: () => 1_700_000_000_000 });
+    __setWhatsAppInboundDepsForTests({
+      db,
+      provider,
+      appSecret: SECRET,
+      rateLimiter: limiter,
+    });
+
+    const send = (id: string) =>
+      POST(
+        signedPost(
+          payload({
+            displayPhone: "2348099990001",
+            from: "08031234567",
+            id,
+            text: "book me",
+          })
+        )
+      );
+
+    expect((await send("wamid.flood.1")).status).toBe(200);
+    expect((await send("wamid.flood.2")).status).toBe(200);
+
+    const flooded = await send("wamid.flood.3");
+    expect(flooded.status).toBe(429);
+    expect(flooded.headers.get("Retry-After")).toBeTruthy();
+    await expect(flooded.json()).resolves.toMatchObject({
+      ok: false,
+      error: "rate_limited",
+    });
+    expect(store.messages.filter((message) => message.direction === "inbound")).toHaveLength(2);
+
+    const other = await POST(
+      signedPost(
+        payload({
+          displayPhone: "2348099990001",
+          from: "08039998888",
+          id: "wamid.flood.other",
+          text: "hello",
+        })
+      )
+    );
+    expect(other.status).toBe(200);
   });
 
   it("rejects a missing signature", async () => {

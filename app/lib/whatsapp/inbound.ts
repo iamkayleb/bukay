@@ -3,6 +3,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
+import { getSenderRateLimiter, type SenderRateLimiter } from "@/app/lib/rate-limit";
+
 import { FakeWhatsAppProvider } from "./fake";
 import { metaWhatsAppFromEnv } from "./meta";
 import type { WhatsAppProvider } from "./provider";
@@ -69,6 +71,7 @@ export type WhatsAppInboundDeps = {
   provider?: WhatsAppProvider;
   appSecret?: string;
   verifyToken?: string;
+  rateLimiter?: SenderRateLimiter;
 };
 
 type InboundText = {
@@ -296,7 +299,26 @@ export async function handleWhatsAppInbound(
         );
         if (!tenant) continue;
 
+        const limiter = resolved.rateLimiter ?? getSenderRateLimiter();
         for (const message of change.value?.messages ?? []) {
+          const from = message.from?.trim() ?? "";
+          if (from) {
+            const decision = limiter.consume(from);
+            if (!decision.allowed) {
+              return NextResponse.json(
+                {
+                  ok: false,
+                  error: decision.error,
+                  retryAfterSeconds: decision.retryAfterSeconds,
+                },
+                {
+                  status: decision.status,
+                  headers: { "Retry-After": String(decision.retryAfterSeconds) },
+                }
+              );
+            }
+          }
+
           const saved = await recordInbound(resolved.db, resolved.provider, tenant, message);
           if (saved) persisted += 1;
         }
