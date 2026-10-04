@@ -86,6 +86,14 @@ describe("findOrCreateAccount", () => {
     expect(state.tenantCreate).toHaveBeenCalledTimes(1);
   });
 
+  it("assigns distinct generated slugs to different first-time accounts", async () => {
+    await findOrCreateAccount("+2348031234567");
+    await findOrCreateAccount("+2348031234568");
+
+    expect(state.tenants).toHaveLength(2);
+    expect(new Set(state.tenants.map((tenant) => tenant.slug)).size).toBe(2);
+  });
+
   it("reuses the account created by a concurrent verification", async () => {
     state.tenantCreate.mockImplementationOnce(async () => {
       state.users.push({
