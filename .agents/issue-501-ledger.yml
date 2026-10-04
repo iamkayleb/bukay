@@ -7,48 +7,59 @@ tasks:
     title: 'Add `app/api/qr/[slug]/route.ts`: implement'
     status: done
     started_at: '2026-10-04T09:54:27Z'
-    finished_at: '2026-10-04T09:54:37Z'
-    commit: 7d60768cfe8f269a64cc42a755047908e6ebf420
-    notes: []
+    finished_at: '2026-10-04T10:01:14Z'
+    commit: ea4a2adc4c9c19a2cb8931bf9d1865b534ef32a7
+    notes:
+      - 'GET /api/qr/[slug] loads the tenant and returns the branded PDF.'
+      - 'Verified by __tests__/app/api/qr/route.test.ts.'
   - id: task-02
     title: 'Add `app/lib/qr-pdf.ts`: build the branded PDF'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-10-04T09:56:00Z'
+    finished_at: '2026-10-04T10:01:14Z'
+    commit: ea4a2adc4c9c19a2cb8931bf9d1865b534ef32a7
+    notes:
+      - 'buildBrandedQrPdf draws the tenant name and a QR whose payload pathname is /{slug}.'
+      - 'Verified by __tests__/app/lib/qr-pdf.test.ts.'
   - id: task-03
     title: 'Add `app/(app)/settings/page.tsx`: add the download control'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-10-04T09:56:00Z'
+    finished_at: '2026-10-04T10:01:14Z'
+    commit: ea4a2adc4c9c19a2cb8931bf9d1865b534ef32a7
+    notes:
+      - 'Settings renders Download booking QR linking to /api/qr/{slug}.'
+      - 'Verified by __tests__/app/(app)/settings/page.test.tsx.'
   - id: task-04
     title: The generated code resolves to `/{slug}`, verified by `pnpm test`
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-10-04T09:56:00Z'
+    finished_at: '2026-10-04T10:01:14Z'
+    commit: ea4a2adc4c9c19a2cb8931bf9d1865b534ef32a7
+    notes:
+      - 'bookingPathForSlug and the PDF subject pathname are /{slug}; the QR PNG matches a code generated for that URL.'
   - id: task-05
     title: '`app/api/qr/[slug]/route.ts` returns HTTP 200 with a PDF body'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-10-04T09:56:00Z'
+    finished_at: '2026-10-04T10:01:14Z'
+    commit: ea4a2adc4c9c19a2cb8931bf9d1865b534ef32a7
+    notes:
+      - 'The route test expects status 200, content-type application/pdf, and a %PDF body.'
   - id: task-06
     title: The owner receives the file over WhatsApp after setup
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-10-04T09:56:00Z'
+    finished_at: '2026-10-04T10:01:14Z'
+    commit: ea4a2adc4c9c19a2cb8931bf9d1865b534ef32a7
+    notes:
+      - 'deliverQrPdfAfterSetup sends the PDF document to Tenant.whatsappNumber.'
+      - 'Verified by __tests__/app/lib/qr-setup.test.ts using FakeWhatsAppProvider.'
   - id: task-07
     title: '`pnpm test` passes'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-10-04T09:56:00Z'
+    finished_at: '2026-10-04T10:01:14Z'
+    commit: ea4a2adc4c9c19a2cb8931bf9d1865b534ef32a7
+    notes:
+      - 'pnpm test passed: 62 files, 390 tests, coverage thresholds held.'
