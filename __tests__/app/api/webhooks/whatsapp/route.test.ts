@@ -1,3 +1,5 @@
+import { createHmac } from "node:crypto";
+
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -59,6 +61,19 @@ function webhook(body: unknown) {
   });
 }
 
+function signedWebhook(body: unknown, secret: string, signature = true) {
+  const rawBody = JSON.stringify(body);
+  const digest = createHmac("sha256", secret).update(rawBody).digest("hex");
+  return new NextRequest("http://bukay.test/api/webhooks/whatsapp", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-hub-signature-256": signature ? `sha256=${digest}` : "sha256=invalid",
+    },
+    body: rawBody,
+  });
+}
+
 beforeEach(() => {
   delete process.env.META_WHATSAPP_APP_SECRET;
   state.resolveTenant.mockReset().mockResolvedValue({ id: "tenant-1", name: "Bukay Salon" });
@@ -71,6 +86,29 @@ beforeEach(() => {
 });
 
 describe("POST /api/webhooks/whatsapp", () => {
+  it("rejects an invalid configured webhook signature before persisting messages", async () => {
+    process.env.META_WHATSAPP_APP_SECRET = "webhook-secret";
+
+    const response = await POST(signedWebhook(payload, "webhook-secret", false));
+
+    expect(response.status).toBe(401);
+    expect(state.resolveTenant).not.toHaveBeenCalled();
+    expect(state.messageCreate).not.toHaveBeenCalled();
+  });
+
+  it("accepts a valid configured webhook signature", async () => {
+    process.env.META_WHATSAPP_APP_SECRET = "webhook-secret";
+
+    const response = await POST(signedWebhook(payload, "webhook-secret"));
+
+    expect(response.status).toBe(200);
+    expect(state.messageCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ providerMessageId: "wamid.1", direction: "inbound" }),
+      })
+    );
+  });
+
   it("persists inbound messages against the business number's tenant", async () => {
     const response = await POST(webhook(payload));
 
