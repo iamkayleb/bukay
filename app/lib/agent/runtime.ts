@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { runWithTenant } from "@/app/lib/tenant-context";
+import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 
 /** Identity and request state shared by every tool invocation in a conversation. */
 export interface AgentRuntimeContext {
@@ -37,6 +38,30 @@ export class AgentToolInputError extends Error {
   }
 
   readonly issues: z.ZodIssue[];
+}
+
+/** Raised when a tool invocation is not bound to one concrete tenant. */
+export class AgentTenantScopeError extends Error {
+  constructor() {
+    super("Agent tool calls require a non-empty tenantId.");
+    this.name = "AgentTenantScopeError";
+  }
+}
+
+/**
+ * Validate and normalize the trusted conversation scope before a tool runs.
+ *
+ * Tenant identity comes from the conversation context, never from model input.
+ * Keeping this check at the runtime boundary makes it apply to every registered
+ * tool, including tools added after the runtime itself.
+ */
+export function assertAgentTenantScope(context: AgentRuntimeContext): AgentRuntimeContext {
+  const tenantId = context.tenantId?.trim();
+  if (!tenantId) {
+    throw new AgentTenantScopeError();
+  }
+
+  return { ...context, tenantId };
 }
 
 type AnyAgentTool = AgentTool<unknown, unknown>;
@@ -85,13 +110,17 @@ export class AgentRuntime {
     const tool = this.tools.get(name);
     if (!tool) throw new AgentToolNotFoundError(name);
 
+    const scopedContext = assertAgentTenantScope(context);
+
     const parsed = tool.inputSchema.safeParse(input);
     if (!parsed.success) {
       throw new AgentToolInputError(name, parsed.error.issues);
     }
 
-    return runWithTenant({ tenantId: context.tenantId }, () =>
-      tool.execute(parsed.data, context)
+    return runWithTenant({ tenantId: scopedContext.tenantId }, () =>
+      runWithTenantContext({ tenantId: scopedContext.tenantId }, () =>
+        tool.execute(parsed.data, scopedContext)
+      )
     ) as Promise<Output>;
   }
 }
