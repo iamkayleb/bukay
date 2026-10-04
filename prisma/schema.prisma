@@ -20,6 +20,9 @@ model Tenant {
   active        Boolean        @default(true)
   // Per-tenant toggle for T-24h / T-2h booking reminders.
   remindersEnabled Boolean     @default(true)
+  // The tenant's WhatsApp business number in E.164 ("+234..."). Inbound
+  // webhook messages are routed to the tenant by this number.
+  whatsappNumber String?       @unique
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   users         User[]
@@ -31,6 +34,8 @@ model Tenant {
   payments      Payment[]
   ledgerEntries LedgerEntry[]
   auditLogs     AuditLog[]
+  conversations Conversation[]
+  messages      Message[]
 }
 
 model User {
@@ -110,6 +115,7 @@ model Client {
   phone     String
   notes     String?
   bookings  Booking[]
+  conversations Conversation[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -224,4 +230,46 @@ model AuditLog {
 
   @@index([tenantId])
   @@index([tenantId, entityType, entityId])
+}
+
+// One thread per (tenant, WhatsApp sender). `clientId` is set once the sender
+// is matched to a Client, so later messages resume without re-identification.
+model Conversation {
+  id            String    @id @default(cuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId      String?
+  client        Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  // Sender in E.164 format.
+  phone         String
+  // Set when the greeting template has been sent to an unidentified sender.
+  greetedAt     DateTime?
+  lastMessageAt DateTime  @default(now())
+  messages      Message[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([tenantId, phone])
+  @@index([tenantId])
+  @@index([clientId])
+}
+
+model Message {
+  id                String       @id @default(cuid())
+  tenantId          String
+  tenant            Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversationId    String
+  conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  // "inbound" | "outbound"
+  direction         String
+  // Provider message type ("text", "image", "template", ...).
+  type              String       @default("text")
+  body              String?
+  // Provider-assigned id (Meta "wamid..."); dedups webhook redeliveries.
+  providerMessageId String?
+  createdAt         DateTime     @default(now())
+
+  @@unique([tenantId, providerMessageId])
+  @@index([tenantId])
+  @@index([conversationId, createdAt])
 }
