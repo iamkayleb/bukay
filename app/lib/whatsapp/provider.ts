@@ -24,7 +24,23 @@ export type WhatsAppTemplateContent = {
   bodyParameters?: string[];
 };
 
-export type WhatsAppContent = WhatsAppTextContent | WhatsAppTemplateContent;
+/**
+ * Document send payload. Meta fetches `link`; tests and the fake adapter also
+ * accept `dataBase64` so the file itself is recorded without a media upload.
+ */
+export type WhatsAppDocumentContent = {
+  kind: "document";
+  filename: string;
+  mimeType?: string;
+  caption?: string;
+  /** Public URL the Meta Cloud API can fetch. */
+  link?: string;
+  /** Base64-encoded file bytes (the PDF the owner should receive). */
+  dataBase64?: string;
+};
+
+export type WhatsAppContent =
+  WhatsAppTextContent | WhatsAppTemplateContent | WhatsAppDocumentContent;
 
 export type WhatsAppSendInput = {
   /** Recipient phone in E.164 (with or without leading `+`). */
@@ -87,6 +103,17 @@ export function assertWhatsAppSendInput(provider: string, input: WhatsAppSendInp
     }
     if (!input.content.language || !input.content.language.trim()) {
       throw new WhatsAppProviderError(provider, "WhatsApp template language is required");
+    }
+    return;
+  }
+  if (input.content.kind === "document") {
+    if (!input.content.filename || !input.content.filename.trim()) {
+      throw new WhatsAppProviderError(provider, "WhatsApp document filename is required");
+    }
+    const hasLink = Boolean(input.content.link?.trim());
+    const hasData = Boolean(input.content.dataBase64?.trim());
+    if (!hasLink && !hasData) {
+      throw new WhatsAppProviderError(provider, "WhatsApp document file is required");
     }
     return;
   }

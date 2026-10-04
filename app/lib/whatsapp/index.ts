@@ -1,5 +1,6 @@
 export type {
   WhatsAppContent,
+  WhatsAppDocumentContent,
   WhatsAppProvider,
   WhatsAppSendInput,
   WhatsAppSendResult,
