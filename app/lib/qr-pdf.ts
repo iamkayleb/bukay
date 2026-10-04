@@ -1,3 +1,5 @@
+import QRCode from "qrcode";
+
 export type QrPdfOptions = {
   businessName: string;
   bookingUrl: string;
@@ -5,6 +7,31 @@ export type QrPdfOptions = {
 
 function escapePdfText(value: string): string {
   return value.replace(/([\\()])/g, "\\$1").replace(/[\r\n]+/g, " ");
+}
+
+function qrDrawingCommands(bookingUrl: string): string[] {
+  const qr = QRCode.create(bookingUrl, { errorCorrectionLevel: "M" });
+  const size = 180;
+  const moduleSize = size / qr.modules.size;
+  const originX = 216;
+  const originY = 430;
+  const commands = ["q", "1 1 1 rg", `${originX} ${originY} ${size} ${size} re f`, "0 0 0 rg"];
+
+  for (let row = 0; row < qr.modules.size; row += 1) {
+    for (let column = 0; column < qr.modules.size; column += 1) {
+      if (qr.modules.get(row, column)) {
+        commands.push(
+          `${(originX + column * moduleSize).toFixed(2)} ${(
+            originY +
+            (qr.modules.size - row - 1) * moduleSize
+          ).toFixed(2)} ${moduleSize.toFixed(2)} ${moduleSize.toFixed(2)} re f`
+        );
+      }
+    }
+  }
+
+  commands.push("Q");
+  return commands;
 }
 
 /**
@@ -22,11 +49,12 @@ export function buildQrPdf({ businessName, bookingUrl }: QrPdfOptions): Uint8Arr
     `(${title}) Tj`,
     "0 -32 Td",
     "/F1 13 Tf",
-    "(Scan the QR code or visit:) Tj",
+    "(Scan the QR code below or visit:) Tj",
     "0 -22 Td",
     "/F1 11 Tf",
     `(${url}) Tj`,
     "ET",
+    ...qrDrawingCommands(bookingUrl),
   ].join("\n");
 
   const objects = [

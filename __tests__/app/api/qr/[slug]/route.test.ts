@@ -25,9 +25,9 @@ describe("GET /api/qr/[slug]", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("application/pdf");
     expect(response.headers.get("content-disposition")).toContain("demo-booking-qr.pdf");
-    expect(new TextDecoder().decode(await response.arrayBuffer())).toContain(
-      "https://bukay.test/demo"
-    );
+    const pdf = new TextDecoder().decode(await response.arrayBuffer());
+    expect(pdf).toContain("https://bukay.test/demo");
+    expect((pdf.match(/ re f/g) ?? []).length).toBeGreaterThan(100);
   });
 
   it("uses the public slug route as the booking URL", () => {
