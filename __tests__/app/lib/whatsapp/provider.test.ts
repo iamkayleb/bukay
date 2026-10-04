@@ -58,6 +58,24 @@ describe("WhatsAppProvider port", () => {
         content: { kind: "template", name: "greeting", language: "" },
       })
     ).toThrow(/template language is required/);
+    expect(() =>
+      assertWhatsAppSendInput("contract", {
+        to: "+2348012345678",
+        content: { kind: "document", filename: "", dataBase64: "YQ==" },
+      })
+    ).toThrow(/document filename is required/);
+    expect(() =>
+      assertWhatsAppSendInput("contract", {
+        to: "+2348012345678",
+        content: { kind: "document", filename: "qr.pdf" },
+      })
+    ).toThrow(/document file is required/);
+    expect(() =>
+      assertWhatsAppSendInput("contract", {
+        to: "+2348012345678",
+        content: { kind: "document", filename: "qr.pdf", dataBase64: "JVBERg==" },
+      })
+    ).not.toThrow();
   });
 
   it("accepts a structural WhatsAppProvider implementation", async () => {

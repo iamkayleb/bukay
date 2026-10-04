@@ -6,21 +6,23 @@ type SettingsPageProps = {
 };
 
 /**
- * Tenant settings. The reminders toggle is the first live control; remaining
- * preferences stay documented as upcoming.
+ * Tenant settings. Live controls are reminder delivery and the booking QR
+ * download; remaining preferences stay documented as upcoming.
  */
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const tenantId = searchParams?.tenantId?.trim() || "";
   let initialEnabled = true;
+  let bookingSlug = "";
 
   if (tenantId) {
     try {
       const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
-        select: { remindersEnabled: true },
+        select: { remindersEnabled: true, slug: true },
       });
       if (tenant) {
         initialEnabled = tenant.remindersEnabled;
+        bookingSlug = tenant.slug.trim().toLowerCase();
       }
     } catch {
       // Schema may not be migrated in some test environments; keep default on.
@@ -41,6 +43,34 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       </div>
 
       <ReminderToggle initialEnabled={initialEnabled} tenantId={tenantId || "default-tenant"} />
+
+      <div className="space-y-3 rounded-lg border border-slate-800 bg-slate-900/40 px-5 py-6">
+        <div className="space-y-1">
+          <h3 className="text-base font-medium text-white">Booking QR</h3>
+          <p className="text-sm text-slate-400">
+            {bookingSlug
+              ? `Download a branded PDF for the shop. The code opens /${bookingSlug}.`
+              : "Download a branded PDF once this tenant has a public slug."}
+          </p>
+        </div>
+        {bookingSlug ? (
+          <a
+            className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+            download={`${bookingSlug}-booking-qr.pdf`}
+            href={`/api/qr/${encodeURIComponent(bookingSlug)}`}
+          >
+            Download booking QR
+          </a>
+        ) : (
+          <button
+            className="inline-flex cursor-not-allowed items-center justify-center rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-500"
+            disabled
+            type="button"
+          >
+            Download booking QR
+          </button>
+        )}
+      </div>
 
       <div className="rounded-lg border border-dashed border-slate-800 bg-slate-900/40 px-5 py-8 text-center">
         <p className="text-sm text-slate-400">

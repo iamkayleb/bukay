@@ -148,6 +148,36 @@ describe("MetaWhatsAppProvider", () => {
     ).rejects.toThrow(/message id/);
   });
 
+  it("POSTs document messages with a link and filename", async () => {
+    const fetchImpl = vi.fn(async (_url: string, _init?: RequestInit) =>
+      jsonResponse({ messages: [{ id: "wamid.doc_1" }] })
+    );
+    const provider = new MetaWhatsAppProvider({
+      accessToken: "EAA_sandbox_token_value",
+      phoneNumberId: "99",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    await provider.send({
+      to: "+2348012345678",
+      content: {
+        kind: "document",
+        filename: "ada-salon-booking-qr.pdf",
+        link: "https://bukay.test/api/qr/ada-salon",
+        caption: "Scanning it opens /ada-salon.",
+        mimeType: "application/pdf",
+      },
+    });
+    const body = JSON.parse(fetchImpl.mock.calls[0][1]?.body as string);
+    expect(body).toMatchObject({
+      type: "document",
+      document: {
+        link: "https://bukay.test/api/qr/ada-salon",
+        filename: "ada-salon-booking-qr.pdf",
+        caption: "Scanning it opens /ada-salon.",
+      },
+    });
+  });
+
   it("omits template components when bodyParameters are absent", async () => {
     const fetchImpl = vi.fn(async (_url: string, _init?: RequestInit) =>
       jsonResponse({ messages: [{ id: "wamid.no_params" }] })

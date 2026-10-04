@@ -80,6 +80,22 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
         text: { preview_url: false, body: input.content.body },
       };
     }
+    if (input.content.kind === "document") {
+      if (!input.content.link?.trim()) {
+        throw new WhatsAppProviderError(this.name, "WhatsApp document link is required");
+      }
+      return {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to,
+        type: "document",
+        document: {
+          link: input.content.link,
+          filename: input.content.filename,
+          ...(input.content.caption ? { caption: input.content.caption } : {}),
+        },
+      };
+    }
     const components =
       input.content.bodyParameters && input.content.bodyParameters.length > 0
         ? [
