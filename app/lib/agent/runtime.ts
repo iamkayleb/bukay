@@ -55,8 +55,13 @@ export class AgentTenantScopeError extends Error {
  * Keeping this check at the runtime boundary makes it apply to every registered
  * tool, including tools added after the runtime itself.
  */
-export function assertAgentTenantScope(context: AgentRuntimeContext): AgentRuntimeContext {
-  const tenantId = context.tenantId?.trim();
+export function assertAgentTenantScope(
+  context: AgentRuntimeContext | null | undefined
+): AgentRuntimeContext {
+  // Runtime callers may originate at an untyped channel boundary. Do not let a
+  // malformed context turn this security check into a TypeError that callers
+  // could accidentally treat as a retryable tool failure.
+  const tenantId = typeof context?.tenantId === "string" ? context.tenantId.trim() : "";
   if (!tenantId) {
     throw new AgentTenantScopeError();
   }

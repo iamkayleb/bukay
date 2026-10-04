@@ -93,4 +93,25 @@ describe("AgentRuntime", () => {
     ).rejects.toBeInstanceOf(AgentTenantScopeError);
     expect(execute).not.toHaveBeenCalled();
   });
+
+  it("rejects a malformed runtime context before the tool executes", async () => {
+    const execute = vi.fn(async () => "unreachable");
+    const runtime = new AgentRuntime([
+      defineAgentTool({
+        name: "lookup_availability",
+        description: "Find a service's open times.",
+        inputSchema: z.object({}),
+        execute,
+      }),
+    ]);
+
+    await expect(
+      runtime.invoke(
+        "lookup_availability",
+        {},
+        null as unknown as { tenantId: string; sessionId: string }
+      )
+    ).rejects.toBeInstanceOf(AgentTenantScopeError);
+    expect(execute).not.toHaveBeenCalled();
+  });
 });
