@@ -13,6 +13,10 @@ describe("whatsapp barrel exports", () => {
     expect(typeof whatsapp.getWhatsAppTemplate).toBe("function");
     expect(typeof whatsapp.listWhatsAppTemplates).toBe("function");
     expect(typeof whatsapp.findWhatsAppTemplateByName).toBe("function");
+    expect(typeof whatsapp.sendGreetingTemplate).toBe("function");
+    expect(typeof whatsapp.normalizeWhatsAppNumber).toBe("function");
+    expect(typeof whatsapp.canonicalCustomerPhone).toBe("function");
+    expect(typeof whatsapp.resolveTenantByNumber).toBe("function");
     expect(whatsapp.WHATSAPP_TEMPLATES.greeting.name).toBe("greeting");
   });
 });

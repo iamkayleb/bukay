@@ -30,6 +30,8 @@ EXPECTED_TENANT_SCOPED_MODELS = {
     "LedgerEntry",
     "AuditLog",
     "DeadLetter",
+    "Conversation",
+    "Message",
 }
 
 # Models the scope requires to exist at all.
@@ -42,7 +44,11 @@ EXPECTED_RELATIONS: dict[str, tuple[tuple[str, str], ...]] = {
     "Service": (("tenant", "Tenant"), ("bookings", "Booking[]"), ("slotHolds", "SlotHold[]")),
     "Staff": (("tenant", "Tenant"), ("bookings", "Booking[]")),
     "BusinessHour": (("tenant", "Tenant"),),
-    "Client": (("tenant", "Tenant"), ("bookings", "Booking[]")),
+    "Client": (
+        ("tenant", "Tenant"),
+        ("bookings", "Booking[]"),
+        ("conversations", "Conversation[]"),
+    ),
     "Booking": (
         ("tenant", "Tenant"),
         ("client", "Client"),
@@ -65,6 +71,15 @@ EXPECTED_RELATIONS: dict[str, tuple[tuple[str, str], ...]] = {
     ),
     "AuditLog": (("tenant", "Tenant"),),
     "DeadLetter": (("tenant", "Tenant?"),),
+    "Conversation": (
+        ("tenant", "Tenant"),
+        ("client", "Client?"),
+        ("messages", "Message[]"),
+    ),
+    "Message": (
+        ("tenant", "Tenant"),
+        ("conversation", "Conversation"),
+    ),
     "Tenant": (
         ("users", "User[]"),
         ("services", "Service[]"),
@@ -77,6 +92,8 @@ EXPECTED_RELATIONS: dict[str, tuple[tuple[str, str], ...]] = {
         ("auditLogs", "AuditLog[]"),
         ("slotHolds", "SlotHold[]"),
         ("deadLetters", "DeadLetter[]"),
+        ("conversations", "Conversation[]"),
+        ("messages", "Message[]"),
     ),
 }
 

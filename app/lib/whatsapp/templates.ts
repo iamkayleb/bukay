@@ -1,3 +1,5 @@
+import type { WhatsAppProvider, WhatsAppSendResult } from "./provider";
+
 /**
  * Catalog of Meta WhatsApp message templates used by Bukay.
  *
@@ -94,4 +96,24 @@ export function listWhatsAppTemplates(): WhatsAppTemplateDefinition[] {
 
 export function findWhatsAppTemplateByName(name: string): WhatsAppTemplateDefinition | undefined {
   return listWhatsAppTemplates().find((template) => template.name === name);
+}
+
+/**
+ * Send the approved `greeting` template to a customer who is not yet a client.
+ * `businessName` fills the `{{1}}` / `business_name` placeholder.
+ */
+export async function sendGreetingTemplate(
+  provider: WhatsAppProvider,
+  input: { to: string; businessName: string }
+): Promise<WhatsAppSendResult> {
+  const template = WHATSAPP_TEMPLATES.greeting;
+  return provider.send({
+    to: input.to,
+    content: {
+      kind: "template",
+      name: template.name,
+      language: template.language,
+      bodyParameters: [input.businessName],
+    },
+  });
 }

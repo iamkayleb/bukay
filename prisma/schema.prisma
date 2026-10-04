@@ -12,28 +12,32 @@ datasource db {
 }
 
 model Tenant {
-  id              String         @id @default(cuid())
-  name            String
-  slug            String         @unique
-  timezone        String         @default("Africa/Lagos")
-  currency        String         @default("NGN")
+  id               String         @id @default(cuid())
+  name             String
+  slug             String         @unique
+  timezone         String         @default("Africa/Lagos")
+  currency         String         @default("NGN")
   /// Active PaymentProvider adapter name: "paystack" | "flutterwave" | "fake".
-  paymentProvider String         @default("paystack")
+  paymentProvider  String         @default("paystack")
   /// When false, the reminder cron skips T-24h / T-2h sends for this tenant.
-  remindersEnabled Boolean       @default(true)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  users           User[]
-  services        Service[]
-  staff           Staff[]
-  businessHours   BusinessHour[]
-  clients         Client[]
-  bookings        Booking[]
-  payments        Payment[]
-  ledgerEntries   LedgerEntry[]
-  auditLogs       AuditLog[]
-  slotHolds       SlotHold[]
-  deadLetters     DeadLetter[]
+  remindersEnabled Boolean        @default(true)
+  /// Digits-only WhatsApp business number used to route inbound webhooks.
+  whatsappNumber   String?        @unique
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  users            User[]
+  services         Service[]
+  staff            Staff[]
+  businessHours    BusinessHour[]
+  clients          Client[]
+  bookings         Booking[]
+  payments         Payment[]
+  ledgerEntries    LedgerEntry[]
+  auditLogs        AuditLog[]
+  slotHolds        SlotHold[]
+  deadLetters      DeadLetter[]
+  conversations    Conversation[]
+  messages         Message[]
 }
 
 model User {
@@ -101,43 +105,44 @@ model BusinessHour {
 }
 
 model Client {
-  id        String    @id @default(cuid())
-  tenantId  String
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name      String
-  email     String?
-  phone     String
-  notes     String?
-  bookings  Booking[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id            String         @id @default(cuid())
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name          String
+  email         String?
+  phone         String
+  notes         String?
+  bookings      Booking[]
+  conversations Conversation[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@unique([tenantId, phone])
   @@index([tenantId])
 }
 
 model Booking {
-  id        String    @id @default(cuid())
-  tenantId  String
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  clientId  String
-  client    Client    @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  serviceId String
-  service   Service   @relation(fields: [serviceId], references: [id], onDelete: Restrict)
-  staffId   String?
-  staff     Staff?    @relation(fields: [staffId], references: [id], onDelete: SetNull)
-  startsAt  DateTime
-  endsAt    DateTime
-  status    String    @default("pending")
-  notes     String?
+  id             String    @id @default(cuid())
+  tenantId       String
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId       String
+  client         Client    @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  serviceId      String
+  service        Service   @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  staffId        String?
+  staff          Staff?    @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  startsAt       DateTime
+  endsAt         DateTime
+  status         String    @default("pending")
+  notes          String?
   /// Timestamp of the most recent T-24h / T-2h reminder send (null = never).
   reminderSentAt DateTime?
   /// Non-null for active (non-cancelled) bookings. Unique per tenant so the DB
   /// enforces one live reservation per slot. Format: serviceId + '|' + startsAt ISO.
-  slotLock  String?
-  payments  Payment[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  slotLock       String?
+  payments       Payment[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@unique([tenantId, slotLock])
   @@index([tenantId])
@@ -168,19 +173,19 @@ model SlotHold {
 }
 
 model Payment {
-  id          String    @id @default(cuid())
-  tenantId    String
-  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  bookingId   String
-  booking     Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  amountCents Int
-  currency    String    @default("NGN")
-  provider    String?
-  providerRef String?
-  status      String    @default("pending")
-  paidAt      DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id            String        @id @default(cuid())
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bookingId     String
+  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  amountCents   Int
+  currency      String        @default("NGN")
+  provider      String?
+  providerRef   String?
+  status        String        @default("pending")
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   ledgerEntries LedgerEntry[]
 
   @@index([tenantId])
@@ -249,6 +254,47 @@ model DeadLetter {
   @@index([tenantId])
 }
 
+/// One WhatsApp thread between a tenant business number and a customer phone.
+model Conversation {
+  id            String    @id @default(cuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  /// Customer phone in E.164 when it normalizes, otherwise `+` plus digits.
+  customerPhone String
+  /// Set when the sender matches an existing Client. Null for unknown senders.
+  clientId      String?
+  client        Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  /// open conversations accept further inbound messages without a new greeting.
+  status        String    @default("open")
+  messages      Message[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([tenantId, customerPhone])
+  @@index([tenantId])
+  @@index([clientId])
+}
+
+/// One inbound or outbound WhatsApp message on a conversation.
+model Message {
+  id             String       @id @default(cuid())
+  tenantId       String
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  /// inbound | outbound
+  direction      String
+  /// text | template | other provider type
+  kind           String       @default("text")
+  body           String
+  /// Provider message id (Meta wamid). Unique so webhook retries do not duplicate rows.
+  externalId     String?      @unique
+  createdAt      DateTime     @default(now())
+
+  @@index([tenantId])
+  @@index([conversationId])
+}
+
 /// Durable webhook / request idempotency keys (7-day TTL via expiresAt).
 model IdempotencyKey {
   id        String   @id @default(cuid())
@@ -258,4 +304,3 @@ model IdempotencyKey {
 
   @@index([expiresAt])
 }
-

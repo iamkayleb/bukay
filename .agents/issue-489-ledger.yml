@@ -1,0 +1,81 @@
+version: 1
+issue: 489
+base: eval/cursor
+branch: cursor/issue-489
+tasks:
+  - id: task-01
+    title: "Add `app/api/webhooks/whatsapp/route.ts`: implement the inbound webhook"
+    status: done
+    started_at: "2026-10-04T06:56:58Z"
+    finished_at: "2026-10-04T07:06:53Z"
+    commit: 60ad98ec162d2fb3f060a8c2b8a41311d292b2af
+    notes:
+      - "GET verifies the Meta subscription challenge; POST verifies X-Hub-Signature-256 and records inbound messages."
+      - "Verified by __tests__/app/api/webhooks/whatsapp/route.test.ts and pnpm test (376 passed)."
+  - id: task-02
+    title: "Add `app/lib/whatsapp/routing.ts`: resolve the tenant by number"
+    status: done
+    started_at: "2026-10-04T07:00:00Z"
+    finished_at: "2026-10-04T07:06:53Z"
+    commit: 60ad98ec162d2fb3f060a8c2b8a41311d292b2af
+    notes:
+      - "resolveTenantByNumber matches digits-only Tenant.whatsappNumber."
+      - "Verified by __tests__/app/lib/whatsapp/routing.test.ts."
+  - id: task-03
+    title: "Add `prisma/schema.prisma`: add the `Conversation` model"
+    status: done
+    started_at: "2026-10-04T07:00:00Z"
+    finished_at: "2026-10-04T07:06:53Z"
+    commit: 60ad98ec162d2fb3f060a8c2b8a41311d292b2af
+    notes:
+      - "Conversation is unique per tenantId and customerPhone, with optional clientId."
+      - "Migration 20261004120000_whatsapp_conversation; prisma migrate deploy and seed succeeded."
+  - id: task-04
+    title: "Add `prisma/schema.prisma`: add the `Message` model"
+    status: done
+    started_at: "2026-10-04T07:00:00Z"
+    finished_at: "2026-10-04T07:06:53Z"
+    commit: 60ad98ec162d2fb3f060a8c2b8a41311d292b2af
+    notes:
+      - "Message stores direction, kind, body, tenantId, and a unique externalId."
+  - id: task-05
+    title: "Add `app/lib/whatsapp/templates.ts`: send the greeting template to unknown senders"
+    status: done
+    started_at: "2026-10-04T07:00:00Z"
+    finished_at: "2026-10-04T07:06:53Z"
+    commit: 60ad98ec162d2fb3f060a8c2b8a41311d292b2af
+    notes:
+      - "sendGreetingTemplate sends WHATSAPP_TEMPLATES.greeting with the business name."
+      - "Unknown senders are greeted once; known clients are not."
+  - id: task-06
+    title: "An inbound message persists with the correct `tenantId`, verified by `pnpm test`"
+    status: done
+    started_at: "2026-10-04T07:00:00Z"
+    finished_at: "2026-10-04T07:06:53Z"
+    commit: 60ad98ec162d2fb3f060a8c2b8a41311d292b2af
+    notes:
+      - "route.test.ts asserts the inbound row tenantId matches the business number owner, not the other tenant."
+  - id: task-07
+    title: "An unknown number receives the greeting and returns HTTP 200"
+    status: done
+    started_at: "2026-10-04T07:00:00Z"
+    finished_at: "2026-10-04T07:06:53Z"
+    commit: 60ad98ec162d2fb3f060a8c2b8a41311d292b2af
+    notes:
+      - "Unknown sender test expects HTTP 200 and a greeting template send with httpStatus 200."
+  - id: task-08
+    title: "A known client resumes without re-identification"
+    status: done
+    started_at: "2026-10-04T07:00:00Z"
+    finished_at: "2026-10-04T07:06:53Z"
+    commit: 60ad98ec162d2fb3f060a8c2b8a41311d292b2af
+    notes:
+      - "A second message from an existing client reuses the same conversation and clientId and does not send greeting."
+  - id: task-09
+    title: "`pnpm test` passes"
+    status: done
+    started_at: "2026-10-04T07:00:00Z"
+    finished_at: "2026-10-04T07:06:53Z"
+    commit: 60ad98ec162d2fb3f060a8c2b8a41311d292b2af
+    notes:
+      - "pnpm test: 57 files, 376 tests passed. tsc, eslint, and next build also passed locally."

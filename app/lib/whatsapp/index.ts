@@ -16,7 +16,9 @@ export {
   findWhatsAppTemplateByName,
   getWhatsAppTemplate,
   listWhatsAppTemplates,
+  sendGreetingTemplate,
 } from "./templates";
+export { canonicalCustomerPhone, normalizeWhatsAppNumber, resolveTenantByNumber } from "./routing";
 export type {
   WhatsAppTemplateCategory,
   WhatsAppTemplateDefinition,

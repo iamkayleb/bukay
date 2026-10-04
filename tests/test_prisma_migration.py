@@ -41,6 +41,8 @@ REQUIRED_MODELS = INIT_MIGRATION_MODELS | {
     "DeadLetter",
     "IdempotencyKey",
     "LedgerEntry",
+    "Conversation",
+    "Message",
 }
 
 

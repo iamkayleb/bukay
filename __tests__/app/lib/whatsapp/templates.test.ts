@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
+import { FakeWhatsAppProvider } from "@/app/lib/whatsapp/fake";
 import {
   WHATSAPP_TEMPLATES,
   findWhatsAppTemplateByName,
   getWhatsAppTemplate,
   listWhatsAppTemplates,
+  sendGreetingTemplate,
 } from "@/app/lib/whatsapp/templates";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -44,5 +46,23 @@ describe("WhatsApp template registry", () => {
         expect(token).toBe(`{{${index + 1}}}`);
       });
     }
+  });
+
+  it("sends the greeting template to an unknown sender", async () => {
+    const provider = new FakeWhatsAppProvider();
+    const result = await sendGreetingTemplate(provider, {
+      to: "+2348090001111",
+      businessName: "Ada Salon",
+    });
+
+    expect(result.httpStatus).toBe(200);
+    expect(result.to).toBe("+2348090001111");
+    expect(provider.outbox).toHaveLength(1);
+    expect(provider.outbox[0].content).toEqual({
+      kind: "template",
+      name: WHATSAPP_TEMPLATES.greeting.name,
+      language: WHATSAPP_TEMPLATES.greeting.language,
+      bodyParameters: ["Ada Salon"],
+    });
   });
 });
