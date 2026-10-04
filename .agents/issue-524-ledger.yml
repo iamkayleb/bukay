@@ -1,0 +1,93 @@
+version: 1
+issue: 524
+base: eval/cursor
+branch: cursor/issue-524
+tasks:
+  - id: task-01
+    title: 'Add `prisma/schema.prisma`: add an `OtpCode` model keyed by phone'
+    status: doing
+    started_at: '2026-10-04T14:38:01Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Add `prisma/migrations/`: generate the migration for the new model'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Add `app/lib/auth/otp.ts`: write an issued code to the database'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Add `app/lib/auth/otp.ts`: read the stored row when verifying'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Add `app/lib/auth/otp.ts`: delete the row once a code is consumed'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Add `app/lib/auth/otp.ts`: keep the existing expiry behaviour against
+      the stored row'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: 'Add `app/lib/auth/otp.ts`: keep the existing attempt limit against the
+      stored row'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: 'Add `__tests__/app/lib/auth/otp.test.ts`: cover verification in a separate
+      call from issuance'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: A code issued through the login route verifies through the verify route
+      in a separate request, verified by `pnpm test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: An expired stored code is rejected, verified by `pnpm test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: Exceeding the attempt limit rejects further tries, verified by `pnpm test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
