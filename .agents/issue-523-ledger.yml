@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: 'Add `prisma/schema.prisma`: add a unique `phone` column to the `User`
       model'
-    status: doing
+    status: done
     started_at: '2026-10-04T14:26:45Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-10-04T14:26:57Z'
+    commit: 0f193652c737f19da4b0b836bb8264dcf4830fde
     notes: []
   - id: task-02
     title: 'Add `prisma/migrations/`: generate the migration for the new column'
