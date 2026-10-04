@@ -77,6 +77,7 @@ describe("(app) authenticated layout", () => {
     const now = Date.now();
     const token = signSession({
       sub: "user-1",
+      tenantId: "tenant-1",
       phone: "+2348012345678",
       iat: now,
       exp: now + SESSION_TTL_MS,
@@ -102,6 +103,7 @@ describe("(app) authenticated layout", () => {
     const now = Date.now();
     const token = signSession({
       sub: "user-2",
+      tenantId: "tenant-2",
       phone: "+2348011112222",
       iat: now,
       exp: now + SESSION_TTL_MS,

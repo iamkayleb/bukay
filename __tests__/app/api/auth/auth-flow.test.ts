@@ -1,5 +1,11 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
+
+const account = vi.hoisted(() => ({
+  findOrCreateAccount: vi.fn(),
+}));
+
+vi.mock("@/app/lib/auth/account", () => account);
 
 import { POST as login } from "@/app/api/auth/login/route";
 import { POST as verify } from "@/app/api/auth/verify/route";
@@ -9,7 +15,7 @@ import { GET as me } from "@/app/api/auth/me/route";
 import { MemorySmsProvider } from "@/app/lib/sms/memory";
 import { __resetSmsProviderForTests, setSmsProviderForTests } from "@/app/lib/auth/sms";
 import { __resetOtpStoreForTests, getOtpStore } from "@/app/lib/auth/otp";
-import { SESSION_COOKIE_NAME } from "@/app/lib/auth/session";
+import { SESSION_COOKIE_NAME, verifySession } from "@/app/lib/auth/session";
 
 function jsonRequest(url: string, body: unknown, init?: { cookie?: string }): NextRequest {
   const headers: Record<string, string> = { "content-type": "application/json" };
@@ -42,6 +48,8 @@ beforeEach(() => {
   __resetSmsProviderForTests();
   sms = new MemorySmsProvider();
   setSmsProviderForTests(sms);
+  account.findOrCreateAccount.mockReset();
+  account.findOrCreateAccount.mockResolvedValue({ userId: "user-1", tenantId: "tenant-1" });
 });
 
 describe("end-to-end auth flow", () => {
@@ -62,19 +70,24 @@ describe("end-to-end auth flow", () => {
     expect(verifyRes.status).toBe(200);
     const verifyBody = await verifyRes.json();
     expect(verifyBody.ok).toBe(true);
-    expect(verifyBody.userId).toBe(`user:${PHONE_E164}`);
+    expect(verifyBody.userId).toBe("user-1");
+    expect(verifyBody.tenantId).toBe("tenant-1");
+    expect(account.findOrCreateAccount).toHaveBeenCalledTimes(1);
+    expect(account.findOrCreateAccount).toHaveBeenCalledWith(PHONE_E164);
 
     const setCookie = extractSetCookie(verifyRes);
     expect(setCookie).toContain(`${SESSION_COOKIE_NAME}=`);
     expect(setCookie).toContain("HttpOnly");
 
     const cookieHeader = setCookie!.split(";")[0];
+    const token = cookieHeader.split("=")[1];
+    expect(verifySession(token)).toMatchObject({ sub: "user-1", tenantId: "tenant-1" });
     const meRes = await me(
       new NextRequest("http://test/api/auth/me", { headers: { cookie: cookieHeader } })
     );
     expect(meRes.status).toBe(200);
     const meBody = await meRes.json();
-    expect(meBody.userId).toBe(`user:${PHONE_E164}`);
+    expect(meBody.userId).toBe("user-1");
     expect(meBody.phone).toBe(PHONE_E164);
 
     // session persists across "reloads" — second /me call still works
@@ -93,6 +106,7 @@ describe("end-to-end auth flow", () => {
     const body = await res.json();
     expect(body.ok).toBe(false);
     expect(body.error).toBe("mismatch");
+    expect(account.findOrCreateAccount).not.toHaveBeenCalled();
   });
 
   it("rejects a used OTP on second verify", async () => {
