@@ -54,6 +54,7 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
+beforeEach(() => {
   process.env.SESSION_SECRET = "test-secret-must-be-long-enough";
   __resetOtpStoreForTests();
   await __deletePersistedOtpCodesForTests([PHONE_E164, OTHER_PHONE_E164]);
@@ -80,7 +81,10 @@ describe("end-to-end auth flow", () => {
     expect(verifyRes.status).toBe(200);
     const verifyBody = await verifyRes.json();
     expect(verifyBody.ok).toBe(true);
-    expect(verifyBody.userId).toBe(`user:${PHONE_E164}`);
+    expect(verifyBody.userId).toEqual(expect.any(String));
+    expect(verifyBody.userId).not.toBe(`user:${PHONE_E164}`);
+    expect(verifyBody.userId.startsWith("user:")).toBe(false);
+    expect(verifyBody.tenantId).toEqual(expect.any(String));
 
     const setCookie = extractSetCookie(verifyRes);
     expect(setCookie).toContain(`${SESSION_COOKIE_NAME}=`);
@@ -92,7 +96,7 @@ describe("end-to-end auth flow", () => {
     );
     expect(meRes.status).toBe(200);
     const meBody = await meRes.json();
-    expect(meBody.userId).toBe(`user:${PHONE_E164}`);
+    expect(meBody.userId).toBe(verifyBody.userId);
     expect(meBody.phone).toBe(PHONE_E164);
 
     // session persists across "reloads" — second /me call still works

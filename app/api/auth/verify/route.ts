@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { findOrCreateAccountByPhone } from "@/app/lib/auth/account";
 import { InvalidPhoneNumberError, normalizeNigerianPhone } from "@/app/lib/auth/phone";
 import { getOtpStore } from "@/app/lib/auth/otp";
 import { SESSION_TTL_MS, buildSessionCookie, signSession } from "@/app/lib/auth/session";
 
 export const dynamic = "force-dynamic";
-
-function userIdFor(phone: string): string {
-  return `user:${phone}`;
-}
 
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -44,12 +41,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: result.reason }, { status });
   }
 
+  const account = await findOrCreateAccountByPhone(phone);
   const now = Date.now();
-  const payload = { sub: userIdFor(phone), phone, iat: now, exp: now + SESSION_TTL_MS };
+  const payload = {
+    sub: account.userId,
+    phone,
+    tenantId: account.tenantId,
+    iat: now,
+    exp: now + SESSION_TTL_MS,
+  };
   const token = signSession(payload);
   const cookie = buildSessionCookie(token);
 
-  const res = NextResponse.json({ ok: true, phone, userId: payload.sub, expiresAt: payload.exp });
+  const res = NextResponse.json({
+    ok: true,
+    phone,
+    userId: payload.sub,
+    tenantId: payload.tenantId,
+    expiresAt: payload.exp,
+  });
   res.headers.append("Set-Cookie", cookie);
   return res;
 }
