@@ -15,7 +15,7 @@ The tenant-owned models are:
 
 | Model | Purpose | Tenant-specific constraints and indexes |
 |-------|---------|-----------------------------------------|
-| `User` | Login or staff identity for a tenant | `@@unique([tenantId, email])`, `@@index([tenantId])` |
+| `User` | Login or staff identity for a tenant | `phone` `@unique`, `@@unique([tenantId, email])`, `@@index([tenantId])` |
 | `Service` | Bookable service with duration and price | `@@unique([tenantId, name])`, `@@index([tenantId])` |
 | `Staff` | Staff member who can be assigned to bookings | `@@unique([tenantId, email])`, `@@index([tenantId])` |
 | `BusinessHour` | Weekly opening hours by day of week | `@@unique([tenantId, dayOfWeek])`, `@@index([tenantId])` |
@@ -54,8 +54,8 @@ for timezone and `NGN` for currency.
 
 ### User
 
-`User` stores email, display name, and role. Roles are currently stored as strings with a default of
-`owner`.
+`User` stores email, display name, role, and an optional unique `phone` in E.164. Phone login looks
+the owner up by that column. Roles are currently stored as strings with a default of `owner`.
 
 ### Service
 
