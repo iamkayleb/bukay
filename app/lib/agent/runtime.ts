@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { runWithTenant } from "@/app/lib/tenant-context";
+import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 
 /** Identity and request state shared by every tool invocation in a conversation. */
 export interface AgentRuntimeContext {
@@ -91,7 +92,10 @@ export class AgentRuntime {
     }
 
     return runWithTenant({ tenantId: context.tenantId }, () =>
-      tool.execute(parsed.data, context)
+      // `app/lib/tenant-context` is used by agent helpers while Prisma's
+      // extension reads `app/tenancy/tenant-context`. Keep both contexts in
+      // lockstep so a registered tool cannot accidentally bypass the guard.
+      runWithTenantContext({ tenantId: context.tenantId }, () => tool.execute(parsed.data, context))
     ) as Promise<Output>;
   }
 }
