@@ -5,10 +5,10 @@ branch: cursor/issue-489
 tasks:
   - id: task-01
     title: 'Add `app/api/webhooks/whatsapp/route.ts`: implement the inbound webhook'
-    status: doing
+    status: done
     started_at: '2026-10-04T06:56:58Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-10-04T06:57:07Z'
+    commit: 594371d60bc606eb9a3ad29c6c1a113971d6b605
     notes: []
   - id: task-02
     title: 'Add `app/lib/whatsapp/routing.ts`: resolve the tenant by number'
