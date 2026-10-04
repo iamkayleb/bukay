@@ -73,9 +73,7 @@ export async function ServicesList() {
             <p className="text-sm text-slate-200">
               {formatPrice(service.priceCents, service.currency)}
             </p>
-            <p className="mt-1 text-xs text-slate-500">
-              {service.active ? "Active" : "Inactive"}
-            </p>
+            <p className="mt-1 text-xs text-slate-500">{service.active ? "Active" : "Inactive"}</p>
           </div>
         </li>
       ))}
