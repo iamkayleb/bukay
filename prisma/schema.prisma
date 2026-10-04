@@ -273,3 +273,15 @@ model Message {
   @@index([tenantId])
   @@index([conversationId, createdAt])
 }
+
+// One-time login code, one live row per phone (E.164). Not tenant-scoped:
+// login happens before a tenant is resolved. `hash` is sha256(phone:code);
+// the plaintext code is never stored. The row is deleted once consumed,
+// expired, or locked out by too many attempts.
+model OtpCode {
+  phone     String   @id
+  hash      String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+}

@@ -1,17 +1,11 @@
 import { createHash, randomInt } from "node:crypto";
+import { prisma } from "@/app/db/prisma";
 
 export const OTP_TTL_MS = 5 * 60 * 1000;
 export const OTP_RESEND_COOLDOWN_MS = 30 * 1000;
 export const OTP_MAX_REQUESTS_PER_WINDOW = 5;
 export const OTP_RATE_WINDOW_MS = 15 * 60 * 1000;
 export const OTP_MAX_VERIFY_ATTEMPTS = 5;
-
-type OtpRecord = {
-  hash: string;
-  expiresAt: number;
-  attempts: number;
-  consumed: boolean;
-};
 
 type RateRecord = {
   windowStart: number;
@@ -42,7 +36,8 @@ export interface Clock {
 const defaultClock: Clock = { now: () => Date.now() };
 
 export class OtpStore {
-  private readonly codes = new Map<string, OtpRecord>();
+  // Codes live in the database (OtpCode), so any route handler or server
+  // instance sees them. Only the issue rate limit is still per-process.
   private readonly rate = new Map<string, RateRecord>();
   private readonly clock: Clock;
 
@@ -50,7 +45,7 @@ export class OtpStore {
     this.clock = clock;
   }
 
-  issue(phone: string): IssueResult {
+  async issue(phone: string): Promise<IssueResult> {
     const now = this.clock.now();
     const rate = this.rate.get(phone);
 
@@ -76,11 +71,11 @@ export class OtpStore {
     }
 
     const code = generateCode();
-    this.codes.set(phone, {
-      hash: hashCode(phone, code),
-      expiresAt: now + OTP_TTL_MS,
-      attempts: 0,
-      consumed: false,
+    const row = { hash: hashCode(phone, code), expiresAt: new Date(now + OTP_TTL_MS), attempts: 0 };
+    await prisma.otpCode.upsert({
+      where: { phone },
+      create: { phone, ...row },
+      update: row,
     });
 
     if (rate) {
@@ -93,32 +88,44 @@ export class OtpStore {
     return { ok: true, code, expiresAt: now + OTP_TTL_MS };
   }
 
-  verify(phone: string, code: string): VerifyResult {
+  async verify(phone: string, code: string): Promise<VerifyResult> {
     const now = this.clock.now();
-    const record = this.codes.get(phone);
+    const record = await prisma.otpCode.findUnique({ where: { phone } });
     if (!record) return { ok: false, reason: "not_found" };
-    if (record.consumed) return { ok: false, reason: "used" };
-    if (now >= record.expiresAt) {
-      this.codes.delete(phone);
+    if (now >= record.expiresAt.getTime()) {
+      await this.discard(phone);
       return { ok: false, reason: "expired" };
     }
     if (record.attempts >= OTP_MAX_VERIFY_ATTEMPTS) {
-      this.codes.delete(phone);
+      await this.discard(phone);
       return { ok: false, reason: "too_many_attempts" };
     }
 
-    record.attempts += 1;
+    // Count the attempt atomically; concurrent guesses can't share one slot.
+    const claimed = await prisma.otpCode.updateMany({
+      where: { phone, hash: record.hash, attempts: record.attempts },
+      data: { attempts: { increment: 1 } },
+    });
+    if (claimed.count === 0) {
+      // Row changed under us (reissued, consumed, or another attempt won).
+      return this.verify(phone, code);
+    }
     if (hashCode(phone, code) !== record.hash) {
       return { ok: false, reason: "mismatch" };
     }
 
-    record.consumed = true;
-    this.codes.delete(phone);
+    // Only the request that actually deletes the row consumes the code.
+    const consumed = await prisma.otpCode.deleteMany({ where: { phone, hash: record.hash } });
+    if (consumed.count === 0) return { ok: false, reason: "used" };
     return { ok: true };
   }
 
-  reset(): void {
-    this.codes.clear();
+  private async discard(phone: string): Promise<void> {
+    await prisma.otpCode.deleteMany({ where: { phone } });
+  }
+
+  async reset(): Promise<void> {
+    await prisma.otpCode.deleteMany({});
     this.rate.clear();
   }
 }

@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { otpTable } from "../../../fixtures/fake-otp-prisma";
 import { NextRequest } from "next/server";
 
 import { POST as login } from "@/app/api/auth/login/route";
@@ -10,6 +11,10 @@ import { MemorySmsProvider } from "@/app/lib/sms/memory";
 import { __resetSmsProviderForTests, setSmsProviderForTests } from "@/app/lib/auth/sms";
 import { __resetOtpStoreForTests, getOtpStore } from "@/app/lib/auth/otp";
 import { SESSION_COOKIE_NAME } from "@/app/lib/auth/session";
+
+vi.mock("@/app/db/prisma", async () => ({
+  prisma: (await import("../../../fixtures/fake-otp-prisma")).fakePrisma,
+}));
 
 function jsonRequest(url: string, body: unknown, init?: { cookie?: string }): NextRequest {
   const headers: Record<string, string> = { "content-type": "application/json" };
@@ -38,6 +43,7 @@ let sms: MemorySmsProvider;
 
 beforeEach(() => {
   process.env.SESSION_SECRET = "test-secret-must-be-long-enough";
+  otpTable.clear();
   __resetOtpStoreForTests();
   __resetSmsProviderForTests();
   sms = new MemorySmsProvider();
