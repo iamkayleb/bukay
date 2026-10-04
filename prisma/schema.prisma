@@ -40,6 +40,7 @@ model User {
   id        String   @id @default(cuid())
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  phone     String   @unique
   email     String
   name      String
   role      String   @default("owner")

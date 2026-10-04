@@ -5,6 +5,7 @@ export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type SessionPayload = {
   sub: string;
+  tenantId: string;
   phone: string;
   iat: number;
   exp: number;
@@ -57,7 +58,14 @@ export function verifySession(token: string, secret?: string): SessionPayload | 
   } catch {
     return null;
   }
-  if (!payload || typeof payload.sub !== "string" || typeof payload.exp !== "number") return null;
+  if (
+    !payload ||
+    typeof payload.sub !== "string" ||
+    typeof payload.tenantId !== "string" ||
+    typeof payload.exp !== "number"
+  ) {
+    return null;
+  }
   if (Date.now() >= payload.exp) return null;
   return payload;
 }
