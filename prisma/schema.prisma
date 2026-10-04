@@ -307,3 +307,16 @@ model IdempotencyKey {
 
   @@index([expiresAt])
 }
+
+/// Durable one-time login code. Phone is the primary key so a code issued by
+/// the login route is visible to verify in another process or after a restart.
+model OtpCode {
+  phone     String   @id
+  hash      String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expiresAt])
+}

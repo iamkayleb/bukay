@@ -43,6 +43,7 @@ REQUIRED_MODELS = INIT_MIGRATION_MODELS | {
     "LedgerEntry",
     "Conversation",
     "Message",
+    "OtpCode",
 }
 
 

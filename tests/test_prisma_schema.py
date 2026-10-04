@@ -35,7 +35,7 @@ EXPECTED_TENANT_SCOPED_MODELS = {
 }
 
 # Models the scope requires to exist at all.
-REQUIRED_MODELS = EXPECTED_TENANT_SCOPED_MODELS | {"Tenant", "IdempotencyKey"}
+REQUIRED_MODELS = EXPECTED_TENANT_SCOPED_MODELS | {"Tenant", "IdempotencyKey", "OtpCode"}
 
 # Relation fields the suite asserts so schema drift cannot drop FK wiring.
 # Values are (field_name, type_with_optional_suffix) tuples.

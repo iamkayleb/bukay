@@ -29,6 +29,7 @@ The tenant-owned models are:
 | `Conversation` | WhatsApp thread for one customer phone on a tenant | `@@unique([tenantId, customerPhone])`, `@@index([tenantId])`, `@@index([clientId])` |
 | `Message` | Inbound or outbound WhatsApp message on a conversation | `@@index([tenantId])`, `@@index([conversationId])`, unique `externalId` |
 | `IdempotencyKey` | Durable webhook/request dedupe keys (7-day TTL) | `@@unique([key])`, `@@index([expiresAt])` |
+| `OtpCode` | Durable one-time login code keyed by phone | `phone` primary key, `@@index([expiresAt])` |
 
 `Tenant` itself is not tenant-scoped and must not carry a `tenantId` column. Deleting a tenant
 cascades to its owned rows through the Prisma relations. `Booking` restricts deletion of referenced
@@ -127,6 +128,14 @@ The admin view at `app/(app)/admin/dlq` lists recent rows for operators.
 `IdempotencyKey` stores durable webhook/request deduplication keys with a 7-day `expiresAt` TTL
 so replay protection survives process restarts and works across multiple instances.
 
+### OtpCode
+
+`OtpCode` stores the hashed one-time login code for a phone number. `phone` is the primary key
+so the login route and the verify route share one row across processes and restarts. `expiresAt`
+is the existing five-minute expiry. `attempts` counts failed verifications up to the existing
+limit. A successful verify deletes the row. Rate-limit counters stay process-local and are not
+part of this table.
+
 ### Conversation
 
 `Conversation` is one WhatsApp thread between a tenant business number and a customer phone.
@@ -175,6 +184,7 @@ checked-in migration:
 | `20260916120000_dead_letter` | Adds the `DeadLetter` table for unknown or unhandled inbound events. |
 | `20260921194500_idempotency_key` | Adds the `IdempotencyKey` table for durable webhook/request deduplication. |
 | `20261004120000_whatsapp_conversation` | Adds `Tenant.whatsappNumber` plus `Conversation` and `Message` for inbound WhatsApp history. |
+| `20261004150000_otp_code` | Adds the `OtpCode` table for durable phone login codes. |
 
 [`prisma/migrations/migration_lock.toml`](../prisma/migrations/migration_lock.toml) records the
 database provider as `sqlite`. Do not edit generated migration files by hand after they have been

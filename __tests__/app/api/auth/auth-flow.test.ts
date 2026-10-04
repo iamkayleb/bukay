@@ -11,7 +11,11 @@ import { GET as me } from "@/app/api/auth/me/route";
 
 import { MemorySmsProvider } from "@/app/lib/sms/memory";
 import { __resetSmsProviderForTests, setSmsProviderForTests } from "@/app/lib/auth/sms";
-import { __resetOtpStoreForTests, getOtpStore } from "@/app/lib/auth/otp";
+import {
+  __deletePersistedOtpCodesForTests,
+  __resetOtpStoreForTests,
+  getOtpStore,
+} from "@/app/lib/auth/otp";
 import { SESSION_COOKIE_NAME } from "@/app/lib/auth/session";
 
 function jsonRequest(url: string, body: unknown, init?: { cookie?: string }): NextRequest {
@@ -36,6 +40,7 @@ function extractSetCookie(res: Response): string | null {
 
 const PHONE_LOCAL = "08031234567";
 const PHONE_E164 = "+2348031234567";
+const OTHER_PHONE_E164 = "+2348099887766";
 
 let sms: MemorySmsProvider;
 
@@ -48,9 +53,11 @@ beforeAll(() => {
   });
 });
 
+beforeEach(async () => {
 beforeEach(() => {
   process.env.SESSION_SECRET = "test-secret-must-be-long-enough";
   __resetOtpStoreForTests();
+  await __deletePersistedOtpCodesForTests([PHONE_E164, OTHER_PHONE_E164]);
   __resetSmsProviderForTests();
   sms = new MemorySmsProvider();
   setSmsProviderForTests(sms);
@@ -97,6 +104,21 @@ describe("end-to-end auth flow", () => {
       new NextRequest("http://test/api/auth/me", { headers: { cookie: cookieHeader } })
     );
     expect(me2.status).toBe(200);
+  });
+
+  it("verifies a code after the in-process store is discarded", async () => {
+    const loginRes = await login(jsonRequest("http://test/api/auth/login", { phone: PHONE_LOCAL }));
+    expect(loginRes.status).toBe(200);
+    const code = extractCode(sms.lastTo(PHONE_E164)!.body);
+
+    __resetOtpStoreForTests();
+
+    const verifyRes = await verify(
+      jsonRequest("http://test/api/auth/verify", { phone: PHONE_LOCAL, code })
+    );
+    expect(verifyRes.status).toBe(200);
+    const body = await verifyRes.json();
+    expect(body.ok).toBe(true);
   });
 
   it("rejects a wrong OTP", async () => {
