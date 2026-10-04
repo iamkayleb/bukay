@@ -1,0 +1,70 @@
+version: 1
+issue: 484
+base: eval/claude
+branch: claude/issue-484
+tasks:
+  - id: task-01
+    title: 'Add `app/lib/agent/runtime.ts`: add the agent runtime with a tool registry'
+    status: done
+    started_at: '2026-10-04T06:55:03Z'
+    finished_at: '2026-10-04T06:55:14Z'
+    commit: 6d6dd9b1049ef11571fdccee22d89306f057c570
+    notes: []
+  - id: task-02
+    title: 'Add `app/lib/agent/tools/availability.ts`: expose the availability lookup
+      tool'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Add `app/lib/agent/tools/book.ts`: expose the create-booking tool'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Add `app/lib/agent/prompt.ts`: add the system prompt'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Add `__tests__/agent-booking.test.ts`: cover the happy path end to end'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: The scripted conversation reaches a confirmed booking, verified by `pnpm
+      test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: A tool call for another tenant returns HTTP 403
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: An unpaid hold releases after 15 minutes
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
