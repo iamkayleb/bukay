@@ -5,10 +5,10 @@ branch: claude/issue-484
 tasks:
   - id: task-01
     title: 'Add `app/lib/agent/runtime.ts`: add the agent runtime with a tool registry'
-    status: doing
+    status: done
     started_at: '2026-10-04T06:55:03Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-10-04T06:55:14Z'
+    commit: 6d6dd9b1049ef11571fdccee22d89306f057c570
     notes: []
   - id: task-02
     title: 'Add `app/lib/agent/tools/availability.ts`: expose the availability lookup
