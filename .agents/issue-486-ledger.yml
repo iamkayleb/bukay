@@ -13,8 +13,8 @@ tasks:
   - id: task-02
     title: 'Add `app/lib/agent/tools/availability.ts`: expose the availability lookup
       tool'
-    status: todo
-    started_at: null
+    status: doing
+    started_at: '2026-10-04T09:33:03Z'
     finished_at: null
     commit: ''
     notes: []
