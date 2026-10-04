@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: 'Add `app/login/login-form.tsx`: build the client component with a phone
       step'
-    status: doing
+    status: done
     started_at: '2026-10-04T12:15:17Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-10-04T12:15:30Z'
+    commit: f11951c7067776be6cdb7e60e729e4c0a3010eb3
     notes: []
   - id: task-02
     title: 'Add `app/login/login-form.tsx`: add the code step shown after a phone
