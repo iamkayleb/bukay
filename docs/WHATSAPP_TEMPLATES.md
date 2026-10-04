@@ -25,6 +25,7 @@ message to Meta or require a business phone number.
 
 | Name | Category | Language | Parameters (in order) | Purpose |
 | --- | --- | --- | --- | --- |
+| `welcome` | `UTILITY` | `en_US` | `businessName` | Sent when an unknown sender first messages a business. |
 | `booking_confirmation` | `UTILITY` | `en_US` | `customerName`, `serviceName`, `startsAt`, `businessName` | Sent after a customer booking is confirmed. |
 | `booking_reminder` | `UTILITY` | `en_US` | `customerName`, `serviceName`, `startsAt` | Sent before an upcoming appointment. |
 | `booking_cancellation` | `UTILITY` | `en_US` | `customerName`, `serviceName`, `businessName` | Sent when a booking is cancelled. |

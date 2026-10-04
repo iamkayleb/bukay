@@ -25,6 +25,8 @@ The tenant-owned models are:
 | `Payment` | Payment ledger row for a booking | `@@index([tenantId])`, `@@index([bookingId])`, `@@index([providerRef])` |
 | `LedgerEntry` | Immutable gross, fee, and net money-movement record | `@@index([tenantId])`, `@@index([tenantId, occurredAt])`, `@@index([providerRef])` |
 | `AuditLog` | Append-only tenant activity record | `@@index([tenantId])`, `@@index([tenantId, entityType, entityId])` |
+| `Conversation` | WhatsApp thread for a tenant and sender phone number | `@@unique([tenantId, phone])`, `@@index([tenantId])`, `@@index([clientId])` |
+| `Message` | Immutable inbound or outbound WhatsApp message | `@unique(providerMessageId)`, `@@index([tenantId])`, `@@index([conversationId, createdAt])` |
 
 `Tenant` itself is not tenant-scoped and must not carry a `tenantId` column. Deleting a tenant
 cascades to its owned rows through the Prisma relations. `Booking` restricts deletion of referenced
@@ -34,8 +36,9 @@ clients and services, and sets `staffId` to null when a referenced staff row is 
 
 ### Tenant
 
-`Tenant` stores the business name, globally unique slug, timezone, currency, and relations to all
-tenant-owned records. The defaults are `Africa/Lagos` for timezone and `NGN` for currency.
+`Tenant` stores the business name, globally unique slug, timezone, currency, optional unique WhatsApp
+business number, and relations to all tenant-owned records. The defaults are `Africa/Lagos` for
+timezone and `NGN` for currency.
 
 ### User
 
@@ -59,8 +62,8 @@ strings and an `isClosed` flag.
 
 ### Client
 
-`Client` stores customer name, optional email, required phone number, optional notes, and booking
-relations.
+`Client` stores customer name, optional email, required phone number, optional notes, booking
+relations, and optionally linked WhatsApp conversations.
 
 ### Booking
 
@@ -88,6 +91,16 @@ triggers reject updates and deletes, so corrections must be recorded as new entr
 
 `AuditLog` stores action history with optional actor and entity references. `metadata` is stored as a
 string so callers can serialize structured context when needed.
+
+### Conversation
+
+`Conversation` groups messages from one sender phone number within a tenant. It can be linked to a
+known client, while still retaining threads from senders who have not yet been identified.
+
+### Message
+
+`Message` is an immutable message record with a tenant and conversation foreign key. The optional,
+unique provider message ID makes inbound webhook delivery idempotent.
 
 ## Running Migrations
 

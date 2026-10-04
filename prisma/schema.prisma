@@ -18,6 +18,7 @@ model Tenant {
   timezone         String         @default("Africa/Lagos")
   currency         String         @default("NGN")
   paymentProvider  String         @default("paystack")
+  whatsappNumber   String?        @unique
   remindersEnabled Boolean        @default(true)
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
@@ -31,6 +32,8 @@ model Tenant {
   payments         Payment[]
   ledgerEntries    LedgerEntry[]
   auditLogs        AuditLog[]
+  conversations    Conversation[]
+  messages         Message[]
 }
 
 model User {
@@ -102,16 +105,17 @@ model BusinessHour {
 }
 
 model Client {
-  id        String    @id @default(cuid())
-  tenantId  String
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name      String
-  email     String?
-  phone     String
-  notes     String?
-  bookings  Booking[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id            String         @id @default(cuid())
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name          String
+  email         String?
+  phone         String
+  notes         String?
+  bookings      Booking[]
+  conversations Conversation[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@unique([tenantId, phone])
   @@index([tenantId])
@@ -216,4 +220,37 @@ model AuditLog {
 
   @@index([tenantId])
   @@index([tenantId, entityType, entityId])
+}
+
+/// A WhatsApp thread scoped to one tenant and sender phone number.
+model Conversation {
+  id        String    @id @default(cuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId  String?
+  client    Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  phone     String
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([tenantId, phone])
+  @@index([tenantId])
+  @@index([clientId])
+}
+
+/// An immutable inbound or outbound WhatsApp message.
+model Message {
+  id                String       @id @default(cuid())
+  tenantId          String
+  tenant            Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversationId    String
+  conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  direction         String
+  body              String
+  providerMessageId String?      @unique
+  createdAt         DateTime     @default(now())
+
+  @@index([tenantId])
+  @@index([conversationId, createdAt])
 }

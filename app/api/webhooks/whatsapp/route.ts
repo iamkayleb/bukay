@@ -1,0 +1,145 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+
+import { prisma } from "@/app/db/prisma";
+import { metaWhatsAppFromEnv } from "@/app/lib/whatsapp/meta";
+import { normalizeWhatsAppNumber, resolveTenantByWhatsAppNumber } from "@/app/lib/whatsapp/routing";
+import { getWhatsAppTemplate, templateParameters } from "@/app/lib/whatsapp/templates";
+
+export const runtime = "nodejs";
+
+const inboundWebhookSchema = z.object({
+  object: z.literal("whatsapp_business_account"),
+  entry: z.array(
+    z.object({
+      changes: z.array(
+        z.object({
+          field: z.literal("messages"),
+          value: z.object({
+            metadata: z.object({ display_phone_number: z.string().min(1) }),
+            messages: z
+              .array(
+                z.object({
+                  id: z.string().min(1),
+                  from: z.string().min(1),
+                  type: z.literal("text"),
+                  text: z.object({ body: z.string().min(1) }),
+                })
+              )
+              .optional(),
+          }),
+        })
+      ),
+    })
+  ),
+});
+
+type Tenant = { id: string; name: string };
+type InboundMessage = { id: string; from: string; text: { body: string } };
+
+export function hasValidWhatsAppSignature(
+  body: string,
+  signature: string | null,
+  appSecret: string
+): boolean {
+  if (!signature || !appSecret) return false;
+  const expected = `sha256=${createHmac("sha256", appSecret).update(body).digest("hex")}`;
+  const received = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+  return received.length === expectedBuffer.length && timingSafeEqual(received, expectedBuffer);
+}
+
+/** Meta's initial webhook ownership challenge. */
+export async function GET(request: NextRequest) {
+  const params = request.nextUrl.searchParams;
+  const challenge = params.get("hub.challenge");
+  if (
+    params.get("hub.mode") !== "subscribe" ||
+    !challenge ||
+    params.get("hub.verify_token") !== process.env.META_WHATSAPP_VERIFY_TOKEN
+  ) {
+    return NextResponse.json({ error: "INVALID_CHALLENGE" }, { status: 403 });
+  }
+
+  return new NextResponse(challenge, { status: 200, headers: { "content-type": "text/plain" } });
+}
+
+/** Records an inbound text message and greets senders who are not known clients. */
+export async function POST(request: NextRequest) {
+  const rawBody = await request.text();
+  const appSecret = process.env.META_WHATSAPP_APP_SECRET;
+  if (
+    appSecret &&
+    !hasValidWhatsAppSignature(rawBody, request.headers.get("x-hub-signature-256"), appSecret)
+  ) {
+    return NextResponse.json({ error: "INVALID_SIGNATURE" }, { status: 401 });
+  }
+
+  const parsed = inboundWebhookSchema.safeParse(parseJson(rawBody));
+  if (!parsed.success) return NextResponse.json({ error: "INVALID_WEBHOOK" }, { status: 400 });
+
+  for (const entry of parsed.data.entry) {
+    for (const change of entry.changes) {
+      const tenant = await resolveTenantByWhatsAppNumber(
+        change.value.metadata.display_phone_number
+      );
+      if (!tenant) continue;
+
+      for (const message of change.value.messages ?? []) {
+        await recordInboundMessage(tenant, message);
+      }
+    }
+  }
+
+  return NextResponse.json({ received: true });
+}
+
+async function recordInboundMessage(tenant: Tenant, message: InboundMessage) {
+  const phone = normalizeWhatsAppNumber(message.from);
+  if (!phone) return;
+
+  // Meta retries webhooks, so do not create duplicate messages or greetings.
+  const existing = await prisma.message.findUnique({ where: { providerMessageId: message.id } });
+  if (existing) return;
+
+  const client = await prisma.client.findUnique({
+    where: { tenantId_phone: { tenantId: tenant.id, phone } },
+  });
+  const conversation = await prisma.conversation.upsert({
+    where: { tenantId_phone: { tenantId: tenant.id, phone } },
+    create: { tenantId: tenant.id, phone, ...(client ? { clientId: client.id } : {}) },
+    update: client ? { clientId: client.id } : {},
+  });
+  await prisma.message.create({
+    data: {
+      tenantId: tenant.id,
+      conversationId: conversation.id,
+      direction: "inbound",
+      body: message.text.body,
+      providerMessageId: message.id,
+    },
+  });
+
+  if (!client) await sendGreeting(phone, tenant.name);
+}
+
+async function sendGreeting(to: string, businessName: string) {
+  const template = getWhatsAppTemplate("welcome");
+  if (!template) throw new Error("WhatsApp welcome template is not configured");
+  await metaWhatsAppFromEnv().sendTemplate({
+    to,
+    template: template.name,
+    language: template.language,
+    parameters: templateParameters(template, { businessName }),
+  });
+}
+
+function parseJson(body: string): unknown {
+  try {
+    return JSON.parse(body);
+  } catch {
+    return null;
+  }
+}
