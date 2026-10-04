@@ -114,10 +114,6 @@ async function recordInboundMessage(tenant: Tenant, message: InboundMessage) {
   const phone = normalizeWhatsAppNumber(message.from);
   if (!phone) return;
 
-  // Meta retries webhooks, so do not create duplicate messages or greetings.
-  const existing = await prisma.message.findUnique({ where: { providerMessageId: message.id } });
-  if (existing) return;
-
   const client = await prisma.client.findUnique({
     where: { tenantId_phone: { tenantId: tenant.id, phone } },
   });
@@ -126,6 +122,17 @@ async function recordInboundMessage(tenant: Tenant, message: InboundMessage) {
     create: { tenantId: tenant.id, phone, ...(client ? { clientId: client.id } : {}) },
     update: client ? { clientId: client.id } : {},
   });
+
+  // Meta retries webhooks. We still resolve the conversation for a duplicate
+  // delivery because the first attempt may have persisted the inbound message
+  // before a transient greeting-send failure. That lets the retry finish the
+  // missing greeting without creating another inbound record.
+  const existing = await prisma.message.findUnique({ where: { providerMessageId: message.id } });
+  if (existing) {
+    await greetUnknownSender(tenant, conversation.id, phone, client);
+    return;
+  }
+
   try {
     await prisma.message.create({
       data: {
@@ -143,20 +150,29 @@ async function recordInboundMessage(tenant: Tenant, message: InboundMessage) {
     throw error;
   }
 
-  if (!client) {
-    const existingGreeting = await prisma.message.findFirst({
-      where: {
-        conversationId: conversation.id,
-        direction: "outbound",
-        body: "Greeting template: welcome",
-      },
-      select: { id: true },
-    });
-    if (existingGreeting) return;
+  await greetUnknownSender(tenant, conversation.id, phone, client);
+}
 
-    const greeting = await sendGreeting(phone, tenant.name);
-    await recordGreeting(tenant.id, conversation.id, greeting);
-  }
+async function greetUnknownSender(
+  tenant: Tenant,
+  conversationId: string,
+  phone: string,
+  client: { id: string } | null
+) {
+  if (client) return;
+
+  const existingGreeting = await prisma.message.findFirst({
+    where: {
+      conversationId,
+      direction: "outbound",
+      body: "Greeting template: welcome",
+    },
+    select: { id: true },
+  });
+  if (existingGreeting) return;
+
+  const greeting = await sendGreeting(phone, tenant.name);
+  await recordGreeting(tenant.id, conversationId, greeting);
 }
 
 async function recordGreeting(

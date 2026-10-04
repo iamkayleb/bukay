@@ -155,7 +155,7 @@ describe("POST /api/webhooks/whatsapp", () => {
     mixedPayload.entry[0].changes.unshift({
       field: "statuses",
       value: { statuses: [{ id: "wamid.outbound-1", status: "delivered" }] },
-    });
+    } as never);
 
     const response = await POST(webhook(mixedPayload));
 
@@ -231,10 +231,29 @@ describe("POST /api/webhooks/whatsapp", () => {
 
   it("does not repeat processing for a retried provider message", async () => {
     state.messageFindUnique.mockResolvedValue({ id: "message-1" });
+    state.messageFindFirst.mockResolvedValue({ id: "prior-greeting" });
 
     await expect(POST(webhook(payload))).resolves.toMatchObject({ status: 200 });
-    expect(state.conversationUpsert).not.toHaveBeenCalled();
+    expect(state.messageCreate).not.toHaveBeenCalled();
     expect(state.sendTemplate).not.toHaveBeenCalled();
+  });
+
+  it("retries a missing greeting without duplicating a persisted inbound message", async () => {
+    state.messageFindUnique.mockResolvedValue({ id: "message-1" });
+
+    await expect(POST(webhook(payload))).resolves.toMatchObject({ status: 200 });
+
+    expect(state.messageCreate).toHaveBeenCalledTimes(1);
+    expect(state.messageCreate).toHaveBeenCalledWith({
+      data: {
+        tenantId: "tenant-1",
+        conversationId: "conversation-1",
+        direction: "outbound",
+        body: "Greeting template: welcome",
+        providerMessageId: "outbound-1",
+      },
+    });
+    expect(state.sendTemplate).toHaveBeenCalledTimes(1);
   });
 
   it("acknowledges a retry that races with another delivery", async () => {
