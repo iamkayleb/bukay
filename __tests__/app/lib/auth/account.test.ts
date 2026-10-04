@@ -100,6 +100,9 @@ describe("findOrCreateAccount", () => {
         id: "user-created-concurrently",
         tenantId: "tenant-created-concurrently",
         phone: "+2348031234567",
+        email: "2348031234567@owner.bukay.local",
+        name: "Owner",
+        role: "owner",
       });
       throw new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
         code: "P2002",
