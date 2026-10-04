@@ -1,4 +1,5 @@
 import { createHash, randomInt } from "node:crypto";
+import { prisma } from "@/app/db/prisma";
 
 export const OTP_TTL_MS = 5 * 60 * 1000;
 export const OTP_RESEND_COOLDOWN_MS = 30 * 1000;
@@ -6,11 +7,17 @@ export const OTP_MAX_REQUESTS_PER_WINDOW = 5;
 export const OTP_RATE_WINDOW_MS = 15 * 60 * 1000;
 export const OTP_MAX_VERIFY_ATTEMPTS = 5;
 
-type OtpRecord = {
+export type OtpRecord = {
   hash: string;
-  expiresAt: number;
+  expiresAt: Date;
   attempts: number;
-  consumed: boolean;
+};
+
+export type OtpCodeDelegate = {
+  upsert(args: unknown): Promise<unknown>;
+  findUnique(args: unknown): Promise<OtpRecord | null>;
+  update(args: unknown): Promise<unknown>;
+  delete(args: unknown): Promise<unknown>;
 };
 
 type RateRecord = {
@@ -42,15 +49,17 @@ export interface Clock {
 const defaultClock: Clock = { now: () => Date.now() };
 
 export class OtpStore {
-  private readonly codes = new Map<string, OtpRecord>();
   private readonly rate = new Map<string, RateRecord>();
   private readonly clock: Clock;
 
-  constructor(clock: Clock = defaultClock) {
+  constructor(
+    clock: Clock = defaultClock,
+    private readonly codes: OtpCodeDelegate = prisma.otpCode
+  ) {
     this.clock = clock;
   }
 
-  issue(phone: string): IssueResult {
+  async issue(phone: string): Promise<IssueResult> {
     const now = this.clock.now();
     const rate = this.rate.get(phone);
 
@@ -76,11 +85,11 @@ export class OtpStore {
     }
 
     const code = generateCode();
-    this.codes.set(phone, {
-      hash: hashCode(phone, code),
-      expiresAt: now + OTP_TTL_MS,
-      attempts: 0,
-      consumed: false,
+    const expiresAt = new Date(now + OTP_TTL_MS);
+    await this.codes.upsert({
+      where: { phone },
+      create: { phone, hash: hashCode(phone, code), expiresAt, attempts: 0 },
+      update: { hash: hashCode(phone, code), expiresAt, attempts: 0 },
     });
 
     if (rate) {
@@ -90,35 +99,32 @@ export class OtpStore {
       this.rate.set(phone, { windowStart: now, count: 1, lastSentAt: now });
     }
 
-    return { ok: true, code, expiresAt: now + OTP_TTL_MS };
+    return { ok: true, code, expiresAt: expiresAt.getTime() };
   }
 
-  verify(phone: string, code: string): VerifyResult {
+  async verify(phone: string, code: string): Promise<VerifyResult> {
     const now = this.clock.now();
-    const record = this.codes.get(phone);
+    const record = await this.codes.findUnique({ where: { phone } });
     if (!record) return { ok: false, reason: "not_found" };
-    if (record.consumed) return { ok: false, reason: "used" };
-    if (now >= record.expiresAt) {
-      this.codes.delete(phone);
+    if (now >= record.expiresAt.getTime()) {
+      await this.codes.delete({ where: { phone } });
       return { ok: false, reason: "expired" };
     }
     if (record.attempts >= OTP_MAX_VERIFY_ATTEMPTS) {
-      this.codes.delete(phone);
+      await this.codes.delete({ where: { phone } });
       return { ok: false, reason: "too_many_attempts" };
     }
 
-    record.attempts += 1;
+    await this.codes.update({ where: { phone }, data: { attempts: { increment: 1 } } });
     if (hashCode(phone, code) !== record.hash) {
       return { ok: false, reason: "mismatch" };
     }
 
-    record.consumed = true;
-    this.codes.delete(phone);
+    await this.codes.delete({ where: { phone } });
     return { ok: true };
   }
 
   reset(): void {
-    this.codes.clear();
     this.rate.clear();
   }
 }
@@ -128,6 +134,10 @@ let singleton: OtpStore | null = null;
 export function getOtpStore(): OtpStore {
   if (!singleton) singleton = new OtpStore();
   return singleton;
+}
+
+export function setOtpStoreForTests(store: OtpStore): void {
+  singleton = store;
 }
 
 export function __resetOtpStoreForTests(): void {
