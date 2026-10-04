@@ -2,7 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
 
 type TenantRow = { id: string; name: string; slug: string };
-type UserRow = { id: string; tenantId: string; phone: string };
+type UserRow = {
+  id: string;
+  tenantId: string;
+  phone: string;
+  email: string;
+  name: string;
+  role: string;
+};
 
 const state = vi.hoisted(() => ({
   tenants: [] as TenantRow[],
@@ -62,6 +69,9 @@ describe("findOrCreateAccount", () => {
         id: "user-1",
         tenantId: "tenant-1",
         phone: "+2348031234567",
+        email: "2348031234567@owner.bukay.local",
+        name: "Owner",
+        role: "owner",
       }),
     ]);
   });
