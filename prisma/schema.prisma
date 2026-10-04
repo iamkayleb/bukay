@@ -12,24 +12,25 @@ datasource db {
 }
 
 model Tenant {
-  id              String         @id @default(cuid())
-  name            String
-  slug            String         @unique
-  timezone        String         @default("Africa/Lagos")
-  currency        String         @default("NGN")
-  paymentProvider String         @default("paystack")
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  users           User[]
-  services        Service[]
-  staff           Staff[]
-  businessHours   BusinessHour[]
-  clients         Client[]
-  bookings        Booking[]
-  slotHolds       SlotHold[]
-  payments        Payment[]
-  ledgerEntries   LedgerEntry[]
-  auditLogs       AuditLog[]
+  id               String         @id @default(cuid())
+  name             String
+  slug             String         @unique
+  timezone         String         @default("Africa/Lagos")
+  currency         String         @default("NGN")
+  paymentProvider  String         @default("paystack")
+  remindersEnabled Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  users            User[]
+  services         Service[]
+  staff            Staff[]
+  businessHours    BusinessHour[]
+  clients          Client[]
+  bookings         Booking[]
+  slotHolds        SlotHold[]
+  payments         Payment[]
+  ledgerEntries    LedgerEntry[]
+  auditLogs        AuditLog[]
 }
 
 model User {
@@ -117,25 +118,27 @@ model Client {
 }
 
 model Booking {
-  id        String    @id @default(cuid())
-  tenantId  String
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  clientId  String
-  client    Client    @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  serviceId String
-  service   Service   @relation(fields: [serviceId], references: [id], onDelete: Restrict)
-  staffId   String?
-  staff     Staff?    @relation(fields: [staffId], references: [id], onDelete: SetNull)
-  startsAt  DateTime
-  endsAt    DateTime
-  status    String    @default("pending")
-  notes     String?
-  payments  Payment[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  tenantId       String
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId       String
+  client         Client    @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  serviceId      String
+  service        Service   @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  staffId        String?
+  staff          Staff?    @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  startsAt       DateTime
+  endsAt         DateTime
+  status         String    @default("pending")
+  reminderSentAt DateTime?
+  notes          String?
+  payments       Payment[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([tenantId])
   @@index([tenantId, startsAt])
+  @@index([startsAt, reminderSentAt])
   @@index([clientId])
   @@index([serviceId])
   @@index([staffId])
