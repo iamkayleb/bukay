@@ -1,4 +1,12 @@
 import { denyForeignTenant } from "@/app/lib/agent/guard";
+import {
+  AgentHandoff,
+  HANDOFF_HALTED_REPLY,
+  HANDOFF_REPLY,
+  isHandoffCommand,
+  recordOwnerAlert,
+  type OwnerAlerter,
+} from "@/app/lib/agent/handoff";
 import { BOOKING_AGENT_SYSTEM_PROMPT } from "@/app/lib/agent/prompt";
 import type {
   AgentTool,
@@ -66,16 +74,27 @@ export type AgentRuntimeOptions = {
   conversationId?: string;
   now?: () => Date;
   systemPrompt?: string;
+  alertOwner?: OwnerAlerter;
+  failureLimit?: number;
 };
 
 export class AgentRuntime {
   private readonly registry: ToolRegistry;
   private readonly options: AgentRuntimeOptions;
   private readonly messages: ChatMessage[];
+  private readonly handoff: AgentHandoff;
 
   constructor(registry: ToolRegistry, options: AgentRuntimeOptions) {
     this.registry = registry;
     this.options = options;
+    this.handoff = new AgentHandoff(
+      {
+        tenantId: options.tenantId,
+        conversationId: options.conversationId ?? "conversation",
+      },
+      options.alertOwner ?? recordOwnerAlert,
+      options.failureLimit
+    );
     this.messages = [
       {
         role: "system",
@@ -84,11 +103,28 @@ export class AgentRuntime {
     ];
   }
 
+  get halted(): boolean {
+    return this.handoff.halted;
+  }
+
   get transcript(): readonly ChatMessage[] {
     return this.messages;
   }
 
   async send(userText: string): Promise<string> {
+    if (this.handoff.halted) {
+      this.messages.push({ role: "user", content: userText });
+      this.messages.push({ role: "assistant", content: HANDOFF_HALTED_REPLY });
+      return HANDOFF_HALTED_REPLY;
+    }
+
+    if (isHandoffCommand(userText)) {
+      this.messages.push({ role: "user", content: userText });
+      await this.handoff.request(userText);
+      this.messages.push({ role: "assistant", content: HANDOFF_REPLY });
+      return HANDOFF_REPLY;
+    }
+
     this.messages.push({ role: "user", content: userText });
 
     for (let step = 0; step < MAX_TOOL_STEPS; step += 1) {
@@ -126,6 +162,18 @@ export class AgentRuntime {
         name: call.name,
         content: JSON.stringify(result),
       });
+
+      if (result.ok) {
+        this.handoff.noteSuccess();
+        continue;
+      }
+
+      const lastUser = [...this.messages].reverse().find((message) => message.role === "user");
+      const handedOff = await this.handoff.noteFailure(lastUser?.content ?? "");
+      if (handedOff) {
+        this.messages.push({ role: "assistant", content: HANDOFF_REPLY });
+        return HANDOFF_REPLY;
+      }
     }
 
     return null;
