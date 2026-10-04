@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "invalid_code_format" }, { status: 400 });
   }
 
-  const result = getOtpStore().verify(phone, code);
+  const result = await getOtpStore().verify(phone, code);
   if (!result.ok) {
     const status = result.reason === "mismatch" || result.reason === "not_found" ? 401 : 410;
     return NextResponse.json({ ok: false, error: result.reason }, { status });
