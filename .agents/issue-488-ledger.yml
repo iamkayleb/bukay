@@ -5,10 +5,10 @@ branch: cursor/issue-488
 tasks:
   - id: task-01
     title: 'Add `app/lib/agent/runtime.ts`: add the agent runtime with a tool registry'
-    status: doing
+    status: done
     started_at: '2026-10-04T06:57:37Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-10-04T06:57:50Z'
+    commit: ec2b4f0f75be5689a05ffe32ac0691293f97e0d0
     notes: []
   - id: task-02
     title: 'Add `app/lib/agent/tools/availability.ts`: expose the availability lookup
