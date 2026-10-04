@@ -5,10 +5,10 @@ branch: cursor/issue-501
 tasks:
   - id: task-01
     title: 'Add `app/api/qr/[slug]/route.ts`: implement'
-    status: doing
+    status: done
     started_at: '2026-10-04T09:54:27Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-10-04T09:54:37Z'
+    commit: 7d60768cfe8f269a64cc42a755047908e6ebf420
     notes: []
   - id: task-02
     title: 'Add `app/lib/qr-pdf.ts`: build the branded PDF'
