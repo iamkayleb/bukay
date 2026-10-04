@@ -1,0 +1,82 @@
+version: 1
+issue: 488
+base: eval/cursor
+branch: cursor/issue-488
+tasks:
+  - id: task-01
+    title: "Add `app/lib/agent/runtime.ts`: add the agent runtime with a tool registry"
+    status: done
+    started_at: "2026-10-04T06:57:37Z"
+    finished_at: "2026-10-04T07:05:49Z"
+    commit: fbedbc3c4ab8ad850cf73daefa54429cf25e227a
+    notes:
+      - Earlier ledger-only finish did not add runtime.ts.
+      - ToolRegistry rejects a foreign tenantId with HTTP 403 before the tool runs.
+      - AgentRuntime drives a scripted planner over lookup_availability and create_booking.
+  - id: task-02
+    title: "Add `app/lib/agent/tools/availability.ts`: expose the availability lookup
+      tool"
+    status: done
+    started_at: "2026-10-04T07:02:00Z"
+    finished_at: "2026-10-04T07:05:49Z"
+    commit: fbedbc3c4ab8ad850cf73daefa54429cf25e227a
+    notes:
+      - lookup_availability uses computeSlots and releases expired unpaid holds first.
+  - id: task-03
+    title: "Add `app/lib/agent/tools/book.ts`: expose the create-booking tool"
+    status: done
+    started_at: "2026-10-04T07:02:00Z"
+    finished_at: "2026-10-04T07:05:49Z"
+    commit: fbedbc3c4ab8ad850cf73daefa54429cf25e227a
+    notes:
+      - create_booking holds an unpaid pending_payment booking for 15 minutes.
+      - confirm=true marks the booking confirmed and drops the hold.
+  - id: task-04
+    title: "Add `app/lib/agent/prompt.ts`: add the system prompt"
+    status: done
+    started_at: "2026-10-04T07:02:00Z"
+    finished_at: "2026-10-04T07:05:49Z"
+    commit: fbedbc3c4ab8ad850cf73daefa54429cf25e227a
+    notes:
+      - BOOKING_AGENT_SYSTEM_PROMPT is the first transcript message.
+  - id: task-05
+    title: "Add `__tests__/agent-booking.test.ts`: cover the happy path end to end"
+    status: done
+    started_at: "2026-10-04T07:03:00Z"
+    finished_at: "2026-10-04T07:05:49Z"
+    commit: fbedbc3c4ab8ad850cf73daefa54429cf25e227a
+    notes:
+      - Scripted conversation asserts a confirmed booking row.
+  - id: task-06
+    title: The scripted conversation reaches a confirmed booking, verified by `pnpm
+      test`
+    status: done
+    started_at: "2026-10-04T07:04:00Z"
+    finished_at: "2026-10-04T07:05:49Z"
+    commit: fbedbc3c4ab8ad850cf73daefa54429cf25e227a
+    notes:
+      - __tests__/agent-booking.test.ts happy path; booking.status is confirmed.
+  - id: task-07
+    title: A tool call for another tenant returns HTTP 403
+    status: done
+    started_at: "2026-10-04T07:04:00Z"
+    finished_at: "2026-10-04T07:05:49Z"
+    commit: fbedbc3c4ab8ad850cf73daefa54429cf25e227a
+    notes:
+      - lookup_availability and create_booking both return status 403 for another tenant.
+  - id: task-08
+    title: An unpaid hold releases after 15 minutes
+    status: done
+    started_at: "2026-10-04T07:04:00Z"
+    finished_at: "2026-10-04T07:05:49Z"
+    commit: fbedbc3c4ab8ad850cf73daefa54429cf25e227a
+    notes:
+      - Hold remains at 15 minutes minus 1ms and is released at AGENT_HOLD_TTL_MS, cancelling the unpaid booking.
+  - id: task-09
+    title: "`pnpm test` passes"
+    status: done
+    started_at: "2026-10-04T07:05:00Z"
+    finished_at: "2026-10-04T07:05:49Z"
+    commit: fbedbc3c4ab8ad850cf73daefa54429cf25e227a
+    notes:
+      - "pnpm test: 56 files, 367 tests passed, including __tests__/agent-booking.test.ts."
