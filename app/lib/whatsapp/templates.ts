@@ -1,3 +1,5 @@
+import type { WhatsAppProvider, WhatsAppSendResult } from "./provider";
+
 export type WhatsAppTemplateCategory = "UTILITY" | "AUTHENTICATION" | "MARKETING";
 
 export type WhatsAppTemplate = {
@@ -31,6 +33,13 @@ export const WHATSAPP_TEMPLATES = {
     params: ["customerName", "serviceName", "businessName"],
     description: "Sent when a booking is cancelled.",
   },
+  greeting: {
+    name: "greeting",
+    language: "en",
+    category: "UTILITY",
+    params: ["businessName"],
+    description: "Sent to an unrecognised sender who messages a business number.",
+  },
   otp_code: {
     name: "otp_code",
     language: "en",
@@ -59,5 +68,17 @@ export function renderTemplateParams(
       throw new Error(`Template '${template.name}' missing param '${key}'`);
     }
     return value;
+  });
+}
+
+/** Sends the greeting template to a sender we could not match to a client. */
+export function sendGreeting(
+  provider: WhatsAppProvider,
+  args: { to: string; businessName: string }
+): Promise<WhatsAppSendResult> {
+  return provider.sendTemplate({
+    to: args.to,
+    template: "greeting",
+    params: { businessName: args.businessName },
   });
 }

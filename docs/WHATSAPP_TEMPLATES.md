@@ -26,9 +26,19 @@ Approval and a live business number are human prerequisites. Tests use
 | `booking_confirmation` | UTILITY        | en       | `customerName`, `serviceName`, `startsAt`, `businessName` | Sent to a customer once a booking is confirmed. |
 | `booking_reminder`     | UTILITY        | en       | `customerName`, `serviceName`, `startsAt`             | Reminder sent ahead of an upcoming appointment. |
 | `booking_cancellation` | UTILITY        | en       | `customerName`, `serviceName`, `businessName`         | Sent when a booking is cancelled.            |
+| `greeting`             | UTILITY        | en       | `businessName`                                        | Sent to an unrecognised sender who messages a business number. |
 | `otp_code`             | AUTHENTICATION | en       | `code`                                                | One-time sign-in code.                       |
 
 ## Configuration
 
 The live adapter reads `WHATSAPP_ACCESS_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID`
 (optional: `WHATSAPP_BASE_URL`, `WHATSAPP_API_VERSION`).
+
+## Inbound webhook
+
+`POST /api/webhooks/whatsapp` receives inbound messages. It verifies
+`x-hub-signature-256` with `WHATSAPP_APP_SECRET`, routes by the business number
+(`Tenant.whatsappNumber`, E.164) and records `Conversation`/`Message` rows.
+Senders that match no `Client` receive the `greeting` template once; known
+clients resume silently. `GET` answers Meta's handshake using
+`WHATSAPP_VERIFY_TOKEN`.

@@ -1,0 +1,70 @@
+version: 1
+issue: 485
+base: eval/claude
+branch: claude/issue-485
+tasks:
+  - id: task-01
+    title: 'Add `app/api/webhooks/whatsapp/route.ts`: implement the inbound webhook'
+    status: done
+    started_at: '2026-10-04T07:45:44Z'
+    finished_at: '2026-10-04T07:45:57Z'
+    commit: 2b3ca0e2eff7f01e8ba4366fb802a63547a98835
+    notes: []
+  - id: task-02
+    title: 'Add `app/lib/whatsapp/routing.ts`: resolve the tenant by number'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Add `prisma/schema.prisma`: add the `Conversation` model'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Add `prisma/schema.prisma`: add the `Message` model'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Add `app/lib/whatsapp/templates.ts`: send the greeting template to unknown
+      senders'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: An inbound message persists with the correct `tenantId`, verified by `pnpm
+      test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: An unknown number receives the greeting and returns HTTP 200
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: A known client resumes without re-identification
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []

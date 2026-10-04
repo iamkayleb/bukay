@@ -4,5 +4,7 @@ export { MetaWhatsAppProvider, metaWhatsAppFromEnv } from "./meta";
 export type { MetaWhatsAppConfig } from "./meta";
 export { FakeWhatsAppProvider } from "./fake";
 export type { RecordedWhatsApp } from "./fake";
-export { WHATSAPP_TEMPLATES, getTemplate, renderTemplateParams } from "./templates";
+export { WHATSAPP_TEMPLATES, getTemplate, renderTemplateParams, sendGreeting } from "./templates";
 export type { WhatsAppTemplate, WhatsAppTemplateName } from "./templates";
+export { normalizeWhatsAppNumber, resolveTenantByNumber } from "./routing";
+export type { RoutedTenant } from "./routing";
