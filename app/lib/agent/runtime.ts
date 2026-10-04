@@ -29,6 +29,36 @@ export class ToolError extends Error {
   }
 }
 
+const TENANT_KEYS = new Set(["tenantid", "tenant_id", "tenant"]);
+
+/**
+ * Returns the path of the first tenant reference in `value` (at any depth)
+ * that is not `tenantId`, or undefined when every reference is in scope.
+ */
+export function findForeignTenant(
+  value: unknown,
+  tenantId: string,
+  path = "args"
+): string | undefined {
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) {
+      const hit = findForeignTenant(value[i], tenantId, `${path}[${i}]`);
+      if (hit) return hit;
+    }
+    return undefined;
+  }
+  if (value === null || typeof value !== "object") return undefined;
+  for (const [key, child] of Object.entries(value)) {
+    const childPath = `${path}.${key}`;
+    if (TENANT_KEYS.has(key.toLowerCase()) && child !== undefined && child !== tenantId) {
+      return childPath;
+    }
+    const hit = findForeignTenant(child, tenantId, childPath);
+    if (hit) return hit;
+  }
+  return undefined;
+}
+
 export class ToolRegistry {
   private readonly tools = new Map<string, AgentTool>();
 
@@ -49,15 +79,20 @@ export class ToolRegistry {
   }
 
   /**
-   * Dispatches a call. Any `tenantId` in the arguments must match the
-   * conversation's tenant, otherwise the call is refused with 403 before the
+   * Dispatches a call. Tenant scope is asserted before every call: the context
+   * must carry a tenant, and any tenant reference in the arguments (at any
+   * depth) must match it, otherwise the call is refused with 403 before the
    * tool runs.
    */
   async call({ name, args }: ToolCall, ctx: ToolContext): Promise<ToolResult> {
+    if (!ctx.tenantId) {
+      return { ok: false, status: 403, error: "Tool call has no tenant scope" };
+    }
+
     const tool = this.tools.get(name);
     if (!tool) return { ok: false, status: 404, error: `Unknown tool: ${name}` };
 
-    if (args.tenantId !== undefined && args.tenantId !== ctx.tenantId) {
+    if (findForeignTenant(args, ctx.tenantId)) {
       return { ok: false, status: 403, error: "Tool call targets a different tenant" };
     }
 
@@ -76,8 +111,7 @@ export type AgentMessage =
   | { role: "tool"; name: string; content: string };
 
 export type ModelTurn =
-  | { type: "tool_call"; call: ToolCall }
-  | { type: "message"; content: string };
+  { type: "tool_call"; call: ToolCall } | { type: "message"; content: string };
 
 /** Anything that can pick the next turn; tests supply a scripted one. */
 export interface AgentModel {
