@@ -129,6 +129,9 @@ model Booking {
   endsAt        DateTime
   status        String        @default("pending")
   notes         String?
+  // Last reminder dispatched (T-24h or T-2h); the claim compares it against
+  // each reminder's target time so every kind is sent exactly once.
+  reminderSentAt DateTime?
   payments      Payment[]
   ledgerEntries LedgerEntry[]
   createdAt     DateTime      @default(now())
