@@ -1,0 +1,104 @@
+version: 1
+issue: 521
+base: eval/claude
+branch: claude/issue-521
+tasks:
+  - id: task-01
+    title: 'Add `prisma/schema.prisma`: add a unique `phone` column to the `User`
+      model'
+    status: doing
+    started_at: '2026-10-04T14:25:30Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Add `prisma/migrations/`: generate the migration for the new column'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Add `app/lib/auth/account.ts`: look up an existing user by phone'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Add `app/lib/auth/account.ts`: create a tenant with a generated unique
+      slug when no user matches'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Add `app/lib/auth/account.ts`: create the owner user linked to that tenant'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Add `app/api/auth/verify/route.ts`: put the real user id in the session
+      payload'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: 'Add `app/api/auth/verify/route.ts`: put the tenant id in the session payload'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: 'Add `__tests__/app/lib/auth/account.test.ts`: cover a first sign-in creating
+      both rows'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: 'Add `__tests__/app/lib/auth/account.test.ts`: cover a repeat sign-in reusing
+      them'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: A first verification writes one tenant row and one user row, verified by
+      `pnpm test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: A second verification for the same phone writes no new rows, verified by
+      `pnpm test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: The session payload carries the persisted user id rather than a string
+      built from the phone, verified by `pnpm test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
