@@ -34,6 +34,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   return new NextResponse(body, {
     headers: {
       "Content-Disposition": `attachment; filename="${tenant.slug}-booking-qr.pdf"`,
+      "Content-Length": String(pdf.byteLength),
       "Content-Type": "application/pdf",
     },
   });

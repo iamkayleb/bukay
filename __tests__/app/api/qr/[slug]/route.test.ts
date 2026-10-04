@@ -25,7 +25,9 @@ describe("GET /api/qr/[slug]", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("application/pdf");
     expect(response.headers.get("content-disposition")).toContain("demo-booking-qr.pdf");
-    const pdf = new TextDecoder().decode(await response.arrayBuffer());
+    const body = await response.arrayBuffer();
+    expect(response.headers.get("content-length")).toBe(String(body.byteLength));
+    const pdf = new TextDecoder().decode(body);
     expect(pdf).toContain("https://bukay.test/demo");
     expect((pdf.match(/ re f/g) ?? []).length).toBeGreaterThan(100);
   });
