@@ -76,8 +76,7 @@ export type AgentMessage =
   | { role: "tool"; name: string; content: string };
 
 export type ModelTurn =
-  | { type: "tool_call"; call: ToolCall }
-  | { type: "message"; content: string };
+  { type: "tool_call"; call: ToolCall } | { type: "message"; content: string };
 
 /** Anything that can pick the next turn; tests supply a scripted one. */
 export interface AgentModel {
