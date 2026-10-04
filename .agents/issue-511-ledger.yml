@@ -9,7 +9,7 @@ tasks:
     status: done
     started_at: '2026-10-04T12:15:48Z'
     finished_at: '2026-10-04T12:21:00Z'
-    commit: 'd67044e'
+    commit: '8036b44'
     notes:
       - '2026-10-04T12:15:56Z failure (run 37201477265): status=failure'
       - 'Verified with pnpm test and tsc --noEmit.'
