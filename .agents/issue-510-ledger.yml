@@ -1,0 +1,90 @@
+version: 1
+issue: 510
+base: eval/codex
+branch: codex/issue-510
+tasks:
+  - id: task-01
+    title: 'Add `app/login/login-form.tsx`: build the client component with a phone
+      step'
+    status: doing
+    started_at: '2026-10-04T12:16:30Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Add `app/login/login-form.tsx`: add the code step shown after a phone
+      is accepted'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Add `app/login/page.tsx`: render the client component in place of the
+      current description'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Add `app/login/login-form.tsx`: post the phone to the login endpoint,
+      surfacing the server error text'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Add `app/login/login-form.tsx`: post the code to the verify endpoint,
+      redirecting on success'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Add `__tests__/app/login/login-form.test.tsx`: cover the success path'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: 'Add `__tests__/app/login/login-form.test.tsx`: cover one rejected code'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: The page renders a phone input and a submit control, verified by `pnpm
+      test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Submitting a valid phone advances the form to the code step, verified by
+      `pnpm test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: A rejected code leaves the user on the code step and shows a message, verified
+      by `pnpm test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: '`pnpm test` passes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
