@@ -24,8 +24,8 @@ const inboundWebhookSchema = z.object({
                 z.object({
                   id: z.string().min(1),
                   from: z.string().min(1),
-                  type: z.literal("text"),
-                  text: z.object({ body: z.string().min(1) }),
+                  type: z.string().min(1),
+                  text: z.object({ body: z.string().min(1) }).optional(),
                 })
               )
               .optional(),
@@ -37,7 +37,8 @@ const inboundWebhookSchema = z.object({
 });
 
 type Tenant = { id: string; name: string };
-type InboundMessage = { id: string; from: string; text: { body: string } };
+type WebhookMessage = { id: string; from: string; type: string; text?: { body: string } };
+type InboundMessage = WebhookMessage & { type: "text"; text: { body: string } };
 
 export function hasValidWhatsAppSignature(
   body: string,
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
       if (!tenant) continue;
 
       for (const message of change.value.messages ?? []) {
+        if (!isInboundTextMessage(message)) continue;
         await recordInboundMessage(tenant, message);
       }
     }
@@ -177,4 +179,9 @@ function isUniqueConstraintError(error: unknown): boolean {
   return (
     typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2002"
   );
+}
+
+/** Only text is supported by the conversational flow; other Meta message types are acknowledged. */
+function isInboundTextMessage(message: WebhookMessage): message is InboundMessage {
+  return message.type === "text" && message.text !== undefined;
 }

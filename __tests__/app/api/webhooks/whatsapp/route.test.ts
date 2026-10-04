@@ -91,6 +91,27 @@ describe("POST /api/webhooks/whatsapp", () => {
     });
   });
 
+  it("acknowledges unsupported message types without blocking later text messages", async () => {
+    const mixedPayload = structuredClone(payload);
+    mixedPayload.entry[0].changes[0].value.messages.unshift({
+      id: "wamid.image-1",
+      from: "2348012345678",
+      type: "image",
+    } as never);
+
+    const response = await POST(webhook(mixedPayload));
+
+    expect(response.status).toBe(200);
+    expect(state.messageCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({ providerMessageId: "wamid.1", direction: "inbound" }),
+    });
+    expect(state.messageCreate).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ providerMessageId: "wamid.image-1" }),
+      })
+    );
+  });
+
   it("greets an unknown sender and acknowledges the webhook", async () => {
     const response = await POST(webhook(payload));
 
