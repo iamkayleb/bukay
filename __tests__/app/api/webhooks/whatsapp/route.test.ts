@@ -168,6 +168,17 @@ describe("POST /api/webhooks/whatsapp", () => {
     });
   });
 
+  it("acknowledges a greeting record already persisted by another delivery", async () => {
+    state.messageCreate
+      .mockResolvedValueOnce({ id: "message-1" })
+      .mockRejectedValueOnce(
+        Object.assign(new Error("greeting already recorded"), { code: "P2002" })
+      );
+
+    await expect(POST(webhook(payload))).resolves.toMatchObject({ status: 200 });
+    expect(state.sendTemplate).toHaveBeenCalledTimes(1);
+  });
+
   it("associates a known client and does not ask them to identify again", async () => {
     state.clientFindUnique.mockResolvedValue({ id: "client-1" });
 

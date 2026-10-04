@@ -155,15 +155,31 @@ async function recordInboundMessage(tenant: Tenant, message: InboundMessage) {
     if (existingGreeting) return;
 
     const greeting = await sendGreeting(phone, tenant.name);
+    await recordGreeting(tenant.id, conversation.id, greeting);
+  }
+}
+
+async function recordGreeting(
+  tenantId: string,
+  conversationId: string,
+  greeting: { id: string; template: string }
+) {
+  try {
     await prisma.message.create({
       data: {
-        tenantId: tenant.id,
-        conversationId: conversation.id,
+        tenantId,
+        conversationId,
         direction: "outbound",
         body: `Greeting template: ${greeting.template}`,
         providerMessageId: greeting.id,
       },
     });
+  } catch (error) {
+    // A prior delivery may have sent and recorded this provider message before
+    // this webhook retry reached the database. The unique provider id is the
+    // durable idempotency key, so acknowledge that race instead of retrying.
+    if (isUniqueConstraintError(error)) return;
+    throw error;
   }
 }
 
