@@ -10,6 +10,10 @@ export const dynamic = "force-dynamic";
 export default async function SettingsPage() {
   const tenantId = await resolveTenantId(await headers());
   const enabled = tenantId ? await getRemindersEnabled(prisma, tenantId) : false;
+  const tenant = tenantId
+    ? await prisma.tenant.findUnique({ where: { id: tenantId }, select: { slug: true } })
+    : null;
+  const qrHref = tenant ? `/api/qr/${encodeURIComponent(tenant.slug)}` : null;
 
   return (
     <section>
@@ -28,6 +32,20 @@ export default async function SettingsPage() {
           Save
         </button>
       </form>
+      <h2>Booking QR code</h2>
+      <p>Print this and display it in your shop so walk-in customers can scan and book.</p>
+      {qrHref ? (
+        <p>
+          <a download href={qrHref}>
+            Download PDF
+          </a>{" "}
+          <a download href={`${qrHref}?format=png`}>
+            Download PNG
+          </a>
+        </p>
+      ) : (
+        <p>Sign in to a shop to download its QR code.</p>
+      )}
     </section>
   );
 }
