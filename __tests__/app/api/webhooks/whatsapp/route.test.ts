@@ -95,6 +95,15 @@ describe("POST /api/webhooks/whatsapp", () => {
       language: "en_US",
       parameters: ["Bukay Salon"],
     });
+    expect(state.messageCreate).toHaveBeenLastCalledWith({
+      data: {
+        tenantId: "tenant-1",
+        conversationId: "conversation-1",
+        direction: "outbound",
+        body: "Greeting template: welcome",
+        providerMessageId: "outbound-1",
+      },
+    });
   });
 
   it("associates a known client and does not ask them to identify again", async () => {

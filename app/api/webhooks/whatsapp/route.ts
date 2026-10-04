@@ -122,18 +122,30 @@ async function recordInboundMessage(tenant: Tenant, message: InboundMessage) {
     },
   });
 
-  if (!client) await sendGreeting(phone, tenant.name);
+  if (!client) {
+    const greeting = await sendGreeting(phone, tenant.name);
+    await prisma.message.create({
+      data: {
+        tenantId: tenant.id,
+        conversationId: conversation.id,
+        direction: "outbound",
+        body: `Greeting template: ${greeting.template}`,
+        providerMessageId: greeting.id,
+      },
+    });
+  }
 }
 
 async function sendGreeting(to: string, businessName: string) {
   const template = getWhatsAppTemplate("welcome");
   if (!template) throw new Error("WhatsApp welcome template is not configured");
-  await metaWhatsAppFromEnv().sendTemplate({
+  const result = await metaWhatsAppFromEnv().sendTemplate({
     to,
     template: template.name,
     language: template.language,
     parameters: templateParameters(template, { businessName }),
   });
+  return { id: result.id, template: template.name };
 }
 
 function parseJson(body: string): unknown {
