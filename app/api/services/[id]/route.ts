@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/db/prisma";
 import { updateServiceSchema } from "@/app/lib/services/schemas";
 import {
+  serviceWriteData,
   isMissingRecordError,
   isUniqueConstraintError,
   jsonError,
@@ -10,7 +11,6 @@ import {
   runForTenant,
   serializeService,
   validationError,
-  type ServiceRecord,
 } from "../_helpers";
 
 export const dynamic = "force-dynamic";
@@ -21,13 +21,8 @@ type RouteContext = {
   };
 };
 
-const serviceDelegate = prisma.service as unknown as {
-  findFirst(args: unknown): Promise<ServiceRecord | null>;
-  update(args: unknown): Promise<ServiceRecord>;
-};
-
 async function findTenantService(tenantId: string, id: string) {
-  return serviceDelegate.findFirst({
+  return prisma.service.findFirst({
     where: { tenantId, id },
   });
 }
@@ -62,9 +57,9 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         return jsonError("service_not_found", 404);
       }
 
-      const service = await serviceDelegate.update({
-        where: { id: existingService.id },
-        data: parsed.data,
+      const service = await prisma.service.update({
+        where: { id: existingService.id, tenantId },
+        data: serviceWriteData(parsed.data),
       });
 
       return NextResponse.json({ ok: true, service: serializeService(service) });
@@ -90,8 +85,8 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
         return jsonError("service_not_found", 404);
       }
 
-      const service = await serviceDelegate.update({
-        where: { id: existingService.id },
+      const service = await prisma.service.update({
+        where: { id: existingService.id, tenantId },
         data: { active: false },
       });
 

@@ -10,6 +10,7 @@ export type TenantService = {
   description: string | null;
   durationMinutes: number;
   priceCents: number;
+  bufferMinutes: number;
   currency: string;
   active: boolean;
 };
@@ -49,6 +50,7 @@ export async function listTenantServices(tenantId: string): Promise<TenantServic
         description: true,
         durationMinutes: true,
         priceCents: true,
+        bufferMinutes: true,
         currency: true,
         active: true,
       },
@@ -98,6 +100,7 @@ export async function ServicesList() {
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-300">
             <span>{service.durationMinutes} min</span>
+            <span>{service.bufferMinutes} min buffer</span>
             <span>{formatPrice(service.priceCents, service.currency)}</span>
             <span>{service.active ? "Active" : "Inactive"}</span>
           </div>
