@@ -14,6 +14,7 @@ export class MemorySmsProvider implements SmsProvider {
     this.counter += 1;
     const id = `mem-${this.counter}`;
     this.outbox.push({ ...message, id, sentAt: new Date() });
+    console.log("[dev-sms]", message.to, message.body);
     return { id, provider: this.name, to: message.to };
   }
 

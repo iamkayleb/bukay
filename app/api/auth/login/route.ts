@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       { status: 429, headers: { "Retry-After": String(retryAfter) } }
     );
   }
-
+  console.log("[dev-otp]", phone, result.code);
   try {
     await getSmsProvider().send({
       to: phone,
