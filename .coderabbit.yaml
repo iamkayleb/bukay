@@ -8,12 +8,12 @@
 language: en-US
 reviews:
   profile: assertive
-  request_changes_workflow: false      # advisory: never auto-block a merge (fleet rule)
+  request_changes_workflow: false # advisory: never auto-block a merge (fleet rule)
   high_level_summary: true
   poem: false
   auto_review:
     enabled: true
-    drafts: false                      # opener creates drafts; review when marked ready
+    drafts: false # opener creates drafts; review when marked ready
     # Skip automatic-review budget on maintenance-bot PRs (dependency bumps, CI/version
     # syncs) and generated sync/release PRs. agents-workflows-bot is intentionally NOT listed
     # — it authors substantial agent code PRs (e.g. "Agent belt for #N") that should still be

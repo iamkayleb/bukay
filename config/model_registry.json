@@ -72,10 +72,7 @@
       "api": "chat",
       "lifecycle": "current",
       "positioning": "frontier",
-      "source_ids": [
-        "openai-current-models-2026-07-10",
-        "openai-pricing-2026-07-10"
-      ],
+      "source_ids": ["openai-current-models-2026-07-10", "openai-pricing-2026-07-10"],
       "pricing": {
         "currency": "USD",
         "input_per_million_tokens": 5.0,
@@ -89,10 +86,7 @@
       "api": "chat",
       "lifecycle": "current",
       "positioning": "balanced",
-      "source_ids": [
-        "openai-current-models-2026-07-10",
-        "openai-pricing-2026-07-10"
-      ],
+      "source_ids": ["openai-current-models-2026-07-10", "openai-pricing-2026-07-10"],
       "pricing": {
         "currency": "USD",
         "input_per_million_tokens": 2.5,
@@ -106,10 +100,7 @@
       "api": "chat",
       "lifecycle": "current",
       "positioning": "efficient",
-      "source_ids": [
-        "openai-current-models-2026-07-10",
-        "openai-pricing-2026-07-10"
-      ],
+      "source_ids": ["openai-current-models-2026-07-10", "openai-pricing-2026-07-10"],
       "pricing": {
         "currency": "USD",
         "input_per_million_tokens": 1.0,

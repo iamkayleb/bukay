@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, eval/cursor]
   pull_request:
-    branches: [main]
+    branches: [main, eval/cursor]
   workflow_dispatch:
 
 permissions:
@@ -18,16 +18,35 @@ jobs:
       - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v6.0.10
-        with:
-          version: 10
+        # Version comes from package.json "packageManager" (single source of truth).
 
       - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: pnpm
 
+      # PR #363/#386/#387: package-lock.json was removed; installs depend on
+      # pnpm-lock.yaml already present on eval/cursor. Fail before install/tests
+      # if the lockfile is missing or an npm lockfile reappears (see VERIFICATION.md).
+      - name: Assert pnpm lockfile (no npm package-lock)
+        run: |
+          if [ ! -f pnpm-lock.yaml ]; then
+            echo "pnpm-lock.yaml is required before install/tests (base: eval/cursor)" >&2
+            exit 1
+          fi
+          if [ -f package-lock.json ]; then
+            echo "package-lock.json must not exist; use pnpm-lock.yaml" >&2
+            exit 1
+          fi
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Prisma migrate
+        run: pnpm exec prisma migrate deploy --schema prisma/schema.prisma
+
+      - name: Prisma seed
+        run: pnpm exec prisma db seed --schema prisma/schema.prisma
 
       - name: Format check
         run: pnpm format:check

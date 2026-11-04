@@ -2,6 +2,7 @@
   "name": "bukay",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.34.5",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,7 +10,7 @@
     "lint": "next lint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "vitest run",
+    "test": "vitest run --coverage",
     "lighthouse:mobile": "lhci autorun --config=lighthouserc.json",
     "prisma:generate": "prisma generate",
     "postinstall": "prisma generate",
@@ -19,15 +20,19 @@
   "dependencies": {
     "@prisma/client": "^5.14.0",
     "next": "^14.2.15",
+    "pdf-lib": "^1.17.1",
+    "qrcode": "^1.5.4",
     "react": "^18",
     "react-dom": "^18",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@vitejs/plugin-react": "^4.3.0",
+    "@vitest/coverage-v8": "^1.6.1",
     "autoprefixer": "^10.5.0",
     "eslint": "^8",
     "eslint-config-next": "^14.2.15",

@@ -15,30 +15,48 @@ The tenant-owned models are:
 
 | Model | Purpose | Tenant-specific constraints and indexes |
 |-------|---------|-----------------------------------------|
-| `User` | Login or staff identity for a tenant | `@@unique([tenantId, email])`, `@@index([tenantId])` |
+| `User` | Login or staff identity for a tenant | `phone` `@unique`, `@@unique([tenantId, email])`, `@@index([tenantId])` |
 | `Service` | Bookable service with duration and price | `@@unique([tenantId, name])`, `@@index([tenantId])` |
 | `Staff` | Staff member who can be assigned to bookings | `@@unique([tenantId, email])`, `@@index([tenantId])` |
 | `BusinessHour` | Weekly opening hours by day of week | `@@unique([tenantId, dayOfWeek])`, `@@index([tenantId])` |
 | `Client` | Customer profile scoped to a tenant | `@@unique([tenantId, phone])`, `@@index([tenantId])` |
 | `Booking` | Appointment linking client, service, and optional staff | `@@index([tenantId])`, `@@index([tenantId, startsAt])` |
+| `SlotHold` | Durable public-booking hold for a service start time | `@@unique([tenantId, serviceId, startsAt])`, `@@index([tenantId])`, `@@index([expiresAt])` |
 | `Payment` | Payment ledger row for a booking | `@@index([tenantId])`, `@@index([bookingId])`, `@@index([providerRef])` |
+| `LedgerEntry` | Append-only money movement (gross / fees / net) | `@@index([tenantId])`, `@@index([paymentId])`, `@@index([reference])`, `@@index([tenantId, createdAt])` |
 | `AuditLog` | Append-only tenant activity record | `@@index([tenantId])`, `@@index([tenantId, entityType, entityId])` |
+| `DeadLetter` | Unknown or unhandled webhook (and similar) events | `@@index([source])`, `@@index([eventType])`, `@@index([createdAt])`, `@@index([tenantId])` |
+| `Conversation` | WhatsApp thread for one customer phone on a tenant | `@@unique([tenantId, customerPhone])`, `@@index([tenantId])`, `@@index([clientId])` |
+| `Message` | Inbound or outbound WhatsApp message on a conversation | `@@index([tenantId])`, `@@index([conversationId])`, unique `externalId` |
+| `IdempotencyKey` | Durable webhook/request dedupe keys (7-day TTL) | `@@unique([key])`, `@@index([expiresAt])` |
+| `OtpCode` | Durable one-time login code keyed by phone | `phone` primary key, `@@index([expiresAt])` |
 
 `Tenant` itself is not tenant-scoped and must not carry a `tenantId` column. Deleting a tenant
 cascades to its owned rows through the Prisma relations. `Booking` restricts deletion of referenced
 clients and services, and sets `staffId` to null when a referenced staff row is deleted.
 
+## Tenant-scoped indexing
+
+Every tenant-owned model declares a required `tenantId` foreign key and `@@index([tenantId])` in
+the same model block. The index exists so list and filter queries that always constrain by tenant
+(`WHERE tenantId = ?`) can seek directly rather than scanning the full table. Composite indexes that
+start with `tenantId` (for example `@@index([tenantId, startsAt])` on `Booking`) remain compatible
+with that access pattern while also accelerating calendar-style reads.
+
 ## Model Details
 
 ### Tenant
 
-`Tenant` stores the business name, globally unique slug, timezone, currency, and relations to all
-tenant-owned records. The defaults are `Africa/Lagos` for timezone and `NGN` for currency.
+`Tenant` stores the business name, globally unique slug, timezone, currency,
+optional `paymentProvider` selection (`paystack` by default; also `flutterwave` or
+`fake`), an optional digits-only `whatsappNumber` used to route inbound WhatsApp
+webhooks, and relations to all tenant-owned records. The defaults are `Africa/Lagos`
+for timezone and `NGN` for currency.
 
 ### User
 
-`User` stores email, display name, and role. Roles are currently stored as strings with a default of
-`owner`.
+`User` stores email, display name, role, and an optional unique `phone` in E.164. Phone login looks
+the owner up by that column. Roles are currently stored as strings with a default of `owner`.
 
 ### Service
 
@@ -63,17 +81,74 @@ relations.
 ### Booking
 
 `Booking` links a client, service, optional staff member, start and end timestamps, status string, and
-optional notes. The tenant/start index supports calendar views.
+optional notes. The tenant/start index supports calendar views. Active bookings may also carry a
+`slotLock` value that uniquely reserves a service start time per tenant.
+
+### SlotHold
+
+`SlotHold` is the durable source of truth for the public-booking hold window. It stores the tenant,
+service, start time, session id, optional booking id, and expiry timestamp so failed payments can
+release capacity without leaving orphaned soft locks.
 
 ### Payment
 
 `Payment` links to a booking and stores amount, currency, provider metadata, status string, optional
 paid timestamp, and audit timestamps.
 
+### LedgerEntry
+
+`LedgerEntry` is an append-only money-movement row written after successful payment verification.
+Both Paystack and Flutterwave adapters produce the same field shape (`grossCents`,
+`providerFeeCents`, `platformFeeCents`, `netCents`, `direction`, `currency`, `reference`). Switching
+`Tenant.paymentProvider` must not rewrite or delete existing ledger rows.
+
 ### AuditLog
 
 `AuditLog` stores action history with optional actor and entity references. `metadata` is stored as a
 string so callers can serialize structured context when needed.
+
+### DeadLetter
+
+`DeadLetter` stores events that could not be processed successfully for later inspection:
+
+- unknown or unhandled inbound webhooks (for example Paystack / Flutterwave)
+- permanently failed outbound lifecycle notifications after WhatsApp and SMS retries are exhausted
+  (`source` = `notifications`, see `app/lib/notifications/dead-letter.ts`)
+
+For notification failures, `payload` is JSON with top-level `bookingId`, `eventType`, `tenantId`,
+`to`, and the full lifecycle `event` object so operators can associate the row with the booking
+that triggered the send.
+`tenantId` is optional so events that cannot be attributed to a tenant still persist.
+Rows older than 30 days are removed by `purgeExpiredDeadLetters` (invoked when recording new
+dead letters) so raw webhook payloads are not retained indefinitely.
+The admin view at `app/(app)/admin/dlq` lists recent rows for operators.
+
+### IdempotencyKey
+
+`IdempotencyKey` stores durable webhook/request deduplication keys with a 7-day `expiresAt` TTL
+so replay protection survives process restarts and works across multiple instances.
+
+### OtpCode
+
+`OtpCode` stores the hashed one-time login code for a phone number. `phone` is the primary key
+so the login route and the verify route share one row across processes and restarts. `expiresAt`
+is the existing five-minute expiry. `attempts` counts failed verifications up to the existing
+limit. A successful verify deletes the row. Rate-limit counters stay process-local and are not
+part of this table.
+
+### Conversation
+
+`Conversation` is one WhatsApp thread between a tenant business number and a customer phone.
+`customerPhone` is stored in E.164 for Nigerian mobiles. `clientId` is set when that phone
+matches an existing `Client` for the tenant, and stays null for unknown senders. A tenant and
+phone pair is unique so later messages resume the same thread.
+
+### Message
+
+`Message` stores one inbound or outbound WhatsApp payload on a conversation. `direction` is
+`inbound` or `outbound`. `kind` is `text`, `template`, or another provider type. `externalId`
+is the provider message id and is unique so webhook retries do not insert a second row.
+Every row carries `tenantId` for the business that received or sent the message.
 
 ## Running Migrations
 
@@ -82,14 +157,14 @@ The schema uses SQLite with `url = "file:./dev.db"`, so local migrations create
 
 ```bash
 # Install dependencies and generate the Prisma client.
-npm install
-npm run prisma:generate
+pnpm install
+pnpm run prisma:generate
 
 # Apply migrations to the local SQLite database.
-npm run migrate:dev -- --schema prisma/schema.prisma
+pnpm run migrate:dev -- --schema prisma/schema.prisma
 
 # Seed the demo tenant and sample data.
-npm run db:seed -- --schema prisma/schema.prisma
+pnpm run db:seed -- --schema prisma/schema.prisma
 ```
 
 The seed script is configured in `package.json` as `tsx prisma/seed.ts`. It is idempotent: it upserts
@@ -105,6 +180,11 @@ checked-in migration:
 | Migration | Description |
 |-----------|-------------|
 | `20260611112538_init` | Creates the initial SQLite schema for tenants, users, services, staff, business hours, clients, bookings, payments, and audit logs. It also creates all unique constraints and tenant indexes declared in `schema.prisma`. |
+| `20260915130000_slot_hold` | Adds the `SlotHold` table for durable public-booking holds with expiry indexes. |
+| `20260916120000_dead_letter` | Adds the `DeadLetter` table for unknown or unhandled inbound events. |
+| `20260921194500_idempotency_key` | Adds the `IdempotencyKey` table for durable webhook/request deduplication. |
+| `20261004120000_whatsapp_conversation` | Adds `Tenant.whatsappNumber` plus `Conversation` and `Message` for inbound WhatsApp history. |
+| `20261004150000_otp_code` | Adds the `OtpCode` table for durable phone login codes. |
 
 [`prisma/migrations/migration_lock.toml`](../prisma/migrations/migration_lock.toml) records the
 database provider as `sqlite`. Do not edit generated migration files by hand after they have been

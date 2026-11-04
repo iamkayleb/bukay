@@ -1,0 +1,68 @@
+import { describe, it, expect } from "vitest";
+import { FakeWhatsAppProvider } from "@/app/lib/whatsapp/fake";
+import {
+  WHATSAPP_TEMPLATES,
+  findWhatsAppTemplateByName,
+  getWhatsAppTemplate,
+  listWhatsAppTemplates,
+  sendGreetingTemplate,
+} from "@/app/lib/whatsapp/templates";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+describe("WhatsApp template registry", () => {
+  it("exposes the booking lifecycle and greeting templates", () => {
+    expect(Object.keys(WHATSAPP_TEMPLATES).sort()).toEqual(
+      [
+        "booking_cancelled",
+        "booking_confirmed",
+        "booking_created",
+        "booking_reminder",
+        "booking_rescheduled",
+        "greeting",
+      ].sort()
+    );
+    expect(getWhatsAppTemplate("greeting").name).toBe("greeting");
+    expect(findWhatsAppTemplateByName("booking_confirmed")?.category).toBe("UTILITY");
+    expect(listWhatsAppTemplates()).toHaveLength(6);
+  });
+
+  it("documents every template in docs/WHATSAPP_TEMPLATES.md", () => {
+    const docs = readFileSync(resolve("docs/WHATSAPP_TEMPLATES.md"), "utf8");
+    for (const template of listWhatsAppTemplates()) {
+      expect(docs).toContain(template.name);
+      expect(docs).toContain(template.bodyExample);
+      for (const placeholder of template.bodyPlaceholders) {
+        expect(docs).toContain(placeholder);
+      }
+    }
+  });
+
+  it("keeps bodyExample placeholder count aligned with bodyPlaceholders", () => {
+    for (const template of listWhatsAppTemplates()) {
+      const matches = template.bodyExample.match(/\{\{\d+\}\}/g) ?? [];
+      expect(matches).toHaveLength(template.bodyPlaceholders.length);
+      matches.forEach((token, index) => {
+        expect(token).toBe(`{{${index + 1}}}`);
+      });
+    }
+  });
+
+  it("sends the greeting template to an unknown sender", async () => {
+    const provider = new FakeWhatsAppProvider();
+    const result = await sendGreetingTemplate(provider, {
+      to: "+2348090001111",
+      businessName: "Ada Salon",
+    });
+
+    expect(result.httpStatus).toBe(200);
+    expect(result.to).toBe("+2348090001111");
+    expect(provider.outbox).toHaveLength(1);
+    expect(provider.outbox[0].content).toEqual({
+      kind: "template",
+      name: WHATSAPP_TEMPLATES.greeting.name,
+      language: WHATSAPP_TEMPLATES.greeting.language,
+      bodyParameters: ["Ada Salon"],
+    });
+  });
+});

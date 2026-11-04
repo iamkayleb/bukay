@@ -31,16 +31,16 @@ on:
   # Self-healing sweep: re-checks every open eval-lane PR, so a merge that was
   # blocked by a transient condition lands without anyone clicking anything.
   schedule:
-    - cron: '37 * * * *'
+    - cron: "37 * * * *"
   workflow_dispatch:
     inputs:
       pr_number:
-        description: 'Optional single PR to evaluate (blank = scan all eval-lane PRs)'
+        description: "Optional single PR to evaluate (blank = scan all eval-lane PRs)"
         required: false
         type: string
-        default: ''
+        default: ""
       dry_run:
-        description: 'Report what would merge without merging anything'
+        description: "Report what would merge without merging anything"
         required: false
         type: boolean
         default: false

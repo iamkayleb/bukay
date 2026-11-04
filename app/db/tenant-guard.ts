@@ -8,6 +8,7 @@ const TENANT_SCOPED_MODELS = new Set([
   "Client",
   "Payment",
   "Service",
+  "SlotHold",
   "Staff",
   "User",
 ]);

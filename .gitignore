@@ -231,6 +231,8 @@ node_modules/
 prisma/generated/
 # pnpm
 pnpm-debug.log*
+# Prefer pnpm-lock.yaml; do not commit an npm lockfile alongside it.
+package-lock.json
 # Lighthouse CI
 .lighthouseci/
 

@@ -41,9 +41,7 @@
         "Every tenant-scoped model in `prisma/schema.prisma` declares `@@index([tenantId])`",
         "`pnpm test` passes"
       ],
-      "depends_on": [
-        "scaffold"
-      ]
+      "depends_on": ["scaffold"]
     }
   ]
 }

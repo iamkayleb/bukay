@@ -1,0 +1,156 @@
+version: 1
+issue: 408
+base: eval/cursor
+branch: cursor/issue-408
+tasks:
+  - id: task-01
+    title: "In `app/(app)/admin/dlq/data.ts`: Wire notification event emission into
+      the real booking lifecycle handlers so that create, confirm, cancel, and reschedule
+      operations publish the corresponding notification event as part of the booking
+      flow."
+    status: done
+    started_at: "2026-09-23T11:49:37Z"
+    finished_at: "2026-09-23T11:57:30Z"
+    commit: c12d12359ec103859514a55bf9d54d6e62725381
+    notes:
+      - "Prior finish pointed at ledger-only start commit; corrected with real wiring."
+      - "emit booking.created from createPublicBooking; confirm/cancel/reschedule from PATCH via emitBookingLifecycleNotification."
+      - "Verified: booking-lifecycle.test.ts, route.test.ts lifecycle cases, public-booking create emission."
+  - id: task-02
+    title: Implement permanent failure handling in the notification pipeline so that
+      exhausted retry attempts create a `DeadLetter` record in the database.
+    status: done
+    started_at: "2026-09-23T12:10:59Z"
+    finished_at: "2026-09-23T12:13:30Z"
+    commit: 687ea1cce968847eeb34c57ddd4119d058c278a5
+    notes:
+      - "Added app/lib/notifications/dead-letter.ts; dispatch writes one DeadLetter after both channels exhaust backoff."
+      - "Verified by dispatch.test.ts permanent-failure + retry-exhaustion cases."
+  - id: task-03
+    title: "In `app/(app)/admin/dlq/data.ts`: Add or update integration tests that
+      drive booking create, confirm, cancel, and reschedule flows and assert that
+      the expected notification events are emitted from those operations."
+    status: done
+    started_at: "2026-09-23T12:14:00Z"
+    finished_at: "2026-09-23T12:14:21Z"
+    commit: c12d12359ec103859514a55bf9d54d6e62725381
+    notes:
+      - "Verified public-booking create + PATCH confirm/cancel/reschedule emission tests (re-run this round)."
+  - id: task-04
+    title: "In `app/(app)/admin/dlq/data.ts`: Add an integration test that simulates
+      WhatsApp delivery failure during a booking-triggered notification and verifies
+      that SMS is attempted as the fallback channel."
+    status: done
+    started_at: "2026-09-23T12:14:00Z"
+    finished_at: "2026-09-23T12:14:21Z"
+    commit: f13d4d76e1b77d6c8883b3bf3dfa773bd674190a
+    notes:
+      - "route.test.ts: confirm via PATCH with failAlways WhatsApp asserts SMS send for booking.confirmed."
+  - id: task-05
+    title: Add a test covering permanent notification failure after all retry/backoff
+      attempts and assert that a `DeadLetter` row is written with the expected payload.
+    status: done
+    started_at: "2026-09-23T12:10:59Z"
+    finished_at: "2026-09-23T12:13:30Z"
+    commit: 687ea1cce968847eeb34c57ddd4119d058c278a5
+    notes:
+      - "dispatch.test.ts covers maxAttempts=3 exhaustion on WA+SMS; asserts single DeadLetter with bookingId payload."
+  - id: task-06
+    title: Fix the CI test workflow so that `pnpm test` runs successfully in the repository's
+      CI environment, including any required Next.js test setup adjustments.
+    status: done
+    started_at: "2026-09-23T12:14:48Z"
+    finished_at: "2026-09-23T12:16:45Z"
+    commit: e28f962875f04ac7b103f87815328131b03296b6
+    notes:
+      - "ci.yml already runs pnpm test; tsc/prettier CI fixes on branch (e28f962/303c36b)."
+      - "Verified: local pnpm test 364 passed; GitHub Next.js CI run 35859318003 success."
+  - id: task-07
+    title: Executing each real booking lifecycle operation for create, confirm, cancel,
+      and reschedule causes exactly one corresponding notification event to be emitted
+      by the integrated booking flow, without requiring tests to call the notification
+      event bus directly.
+    status: done
+    started_at: "2026-09-23T12:14:00Z"
+    finished_at: "2026-09-23T12:14:21Z"
+    commit: c12d12359ec103859514a55bf9d54d6e62725381
+    notes:
+      - "Each lifecycle test asserts toHaveBeenCalledTimes(1) after the booking handler, not emitLifecycleEvent."
+  - id: task-08
+    title: For each booking lifecycle operation under test (create, confirm, cancel,
+      reschedule), the emitted notification event payload includes the booking identifier
+      and the lifecycle-specific event name expected by the notification pipeline.
+    status: done
+    started_at: "2026-09-23T12:14:00Z"
+    finished_at: "2026-09-23T12:14:21Z"
+    commit: c12d12359ec103859514a55bf9d54d6e62725381
+    notes:
+      - "Assertions cover type + bookingId for created/confirmed/cancelled/rescheduled."
+  - id: task-09
+    title: When WhatsApp delivery fails during a booking-triggered notification, the
+      notification pipeline attempts SMS delivery for the same booking notification
+      in the same test scenario.
+    status: done
+    started_at: "2026-09-23T12:14:00Z"
+    finished_at: "2026-09-23T12:14:21Z"
+    commit: f13d4d76e1b77d6c8883b3bf3dfa773bd674190a
+    notes:
+      - "Confirmed via booking PATCH + registerNotificationSubscribers; SMS outbox length 1."
+  - id: task-10
+    title: If WhatsApp delivery succeeds for a booking-triggered notification, the
+      fallback SMS channel is not attempted for that notification.
+    status: done
+    started_at: "2026-09-23T12:14:00Z"
+    finished_at: "2026-09-23T12:14:21Z"
+    commit: f13d4d76e1b77d6c8883b3bf3dfa773bd674190a
+    notes:
+      - "Cancel via PATCH with healthy WhatsApp; sms.outbox length 0."
+  - id: task-11
+    title: After the notification pipeline exhausts all configured retry attempts
+      for a failed notification, exactly one `DeadLetter` database row is created
+      for that notification failure.
+    status: done
+    started_at: "2026-09-23T12:10:59Z"
+    finished_at: "2026-09-23T12:13:30Z"
+    commit: 687ea1cce968847eeb34c57ddd4119d058c278a5
+    notes:
+      - "Verified: db.rows length === 1 after 3 WA + 3 SMS exhausted attempts."
+  - id: task-12
+    title: The persisted `DeadLetter` row for an exhausted notification failure contains
+      the failed notification payload and enough identifying data to associate the
+      record to the originating booking-triggered event used in the test.
+    status: done
+    started_at: "2026-09-23T12:10:59Z"
+    finished_at: "2026-09-23T12:13:30Z"
+    commit: 687ea1cce968847eeb34c57ddd4119d058c278a5
+    notes:
+      - "Payload JSON includes top-level bookingId, eventType, tenantId, to, and full event."
+  - id: task-13
+    title: The Prisma schema defines a `DeadLetter` model that can be used by the
+      notification failure flow exercised in tests, and the application code writes
+      to that model when retries are exhausted.
+    status: done
+    started_at: "2026-09-23T12:10:59Z"
+    finished_at: "2026-09-23T12:13:30Z"
+    commit: 687ea1cce968847eeb34c57ddd4119d058c278a5
+    notes:
+      - "Uses existing DeadLetter model; recordNotificationDeadLetter writes via db.deadLetter.create."
+  - id: task-14
+    title: The repository CI workflow includes a step that executes `pnpm test`, and
+      that command completes successfully in the CI environment for this branch.
+    status: done
+    started_at: "2026-09-23T12:14:48Z"
+    finished_at: "2026-09-23T12:16:45Z"
+    commit: e28f962875f04ac7b103f87815328131b03296b6
+    notes:
+      - ".github/workflows/ci.yml Test step runs pnpm test; Next.js CI green on this branch."
+  - id: task-15
+    title: Running `pnpm test` in a clean environment after installing dependencies
+      succeeds without Next.js-specific test setup errors that previously caused CI
+      failure.
+    status: done
+    started_at: "2026-09-23T12:14:48Z"
+    finished_at: "2026-09-23T12:16:45Z"
+    commit: e28f962875f04ac7b103f87815328131b03296b6
+    notes:
+      - "Fresh pnpm install --frozen-lockfile + pnpm test: 55 files / 364 tests passed."
