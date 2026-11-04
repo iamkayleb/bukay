@@ -64,6 +64,7 @@ model Service {
   name            String
   description     String?
   durationMinutes Int
+  bufferMinutes   Int        @default(0)
   priceCents      Int
   currency        String     @default("NGN")
   active          Boolean    @default(true)

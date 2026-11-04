@@ -10,7 +10,7 @@ export type ServiceRecord = {
   tenantId: string;
   name: string;
   durationMinutes: number;
-  priceKobo: number;
+  priceCents: number;
   bufferMinutes: number;
   active: boolean;
   createdAt: Date | string;
@@ -75,7 +75,7 @@ export function serializeService(service: ServiceRecord) {
     tenantId: service.tenantId,
     name: service.name,
     durationMinutes: service.durationMinutes,
-    priceKobo: service.priceKobo,
+    priceKobo: service.priceCents,
     bufferMinutes: service.bufferMinutes,
     active: service.active,
     createdAt:
@@ -101,4 +101,16 @@ export function isUniqueConstraintError(error: unknown) {
     "code" in error &&
     (error as { code?: unknown }).code === "P2002"
   );
+}
+
+// Shared wire-to-storage mapping for both writes.
+export function serviceWriteData<T extends { priceKobo: number }>(
+  input: T
+): Omit<T, "priceKobo"> & { priceCents: number };
+export function serviceWriteData<T extends { priceKobo?: number }>(
+  input: T
+): Omit<T, "priceKobo"> & { priceCents?: number };
+export function serviceWriteData<T extends { priceKobo?: number }>(input: T) {
+  const { priceKobo, ...fields } = input;
+  return { ...fields, ...(priceKobo === undefined ? {} : { priceCents: priceKobo }) };
 }

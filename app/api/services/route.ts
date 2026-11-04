@@ -3,25 +3,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/db/prisma";
 import { createServiceSchema } from "@/app/lib/services/schemas";
 import {
+  serviceWriteData,
   jsonError,
   readJson,
   runForTenant,
   serializeService,
   validationError,
   isUniqueConstraintError,
-  type ServiceRecord,
 } from "./_helpers";
 
 export const dynamic = "force-dynamic";
 
-const serviceDelegate = prisma.service as unknown as {
-  findMany(args: unknown): Promise<ServiceRecord[]>;
-  create(args: unknown): Promise<ServiceRecord>;
-};
-
 export async function GET(req: NextRequest) {
   return runForTenant(req, async (tenantId) => {
-    const services = await serviceDelegate.findMany({
+    const services = await prisma.service.findMany({
       where: { tenantId },
       orderBy: [{ active: "desc" }, { name: "asc" }],
     });
@@ -43,14 +38,10 @@ export async function POST(req: NextRequest) {
 
   return runForTenant(req, async (tenantId) => {
     try {
-      const service = await serviceDelegate.create({
+      const service = await prisma.service.create({
         data: {
           tenantId,
-          name: parsed.data.name,
-          durationMinutes: parsed.data.durationMinutes,
-          priceKobo: parsed.data.priceKobo,
-          bufferMinutes: parsed.data.bufferMinutes,
-          active: parsed.data.active,
+          ...serviceWriteData(parsed.data),
         },
       });
 
