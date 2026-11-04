@@ -39,7 +39,7 @@ vi.mock("@/app/db/prisma", () => ({
   },
 }));
 
-import { TodaySchedule, listTodaysBookings, zonedDayRange } from "@/app/(app)/today/page";
+import { TodaySchedule, listTodaysBookings, zonedDayRange } from "@/app/(app)/today/data";
 
 function booking(overrides: Partial<BookingRow> = {}): BookingRow {
   return {
