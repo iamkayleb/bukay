@@ -54,7 +54,6 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
-beforeEach(() => {
   process.env.SESSION_SECRET = "test-secret-must-be-long-enough";
   __resetOtpStoreForTests();
   await __deletePersistedOtpCodesForTests([PHONE_E164, OTHER_PHONE_E164]);
