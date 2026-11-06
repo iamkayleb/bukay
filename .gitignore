@@ -252,3 +252,4 @@ langsmith-fleet-worker-attempt.json
 /dumpbody.sh
 /evalissues/
 *.sh.bak
+.pnpm-store/
