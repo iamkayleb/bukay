@@ -253,3 +253,4 @@ langsmith-fleet-worker-attempt.json
 /evalissues/
 *.sh.bak
 .pnpm-store/
+.pnpm-store/
