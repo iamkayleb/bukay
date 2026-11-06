@@ -15,9 +15,7 @@ export function SectionPlaceholder({ title, description, hint }: SectionPlacehol
         <p className="max-w-xl text-sm text-slate-300 sm:text-base">{description}</p>
       </div>
       <div className="rounded-lg border border-dashed border-slate-800 bg-slate-900/40 px-5 py-8 text-center">
-        <p className="text-sm text-slate-400">
-          {hint ?? "Nothing here yet — content will appear when available."}
-        </p>
+        <p className="text-sm text-slate-400">{hint ?? "Content will appear when available."}</p>
       </div>
     </section>
   );
