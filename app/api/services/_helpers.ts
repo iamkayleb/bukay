@@ -1,3 +1,4 @@
+import { sessionFromCookies } from "@/app/lib/auth/session";
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 
@@ -46,7 +47,7 @@ export async function runForTenant<T>(
   req: NextRequest,
   callback: (tenantId: string) => Promise<T>
 ): Promise<T | NextResponse> {
-  const resolved = resolveTenant({ headers: req.headers });
+  const resolved = resolveTenant({ headers: req.headers, session: sessionFromCookies(req.headers.get("cookie")) });
 
   if (resolved.tenantId?.trim()) {
     const tenantId = resolved.tenantId.trim();
