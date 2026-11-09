@@ -47,7 +47,10 @@ export async function runForTenant<T>(
   req: NextRequest,
   callback: (tenantId: string) => Promise<T>
 ): Promise<T | NextResponse> {
-  const resolved = resolveTenant({ headers: req.headers, session: sessionFromCookies(req.headers.get("cookie")) });
+  const resolved = resolveTenant({
+    headers: req.headers,
+    session: sessionFromCookies(req.headers.get("cookie")),
+  });
 
   if (resolved.tenantId?.trim()) {
     const tenantId = resolved.tenantId.trim();
