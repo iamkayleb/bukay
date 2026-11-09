@@ -97,3 +97,8 @@ export function readSessionTokenFromCookieHeader(header: string | null | undefin
   }
   return null;
 }
+
+export function sessionFromCookies(cookieHeader: string | null | undefined): SessionPayload | null {
+  const token = readSessionTokenFromCookieHeader(cookieHeader);
+  return token ? verifySession(token) : null;
+}

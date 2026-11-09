@@ -1,3 +1,4 @@
+import { sessionFromCookies } from "@/app/lib/auth/session";
 import { headers } from "next/headers";
 
 import { prisma } from "@/app/db/prisma";
@@ -19,6 +20,7 @@ export async function resolveSignedInTenantId(): Promise<string | null> {
   const headerList = headers();
   const resolved = resolveTenant({
     headers: { get: (name) => headerList.get(name) },
+    session: sessionFromCookies(headerList.get("cookie")),
   });
 
   const tenantId = resolved.tenantId?.trim();

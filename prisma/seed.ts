@@ -61,10 +61,11 @@ async function main() {
     where: {
       tenantId_email: { tenantId: tenant.id, email: "owner@demo.bukay.dev" },
     },
-    update: { name: "Demo Owner", role: "owner" },
+    update: { name: "Demo Owner", role: "owner", phone: "+2348061778668" },
     create: {
       tenantId: tenant.id,
       email: "owner@demo.bukay.dev",
+      phone: "+2348061778668",
       name: "Demo Owner",
       role: "owner",
     },
