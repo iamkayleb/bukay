@@ -13,7 +13,12 @@ export function DayView({ tenantId, timeZone }: { tenantId: string | null; timeZ
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => setDate(dateInZone(new Date(), timeZone)), [timeZone]);
+  useEffect(() => {
+    const selected = new URLSearchParams(window.location.search).get("date");
+    setDate(
+      selected && /^\d{4}-\d{2}-\d{2}$/.test(selected) ? selected : dateInZone(new Date(), timeZone)
+    );
+  }, [timeZone]);
   useEffect(() => {
     if (!date) return;
     const controller = new AbortController();
