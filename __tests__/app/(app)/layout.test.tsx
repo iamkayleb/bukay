@@ -39,6 +39,14 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
+vi.mock("@/app/db/prisma", () => ({
+  prisma: {
+    tenant: {
+      findUnique: vi.fn().mockResolvedValue(null),
+    },
+  },
+}));
+
 import AuthenticatedLayout from "@/app/(app)/layout";
 import { SESSION_COOKIE_NAME, SESSION_TTL_MS, signSession } from "@/app/lib/auth/session";
 
@@ -60,20 +68,20 @@ afterEach(() => {
 });
 
 describe("(app) authenticated layout", () => {
-  it("redirects to /login when no session cookie is present", () => {
-    expect(() =>
+  it("redirects to /login when no session cookie is present", async () => {
+    await expect(
       AuthenticatedLayout({ children: null as unknown as React.ReactNode })
-    ).toThrowError(/__REDIRECT__:\/login/);
+    ).rejects.toThrowError(/__REDIRECT__:\/login/);
   });
 
-  it("redirects to /login when the cookie token is invalid", () => {
+  it("redirects to /login when the cookie token is invalid", async () => {
     headersMod.__setCookie(SESSION_COOKIE_NAME, "not.a.valid.token");
-    expect(() =>
+    await expect(
       AuthenticatedLayout({ children: null as unknown as React.ReactNode })
-    ).toThrowError(/__REDIRECT__:\/login/);
+    ).rejects.toThrowError(/__REDIRECT__:\/login/);
   });
 
-  it("renders the app shell with the session phone when authenticated", () => {
+  it("renders the app shell with the session phone when authenticated", async () => {
     const now = Date.now();
     const token = signSession({
       sub: "user-1",
@@ -84,9 +92,9 @@ describe("(app) authenticated layout", () => {
     headersMod.__setCookie(SESSION_COOKIE_NAME, token);
     headersMod.__setHeader("host", "acme.example.com");
 
-    const result = AuthenticatedLayout({
+    const result = (await AuthenticatedLayout({
       children: "child-content" as unknown as React.ReactNode,
-    }) as unknown as {
+    })) as unknown as {
       type: { displayName?: string; name?: string };
       props: { tenantName: string; userPhone?: string; children: unknown };
     };
@@ -98,7 +106,7 @@ describe("(app) authenticated layout", () => {
     expect(result.props.children).toBe("child-content");
   });
 
-  it("falls back to a default tenant name when none can be resolved", () => {
+  it("falls back to a default tenant name when none can be resolved", async () => {
     const now = Date.now();
     const token = signSession({
       sub: "user-2",
@@ -108,9 +116,9 @@ describe("(app) authenticated layout", () => {
     });
     headersMod.__setCookie(SESSION_COOKIE_NAME, token);
 
-    const result = AuthenticatedLayout({
+    const result = (await AuthenticatedLayout({
       children: null as unknown as React.ReactNode,
-    }) as unknown as { props: { tenantName: string } };
+    })) as unknown as { props: { tenantName: string } };
 
     expect(result.props.tenantName).toBe("Bukay");
   });

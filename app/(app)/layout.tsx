@@ -2,11 +2,16 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE_NAME, verifySession } from "@/app/lib/auth/session";
 import { resolveTenant } from "@/app/lib/resolve-tenant";
+import { prisma } from "@/app/db/prisma";
 import { AppShell } from "./components/app-shell";
 
 export const dynamic = "force-dynamic";
 
-export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
+export default async function AuthenticatedLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const cookieStore = cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   const session = token ? verifySession(token) : null;
@@ -21,7 +26,17 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
     session,
   });
 
-  const tenantName = tenant.tenantSlug ?? tenant.tenantId ?? "Bukay";
+  let tenantName = "Bukay";
+  if (tenant.tenantId) {
+    const row = await prisma.tenant.findUnique({
+      where: { id: tenant.tenantId },
+      select: { name: true, slug: true },
+    });
+    tenantName = row?.name?.trim() || row?.slug?.trim() || tenant.tenantSlug || "Bukay";
+  } else if (tenant.tenantSlug) {
+    tenantName = tenant.tenantSlug;
+  }
+
   const userPhone = session.phone;
 
   return (
