@@ -13,5 +13,7 @@ ci/autofix/history.json merge=ours linguist-generated
 # Mark as generated to exclude from Copilot/Codex code reviews
 .agents/*.yml linguist-generated
 
+
 # Windows command launchers must retain native line endings after checkout.
+* text=auto eol=lf
 *.cmd text eol=crlf
