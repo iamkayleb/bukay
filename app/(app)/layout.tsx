@@ -7,11 +7,7 @@ import { AppShell } from "./components/app-shell";
 
 export const dynamic = "force-dynamic";
 
-export default async function AuthenticatedLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   const session = token ? verifySession(token) : null;

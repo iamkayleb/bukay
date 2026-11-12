@@ -10,8 +10,7 @@ type BusinessHoursFormProps = {
 };
 
 export type SaveBusinessHoursResult =
-  | { ok: true; hours: BusinessHourRow[] }
-  | { ok: false; error: string };
+  { ok: true; hours: BusinessHourRow[] } | { ok: false; error: string };
 
 /** Display order Monday→Sunday; storage stays 0 = Sunday. */
 const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0];

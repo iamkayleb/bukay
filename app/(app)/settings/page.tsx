@@ -42,7 +42,6 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       // Schema may not be migrated in some test environments; keep default on.
       initialEnabled = true;
     }
-
   }
 
   // The editor saves through /api/business-hours, which resolves the tenant from the
