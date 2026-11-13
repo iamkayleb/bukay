@@ -1,0 +1,33 @@
+version: 1
+issue: 552
+base: main
+branch: cursor/issue-552
+tasks:
+  - id: task-01
+    title: "Add `app/api/payments/route.ts` with `GET` returning the tenant's payments ordered by `createdAt` descending, including the related booking's client name and service name."
+    status: done
+    notes: []
+  - id: task-02
+    title: "In `app/api/payments/route.ts`, accept an optional `status` query parameter and filter on it, rejecting an unknown value with HTTP 422."
+    status: done
+    notes: []
+  - id: task-03
+    title: "Add `app/(app)/payments/page.tsx` listing each payment with amount formatted from `amountCents`, status, date, client name and service name."
+    status: done
+    notes: []
+  - id: task-04
+    title: "Add `app/(app)/payments/payments-list.tsx` holding the table so the page stays a thin default export, matching the pattern in `app/(app)/today/data.tsx`."
+    status: done
+    notes: []
+  - id: task-05
+    title: "Add a \"Payments\" entry to `app/(app)/components/nav-items.ts` so the page is reachable."
+    status: done
+    notes: []
+  - id: task-06
+    title: "Show a total of paid amounts at the top of `app/(app)/payments/page.tsx`, summing only payments whose `status` is `paid`."
+    status: done
+    notes: []
+  - id: task-07
+    title: "Add `__tests__/app/api/payments/route.test.ts` covering ordering, the status filter, the 422, and tenant scoping, against a real database."
+    status: done
+    notes: []

@@ -60,7 +60,7 @@ export async function listTenantServices(tenantId: string): Promise<TenantServic
   );
 }
 
-function formatPrice(priceCents: number, currency: string): string {
+export function formatPrice(priceCents: number, currency: string): string {
   const amount = priceCents / 100;
   try {
     return new Intl.NumberFormat("en-NG", {

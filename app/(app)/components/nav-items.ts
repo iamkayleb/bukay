@@ -8,6 +8,7 @@ export const NAV_ITEMS: ReadonlyArray<NavItem> = [
   { href: "/calendar", label: "Calendar" },
   { href: "/clients", label: "Clients" },
   { href: "/services", label: "Services" },
+  { href: "/payments", label: "Payments" },
   { href: "/settings", label: "Settings" },
 ];
 
