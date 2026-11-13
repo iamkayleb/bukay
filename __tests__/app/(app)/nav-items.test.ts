@@ -9,6 +9,7 @@ describe("nav items", () => {
       "Calendar",
       "Clients",
       "Services",
+      "Payments",
       "Settings",
     ]);
     expect(NAV_ITEMS.map((item) => item.href)).toEqual([
@@ -16,6 +17,7 @@ describe("nav items", () => {
       "/calendar",
       "/clients",
       "/services",
+      "/payments",
       "/settings",
     ]);
   });
