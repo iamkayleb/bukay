@@ -242,8 +242,14 @@ async function bookingPageSlotDays(serviceId: string): Promise<number[]> {
 }
 
 function closedDays(html: string): number[] {
-  return [...html.matchAll(/data-day-of-week="(\d)"[\s\S]*?<\/div>/g)]
-    .filter((match) => /aria-label="\w+ closed" checked=""/.test(match[0]))
-    .map((match) => Number(match[1]))
-    .sort();
+  return (
+    [...html.matchAll(/data-day-of-week="(\d)"[\s\S]*?<\/div>/g)]
+      // `checked` is not adjacent to `aria-label` in the rendered tag: React emits
+      // attributes in its own order (aria-label, class, type, checked), not JSX
+      // source order. Requiring adjacency matched nothing and reported every day
+      // as open, which is why this never passed.
+      .filter((match) => /aria-label="\w+ closed"[^>]*\bchecked=""/.test(match[0]))
+      .map((match) => Number(match[1]))
+      .sort()
+  );
 }
