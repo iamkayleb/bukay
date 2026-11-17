@@ -1,0 +1,58 @@
+name: UI Acceptance
+
+# Drives a real browser against the running application and publishes evidence
+# the verifier can read, so acceptance criteria about the interface stop being
+# something a person has to perform by hand.
+#
+# Tag the criterion each spec proves, in the test title:
+#
+#     test('[AC-2] a client sees available slots after picking a date', ...)
+#
+# The run then reports, per criterion, whether it is met -- see
+# `docs/guides/UI_ACCEPTANCE.md` in the Workflows repo.
+#
+# Settings below are the ones a project is expected to change. Everything else
+# is centrally managed: edit it here and the next sync reverts it.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-acceptance-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ui:
+    uses: iamkayleb/Workflows/.github/workflows/reusable-14-ci-ui.yml@main
+    with:
+      # ---- project settings ----------------------------------------------
+      package-manager: pnpm
+      node-version: '20'
+
+      # Whatever the app needs before it can answer a request. A UI lane that
+      # runs against an empty database tests the empty state and nothing else.
+      setup-command: >-
+        pnpm exec prisma migrate deploy --schema prisma/schema.prisma &&
+        pnpm exec prisma db seed --schema prisma/schema.prisma
+      build-command: pnpm build
+      start-command: pnpm start
+      base-url: http://localhost:3000
+
+      spec-path: e2e
+
+      # ---- lane settings --------------------------------------------------
+      # Keep this at the ref you pinned the reusable at above, so a pinned
+      # consumer runs that ref's helper code rather than main-HEAD.
+      workflows-ref: main
+
+      # Set to false only while the first specs are being written. A lane that
+      # reports without enforcing is advisory, and an advisory UI check is the
+      # manual check it was meant to replace.
+      required: true

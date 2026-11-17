@@ -41,6 +41,10 @@ pyproject.toml
 # GitHub-scoped automation is synced from iamkayleb/Workflows; don't reformat here
 .github/
 
+# Design system is synced from iamkayleb/Workflows too. Reformatting it here
+# guarantees drift from the source on every sync.
+design-system/
+
 # Repository docs & agent instructions (synced or hand-managed)
 docs/
 *.md

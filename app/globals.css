@@ -1,3 +1,43 @@
+/* Design-system tokens first: every utility the Tailwind preset exposes
+   (bg-surface, text-ink, border-default, ...) resolves to one of these
+   variables, so without this import they resolve to nothing. Override a
+   token below the import; never fork the design system. */
+@import "../design-system/tokens.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+   Bukay's palette, as design-system token overrides.
+
+   The shared system ships two light themes (theme-air, theme-paper); this app
+   is dark. Rather than fork the system or restyle every screen, override the
+   tokens here -- which is the model its README prescribes: "Override any token
+   in an app stylesheet loaded after tokens.css."
+
+   The values are the slate/emerald shades the app already uses, so a component
+   written with `bg-surface text-ink border-default` matches one written with
+   `bg-slate-900 text-slate-100 border-slate-800`. That is what makes migrating
+   a screen at a time possible instead of all at once.
+   --------------------------------------------------------------------------- */
+.theme-air {
+  --bg: #020617; /* slate-950  */
+  --surface: #0f172a; /* slate-900  */
+  --panel: #0f172acc; /* slate-900/80, the card tint already in use */
+  --text: #f1f5f9; /* slate-100  */
+  --muted: #94a3b8; /* slate-400  */
+  --border: #1e293b; /* slate-800  */
+  --row-border: #334155; /* slate-700  */
+  --input-bg: #020617; /* slate-950  */
+
+  --accent: #34d399; /* emerald-400 */
+  --accent-contrast: #022c22; /* emerald-950, legible on the accent fill */
+  --accent-weak: #022c22;
+  --accent-line: #34d39980;
+
+  --pos: #6ee7b7; /* emerald-300 */
+  --neg: #f87171; /* red-400     */
+  --warn: #fbbf24; /* amber-400   */
+  --info: #38bdf8; /* sky-400     */
+}
