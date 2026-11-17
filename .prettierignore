@@ -33,6 +33,11 @@ pyproject.toml
 # Workflows lib (synced from Workflows repo)
 .workflows-lib/
 
+# Agent belt ledgers are machine-written, one per issue. Prettier gating them
+# fails CI for a reason unrelated to whether the change is correct, and a new
+# ledger lands with every issue the belt picks up.
+.agents/
+
 # GitHub-scoped automation is synced from iamkayleb/Workflows; don't reformat here
 .github/
 
