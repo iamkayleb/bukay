@@ -20,6 +20,7 @@ type BookingRow = {
   endsAt: Date;
   status: string;
   notes: string | null;
+  slotLock: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -91,6 +92,7 @@ function booking(overrides: Partial<BookingRow> = {}): BookingRow {
     endsAt: new Date("2026-07-27T11:00:00.000Z"),
     status: "confirmed",
     notes: null,
+    slotLock: null,
     createdAt: new Date("2026-07-01T10:00:00.000Z"),
     updatedAt: new Date("2026-07-01T10:00:00.000Z"),
     ...overrides,
@@ -208,6 +210,49 @@ afterEach(() => {
 });
 
 describe("PATCH /api/bookings/:id", () => {
+  it("rejects an unknown status with 422 and does not persist an update", async () => {
+    const res = await PATCH(request("/api/bookings/booking-1", { status: "maybe" }), {
+      params: { id: "booking-1" },
+    });
+
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.error).toBe("validation_failed");
+    expect(state.updateBooking).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the booking is not in the tenant", async () => {
+    state.findBookingFirst.mockResolvedValueOnce(null);
+
+    const res = await PATCH(request("/api/bookings/booking-missing", { status: "cancelled" }), {
+      params: { id: "booking-missing" },
+    });
+
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.error).toBe("BOOKING_NOT_FOUND");
+    expect(state.updateBooking).not.toHaveBeenCalled();
+  });
+
+  it("clears slotLock when a booking is cancelled", async () => {
+    state.bookings = [
+      booking({
+        slotLock: "service-1|2026-07-27T10:00:00.000Z",
+      }),
+    ];
+
+    const res = await PATCH(request("/api/bookings/booking-1", { status: "cancelled" }), {
+      params: { id: "booking-1" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(state.updateBooking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "cancelled", slotLock: null }),
+      })
+    );
+  });
+
   it("rejects a startsAt-only update when the merged interval is outside business hours", async () => {
     const res = await PATCH(
       request("/api/bookings/booking-1", { startsAt: "2026-07-27T08:30:00.000Z" }),

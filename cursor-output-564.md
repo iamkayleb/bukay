@@ -1,6 +1,6 @@
 ## Keepalive run summary
 
-Verified locally: `pnpm vitest run` (469 tests), `pnpm build`, and targeted `__tests__/app/api/bookings/update.test.ts` against SQLite.
+Verified locally: `pnpm vitest run` (472 tests), `pnpm build`, and `__tests__/app/api/bookings/update.test.ts` against SQLite.
 
 ### Tasks
 
@@ -23,6 +23,6 @@ Verified locally: `pnpm vitest run` (469 tests), `pnpm build`, and targeted `__t
 
 **Progress:** 13/13 tasks complete, 0 remaining
 
-### Follow-up (this run)
+### This run
 
-- `PATCH` cancellation now clears `Booking.slotLock`, matching payment and public-booking cancel paths so the demo seeded slot can be rebooked after calendar cancel.
+- Added mock-route coverage for PATCH `422` (unknown status), `404` (missing tenant booking), and `slotLock` cleared on cancel in `__tests__/app/api/bookings/route.test.ts`.
