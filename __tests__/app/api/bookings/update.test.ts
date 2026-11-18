@@ -128,6 +128,21 @@ describe("PATCH /api/bookings/:id against real SQLite", () => {
     expect(row.startsAt.toISOString()).toBe("2026-06-15T11:00:00.000Z");
   });
 
+  it("allows reschedule onto a slot held only by a cancelled booking", async () => {
+    const cancelled = await createBooking("2026-06-15T17:00:00.000Z");
+    await patchRequest(cancelled.id, { status: "cancelled" }, tenants[0]);
+    const movable = await createBooking("2026-06-15T18:00:00.000Z");
+    const response = await patchRequest(
+      movable.id,
+      { startsAt: "2026-06-15T17:00:00.000Z" },
+      tenants[0]
+    );
+    expect(response.status).toBe(200);
+    const row = await db.booking.findUniqueOrThrow({ where: { id: movable.id } });
+    expect(row.startsAt.toISOString()).toBe("2026-06-15T17:00:00.000Z");
+    expect(row.endsAt.toISOString()).toBe("2026-06-15T17:30:00.000Z");
+  });
+
   it("recomputes endsAt from service duration when startsAt changes", async () => {
     const booking = await createBooking("2026-06-15T14:00:00.000Z");
     const response = await patchRequest(
