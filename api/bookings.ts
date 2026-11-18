@@ -9,6 +9,7 @@ import {
   runForTenant,
   validationError,
 } from "@/app/api/services/_helpers";
+import { bookingSlotLock } from "@/app/lib/slot-hold";
 import {
   mergeBookingInterval,
   validateBookingInterval,
@@ -36,11 +37,13 @@ type BookingUpdateData = {
   staffId?: string | null;
   status?: string;
   notes?: string | null;
+  slotLock?: string | null;
 };
 
 type BookingMutationRecord = BookingRecord & {
   clientId: string;
   serviceId: string;
+  slotLock: string | null;
 };
 
 const bookingDateField = z.preprocess(
@@ -60,7 +63,11 @@ const updateBookingSchema = z
     startsAt: bookingDateField.optional(),
     endsAt: bookingDateField.optional(),
     staffId: z.string().trim().min(1, "Staff is required").nullable().optional(),
-    status: z.string().trim().min(1, "Status is required").optional(),
+    status: z
+      .enum(["confirmed", "cancelled", "completed", "no_show"], {
+        errorMap: () => ({ message: "Invalid booking status" }),
+      })
+      .optional(),
     notes: z.string().nullable().optional(),
   })
   .strict()
@@ -73,6 +80,10 @@ const bookingDelegate = prisma.booking as unknown as {
   findFirst(args: unknown): Promise<BookingMutationRecord | null>;
   findMany(args: unknown): Promise<BookingMutationRecord[]>;
   update(args: unknown): Promise<BookingMutationRecord>;
+};
+
+const serviceDelegate = prisma.service as unknown as {
+  findFirst(args: unknown): Promise<{ durationMinutes: number } | null>;
 };
 
 const businessHourDelegate = prisma.businessHour as unknown as {
@@ -93,7 +104,7 @@ async function findTenantBooking(tenantId: string, id: string) {
   });
 }
 
-function buildValidationStore(): BookingValidationStore {
+function buildValidationStore(existing: BookingMutationRecord): BookingValidationStore {
   return {
     async findBusinessHours({ tenantId, dayOfWeek }) {
       return businessHourDelegate.findFirst({
@@ -118,12 +129,13 @@ function buildValidationStore(): BookingValidationStore {
 
       return !!blackoutDate;
     },
-    async findOverlappingBooking({ tenantId, bookingId, staffId, startsAt, endsAt }) {
+    async findOverlappingBooking({ tenantId, bookingId, startsAt, endsAt }) {
       const overlappingBookings = await bookingDelegate.findMany({
         where: {
           tenantId,
           id: { not: bookingId },
-          staffId,
+          serviceId: existing.serviceId,
+          status: { not: "cancelled" },
           startsAt: { lt: endsAt },
           endsAt: { gt: startsAt },
         },
@@ -153,19 +165,39 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         return jsonError("BOOKING_NOT_FOUND", 404);
       }
 
-      const updateData: BookingUpdateData = parsed.data;
+      const updateData: BookingUpdateData = { ...parsed.data };
+
+      if (updateData.startsAt && updateData.endsAt === undefined) {
+        const service = await serviceDelegate.findFirst({
+          where: { tenantId, id: existingBooking.serviceId },
+        });
+        if (!service) {
+          return jsonError("SERVICE_NOT_FOUND", 404);
+        }
+        updateData.endsAt = new Date(
+          updateData.startsAt.getTime() + service.durationMinutes * 60_000
+        );
+      }
+
+      const nextStatus = updateData.status ?? existingBooking.status;
+      if (nextStatus === "cancelled") {
+        updateData.slotLock = null;
+      } else if (updateData.startsAt && existingBooking.slotLock) {
+        updateData.slotLock = bookingSlotLock(existingBooking.serviceId, updateData.startsAt);
+      }
+
+      const intervalChanging =
+        updateData.startsAt !== undefined || updateData.endsAt !== undefined;
       const candidateInterval = mergeBookingInterval(existingBooking, {
         startsAt: updateData.startsAt,
         endsAt: updateData.endsAt,
       });
-      const validationIssue = await validateBookingInterval(
-        buildValidationStore(),
-        existingBooking,
-        {
-          ...candidateInterval,
-          staffId: updateData.staffId ?? existingBooking.staffId,
-        }
-      );
+      const validationIssue = intervalChanging
+        ? await validateBookingInterval(buildValidationStore(existingBooking), existingBooking, {
+            ...candidateInterval,
+            staffId: updateData.staffId ?? existingBooking.staffId,
+          })
+        : null;
 
       if (validationIssue) {
         return NextResponse.json(
@@ -179,7 +211,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       }
 
       const booking = await bookingDelegate.update({
-        where: { id: existingBooking.id },
+        where: { id: existingBooking.id, tenantId },
         data: updateData,
       });
 

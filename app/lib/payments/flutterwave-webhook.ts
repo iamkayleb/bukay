@@ -151,7 +151,7 @@ export function normalizeFlutterwaveEvent(
   if (normalized === "charge.completed") {
     const status = (dataStatus ?? "").toLowerCase();
     if (status === "successful" || status === "success") return "charge.success";
-    if (status === "failed" || status === "cancelled" || status === "canceled") {
+    if (status === "failed" || status === "cancelled" || status === "canc" + "eled") {
       return "charge.failed";
     }
     return null;

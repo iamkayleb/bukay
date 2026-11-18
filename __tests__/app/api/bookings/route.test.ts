@@ -20,6 +20,7 @@ type BookingRow = {
   endsAt: Date;
   status: string;
   notes: string | null;
+  slotLock: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -46,6 +47,7 @@ const state = vi.hoisted(() => ({
   tenantFindUnique: vi.fn(),
   clientFindFirst: vi.fn(),
   serviceFindFirst: vi.fn(),
+  serviceFindFirstForDuration: vi.fn(),
 }));
 
 vi.mock("@/app/db/prisma", () => ({
@@ -68,7 +70,11 @@ vi.mock("@/app/db/prisma", () => ({
       findFirst: state.clientFindFirst,
     },
     service: {
-      findFirst: state.serviceFindFirst,
+      findFirst: async (args: unknown) => {
+        const durationLookup = await state.serviceFindFirstForDuration(args);
+        if (durationLookup) return durationLookup;
+        return state.serviceFindFirst(args);
+      },
     },
   },
 }));
@@ -86,6 +92,7 @@ function booking(overrides: Partial<BookingRow> = {}): BookingRow {
     endsAt: new Date("2026-07-27T11:00:00.000Z"),
     status: "confirmed",
     notes: null,
+    slotLock: null,
     createdAt: new Date("2026-07-01T10:00:00.000Z"),
     updatedAt: new Date("2026-07-01T10:00:00.000Z"),
     ...overrides,
@@ -126,6 +133,15 @@ beforeEach(() => {
   state.tenantFindUnique.mockReset();
   state.clientFindFirst.mockReset();
   state.serviceFindFirst.mockReset();
+  state.serviceFindFirstForDuration.mockReset();
+  state.serviceFindFirstForDuration.mockImplementation(
+    async (args: { where?: { tenantId?: string; id?: string } }) => {
+      if (args?.where?.id) {
+        return { durationMinutes: 60 };
+      }
+      return null;
+    }
+  );
 
   state.findBookingFirst.mockImplementation(
     async (args: { where: { tenantId: string; id: string } }) =>
@@ -138,7 +154,8 @@ beforeEach(() => {
       where: {
         tenantId: string;
         id: { not: string };
-        staffId: string | null;
+        serviceId: string;
+        status?: { not: string };
         startsAt: { lt: Date };
         endsAt: { gt: Date };
       };
@@ -149,7 +166,8 @@ beforeEach(() => {
           (row) =>
             row.tenantId === args.where.tenantId &&
             row.id !== args.where.id.not &&
-            row.staffId === args.where.staffId &&
+            row.serviceId === args.where.serviceId &&
+            (!args.where.status || row.status !== args.where.status.not) &&
             row.startsAt < args.where.startsAt.lt &&
             row.endsAt > args.where.endsAt.gt
         )
@@ -192,6 +210,49 @@ afterEach(() => {
 });
 
 describe("PATCH /api/bookings/:id", () => {
+  it("rejects an unknown status with 422 and does not persist an update", async () => {
+    const res = await PATCH(request("/api/bookings/booking-1", { status: "maybe" }), {
+      params: { id: "booking-1" },
+    });
+
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.error).toBe("validation_failed");
+    expect(state.updateBooking).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the booking is not in the tenant", async () => {
+    state.findBookingFirst.mockResolvedValueOnce(null);
+
+    const res = await PATCH(request("/api/bookings/booking-missing", { status: "cancelled" }), {
+      params: { id: "booking-missing" },
+    });
+
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.error).toBe("BOOKING_NOT_FOUND");
+    expect(state.updateBooking).not.toHaveBeenCalled();
+  });
+
+  it("clears slotLock when a booking is cancelled", async () => {
+    state.bookings = [
+      booking({
+        slotLock: "service-1|2026-07-27T10:00:00.000Z",
+      }),
+    ];
+
+    const res = await PATCH(request("/api/bookings/booking-1", { status: "cancelled" }), {
+      params: { id: "booking-1" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(state.updateBooking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "cancelled", slotLock: null }),
+      })
+    );
+  });
+
   it("rejects a startsAt-only update when the merged interval is outside business hours", async () => {
     const res = await PATCH(
       request("/api/bookings/booking-1", { startsAt: "2026-07-27T08:30:00.000Z" }),
@@ -242,8 +303,9 @@ describe("PATCH /api/bookings/:id", () => {
       where: {
         tenantId: "tenant-1",
         id: { not: "booking-1" },
-        staffId: "staff-1",
-        startsAt: { lt: new Date("2026-07-27T11:00:00.000Z") },
+        serviceId: "service-1",
+        status: { not: "cancelled" },
+        startsAt: { lt: new Date("2026-07-27T10:45:00.000Z") },
         endsAt: { gt: new Date("2026-07-27T09:45:00.000Z") },
       },
       take: 1,
@@ -277,7 +339,8 @@ describe("PATCH /api/bookings/:id", () => {
       where: {
         tenantId: "tenant-1",
         id: { not: "booking-1" },
-        staffId: "staff-1",
+        serviceId: "service-1",
+        status: { not: "cancelled" },
         startsAt: { lt: new Date("2026-07-27T11:00:00.000Z") },
         endsAt: { gt: new Date("2026-07-27T09:00:00.000Z") },
       },

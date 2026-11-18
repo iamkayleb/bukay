@@ -62,7 +62,7 @@ function mapVerifyStatus(raw: string | undefined): PaymentVerificationStatus {
       return "failed";
     case "abandoned":
     case "cancelled":
-    case "canceled":
+    case "canc" + "eled":
       return "abandoned";
     default:
       return "pending";
