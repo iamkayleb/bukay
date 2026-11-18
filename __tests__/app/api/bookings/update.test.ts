@@ -100,6 +100,13 @@ describe("PATCH /api/bookings/:id against real SQLite", () => {
     expect((await db.booking.findUnique({ where: { id: booking.id } }))?.status).toBe("no_show");
   });
 
+  it("marks a booking as completed", async () => {
+    const booking = await createBooking("2026-06-15T11:30:00.000Z");
+    const response = await patchRequest(booking.id, { status: "completed" }, tenants[0]);
+    expect(response.status).toBe(200);
+    expect((await db.booking.findUnique({ where: { id: booking.id } }))?.status).toBe("completed");
+  });
+
   it("rejects an unknown status with 422 and leaves the row unchanged", async () => {
     const booking = await createBooking("2026-06-15T13:00:00.000Z");
     const response = await patchRequest(booking.id, { status: "maybe" }, tenants[0]);

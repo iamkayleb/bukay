@@ -60,7 +60,11 @@ const updateBookingSchema = z
     startsAt: bookingDateField.optional(),
     endsAt: bookingDateField.optional(),
     staffId: z.string().trim().min(1, "Staff is required").nullable().optional(),
-    status: z.string().trim().min(1, "Status is required").optional(),
+    status: z
+      .enum(["confirmed", "cancelled", "completed", "no_show"], {
+        errorMap: () => ({ message: "Invalid booking status" }),
+      })
+      .optional(),
     notes: z.string().nullable().optional(),
   })
   .strict()
@@ -68,15 +72,6 @@ const updateBookingSchema = z
     message: "At least one booking field is required",
     path: ["_form"],
   });
-
-const ALLOWED_BOOKING_STATUSES = new Set([
-  "confirmed",
-  "cancelled",
-  "completed",
-  "no_show",
-  "pending",
-  "pending_payment",
-]);
 
 const bookingDelegate = prisma.booking as unknown as {
   findFirst(args: unknown): Promise<BookingMutationRecord | null>;
@@ -168,10 +163,6 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       }
 
       const updateData: BookingUpdateData = { ...parsed.data };
-
-      if (updateData.status !== undefined && !ALLOWED_BOOKING_STATUSES.has(updateData.status)) {
-        return jsonError("invalid_status", 422);
-      }
 
       if (updateData.startsAt && updateData.endsAt === undefined) {
         const service = await serviceDelegate.findFirst({
