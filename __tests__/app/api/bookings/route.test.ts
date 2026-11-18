@@ -46,6 +46,7 @@ const state = vi.hoisted(() => ({
   tenantFindUnique: vi.fn(),
   clientFindFirst: vi.fn(),
   serviceFindFirst: vi.fn(),
+  serviceFindFirstForDuration: vi.fn(),
 }));
 
 vi.mock("@/app/db/prisma", () => ({
@@ -68,7 +69,11 @@ vi.mock("@/app/db/prisma", () => ({
       findFirst: state.clientFindFirst,
     },
     service: {
-      findFirst: state.serviceFindFirst,
+      findFirst: async (args: unknown) => {
+        const durationLookup = await state.serviceFindFirstForDuration(args);
+        if (durationLookup) return durationLookup;
+        return state.serviceFindFirst(args);
+      },
     },
   },
 }));
@@ -126,6 +131,15 @@ beforeEach(() => {
   state.tenantFindUnique.mockReset();
   state.clientFindFirst.mockReset();
   state.serviceFindFirst.mockReset();
+  state.serviceFindFirstForDuration.mockReset();
+  state.serviceFindFirstForDuration.mockImplementation(
+    async (args: { where?: { tenantId?: string; id?: string } }) => {
+      if (args?.where?.id) {
+        return { durationMinutes: 60 };
+      }
+      return null;
+    }
+  );
 
   state.findBookingFirst.mockImplementation(
     async (args: { where: { tenantId: string; id: string } }) =>
@@ -138,7 +152,8 @@ beforeEach(() => {
       where: {
         tenantId: string;
         id: { not: string };
-        staffId: string | null;
+        serviceId: string;
+        status?: { not: string };
         startsAt: { lt: Date };
         endsAt: { gt: Date };
       };
@@ -149,7 +164,8 @@ beforeEach(() => {
           (row) =>
             row.tenantId === args.where.tenantId &&
             row.id !== args.where.id.not &&
-            row.staffId === args.where.staffId &&
+            row.serviceId === args.where.serviceId &&
+            (!args.where.status || row.status !== args.where.status.not) &&
             row.startsAt < args.where.startsAt.lt &&
             row.endsAt > args.where.endsAt.gt
         )
@@ -242,8 +258,9 @@ describe("PATCH /api/bookings/:id", () => {
       where: {
         tenantId: "tenant-1",
         id: { not: "booking-1" },
-        staffId: "staff-1",
-        startsAt: { lt: new Date("2026-07-27T11:00:00.000Z") },
+        serviceId: "service-1",
+        status: { not: "cancelled" },
+        startsAt: { lt: new Date("2026-07-27T10:45:00.000Z") },
         endsAt: { gt: new Date("2026-07-27T09:45:00.000Z") },
       },
       take: 1,
@@ -277,7 +294,8 @@ describe("PATCH /api/bookings/:id", () => {
       where: {
         tenantId: "tenant-1",
         id: { not: "booking-1" },
-        staffId: "staff-1",
+        serviceId: "service-1",
+        status: { not: "cancelled" },
         startsAt: { lt: new Date("2026-07-27T11:00:00.000Z") },
         endsAt: { gt: new Date("2026-07-27T09:00:00.000Z") },
       },

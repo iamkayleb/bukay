@@ -69,10 +69,23 @@ const updateBookingSchema = z
     path: ["_form"],
   });
 
+const ALLOWED_BOOKING_STATUSES = new Set([
+  "confirmed",
+  "cancelled",
+  "completed",
+  "no_show",
+  "pending",
+  "pending_payment",
+]);
+
 const bookingDelegate = prisma.booking as unknown as {
   findFirst(args: unknown): Promise<BookingMutationRecord | null>;
   findMany(args: unknown): Promise<BookingMutationRecord[]>;
   update(args: unknown): Promise<BookingMutationRecord>;
+};
+
+const serviceDelegate = prisma.service as unknown as {
+  findFirst(args: unknown): Promise<{ durationMinutes: number } | null>;
 };
 
 const businessHourDelegate = prisma.businessHour as unknown as {
@@ -93,7 +106,7 @@ async function findTenantBooking(tenantId: string, id: string) {
   });
 }
 
-function buildValidationStore(): BookingValidationStore {
+function buildValidationStore(existing: BookingMutationRecord): BookingValidationStore {
   return {
     async findBusinessHours({ tenantId, dayOfWeek }) {
       return businessHourDelegate.findFirst({
@@ -118,12 +131,13 @@ function buildValidationStore(): BookingValidationStore {
 
       return !!blackoutDate;
     },
-    async findOverlappingBooking({ tenantId, bookingId, staffId, startsAt, endsAt }) {
+    async findOverlappingBooking({ tenantId, bookingId, startsAt, endsAt }) {
       const overlappingBookings = await bookingDelegate.findMany({
         where: {
           tenantId,
           id: { not: bookingId },
-          staffId,
+          serviceId: existing.serviceId,
+          status: { not: "cancelled" },
           startsAt: { lt: endsAt },
           endsAt: { gt: startsAt },
         },
@@ -153,19 +167,36 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         return jsonError("BOOKING_NOT_FOUND", 404);
       }
 
-      const updateData: BookingUpdateData = parsed.data;
+      const updateData: BookingUpdateData = { ...parsed.data };
+
+      if (updateData.status !== undefined && !ALLOWED_BOOKING_STATUSES.has(updateData.status)) {
+        return jsonError("invalid_status", 422);
+      }
+
+      if (updateData.startsAt && updateData.endsAt === undefined) {
+        const service = await serviceDelegate.findFirst({
+          where: { tenantId, id: existingBooking.serviceId },
+        });
+        if (!service) {
+          return jsonError("SERVICE_NOT_FOUND", 404);
+        }
+        updateData.endsAt = new Date(
+          updateData.startsAt.getTime() + service.durationMinutes * 60_000
+        );
+      }
+
+      const intervalChanging =
+        updateData.startsAt !== undefined || updateData.endsAt !== undefined;
       const candidateInterval = mergeBookingInterval(existingBooking, {
         startsAt: updateData.startsAt,
         endsAt: updateData.endsAt,
       });
-      const validationIssue = await validateBookingInterval(
-        buildValidationStore(),
-        existingBooking,
-        {
-          ...candidateInterval,
-          staffId: updateData.staffId ?? existingBooking.staffId,
-        }
-      );
+      const validationIssue = intervalChanging
+        ? await validateBookingInterval(buildValidationStore(existingBooking), existingBooking, {
+            ...candidateInterval,
+            staffId: updateData.staffId ?? existingBooking.staffId,
+          })
+        : null;
 
       if (validationIssue) {
         return NextResponse.json(
@@ -179,7 +210,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       }
 
       const booking = await bookingDelegate.update({
-        where: { id: existingBooking.id },
+        where: { id: existingBooking.id, tenantId },
         data: updateData,
       });
 
