@@ -110,6 +110,12 @@ exist, so the agent invents a location and the reviewer cannot tell whether it
 was right. The validator rejects most of these; write for the bar, not the
 validator.
 
+> **Put the path on the task's first line.** The validator reads the first
+> line of each item, so a task whose path wraps onto the second is rejected
+> with `Tasks item must name a concrete file, symbol, path, config key, job,
+> or command` even though the path is right there. Found by writing a real
+> issue with this skill and watching it fail twice for exactly that.
+
 **A criterion nobody can check.** "Works correctly", "looks good", "handles
 errors". If you cannot name the command, the test, or the thing on screen that
 proves it, rewrite it until you can. A criterion that cannot fail is worse than
