@@ -252,3 +252,6 @@ langsmith-fleet-worker-attempt.json
 /dumpbody.sh
 /evalissues/
 *.sh.bak
+test-results/
+playwright-report/
+ui-acceptance.json
