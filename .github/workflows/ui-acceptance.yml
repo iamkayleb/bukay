@@ -42,7 +42,9 @@ jobs:
         pnpm exec prisma migrate deploy --schema prisma/schema.prisma &&
         pnpm exec prisma db seed --schema prisma/schema.prisma
       build-command: pnpm build
-      start-command: pnpm start
+      # Signed-in specs need a session signing key. This one only ever signs
+      # cookies for the throwaway seeded database this lane runs against.
+      start-command: SESSION_SECRET=ui-acceptance-session-secret pnpm start
       base-url: http://localhost:3000
 
       spec-path: e2e
