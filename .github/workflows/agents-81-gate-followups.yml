@@ -10,6 +10,9 @@ on:
     types:
       - labeled
       - synchronize
+      # `closed` carries `merged`, which is how post-merge verification is
+      # requested below. Without it that job can never run.
+      - closed
   workflow_dispatch:
     inputs:
       pr_number:
@@ -2045,6 +2048,91 @@ jobs:
               client_payload: clientPayload,
             }));
             core.notice(`Woke Maint 71 lane ${activeSyncHash} from ${branch}`);
+
+
+  request-verification:
+    name: Request verify:compare after merge
+    # Independent verification of what actually landed. This used to live in
+    # eval-lane-automation.yml, gated on `startsWith(base.ref, 'eval/')`. When
+    # main became the trunk the eval lanes were retired, and this trigger went
+    # with them -- silently, so merged agent work stopped being verified and
+    # nothing reported that it had. The gate is the default branch now.
+    if: >-
+      github.event_name == 'pull_request_target' &&
+      github.event.action == 'closed' &&
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    env:
+      WORKFLOWS_APP_ID: ${{ secrets.WORKFLOWS_APP_ID || '' }}
+      WORKFLOWS_APP_PRIVATE_KEY: ${{ secrets.WORKFLOWS_APP_PRIVATE_KEY || '' }}
+      SERVICE_BOT_PAT: ${{ secrets.SERVICE_BOT_PAT || '' }}
+    steps:
+      # A label applied with GITHUB_TOKEN does not trigger other workflows
+      # (GitHub's loop guard), which would make this hand-off inert: the label
+      # would appear and the verifier would never wake.
+      - name: Mint GitHub App token
+        id: app_token
+        if: ${{ env.WORKFLOWS_APP_ID != '' && env.WORKFLOWS_APP_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ env.WORKFLOWS_APP_ID }}
+          private-key: ${{ env.WORKFLOWS_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Add verify:compare label
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ steps.app_token.outputs.token || secrets.SERVICE_BOT_PAT || secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            const labels = (pr.labels || []).map((l) => l.name);
+            if (!labels.some((n) => n.startsWith('agent:'))) {
+              core.info('Not an agent PR; skipping verification.');
+              return;
+            }
+
+            // verify:compare spends metered API credit on both judge slots. A PR
+            // whose whole diff is belt bookkeeping has nothing to grade, and a
+            // judge run against it returns CONCERNS, which generates a follow-up
+            // issue, which consumes an agent round. That loop is the single
+            // largest source of wasted credit in this evaluation. Do not start it.
+            const BOOKKEEPING = [/^\.agents\//, /^agents\//, /^langsmith-fleet-[\w-]*\.json$/];
+            const names = (await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            })).map((f) => f.filename);
+            if (names.length > 0 && names.every((n) => BOOKKEEPING.some((rx) => rx.test(n)))) {
+              core.warning(
+                `PR #${pr.number} merged with only belt bookkeeping (${names.length} file(s)); `
+                + 'not requesting verify:compare.');
+              return;
+            }
+            if (labels.includes('verify:compare')) {
+              core.info('verify:compare already requested.');
+              return;
+            }
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              labels: ['verify:compare'],
+            });
+            core.notice(`Requested verify:compare on merged PR #${pr.number}.`);
+
+  # NOTE: nothing may be defined after `guarded-merge`.
+  # guarded-merge-tasks.test.js evaluates this workflow's inline script by
+  # slicing `source.slice(indexOf('const listedIssues ='))` to the END OF THE
+  # FILE and running it as JavaScript. Any job appended after guarded-merge
+  # lands inside that slice and the suite fails with `Unexpected token ':'`,
+  # 61 times, naming a temp-directory probe rather than this file. Add new jobs
+  # above this line.
 
   guarded-merge:
     name: Merge automerge-labelled agent PRs
