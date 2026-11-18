@@ -22,11 +22,7 @@ function patchRequest(id: string, body: Record<string, unknown>, tenantId: strin
   );
 }
 
-async function createBooking(
-  startsAt: string,
-  tenantId = tenants[0],
-  status = "confirmed"
-) {
+async function createBooking(startsAt: string, tenantId = tenants[0], status = "confirmed") {
   return db.booking.create({
     data: {
       tenantId,
@@ -88,9 +84,7 @@ describe("PATCH /api/bookings/:id against real SQLite", () => {
     const booking = await createBooking("2026-06-15T10:00:00.000Z");
     const response = await patchRequest(booking.id, { status: "cancelled" }, tenants[0]);
     expect(response.status).toBe(200);
-    expect((await db.booking.findUnique({ where: { id: booking.id } }))?.status).toBe(
-      "cancelled"
-    );
+    expect((await db.booking.findUnique({ where: { id: booking.id } }))?.status).toBe("cancelled");
   });
 
   it("marks a booking as no_show", async () => {
@@ -105,6 +99,13 @@ describe("PATCH /api/bookings/:id against real SQLite", () => {
     const response = await patchRequest(booking.id, { status: "completed" }, tenants[0]);
     expect(response.status).toBe(200);
     expect((await db.booking.findUnique({ where: { id: booking.id } }))?.status).toBe("completed");
+  });
+
+  it("confirms a pending booking", async () => {
+    const booking = await createBooking("2026-06-15T16:30:00.000Z", tenants[0], "pending");
+    const response = await patchRequest(booking.id, { status: "confirmed" }, tenants[0]);
+    expect(response.status).toBe(200);
+    expect((await db.booking.findUnique({ where: { id: booking.id } }))?.status).toBe("confirmed");
   });
 
   it("rejects an unknown status with 422 and leaves the row unchanged", async () => {
