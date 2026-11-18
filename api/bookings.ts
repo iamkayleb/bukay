@@ -9,6 +9,7 @@ import {
   runForTenant,
   validationError,
 } from "@/app/api/services/_helpers";
+import { bookingSlotLock } from "@/app/lib/slot-hold";
 import {
   mergeBookingInterval,
   validateBookingInterval,
@@ -36,11 +37,13 @@ type BookingUpdateData = {
   staffId?: string | null;
   status?: string;
   notes?: string | null;
+  slotLock?: string | null;
 };
 
 type BookingMutationRecord = BookingRecord & {
   clientId: string;
   serviceId: string;
+  slotLock: string | null;
 };
 
 const bookingDateField = z.preprocess(
@@ -174,6 +177,13 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         updateData.endsAt = new Date(
           updateData.startsAt.getTime() + service.durationMinutes * 60_000
         );
+      }
+
+      const nextStatus = updateData.status ?? existingBooking.status;
+      if (nextStatus === "cancelled") {
+        updateData.slotLock = null;
+      } else if (updateData.startsAt && existingBooking.slotLock) {
+        updateData.slotLock = bookingSlotLock(existingBooking.serviceId, updateData.startsAt);
       }
 
       const intervalChanging =

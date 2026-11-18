@@ -81,10 +81,15 @@ afterAll(async () => {
 
 describe("PATCH /api/bookings/:id against real SQLite", () => {
   it("cancels a booking and persists cancelled status", async () => {
-    const booking = await createBooking("2026-06-15T10:00:00.000Z");
+    const booking = await db.booking.update({
+      where: { id: (await createBooking("2026-06-15T10:00:00.000Z")).id },
+      data: { slotLock: `${serviceId}|2026-06-15T10:00:00.000Z` },
+    });
     const response = await patchRequest(booking.id, { status: "cancelled" }, tenants[0]);
     expect(response.status).toBe(200);
-    expect((await db.booking.findUnique({ where: { id: booking.id } }))?.status).toBe("cancelled");
+    const row = await db.booking.findUnique({ where: { id: booking.id } });
+    expect(row?.status).toBe("cancelled");
+    expect(row?.slotLock).toBeNull();
   });
 
   it("marks a booking as no_show", async () => {
