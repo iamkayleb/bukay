@@ -52,6 +52,11 @@ export async function runForTenant<T>(
     return jsonError("unauthorized", 401);
   }
 
+  const headerTenantId = req.headers.get("x-tenant-id")?.trim();
+  if (headerTenantId && headerTenantId !== tenantId) {
+    return jsonError("tenant_forbidden", 403);
+  }
+
   return runWithTenantContext({ tenantId }, () => callback(tenantId));
 }
 

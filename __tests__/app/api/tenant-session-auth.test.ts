@@ -39,7 +39,7 @@ describe("untrusted x-tenant-id header", () => {
     expect(res.status).toBe(401);
   });
 
-  it("uses the session tenant, not the header, when both are present", async () => {
+  it("returns 403 when the session and x-tenant-id name different tenants", async () => {
     const res = await GET(
       new NextRequest("http://localhost/api/services", {
         headers: {
@@ -48,8 +48,7 @@ describe("untrusted x-tenant-id header", () => {
         },
       })
     );
-    expect(res.status).toBe(200);
-    const { services } = await res.json();
-    expect(services).toEqual([]);
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({ ok: false, error: "tenant_forbidden" });
   });
 });
