@@ -157,6 +157,7 @@ describe("merchant empty states", () => {
   it("renders the calendar new-booking form for an empty tenant", async () => {
     signInAs("tenant-empty");
     const html = renderToStaticMarkup(await CalendarPage());
+    expect(html).toContain("Calendar");
     expect(html).toContain('id="new-booking"');
   });
 
