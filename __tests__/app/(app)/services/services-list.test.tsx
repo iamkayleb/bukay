@@ -122,7 +122,7 @@ describe("ServicesList", () => {
 
     const html = renderToStaticMarkup(await ServicesList());
 
-    expect(html).toContain("No services yet.");
+    expect(html).toContain("No services yet — add your first so customers can book.");
     expect(html).not.toContain("Classic Haircut");
     expect(html).not.toContain("Other Tenant Facial");
   });

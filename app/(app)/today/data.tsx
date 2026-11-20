@@ -1,5 +1,8 @@
+import Link from "next/link";
+
 import { prisma } from "@/app/db/prisma";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
+import { MerchantEmptyState } from "../components/merchant-empty-state";
 import { resolveSignedInTenantId } from "../services/services-list";
 
 const DEFAULT_TIME_ZONE = "Africa/Lagos";
@@ -121,9 +124,17 @@ export async function TodaySchedule({ now = new Date() }: { now?: Date } = {}) {
       </div>
 
       {bookings.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-800 bg-slate-900/40 px-5 py-8 text-center">
-          <p className="text-sm text-slate-400">No appointments yet.</p>
-        </div>
+        <MerchantEmptyState
+          message="No appointments yet."
+          action={
+            <Link
+              className="text-sm font-medium text-emerald-300 hover:text-emerald-200"
+              href="/calendar"
+            >
+              Add a booking on the calendar
+            </Link>
+          }
+        />
       ) : (
         <ul
           aria-label="Today bookings"

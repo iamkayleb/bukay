@@ -1,6 +1,7 @@
 import { sessionFromCookies } from "@/app/lib/auth/session";
 import { headers } from "next/headers";
 
+import { MerchantEmptyState } from "../components/merchant-empty-state";
 import { prisma } from "@/app/db/prisma";
 import { resolveTenant } from "@/app/lib/resolve-tenant";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
@@ -78,9 +79,7 @@ export async function ServicesList() {
 
   if (services.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-slate-800 bg-slate-900/40 px-5 py-8 text-center">
-        <p className="text-sm text-slate-400">No services yet.</p>
-      </div>
+      <MerchantEmptyState message="No services yet — add your first so customers can book." />
     );
   }
 

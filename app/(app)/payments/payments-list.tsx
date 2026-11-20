@@ -1,5 +1,6 @@
 import { prisma } from "@/app/db/prisma";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
+import { MerchantEmptyState } from "../components/merchant-empty-state";
 import { formatPrice, resolveSignedInTenantId } from "../services/services-list";
 
 export type PaymentRow = {
@@ -76,11 +77,7 @@ function formatPaymentDate(value: Date): string {
 
 export function PaymentsList({ payments }: { payments: PaymentRow[] }) {
   if (payments.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-slate-800 bg-slate-900/40 px-5 py-8 text-center">
-        <p className="text-sm text-slate-400">No payments yet.</p>
-      </div>
-    );
+    return <MerchantEmptyState message="No payments yet." />;
   }
 
   return (

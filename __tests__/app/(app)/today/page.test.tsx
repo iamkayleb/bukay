@@ -147,6 +147,8 @@ describe("today bookings", () => {
     const html = renderToStaticMarkup(await TodaySchedule({ now }));
 
     expect(html).toContain("No appointments yet.");
+    expect(html).toContain('href="/calendar"');
+    expect(html).toContain("Add a booking on the calendar");
     expect(html).not.toContain("Ada Okonkwo");
   });
 });
