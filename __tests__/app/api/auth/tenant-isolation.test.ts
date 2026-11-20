@@ -79,7 +79,9 @@ describe("merchant tenant isolation", () => {
       })
     );
     expect(res.status).toBe(401);
-    await expect(res.json()).resolves.toMatchObject({ ok: false, error: "unauthorized" });
+    const body = await res.json();
+    expect(body).toMatchObject({ ok: false, error: "unauthorized" });
+    expect(body).not.toHaveProperty("services");
   });
 
   it("returns the session tenant rows with a valid session and no header", async () => {

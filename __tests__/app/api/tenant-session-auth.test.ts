@@ -37,6 +37,8 @@ describe("untrusted x-tenant-id header", () => {
       })
     );
     expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body).not.toHaveProperty("services");
   });
 
   it("returns 403 when the session and x-tenant-id name different tenants", async () => {
