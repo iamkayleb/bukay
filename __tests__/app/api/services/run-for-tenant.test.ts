@@ -56,4 +56,18 @@ describe("runForTenant", () => {
       error: "tenant_forbidden",
     });
   });
+
+  it("runs the callback when x-tenant-id matches the session tenant", async () => {
+    const tenantId = "tenant-matched-header";
+    const result = await runForTenant(
+      new NextRequest("http://localhost/api/services", {
+        headers: {
+          ...tenantRequestHeaders(tenantId),
+          "x-tenant-id": tenantId,
+        },
+      }),
+      async (id) => ({ tenantId: id })
+    );
+    expect(result).toEqual({ tenantId });
+  });
 });

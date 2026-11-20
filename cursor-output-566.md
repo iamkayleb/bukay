@@ -1,6 +1,6 @@
 ## Keepalive run summary
 
-Verified: `pnpm build`, `pnpm vitest run` (479 tests excluding DB-only `tenant-isolation.test.ts` in this environment), and `grep -rn "x-tenant-id" app/api/` (single read in `runForTenant` after session validation).
+Verified: `pnpm build`, `pnpm vitest run` (486 tests), `__tests__/app/api/auth/tenant-isolation.test.ts` (with DB), and `grep -rn "x-tenant-id" app/api/` (single read in `runForTenant` after session validation).
 
 ### Tasks
 
@@ -24,5 +24,5 @@ Verified: `pnpm build`, `pnpm vitest run` (479 tests excluding DB-only `tenant-i
 
 ### This run
 
-- Confirmed session-only `runForTenant` on branch `cursor/issue-551`.
-- Added `__tests__/app/api/auth/merchant-routes-session.test.ts` so bookings and business-hours also reject `x-tenant-id` without a session (no database required).
+- Re-verified session-only `runForTenant` on `cursor/issue-551` (build + full vitest + tenant-isolation).
+- Added test for matching `x-tenant-id` + session in `run-for-tenant.test.ts`.
