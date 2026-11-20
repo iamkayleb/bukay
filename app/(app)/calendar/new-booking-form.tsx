@@ -75,6 +75,7 @@ export function NewBookingForm({
     "mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white focus:border-emerald-400";
   return (
     <form
+      id="new-booking"
       onSubmit={(event) => void submit(event)}
       className="mx-auto mb-10 max-w-3xl space-y-4 rounded-lg border border-slate-800 bg-slate-900/40 p-5 text-slate-200"
     >

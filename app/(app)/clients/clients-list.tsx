@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { MerchantEmptyState } from "../components/merchant-empty-state";
 import { resolveSignedInTenantId } from "../services/services-list";
 import { listTenantClients } from "./data";
 
@@ -9,9 +10,7 @@ export async function ClientsList() {
 
   if (clients.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-slate-800 bg-slate-900/40 px-5 py-8 text-center">
-        <p className="text-sm text-slate-400">No clients yet.</p>
-      </div>
+      <MerchantEmptyState message="No clients yet — they appear here after their first booking." />
     );
   }
 

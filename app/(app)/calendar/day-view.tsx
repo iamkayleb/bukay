@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { MerchantEmptyState } from "../components/merchant-empty-state";
 import { calendarDayRange, dateInZone } from "@/app/lib/calendar";
 type Booking = {
   id: string;
@@ -145,7 +146,17 @@ export function DayView({ tenantId, timeZone }: { tenantId: string | null; timeZ
         ) : error ? (
           <p role="alert">{error}</p>
         ) : bookings.length === 0 ? (
-          <p>No bookings for this date.</p>
+          <MerchantEmptyState
+            message="No bookings on this date."
+            action={
+              <a
+                className="text-sm font-medium text-emerald-300 hover:text-emerald-200"
+                href="#new-booking"
+              >
+                Add a booking
+              </a>
+            }
+          />
         ) : (
           <ul
             aria-label="Day bookings"
