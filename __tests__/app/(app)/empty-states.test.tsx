@@ -1,10 +1,14 @@
+// @vitest-environment jsdom
+
 import { execSync } from "node:child_process";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createRoot, type Root } from "react-dom/client";
+import { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import CalendarPage from "@/app/(app)/calendar/page";
-import { MerchantEmptyState } from "@/app/(app)/components/merchant-empty-state";
+import { DayView } from "@/app/(app)/calendar/day-view";
 import { PaymentsList } from "@/app/(app)/payments/payments-list";
 import PaymentsPage from "@/app/(app)/payments/page";
 import ClientsPage from "@/app/(app)/clients/page";
@@ -157,20 +161,46 @@ describe("merchant empty states", () => {
     expect(html).toContain('id="new-booking"');
   });
 
-  it("renders calendar day empty copy with an add-booking action", () => {
-    const html = renderToStaticMarkup(
-      <MerchantEmptyState
-        message="No bookings on this date."
-        action={
-          <a className="text-sm font-medium text-emerald-300 hover:text-emerald-200" href="#new-booking">
-            Add a booking
-          </a>
-        }
-      />
+  it("renders calendar day empty copy on DayView when the day has no bookings", async () => {
+    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT =
+      true;
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ ok: true, bookings: [] }),
+      })
     );
-    expect(html).toContain("No bookings on this date.");
-    expect(html).toContain('href="#new-booking"');
-    expect(html).toContain("Add a booking");
+    vi.stubGlobal("location", {
+      ...window.location,
+      search: "?date=2026-10-04",
+    });
+
+    try {
+      await act(async () => {
+        root.render(<DayView tenantId="tenant-empty" timeZone="Africa/Lagos" />);
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      const html = container.innerHTML;
+      expect(html).toContain("No bookings on this date.");
+      expect(html).toContain('href="#new-booking"');
+      expect(html).toContain("Add a booking");
+    } finally {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+      vi.unstubAllGlobals();
+    }
   });
 
   it("clients list matches the page empty message for an empty tenant", async () => {
@@ -198,7 +228,7 @@ describe("legacy placeholder copy", () => {
 });
 
 describe("empty-state copy inventory", () => {
-  it("lists the five merchant-screen messages (calendar day copy in day-view.test.tsx)", () => {
+  it("lists the five merchant-screen messages", () => {
     expect(EMPTY_COPY).toHaveLength(5);
     expect([...EMPTY_COPY]).toEqual([
       "No bookings on this date.",
