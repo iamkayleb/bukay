@@ -189,6 +189,19 @@ const EMPTY_COPY = [
   "No appointments yet.",
 ] as const;
 
+describe("empty-state copy inventory", () => {
+  it("lists the five merchant-screen messages (calendar day copy in day-view.test.tsx)", () => {
+    expect(EMPTY_COPY).toHaveLength(5);
+    expect([...EMPTY_COPY]).toEqual([
+      "No bookings on this date.",
+      "No services yet — add your first so customers can book.",
+      "No clients yet — they appear here after their first booking.",
+      "No payments yet.",
+      "No appointments yet.",
+    ]);
+  });
+});
+
 describe("populated tenant", () => {
   const now = new Date("2026-10-04T12:00:00.000Z");
 
