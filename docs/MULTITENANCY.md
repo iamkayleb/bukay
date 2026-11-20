@@ -11,6 +11,22 @@ An authenticated session tenant takes precedence over a hostname subdomain.
 Subdomains resolve to tenant slugs and must be looked up before being used as a
 tenant ID.
 
+### Merchant API routes
+
+Merchant JSON routes under `app/api/*` that touch tenant-owned data must wrap
+handlers with `runForTenant` from `app/api/services/_helpers.ts`. That helper
+resolves the tenant from the signed session cookie only and returns HTTP 401 when
+no session is present. Do not call `resolveTenant` with a subdomain fallback on
+these paths, and do not trust `x-tenant-id`: when the header names a different
+tenant than the session, `runForTenant` returns HTTP 403.
+
+Public flows (for example `POST /api/public/bookings`) identify the tenant by
+slug in the request body and do not use `runForTenant`.
+
+Merchant React server components that already require a session should pass
+`requireSession: true` to `resolveTenant` in `app/lib/resolve-tenant.ts` so
+hostname slug fallback cannot bypass the signed-in tenant.
+
 After resolving the tenant ID, run request work inside its async context:
 
 ```ts
