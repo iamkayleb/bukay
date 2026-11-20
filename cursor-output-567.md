@@ -1,6 +1,6 @@
 ## Keepalive run summary
 
-Verified locally: `pnpm vitest run` (483 tests), `pnpm build`, and `grep -rn "Nothing here yet" app/` (no matches).
+Verified locally: `pnpm vitest run` (486 tests), `pnpm build`, and `grep -rn "Nothing here yet" app/` (no matches).
 
 ### Tasks
 
@@ -25,3 +25,4 @@ Verified locally: `pnpm vitest run` (483 tests), `pnpm build`, and `grep -rn "No
 
 - Added `__tests__/app/(app)/calendar/day-view.test.tsx` (jsdom) to render `DayView` with an empty bookings API response and assert the no-bookings copy plus `#new-booking` link.
 - Added `jsdom` dev dependency for the calendar day-view component test.
+- Re-verified `pnpm build` and full `pnpm vitest run` on keepalive round; added a consolidated empty-state test in `empty-states.test.tsx` for the four server-rendered merchant screens (calendar day copy remains in `day-view.test.tsx`).
