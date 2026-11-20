@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
+import CalendarPage from "@/app/(app)/calendar/page";
 import { MerchantEmptyState } from "@/app/(app)/components/merchant-empty-state";
 import { PaymentsList } from "@/app/(app)/payments/payments-list";
+import PaymentsPage from "@/app/(app)/payments/page";
 import ClientsPage from "@/app/(app)/clients/page";
 import { ClientsList } from "@/app/(app)/clients/clients-list";
+import ServicesPage from "@/app/(app)/services/page";
 import { ServicesList } from "@/app/(app)/services/services-list";
 import { TodaySchedule } from "@/app/(app)/today/data";
 
@@ -89,8 +92,20 @@ describe("merchant empty states", () => {
     expect(html).toContain("No services yet — add your first so customers can book.");
   });
 
+  it("renders services empty copy on the services page", async () => {
+    signInAs("tenant-empty");
+    const html = renderToStaticMarkup(await ServicesPage());
+    expect(html).toContain("No services yet — add your first so customers can book.");
+  });
+
   it("renders payments empty copy", async () => {
     const html = renderToStaticMarkup(<PaymentsList payments={[]} />);
+    expect(html).toContain("No payments yet.");
+  });
+
+  it("renders payments empty copy on the payments page", async () => {
+    signInAs("tenant-empty");
+    const html = renderToStaticMarkup(await PaymentsPage());
     expect(html).toContain("No payments yet.");
   });
 
@@ -99,6 +114,12 @@ describe("merchant empty states", () => {
     const html = renderToStaticMarkup(await TodaySchedule({ now }));
     expect(html).toContain("No appointments yet.");
     expect(html).toContain('href="/calendar"');
+  });
+
+  it("renders the calendar new-booking form for an empty tenant", async () => {
+    signInAs("tenant-empty");
+    const html = renderToStaticMarkup(await CalendarPage());
+    expect(html).toContain('id="new-booking"');
   });
 
   it("renders calendar day empty copy with an add-booking action", () => {
