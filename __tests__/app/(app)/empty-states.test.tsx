@@ -86,6 +86,15 @@ describe("merchant empty states", () => {
     expect(html).toContain("No clients yet — they appear here after their first booking.");
   });
 
+  it("renders clients empty copy above the add-client form", async () => {
+    signInAs("tenant-empty");
+    const html = renderToStaticMarkup(await ClientsPage());
+    const emptyIndex = html.indexOf("No clients yet — they appear here after their first booking.");
+    const formIndex = html.indexOf('name="phone"');
+    expect(emptyIndex).toBeGreaterThan(-1);
+    expect(formIndex).toBeGreaterThan(emptyIndex);
+  });
+
   it("renders services empty copy", async () => {
     signInAs("tenant-empty");
     const html = renderToStaticMarkup(await ServicesList());
@@ -96,6 +105,15 @@ describe("merchant empty states", () => {
     signInAs("tenant-empty");
     const html = renderToStaticMarkup(await ServicesPage());
     expect(html).toContain("No services yet — add your first so customers can book.");
+  });
+
+  it("renders services empty copy above the create form", async () => {
+    signInAs("tenant-empty");
+    const html = renderToStaticMarkup(await ServicesPage());
+    const emptyIndex = html.indexOf("No services yet — add your first so customers can book.");
+    const formIndex = html.indexOf('name="durationMinutes"');
+    expect(emptyIndex).toBeGreaterThan(-1);
+    expect(formIndex).toBeGreaterThan(emptyIndex);
   });
 
   it("renders payments empty copy", async () => {
