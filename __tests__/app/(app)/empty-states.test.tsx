@@ -144,12 +144,8 @@ describe("merchant empty states", () => {
       renderToStaticMarkup(<PaymentsList payments={[]} />),
       renderToStaticMarkup(await TodaySchedule({ now })),
     ];
-    for (const message of [
-      "No clients yet — they appear here after their first booking.",
-      "No services yet — add your first so customers can book.",
-      "No payments yet.",
-      "No appointments yet.",
-    ]) {
+    const serverMessages = EMPTY_COPY.filter((message) => message !== "No bookings on this date.");
+    for (const message of serverMessages) {
       expect(rendered.some((html) => html.includes(message))).toBe(true);
     }
   });

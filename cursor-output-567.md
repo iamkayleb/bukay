@@ -1,27 +1,24 @@
-## Keepalive run summary
+## Completed this run
 
-Verified locally: `pnpm vitest run` (488 tests), `pnpm build`, `grep -rn "Nothing here yet" app/` (no matches).
+Verified issue #556 merchant empty states on `cursor/issue-556`:
 
-### Tasks
+- `MerchantEmptyState` used on calendar day view, services, clients, payments, and today screens with the specified copy and actions (`#new-booking`, `/calendar`).
+- `pnpm build` and `pnpm vitest run` (488 tests) pass locally.
+- `grep -rn "Nothing here yet" app/` returns no matches; populated-tenant tests assert demo data hides empty copy.
 
-- [x] In `app/(app)/calendar/day-view.tsx`, when the chosen date has no bookings, show "No bookings on this date" with a link to add one (`MerchantEmptyState` + `#new-booking`; `__tests__/app/(app)/calendar/day-view.test.tsx`).
-- [x] In `app/(app)/services/services-list.tsx`, when the tenant has no services, show "No services yet — add your first so customers can book" above the create form (`ServicesPage` layout + order test).
-- [x] In `app/(app)/clients/page.tsx`, when the tenant has no clients, show "No clients yet — they appear here after their first booking" (`ClientsList` on `ClientsPage`).
-- [x] In `app/(app)/payments/payments-list.tsx`, when there are no payments, show "No payments yet".
-- [x] In `app/(app)/today/data.tsx`, keep "No appointments yet" and link to `/calendar`.
-- [x] Add `__tests__/app/(app)/empty-states.test.tsx` rendering each page with an empty tenant and asserting each message appears (calendar day copy also in `day-view.test.tsx`).
+## Tasks completed
 
-### Acceptance criteria
+- [x] Calendar day view: "No bookings on this date." + Add a booking link (`day-view.test.tsx`)
+- [x] Services list empty copy above create form
+- [x] Clients page empty copy via `ClientsList`
+- [x] Payments list: "No payments yet."
+- [x] Today schedule: "No appointments yet." linked to `/calendar`
+- [x] `empty-states.test.tsx` covers empty-tenant pages and copy inventory
 
-- [x] `pnpm build` and `pnpm vitest run` pass with no new failures.
-- [x] Empty-tenant rendering for clients, services, payments, today, and calendar day view (Vitest + `MerchantEmptyState`; not a live DB smoke in this run).
-- [x] Populated-tenant test asserts none of the five messages appear when data exists.
-- [x] Clients page empty copy renders above the add-client form (`ClientsPage` tests).
-- [x] `grep -rn "Nothing here yet" app/` returns nothing (also asserted in `empty-states.test.tsx`).
+## Acceptance criteria
 
-**Progress:** 11/11 tasks complete, 0 remaining
-
-### This run
-
-- Re-verified full test suite and production build after `pnpm install`.
-- Tightened calendar page empty-tenant test to assert the calendar shell renders alongside `#new-booking`.
+- [x] Build and unit tests green
+- [x] Empty-tenant rendering covered by SSR tests + `DayView` jsdom test
+- [x] Populated tenant does not show empty copy
+- [x] Clients empty message on `/clients`
+- [x] Legacy "Nothing here yet" removed from `app/`
