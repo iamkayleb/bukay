@@ -80,6 +80,7 @@ vi.mock("@/app/db/prisma", () => ({
 }));
 
 import { PATCH } from "@/app/api/bookings/[id]/route";
+import { TEST_SESSION_SECRET, tenantRequestHeaders } from "@/__tests__/helpers/tenant-auth";
 
 function booking(overrides: Partial<BookingRow> = {}): BookingRow {
   return {
@@ -104,8 +105,7 @@ function request(path: string, body: unknown, init: NextRequestInit = {}) {
     ...init,
     method: init.method ?? "PATCH",
     headers: {
-      "content-type": "application/json",
-      "x-tenant-id": "tenant-1",
+      ...tenantRequestHeaders("tenant-1", { "content-type": "application/json" }),
       ...(init.headers as Record<string, string> | undefined),
     },
     body: JSON.stringify(body),
@@ -113,6 +113,7 @@ function request(path: string, body: unknown, init: NextRequestInit = {}) {
 }
 
 beforeEach(() => {
+  vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
   state.bookings = [booking()];
   state.businessHours = [
     {

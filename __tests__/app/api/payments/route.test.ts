@@ -1,9 +1,10 @@
 import { execFileSync } from "node:child_process";
 import { PrismaClient } from "@prisma/client";
 import { NextRequest } from "next/server";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GET } from "@/app/api/payments/route";
+import { TEST_SESSION_SECRET, tenantRequestHeaders } from "@/__tests__/helpers/tenant-auth";
 
 const db = new PrismaClient();
 const tenantId = "payments-route-tenant";
@@ -15,7 +16,7 @@ function request(status?: string, tenant = tenantId) {
   const query = params.toString();
   return GET(
     new NextRequest(`http://localhost/api/payments${query ? `?${query}` : ""}`, {
-      headers: { "x-tenant-id": tenant },
+      headers: tenantRequestHeaders(tenant),
     })
   );
 }
@@ -73,6 +74,7 @@ async function seedPayment(
 }
 
 beforeAll(async () => {
+  vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
   execFileSync(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "deploy"], {
     stdio: "pipe",
   });

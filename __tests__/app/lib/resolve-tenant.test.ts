@@ -55,12 +55,11 @@ describe("resolveTenant", () => {
     expect(result).toEqual({ tenantSlug: "acme", source: "subdomain" });
   });
 
-  it("honours x-tenant-id header before subdomain", () => {
+  it("ignores x-tenant-id without a session and uses the subdomain", () => {
     const result = resolveTenant(
       makeReq({ headers: { host: "acme.example.com", "x-tenant-id": "t-header" } })
     );
-    expect(result.tenantId).toBe("t-header");
-    expect(result.source).toBe("header");
+    expect(result).toEqual({ tenantSlug: "acme", source: "subdomain" });
   });
 
   it("returns 'none' when nothing identifies a tenant", () => {

@@ -43,6 +43,7 @@ vi.mock("@/app/db/prisma", () => ({
 import ServicesPage from "@/app/(app)/services/page";
 import { submitCreateServiceForm } from "@/app/(app)/services/service-form";
 import { ServicesList } from "@/app/(app)/services/services-list";
+import { TEST_SESSION_SECRET, tenantSessionCookie } from "@/__tests__/helpers/tenant-auth";
 
 function service(overrides: Partial<ServiceRow> = {}): ServiceRow {
   return {
@@ -59,10 +60,12 @@ function service(overrides: Partial<ServiceRow> = {}): ServiceRow {
 }
 
 function signInAs(tenantId: string) {
-  state.headers.set("x-tenant-id", tenantId);
+  vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
+  state.headers.set("cookie", tenantSessionCookie(tenantId));
 }
 
 beforeEach(() => {
+  vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
   state.headers.clear();
   state.services = [];
   state.findMany.mockReset();

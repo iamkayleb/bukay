@@ -5,10 +5,16 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { GET, POST } from "@/app/api/services/route";
 import { DELETE, GET as GET_ONE, PATCH } from "@/app/api/services/[id]/route";
 import { submitCreateServiceForm } from "@/app/(app)/services/service-form";
+import {
+  TEST_SESSION_SECRET,
+  tenantRequestHeaders,
+  tenantSessionCookie,
+} from "@/__tests__/helpers/tenant-auth";
 
+const requestHeaders = vi.hoisted(() => ({ cookie: "" }));
 // Real SQLite and the application's guarded Prisma client; no delegate mocks.
 vi.mock("next/headers", () => ({
-  headers: () => new Headers({ "x-tenant-id": "services-route-integration" }),
+  headers: () => new Headers(requestHeaders.cookie ? { cookie: requestHeaders.cookie } : {}),
 }));
 import { ServicesList } from "@/app/(app)/services/services-list";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -19,7 +25,7 @@ const otherTenantId = "services-route-other";
 function request(body?: unknown, method = "POST", tenant = tenantId) {
   return new NextRequest("http://localhost/api/services", {
     method,
-    headers: { "x-tenant-id": tenant, "content-type": "application/json" },
+    headers: tenantRequestHeaders(tenant, { "content-type": "application/json" }),
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 }
@@ -27,6 +33,7 @@ const input = { name: "Haircut", durationMinutes: 30, priceKobo: 500000, bufferM
 const context = (id: string) => ({ params: { id } });
 
 beforeAll(async () => {
+  vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
   execFileSync(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "deploy"], {
     stdio: "pipe",
   });
@@ -35,6 +42,7 @@ beforeAll(async () => {
   }
 });
 beforeEach(async () => {
+  requestHeaders.cookie = tenantSessionCookie(tenantId);
   await db.service.deleteMany({ where: { tenantId: { in: [tenantId, otherTenantId] } } });
 });
 afterEach(() => {
@@ -47,12 +55,13 @@ afterAll(async () => {
 
 describe("services routes against SQLite", () => {
   it("submits the naira form through the real route and renders the reloaded database list", async () => {
+    requestHeaders.cookie = tenantSessionCookie(tenantId);
     vi.stubGlobal("fetch", async (_url: string, init: RequestInit) =>
       POST(
         new NextRequest("http://localhost/api/services", {
           method: init.method,
           body: init.body,
-          headers: { "content-type": "application/json", "x-tenant-id": tenantId },
+          headers: tenantRequestHeaders(tenantId, { "content-type": "application/json" }),
         })
       )
     );

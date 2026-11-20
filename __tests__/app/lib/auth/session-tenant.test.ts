@@ -20,6 +20,6 @@ it("resolves cookies before headers, falls back without cookies, and rejects tam
     tenantSlug: undefined,
     source: "session",
   });
-  expect(resolve(null, "other")).toEqual({ tenantId: "other", source: "header" });
+  expect(resolve(null, "other")).toEqual({ source: "none" });
   expect(resolve("bukay_session=x" + token, null)).toEqual({ source: "none" });
 });

@@ -13,7 +13,7 @@ export type ResolveTenantRequest = {
 export type ResolvedTenant = {
   tenantId?: string;
   tenantSlug?: string;
-  source: "session" | "subdomain" | "header" | "none";
+  source: "session" | "subdomain" | "none";
 };
 
 const RESERVED_SUBDOMAINS = new Set(["www", "app", "api", "admin", "static", "assets", "cdn"]);
@@ -47,11 +47,6 @@ export function resolveTenant(req: ResolveTenantRequest): ResolvedTenant {
       tenantSlug: req.session?.tenantSlug,
       source: "session",
     };
-  }
-
-  const headerTenantId = req.headers.get("x-tenant-id");
-  if (headerTenantId) {
-    return { tenantId: headerTenantId, source: "header" };
   }
 
   const slug = extractSubdomain(req.headers.get("host"));

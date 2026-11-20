@@ -16,6 +16,7 @@ import SettingsPage from "@/app/(app)/settings/page";
 import PublicBookPage from "@/app/[slug]/book/page";
 import { SESSION_COOKIE_NAME, signSession } from "@/app/lib/auth/session";
 import { fillWeek, type BusinessHourRow } from "@/app/lib/business-hours";
+import { TEST_SESSION_SECRET, tenantRequestHeaders } from "@/__tests__/helpers/tenant-auth";
 
 const db = new PrismaClient();
 const tenantId = "business-hours-route";
@@ -25,7 +26,7 @@ const SECRET = "business-hours-test-secret-0123456789";
 function request(body?: unknown, method = "PUT", tenant = tenantId) {
   return new NextRequest("http://localhost/api/business-hours", {
     method,
-    headers: { "x-tenant-id": tenant, "content-type": "application/json" },
+    headers: tenantRequestHeaders(tenant, { "content-type": "application/json" }),
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 }
@@ -55,6 +56,7 @@ const storedRows = (id: string) =>
   });
 
 beforeAll(async () => {
+  vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
   execFileSync(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "deploy"], {
     stdio: "pipe",
   });
@@ -153,7 +155,7 @@ describe("PUT /api/business-hours", () => {
     const res = await PUT(
       new NextRequest("http://localhost/api/business-hours", {
         method: "PUT",
-        headers: { "x-tenant-id": tenantId, "content-type": "application/json" },
+        headers: tenantRequestHeaders(tenantId, { "content-type": "application/json" }),
         body: "{",
       })
     );
@@ -171,7 +173,16 @@ describe("PUT /api/business-hours", () => {
   });
 
   it("returns 404 for an unknown tenant without creating rows", async () => {
-    const res = await PUT(request({ hours: week() }, "PUT", "business-hours-missing"));
+    const res = await PUT(
+      new NextRequest("http://business-hours-missing.example.com/api/business-hours", {
+        method: "PUT",
+        headers: {
+          host: "business-hours-missing.example.com",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ hours: week() }),
+      })
+    );
     expect(res.status).toBe(404);
     expect(await db.businessHour.count({ where: { tenantId: "business-hours-missing" } })).toBe(0);
   });
