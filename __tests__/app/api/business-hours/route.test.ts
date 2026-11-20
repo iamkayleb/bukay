@@ -65,6 +65,7 @@ beforeAll(async () => {
   }
 });
 beforeEach(async () => {
+  vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
   requestHeaders.cookie = "";
   await db.businessHour.deleteMany({ where: { tenantId: { in: [tenantId, otherTenantId] } } });
   await db.service.deleteMany({ where: { tenantId: { in: [tenantId, otherTenantId] } } });
@@ -91,9 +92,9 @@ describe("GET /api/business-hours", () => {
     expect(hours.every((row: BusinessHourRow) => row.opensAt === "09:00")).toBe(true);
   });
 
-  it("requires a tenant", async () => {
+  it("requires a signed-in session", async () => {
     const res = await GET(new NextRequest("http://localhost/api/business-hours"));
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(401);
   });
 });
 
@@ -172,7 +173,7 @@ describe("PUT /api/business-hours", () => {
     expect(otherGet.hours.every((row: BusinessHourRow) => row.opensAt === "10:00")).toBe(true);
   });
 
-  it("returns 404 for an unknown tenant without creating rows", async () => {
+  it("returns 401 without a session even when the host names a tenant subdomain", async () => {
     const res = await PUT(
       new NextRequest("http://business-hours-missing.example.com/api/business-hours", {
         method: "PUT",
@@ -183,7 +184,7 @@ describe("PUT /api/business-hours", () => {
         body: JSON.stringify({ hours: week() }),
       })
     );
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
     expect(await db.businessHour.count({ where: { tenantId: "business-hours-missing" } })).toBe(0);
   });
 });

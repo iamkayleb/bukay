@@ -196,7 +196,7 @@ describe("GET /api/payments against real SQLite", () => {
     expect(otherBody.payments[0].booking.client.name).toBe("Theirs");
   });
 
-  it("requires tenant context", async () => {
-    expect((await GET(new NextRequest("http://localhost/api/payments"))).status).toBe(400);
+  it("requires a signed-in session", async () => {
+    expect((await GET(new NextRequest("http://localhost/api/payments"))).status).toBe(401);
   });
 });

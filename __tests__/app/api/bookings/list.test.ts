@@ -88,11 +88,11 @@ describe("booking list against real SQLite", () => {
   ])("rejects invalid ranges %s to %s", async (from, to) => {
     expect((await request(from, to)).status).toBe(400);
   });
-  it("requires tenant context", async () => {
+  it("requires a signed-in session", async () => {
     expect(
       (await GET(new NextRequest("http://localhost/api/bookings?from=2026-01-01&to=2026-12-31")))
         .status
-    ).toBe(400);
+    ).toBe(401);
   });
   it("uses business dates and handles DST", () => {
     expect(dateInZone(new Date("2026-06-14T23:30:00Z"), "Africa/Lagos")).toBe("2026-06-15");

@@ -36,7 +36,7 @@ describe("untrusted x-tenant-id header", () => {
         headers: { "x-tenant-id": victim },
       })
     );
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(401);
   });
 
   it("uses the session tenant, not the header, when both are present", async () => {
