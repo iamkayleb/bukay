@@ -1,6 +1,6 @@
 ## Keepalive run summary
 
-Verified: `pnpm build`, `pnpm vitest run` (482 tests), targeted tenant isolation suite, and `grep -rn "x-tenant-id" app/api/` (single read in `runForTenant` after session validation).
+Verified: `pnpm build`, `pnpm vitest run` (479 tests excluding DB-only `tenant-isolation.test.ts` in this environment), and `grep -rn "x-tenant-id" app/api/` (single read in `runForTenant` after session validation).
 
 ### Tasks
 
@@ -24,4 +24,5 @@ Verified: `pnpm build`, `pnpm vitest run` (482 tests), targeted tenant isolation
 
 ### This run
 
-- Confirmed merchant tenant isolation on branch `cursor/issue-551`; removed duplicate coverage in `__tests__/app/api/tenant-session-auth.test.ts` (same cases live in `tenant-isolation.test.ts` and `run-for-tenant.test.ts`).
+- Confirmed session-only `runForTenant` on branch `cursor/issue-551`.
+- Added `__tests__/app/api/auth/merchant-routes-session.test.ts` so bookings and business-hours also reject `x-tenant-id` without a session (no database required).
