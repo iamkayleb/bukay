@@ -40,6 +40,7 @@ vi.mock("@/app/db/prisma", () => ({
 }));
 
 import { TodaySchedule, listTodaysBookings, zonedDayRange } from "@/app/(app)/today/data";
+import { TEST_SESSION_SECRET, tenantSessionCookie } from "@/__tests__/helpers/tenant-auth";
 
 function booking(overrides: Partial<BookingRow> = {}): BookingRow {
   return {
@@ -55,6 +56,7 @@ function booking(overrides: Partial<BookingRow> = {}): BookingRow {
 }
 
 beforeEach(() => {
+  vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
   state.headers.clear();
   state.bookings = [];
   state.timezone = "Africa/Lagos";
@@ -92,7 +94,7 @@ describe("today bookings", () => {
   });
 
   it("lists today's bookings for the signed-in tenant", async () => {
-    state.headers.set("x-tenant-id", "tenant-1");
+    state.headers.set("cookie", tenantSessionCookie("tenant-1"));
     state.bookings = [
       booking({
         id: "book-2",
@@ -141,7 +143,7 @@ describe("today bookings", () => {
   });
 
   it("shows an empty state when the signed-in tenant has no bookings today", async () => {
-    state.headers.set("x-tenant-id", "tenant-empty");
+    state.headers.set("cookie", tenantSessionCookie("tenant-empty"));
     state.bookings = [booking()];
 
     const html = renderToStaticMarkup(await TodaySchedule({ now }));

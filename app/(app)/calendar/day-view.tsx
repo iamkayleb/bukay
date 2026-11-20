@@ -33,7 +33,6 @@ export function DayView({ tenantId, timeZone }: { tenantId: string | null; timeZ
         const { start, end } = calendarDayRange(date, timeZone);
         const query = new URLSearchParams({ from: start.toISOString(), to: end.toISOString() });
         const response = await fetch(`/api/bookings?${query}`, {
-          headers: { "x-tenant-id": tenantId },
           signal: controller.signal,
           cache: "no-store",
         });
@@ -56,7 +55,6 @@ export function DayView({ tenantId, timeZone }: { tenantId: string | null; timeZ
     const { start, end } = calendarDayRange(date, timeZone);
     const query = new URLSearchParams({ from: start.toISOString(), to: end.toISOString() });
     const response = await fetch(`/api/bookings?${query}`, {
-      headers: { "x-tenant-id": tenantId },
       cache: "no-store",
     });
     const data = await response.json();
@@ -70,7 +68,7 @@ export function DayView({ tenantId, timeZone }: { tenantId: string | null; timeZ
     try {
       const response = await fetch(`/api/bookings/${id}`, {
         method: "PATCH",
-        headers: { "content-type": "application/json", "x-tenant-id": tenantId },
+        headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
       });
       const data = await response.json();

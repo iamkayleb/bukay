@@ -1,9 +1,10 @@
 import { execFileSync } from "node:child_process";
 import { PrismaClient } from "@prisma/client";
 import { NextRequest } from "next/server";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { PATCH } from "@/app/api/bookings/[id]/route";
+import { TEST_SESSION_SECRET, tenantRequestHeaders } from "@/__tests__/helpers/tenant-auth";
 
 const db = new PrismaClient();
 const tenants = ["patch-tenant-a", "patch-tenant-b"];
@@ -15,7 +16,7 @@ function patchRequest(id: string, body: Record<string, unknown>, tenantId: strin
   return PATCH(
     new NextRequest(`http://localhost/api/bookings/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", "x-tenant-id": tenantId },
+      headers: tenantRequestHeaders(tenantId, { "Content-Type": "application/json" }),
       body: JSON.stringify(body),
     }),
     { params: { id } }
@@ -43,6 +44,7 @@ async function createBooking(startsAt: string, tenantId = tenants[0], status = "
 }
 
 beforeAll(async () => {
+  vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
   execFileSync(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "deploy"]);
   for (const tenantId of tenants) {
     await db.tenant.create({ data: { id: tenantId, slug: tenantId, name: tenantId } });

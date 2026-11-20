@@ -44,7 +44,7 @@ export function NewBookingForm({
       }
       const response = await fetch("/api/bookings", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-tenant-id": tenantId },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           serviceId: data.get("serviceId"),
           startsAt: startsAt.toISOString(),

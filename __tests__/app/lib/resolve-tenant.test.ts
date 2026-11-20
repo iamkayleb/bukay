@@ -4,11 +4,13 @@ import { extractSubdomain, resolveTenant } from "@/app/lib/resolve-tenant";
 function makeReq(opts: {
   headers?: Record<string, string>;
   session?: { tenantId?: string; tenantSlug?: string } | null;
+  requireSession?: boolean;
 }) {
   const h = new Map(Object.entries(opts.headers ?? {}).map(([k, v]) => [k.toLowerCase(), v]));
   return {
     headers: { get: (n: string) => h.get(n.toLowerCase()) ?? null },
     session: opts.session ?? null,
+    requireSession: opts.requireSession,
   };
 }
 
@@ -55,16 +57,22 @@ describe("resolveTenant", () => {
     expect(result).toEqual({ tenantSlug: "acme", source: "subdomain" });
   });
 
-  it("honours x-tenant-id header before subdomain", () => {
+  it("ignores x-tenant-id without a session and uses the subdomain", () => {
     const result = resolveTenant(
       makeReq({ headers: { host: "acme.example.com", "x-tenant-id": "t-header" } })
     );
-    expect(result.tenantId).toBe("t-header");
-    expect(result.source).toBe("header");
+    expect(result).toEqual({ tenantSlug: "acme", source: "subdomain" });
   });
 
   it("returns 'none' when nothing identifies a tenant", () => {
     const result = resolveTenant(makeReq({ headers: { host: "example.com" } }));
+    expect(result).toEqual({ source: "none" });
+  });
+
+  it("skips subdomain resolution when requireSession is set", () => {
+    const result = resolveTenant(
+      makeReq({ headers: { host: "acme.example.com" }, session: null, requireSession: true })
+    );
     expect(result).toEqual({ source: "none" });
   });
 });
