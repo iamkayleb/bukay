@@ -1,3 +1,5 @@
+import { execSync } from "node:child_process";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -188,6 +190,15 @@ const EMPTY_COPY = [
   "No payments yet.",
   "No appointments yet.",
 ] as const;
+
+describe("legacy placeholder copy", () => {
+  it('does not use "Nothing here yet" under app/', () => {
+    const matches = execSync('grep -rn "Nothing here yet" app/ || true', {
+      encoding: "utf8",
+    }).trim();
+    expect(matches).toBe("");
+  });
+});
 
 describe("empty-state copy inventory", () => {
   it("lists the five merchant-screen messages (calendar day copy in day-view.test.tsx)", () => {
