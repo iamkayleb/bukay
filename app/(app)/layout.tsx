@@ -20,6 +20,7 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
   const tenant = resolveTenant({
     headers: { get: (name) => headerList.get(name) },
     session,
+    requireSession: true,
   });
 
   let tenantName = "Bukay";
