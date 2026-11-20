@@ -1,4 +1,6 @@
 import { execFileSync } from "node:child_process";
+import path from "node:path";
+
 import { PrismaClient } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -17,9 +19,9 @@ let publicServiceId = "";
 
 beforeAll(async () => {
   vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
-  execFileSync(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "deploy"], {
-    stdio: "pipe",
-  });
+  const prismaBin = path.join(process.cwd(), "node_modules", ".bin", "prisma");
+  execFileSync(prismaBin, ["migrate", "deploy"], { stdio: "pipe", env: process.env });
+  execFileSync(prismaBin, ["db", "seed"], { stdio: "pipe", env: process.env });
 
   for (const id of [victim, attacker]) {
     await db.tenant.upsert({
@@ -90,6 +92,21 @@ describe("merchant tenant isolation", () => {
     const { services } = await res.json();
     expect(services).toHaveLength(1);
     expect(services[0]).toMatchObject({ name: "Victim Only", tenantId: victim });
+  });
+
+  it("returns three seeded demo services when the session has no x-tenant-id header", async () => {
+    const demo = await db.tenant.findUnique({ where: { slug: "demo" } });
+    expect(demo).toBeTruthy();
+
+    const res = await GET(
+      new NextRequest("http://localhost/api/services", {
+        headers: tenantRequestHeaders(demo!.id),
+      })
+    );
+    expect(res.status).toBe(200);
+    const { services } = await res.json();
+    expect(services).toHaveLength(3);
+    expect(services.every((s: { tenantId: string }) => s.tenantId === demo!.id)).toBe(true);
   });
 
   it("returns 403 when the session and x-tenant-id disagree", async () => {
