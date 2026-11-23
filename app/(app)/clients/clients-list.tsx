@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { MerchantEmptyState } from "../components/merchant-empty-state";
+import { merchantEmptyMessages } from "../merchant-empty-copy";
 import { resolveSignedInTenantId } from "../services/services-list";
 import { listTenantClients } from "./data";
 
@@ -10,7 +11,7 @@ export async function ClientsList() {
 
   if (clients.length === 0) {
     return (
-      <MerchantEmptyState message="No clients yet — they appear here after their first booking." />
+      <MerchantEmptyState message={merchantEmptyMessages.clients} />
     );
   }
 

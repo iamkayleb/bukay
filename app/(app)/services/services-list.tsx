@@ -2,6 +2,7 @@ import { sessionFromCookies } from "@/app/lib/auth/session";
 import { headers } from "next/headers";
 
 import { MerchantEmptyState } from "../components/merchant-empty-state";
+import { merchantEmptyMessages } from "../merchant-empty-copy";
 import { prisma } from "@/app/db/prisma";
 import { resolveTenant } from "@/app/lib/resolve-tenant";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
@@ -78,7 +79,7 @@ export async function ServicesList() {
   const services = tenantId ? await listTenantServices(tenantId) : [];
 
   if (services.length === 0) {
-    return <MerchantEmptyState message="No services yet — add your first so customers can book." />;
+    return <MerchantEmptyState message={merchantEmptyMessages.services} />;
   }
 
   return (

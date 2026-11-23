@@ -15,6 +15,7 @@ import ClientsPage from "@/app/(app)/clients/page";
 import { ClientsList } from "@/app/(app)/clients/clients-list";
 import ServicesPage from "@/app/(app)/services/page";
 import { ServicesList } from "@/app/(app)/services/services-list";
+import { MERCHANT_EMPTY_COPY, merchantEmptyMessages } from "@/app/(app)/merchant-empty-copy";
 import { TodaySchedule } from "@/app/(app)/today/data";
 
 const state = vi.hoisted(() => ({
@@ -181,7 +182,9 @@ describe("merchant empty states", () => {
       renderToStaticMarkup(<PaymentsList payments={[]} />),
       renderToStaticMarkup(await TodaySchedule({ now })),
     ];
-    const serverMessages = EMPTY_COPY.filter((message) => message !== "No bookings on this date.");
+    const serverMessages = EMPTY_COPY.filter(
+      (message) => message !== merchantEmptyMessages.calendarDay
+    );
     for (const message of serverMessages) {
       expect(rendered.some((html) => html.includes(message))).toBe(true);
     }
@@ -300,13 +303,7 @@ describe("merchant empty states", () => {
   });
 });
 
-const EMPTY_COPY = [
-  "No bookings on this date.",
-  "No services yet — add your first so customers can book.",
-  "No clients yet — they appear here after their first booking.",
-  "No payments yet.",
-  "No appointments yet.",
-] as const;
+const EMPTY_COPY = MERCHANT_EMPTY_COPY;
 
 describe("legacy placeholder copy", () => {
   it('does not use "Nothing here yet" under app/', () => {
