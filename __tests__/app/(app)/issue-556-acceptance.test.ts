@@ -275,4 +275,45 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(gate).toContain("pnpm vitest run");
     expect(gate).toMatch(/Nothing here yet/);
   });
+
+  it("PR tasks 1–5: each merchant screen wires MerchantEmptyState through merchant-empty-copy", () => {
+    const screenSources: Record<string, string> = {
+      calendarDay: "app/(app)/calendar/day-view.tsx",
+      services: "app/(app)/services/services-list.tsx",
+      clients: "app/(app)/clients/clients-list.tsx",
+      payments: "app/(app)/payments/payments-list.tsx",
+      today: "app/(app)/today/data.tsx",
+    };
+
+    for (const [screen, path] of Object.entries(screenSources)) {
+      const source = readFileSync(path, "utf8");
+      expect(source, path).toContain("merchant-empty-copy");
+      expect(source, path).toContain("MerchantEmptyState");
+      expect(source, path).toContain("merchantEmptyMessages");
+      expect(source, path).toContain(`merchantEmptyMessages.${screen}`);
+      expect(source).not.toContain("Nothing here yet");
+    }
+  });
+
+  it("PR task 3: clients page composes the list empty state above the add form", () => {
+    const pageSource = readFileSync("app/(app)/clients/page.tsx", "utf8");
+    expect(pageSource).toContain("ClientsList");
+    expect(pageSource).toContain("ClientForm");
+    const listIndex = pageSource.indexOf("{list}");
+    const formIndex = pageSource.indexOf("<ClientForm");
+    expect(listIndex).toBeGreaterThan(-1);
+    expect(formIndex).toBeGreaterThan(listIndex);
+  });
+
+  it("PR task 6: empty-states regression suite covers all five merchant screens", () => {
+    const suite = readFileSync("__tests__/app/(app)/empty-states.test.tsx", "utf8");
+    expect(suite).toContain(
+      "renders each page with an empty tenant and asserts each message appears"
+    );
+    expect(suite).toContain("merchantEmptyMessages.calendarDay");
+    expect(suite).toContain("merchantEmptyMessages.clients");
+    expect(suite).toContain("merchantEmptyMessages.services");
+    expect(suite).toContain("merchantEmptyMessages.payments");
+    expect(suite).toContain("merchantEmptyMessages.today");
+  });
 });
