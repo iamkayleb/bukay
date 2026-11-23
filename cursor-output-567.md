@@ -1,13 +1,15 @@
 ## Round summary (#556)
 
 ### Verified locally
-- `pnpm vitest run` — all tests passed (502+ including `day-view.test.tsx`, `calendar/page.test.tsx`, `empty-states.test.tsx`)
-- `pnpm build` — succeeded
+- `pnpm vitest run` — 504 tests passed (includes `empty-states.test.tsx`, `day-view.test.tsx`, `merchant-empty-state.test.tsx`)
+- `pnpm build` — succeeded (clean `.next` rebuild)
 - `grep -rn "Nothing here yet" app/` — no matches
 
-### This round
-- Verified calendar `DayView` empty day: `MerchantEmptyState` with `merchantEmptyMessages.calendarDay` and `Add a booking` → `#new-booking`.
-- Added `__tests__/app/(app)/calendar/page.test.tsx` so the calendar page shell keeps the `new-booking` anchor the empty-state link targets.
+### Implementation
+- Calendar `DayView`: `MerchantEmptyState` with `merchantEmptyMessages.calendarDay` and add-booking link → `#new-booking`
+- `ServicesList`, `ClientsList`, `PaymentsList`, `TodaySchedule`: shared `MerchantEmptyState` + `merchant-empty-copy.ts`
+- `__tests__/app/(app)/empty-states.test.tsx` covers all five merchant screens (empty + demo tenants)
+- `e2e/merchant-empty-states.spec.ts` exercises real DB sign-in paths
 
 ### Task status (11/11)
 - [x] Calendar day-view empty copy + add-booking link
@@ -17,7 +19,7 @@
 - [x] Today schedule empty copy linked to `/calendar`
 - [x] `empty-states.test.tsx` covers all five screens
 - [x] `pnpm build` and `pnpm vitest run` pass
-- [x] E2E `merchant-empty-states.spec.ts` against real DB (seeded in UI acceptance)
-- [x] Demo tenant tests exclude empty copy when data exists
-- [x] Clients flow acceptance (empty copy visible)
+- [x] E2E against real database
+- [x] Demo tenant excludes empty copy when data exists
+- [x] Fresh merchant `/clients` empty copy
 - [x] No `Nothing here yet` under `app/`
