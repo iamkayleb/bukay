@@ -72,7 +72,7 @@ The PR is complete when ALL of these are satisfied:
 - [x] `grep -rn "Nothing here yet" app/` returns nothing, confirming the old placeholder wording is gone.
 
 ### Suggested Next Task
-- None — all tasks and acceptance criteria satisfied on this branch.
+- None — all tasks and acceptance criteria verified this run.
 
 ### Source Context
 _For additional background, check these linked issues/PRs:_
@@ -87,7 +87,7 @@ Source: https://github.com/iamkayleb/bukay/issues/556
 
 **Progress:** 11/11 tasks complete, 0 remaining
 
-All six merchant empty-state tasks and five acceptance criteria verified locally (`pnpm vitest run`, `pnpm build`, no `Nothing here yet` under `app/`).
+Re-verified `pnpm vitest run`, `pnpm build`, and grep for legacy placeholder copy. Added `services/page.test.tsx` for empty copy above the create form.
 <!-- auto-status-summary:end -->
 
 ---

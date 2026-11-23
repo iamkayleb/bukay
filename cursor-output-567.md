@@ -1,7 +1,7 @@
 ## Round summary (#556)
 
 ### Verified this run
-- `pnpm vitest run` — 509 tests passed (includes new `merchant-empty-copy.test.ts`)
+- `pnpm vitest run` — 512 tests passed (added `services/page.test.tsx`)
 - `pnpm build` — succeeded
 - `grep -rn "Nothing here yet" app/` — no matches
 - `pnpm vitest run __tests__/app/(app)/empty-states.test.tsx` — 22 passed
@@ -26,4 +26,4 @@
 - [x] No `Nothing here yet` under `app/`
 
 ### Commit this round
-- test(#556): pin merchant empty copy for calendar day task
+- test(#556): assert services page empty copy above create form
