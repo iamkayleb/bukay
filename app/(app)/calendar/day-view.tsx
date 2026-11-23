@@ -159,6 +159,7 @@ export function DayView({ tenantId, timeZone }: { tenantId: string | null; timeZ
               action={
                 <a
                   className="text-sm font-medium text-emerald-300 hover:text-emerald-200"
+                  data-testid="calendar-add-booking-link"
                   href={merchantEmptyHrefs.calendarAddBooking}
                 >
                   {merchantEmptyActions.calendarAddBooking}

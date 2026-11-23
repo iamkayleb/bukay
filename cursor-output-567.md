@@ -1,24 +1,20 @@
-## Keepalive round summary (PR #567 / issue #556)
+## Round summary (issue #556)
 
-Re-verified all six PR tasks and five acceptance criteria on `cursor/issue-556`.
+Verified merchant empty states across all five screens via `pnpm vitest run` (518 tests) and `pnpm build`. Added `data-testid="calendar-add-booking-link"` on the calendar day empty-state CTA.
 
-### Task 1 — `day-view.tsx`
+### Completed tasks
 
-When the selected date has zero bookings after load, `DayView` renders `merchantEmptyMessages.calendarDay` ("No bookings on this date.") with an "Add a booking" link to `#new-booking` inside `data-testid="calendar-day-empty"`. Verified via `__tests__/app/(app)/calendar/day-view.test.tsx` and `e2e/merchant-empty-states.spec.ts`.
+✅ Completed: In `app/(app)/calendar/day-view.tsx`, when the chosen date has no bookings, show "No bookings on this date" with a link to add one.
+✅ Completed: In `app/(app)/services/services-list.tsx`, when the tenant has no services, show "No services yet — add your first so customers can book" above the create form.
+✅ Completed: In `app/(app)/clients/page.tsx`, when the tenant has no clients, show "No clients yet — they appear here after their first booking".
+✅ Completed: In `app/(app)/payments/payments-list.tsx`, when there are no payments, show "No payments yet" once that file exists.
+✅ Completed: In `app/(app)/today/data.tsx`, keep the existing "No appointments yet" message and link it to `/calendar` so the merchant can add one.
+✅ Completed: Add `__tests__/app/(app)/empty-states.test.tsx` rendering each page with an empty tenant and asserting each message appears.
 
-### Tasks 2–6
+### Acceptance criteria
 
-- **Services:** `ServicesList` shows shared empty copy above `ServiceForm` on `/services`.
-- **Clients:** `ClientsList` shows shared empty copy above `ClientForm` on `/clients`.
-- **Payments:** `PaymentsList` shows "No payments yet." — covered by `payments-list.test.tsx` and page/empty-state suites.
-- **Today:** "No appointments yet." with link to `/calendar`.
-- **Tests:** `__tests__/app/(app)/empty-states.test.tsx` asserts all five messages for an empty tenant, demo-tenant negatives, and no legacy "Nothing here yet" under `app/`.
-
-### This round
-
-- Added `__tests__/app/(app)/clients/clients-list.test.tsx` for clients empty-state component coverage.
-- `pnpm vitest run`: 517 tests passed (85 files).
-- `pnpm build`: succeeded.
-- `grep -rn "Nothing here yet" app/`: no matches.
-
-**Progress:** 11/11 tasks complete.
+✅ Completed: `pnpm build` and `pnpm vitest run` pass with no new failures.
+✅ Completed: Against a real database with a tenant that has no services, no clients and no bookings, each of the five pages renders its message rather than an empty region (`e2e/merchant-empty-states.spec.ts`).
+✅ Completed: None of those messages appears for the seeded demo tenant, which has data on every screen.
+✅ Completed: A merchant signs in to an empty tenant, opens `/clients`, reads that clients appear after their first booking, and is not left looking at a blank page.
+✅ Completed: `grep -rn "Nothing here yet" app/` returns nothing, confirming the old placeholder wording is gone.
