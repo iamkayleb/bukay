@@ -13,7 +13,9 @@ import { merchantEmptyActions, merchantEmptyMessages } from "../app/(app)/mercha
  */
 
 const db = new PrismaClient();
+const DEMO_OWNER_PHONE = "+2348061778668";
 const KNOWN_CODE = "246810";
+const CALENDAR_DATE = "2026-06-15";
 
 test.afterAll(async () => {
   await db.$disconnect();
@@ -23,8 +25,7 @@ function freshMerchantPhone() {
   return `+23490${String(randomInt(0, 100_000_000)).padStart(8, "0")}`;
 }
 
-async function signIn(page: Page) {
-  const phone = freshMerchantPhone();
+async function signInWithPhone(page: Page, phone: string) {
   await page.goto("/login");
   await page.locator('input[name="phone"]').fill(phone);
   await page.getByRole("button", { name: "Send code" }).click();
@@ -41,6 +42,14 @@ async function signIn(page: Page) {
   await page.locator('input[name="code"]').fill(KNOWN_CODE);
   await page.getByRole("button", { name: "Verify code" }).click();
   await expect(page).not.toHaveURL(/\/login/, { timeout: 15_000 });
+}
+
+async function signIn(page: Page) {
+  await signInWithPhone(page, freshMerchantPhone());
+}
+
+async function signInAsDemoOwner(page: Page) {
+  await signInWithPhone(page, DEMO_OWNER_PHONE);
 }
 
 test("fresh merchant sees calendar day empty copy with add-booking link", async ({ page }) => {
@@ -77,4 +86,23 @@ test("fresh merchant sees empty copy on services, payments, and today", async ({
   await expect(
     page.getByRole("link", { name: merchantEmptyActions.todayAddOnCalendar })
   ).toBeVisible();
+});
+
+test("seeded demo tenant does not show merchant empty copy on populated screens", async ({
+  page,
+}) => {
+  await signInAsDemoOwner(page);
+
+  await page.goto(`/calendar?date=${CALENDAR_DATE}`);
+  await expect(page.getByText("Loading bookings...")).toBeHidden({ timeout: 15_000 });
+  await expect(page.getByText(merchantEmptyMessages.calendarDay)).toHaveCount(0);
+  await expect(page.getByRole("list", { name: "Day bookings" })).toBeVisible();
+
+  // Today is omitted: the seed pins one booking to CALENDAR_DATE, not necessarily wall-clock today.
+  for (const path of ["/clients", "/services", "/payments"] as const) {
+    await page.goto(path);
+    for (const message of Object.values(merchantEmptyMessages)) {
+      await expect(page.getByText(message, { exact: false })).toHaveCount(0);
+    }
+  }
 });

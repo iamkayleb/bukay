@@ -1,15 +1,15 @@
-## Round summary
+## Round summary (#556)
 
-Verified merchant empty states on `cursor/issue-556` (issue #556).
-
-### Task verification
-
-- **Calendar day view** — `DayView` shows `merchantEmptyMessages.calendarDay` and `#new-booking` link after load; covered by `__tests__/app/(app)/calendar/day-view.test.tsx` and `empty-states.test.tsx`.
-- **Services, clients, payments, today** — `MerchantEmptyState` + centralized copy in `merchant-empty-copy.ts`; shell tests in `empty-states.test.tsx`.
-- **E2E** — Added `e2e/merchant-empty-states.spec.ts` for fresh-tenant calendar and clients copy against a real DB.
-
-### Commands
-
-- `pnpm vitest run` — 501 passed
+### Verified locally
+- `pnpm vitest run` — 501 tests passed (including `empty-states.test.tsx` and `day-view.test.tsx`)
 - `pnpm build` — succeeded
 - `grep -rn "Nothing here yet" app/` — no matches
+
+### First task (calendar day view)
+Already implemented in `day-view.tsx` via `MerchantEmptyState`, copy in `merchant-empty-copy.ts`, and `href="#new-booking"` link.
+
+### This round
+- Added Playwright coverage: seeded demo owner does not see merchant empty copy on clients, services, payments, or the pinned calendar day (`e2e/merchant-empty-states.spec.ts`).
+
+### All PR tasks and acceptance criteria
+Marked complete in `cursor-prompt-567.md` after verification above.
