@@ -13,8 +13,16 @@ import ClientsPage from "@/app/(app)/clients/page";
 import PaymentsPage from "@/app/(app)/payments/page";
 import ServicesPage from "@/app/(app)/services/page";
 import { TodaySchedule } from "@/app/(app)/today/data";
-import { merchantEmptyMessages, MERCHANT_EMPTY_COPY } from "@/app/(app)/merchant-empty-copy";
+import {
+  merchantEmptyActions,
+  merchantEmptyHrefs,
+  merchantEmptyMessages,
+  MERCHANT_EMPTY_COPY,
+} from "@/app/(app)/merchant-empty-copy";
 import { renderDayViewHtml } from "./helpers/render-day-view";
+
+/** Wording from PR task 1 (`day-view.tsx` empty chosen date). */
+const PR_TASK_1_CALENDAR_SNIPPET = "No bookings on this date";
 
 const state = vi.hoisted(() => ({
   headers: new Map<string, string>(),
@@ -82,13 +90,16 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(html.indexOf('name="phone"')).toBeGreaterThan(html.indexOf(merchantEmptyMessages.clients));
   });
 
-  it("shows calendar day empty copy with add-booking link when the day has no bookings", async () => {
+  it("PR task 1: day-view shows empty-day copy and add-booking link when the date has no bookings", async () => {
     const html = await renderDayViewHtml([]);
 
     expect(html).toContain(merchantEmptyMessages.calendarDay);
-    expect(html).toContain("No bookings on this date");
+    expect(html).toContain(PR_TASK_1_CALENDAR_SNIPPET);
+    expect(html).toContain('data-testid="calendar-day-empty"');
     expect(html).toContain('data-testid="calendar-add-booking-link"');
-    expect(html).toContain('href="#new-booking"');
+    expect(html).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
+    expect(html).toContain(merchantEmptyActions.calendarAddBooking);
+    expect(merchantEmptyHrefs.calendarAddBooking).toBe("#new-booking");
   });
 
   it("renders each merchant screen empty message for an empty tenant", async () => {

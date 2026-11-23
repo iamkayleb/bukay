@@ -1,13 +1,13 @@
 ## Keepalive round summary (PR #567 / issue #556)
 
-### Verified
+### Verified this round
+- **Task 1 (calendar `day-view.tsx`)**: empty chosen date shows `No bookings on this date` with add-booking link to `#new-booking`
+- `pnpm test:merchant-empty-states` — 71 tests pass
 - `pnpm build` — pass
-- `pnpm vitest run` — 534 tests pass (including new demo-tenant real SQLite case)
-- `pnpm test:merchant-empty-states` — 70 tests pass
-- `grep -rn "Nothing here yet" app/` — no matches
+- `pnpm vitest run` — 534 tests pass
 
 ### Code this round
-- Extended `__tests__/app/(app)/issue-556-real-db.test.tsx` to seed the demo tenant and assert seeded data screens do not show merchant empty copy (calendar uses real bookings API on `2026-06-15`).
+- Tightened `__tests__/app/(app)/issue-556-acceptance.test.ts` PR task 1 assertions (empty region, href, action label).
 
 ### Task status
-All 6 implementation tasks and 5 acceptance criteria marked complete in `cursor-prompt-567.md`.
+- Task 1 complete (`cursor-prompt-567.md`).
