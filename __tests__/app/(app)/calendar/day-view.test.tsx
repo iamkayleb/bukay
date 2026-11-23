@@ -50,6 +50,15 @@ describe("DayView empty day", () => {
     expect(linkPos).toBeGreaterThan(emptyStateStart);
   });
 
+  it("announces empty-day copy inside the polite live region", async () => {
+    const html = await renderDayViewHtml([]);
+    const liveStart = html.indexOf('aria-live="polite"');
+    expect(liveStart).toBeGreaterThan(-1);
+    const liveSlice = html.slice(liveStart, liveStart + 1200);
+    expect(liveSlice).toContain(merchantEmptyMessages.calendarDay);
+    expect(liveSlice).toContain('data-testid="calendar-day-empty"');
+  });
+
   it("does not show the empty copy while bookings are loading", async () => {
     (
       globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
