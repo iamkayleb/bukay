@@ -146,6 +146,7 @@ describe("merchant empty states", () => {
     expect(calendarHtml).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
     expect(calendarHtml).toContain(merchantEmptyActions.calendarAddBooking);
     expect(calendarHtml).not.toContain('aria-label="Day bookings"');
+    expect(todayHtml).toContain('data-testid="today-calendar-link"');
     expect(todayHtml).toContain(`href="${merchantEmptyHrefs.todayCalendar}"`);
     expect(todayHtml).toContain(merchantEmptyActions.todayAddOnCalendar);
   });
@@ -203,6 +204,7 @@ describe("merchant empty states", () => {
     const html = renderToStaticMarkup(await TodaySchedule({ now }));
     expect(html).toContain("No appointments yet.");
     expect(html).toContain('data-testid="today-empty"');
+    expect(html).toContain('data-testid="today-calendar-link"');
     expect(html).toContain(`href="${merchantEmptyHrefs.todayCalendar}"`);
     expect(html).toContain(merchantEmptyActions.todayAddOnCalendar);
     expect(html).toContain('role="status"');

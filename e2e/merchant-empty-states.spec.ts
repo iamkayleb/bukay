@@ -124,10 +124,9 @@ test("fresh merchant sees empty copy on services, payments, and today", async ({
   await page.goto("/today");
   await expect(page.getByTestId("merchant-empty-state")).toBeVisible();
   await expect(page.getByText(merchantEmptyMessages.today)).toBeVisible();
-  const todayCalendarLink = page.getByRole("link", {
-    name: merchantEmptyActions.todayAddOnCalendar,
-  });
+  const todayCalendarLink = page.getByTestId("today-calendar-link");
   await expect(todayCalendarLink).toBeVisible();
+  await expect(todayCalendarLink).toHaveText(merchantEmptyActions.todayAddOnCalendar);
   await expect(todayCalendarLink).toHaveAttribute("href", merchantEmptyHrefs.todayCalendar);
   await todayCalendarLink.click();
   await expect(page).toHaveURL(/\/calendar/, { timeout: 15_000 });

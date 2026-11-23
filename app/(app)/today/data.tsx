@@ -136,6 +136,7 @@ export async function TodaySchedule({ now = new Date() }: { now?: Date } = {}) {
             action={
               <Link
                 className={merchantEmptyActionLinkClassName}
+                data-testid="today-calendar-link"
                 href={merchantEmptyHrefs.todayCalendar}
               >
                 {merchantEmptyActions.todayAddOnCalendar}

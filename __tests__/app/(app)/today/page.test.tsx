@@ -155,6 +155,7 @@ describe("today bookings", () => {
     expect(html).toContain('data-testid="today-empty"');
     expect(html).toContain('data-testid="merchant-empty-state"');
     expect(html).toContain('role="status"');
+    expect(html).toContain('data-testid="today-calendar-link"');
     expect(html).toContain(`href="${merchantEmptyHrefs.todayCalendar}"`);
     expect(html).toContain(merchantEmptyActions.todayAddOnCalendar);
     expect(html).not.toContain("Ada Okonkwo");
