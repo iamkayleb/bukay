@@ -1,29 +1,21 @@
-## Round summary (#556)
+# Keepalive round 567 — issue #556 merchant empty states
 
-### Verified this run
-- `pnpm vitest run` — 512 tests passed (added `services/page.test.tsx`)
-- `pnpm build` — succeeded
-- `grep -rn "Nothing here yet" app/` — no matches
-- `pnpm vitest run __tests__/app/(app)/empty-states.test.tsx` — 22 passed
+## Task 1 (calendar day-view)
 
-### Task 1 — calendar day-view (verified)
-- `day-view.tsx` shows `merchantEmptyMessages.calendarDay` with add-booking link to `#new-booking` when the selected day has no bookings after load
-- `day-view.test.tsx` and `empty-states.test.tsx` cover loading, populated, and API-failure paths
+- `DayView` renders `MerchantEmptyState` with `merchantEmptyMessages.calendarDay` and link
+  `merchantEmptyHrefs.calendarAddBooking` (`#new-booking`) when `bookings.length === 0` after load.
+- Verified: `pnpm vitest run __tests__/app/(app)/calendar/day-view.test.tsx` (5 tests).
 
-### All merchant tasks (6/6)
-- [x] Calendar day-view empty copy + add-booking link
-- [x] Services list empty copy above create form
-- [x] Clients page empty copy
-- [x] Payments list empty copy
-- [x] Today schedule empty copy linked to `/calendar`
-- [x] `empty-states.test.tsx` five-page sweep
+## All tasks / acceptance
 
-### Acceptance criteria (5/5)
-- [x] `pnpm build` and `pnpm vitest run`
-- [x] E2E fresh merchant against real DB (`e2e/merchant-empty-states.spec.ts`)
-- [x] Demo tenant hides empty copy when data exists
-- [x] Fresh merchant `/clients` empty copy
-- [x] No `Nothing here yet` under `app/`
+| Check | Evidence |
+|-------|----------|
+| Build + unit tests | `pnpm build` OK; `pnpm vitest run` — 512 tests passed |
+| Five empty messages | `__tests__/app/(app)/empty-states.test.tsx` — `renders each page with an empty tenant...` |
+| Demo tenant has no empty copy | Same file — `populated tenant` + `e2e/merchant-empty-states.spec.ts` |
+| Fresh merchant `/clients` | E2E `fresh merchant sees clients empty copy...` |
+| No "Nothing here yet" | `empty-states.test.tsx` grep test + `rg` locally empty |
 
-### Commit this round
-- test(#556): assert services page empty copy above create form
+## Commit this round
+
+- Regression test: calendar empty copy confined to `aria-label="Day schedule"` region.

@@ -72,7 +72,7 @@ The PR is complete when ALL of these are satisfied:
 - [x] `grep -rn "Nothing here yet" app/` returns nothing, confirming the old placeholder wording is gone.
 
 ### Suggested Next Task
-- None — all tasks and acceptance criteria verified this run.
+- In `app/(app)/calendar/day-view.tsx`, when the chosen date has no bookings, show "No bookings on this date" with a link to add one.
 
 ### Source Context
 _For additional background, check these linked issues/PRs:_
@@ -83,12 +83,6 @@ Head: cursor/issue-556
 Source: https://github.com/iamkayleb/bukay/issues/556
 
 <!-- auto-status-summary:start -->
-## Automated Status Summary
-
-**Progress:** 11/11 tasks complete, 0 remaining
-
-Re-verified `pnpm vitest run`, `pnpm build`, and grep for legacy placeholder copy. Added `services/page.test.tsx` for empty copy above the create form.
-<!-- auto-status-summary:end -->
 
 ---
 

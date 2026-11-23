@@ -28,6 +28,16 @@ describe("DayView empty day", () => {
     expect(html).toContain('role="status"');
   });
 
+  it("keeps calendar day empty copy inside the day schedule region", async () => {
+    const html = await renderDayViewHtml([]);
+    const regionStart = html.indexOf('aria-label="Day schedule"');
+    expect(regionStart).toBeGreaterThan(-1);
+    const regionSlice = html.slice(regionStart, regionStart + 900);
+    expect(regionSlice).toContain(merchantEmptyMessages.calendarDay);
+    expect(regionSlice).toContain(merchantEmptyActions.calendarAddBooking);
+    expect(regionSlice).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
+  });
+
   it("does not show the empty copy while bookings are loading", async () => {
     (
       globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
