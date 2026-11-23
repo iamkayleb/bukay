@@ -1,6 +1,6 @@
 # Keepalive round 567 — issue #556 merchant empty states
 
-## Verification (2026-11-23)
+## Verification (2026-11-23, second pass)
 
 | Check | Result |
 |-------|--------|

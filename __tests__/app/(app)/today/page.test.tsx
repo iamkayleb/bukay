@@ -39,7 +39,11 @@ vi.mock("@/app/db/prisma", () => ({
   },
 }));
 
-import { merchantEmptyHrefs } from "@/app/(app)/merchant-empty-copy";
+import {
+  merchantEmptyActions,
+  merchantEmptyHrefs,
+  merchantEmptyMessages,
+} from "@/app/(app)/merchant-empty-copy";
 import { TodaySchedule, listTodaysBookings, zonedDayRange } from "@/app/(app)/today/data";
 
 function booking(overrides: Partial<BookingRow> = {}): BookingRow {
@@ -147,10 +151,11 @@ describe("today bookings", () => {
 
     const html = renderToStaticMarkup(await TodaySchedule({ now }));
 
-    expect(html).toContain("No appointments yet.");
+    expect(html).toContain(merchantEmptyMessages.today);
+    expect(html).toContain('data-testid="merchant-empty-state"');
     expect(html).toContain('role="status"');
     expect(html).toContain(`href="${merchantEmptyHrefs.todayCalendar}"`);
-    expect(html).toContain("Add a booking on the calendar");
+    expect(html).toContain(merchantEmptyActions.todayAddOnCalendar);
     expect(html).not.toContain("Ada Okonkwo");
   });
 });
