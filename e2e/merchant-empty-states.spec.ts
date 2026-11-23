@@ -77,6 +77,7 @@ test("fresh merchant sees clients empty copy before adding anyone", async ({ pag
   await page.goto("/clients");
 
   await expect(page.getByRole("heading", { name: "Clients", exact: true })).toBeVisible();
+  await expect(page.getByTestId("merchant-empty-state")).toBeVisible();
   await expect(page.getByText(merchantEmptyMessages.clients)).toBeVisible();
 });
 
@@ -84,12 +85,15 @@ test("fresh merchant sees empty copy on services, payments, and today", async ({
   await signIn(page);
 
   await page.goto("/services");
+  await expect(page.getByTestId("merchant-empty-state")).toBeVisible();
   await expect(page.getByText(merchantEmptyMessages.services)).toBeVisible();
 
   await page.goto("/payments");
+  await expect(page.getByTestId("merchant-empty-state")).toBeVisible();
   await expect(page.getByText(merchantEmptyMessages.payments)).toBeVisible();
 
   await page.goto("/today");
+  await expect(page.getByTestId("merchant-empty-state")).toBeVisible();
   await expect(page.getByText(merchantEmptyMessages.today)).toBeVisible();
   const todayCalendarLink = page.getByRole("link", {
     name: merchantEmptyActions.todayAddOnCalendar,
