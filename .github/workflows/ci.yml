@@ -57,11 +57,13 @@ jobs:
       - name: Type check
         run: pnpm exec tsc --noEmit
 
+      - name: Merchant empty states (#556)
+        run: |
+          pnpm test:merchant-empty-states
+          test ! grep -rq "Nothing here yet" app/
+
       - name: Test
         run: pnpm test
-
-      - name: Guard merchant empty-state copy (#556)
-        run: test ! grep -rq "Nothing here yet" app/
 
       - name: Build
         run: pnpm build

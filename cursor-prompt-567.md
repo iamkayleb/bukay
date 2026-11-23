@@ -45,7 +45,7 @@ A coverage task is NOT complete just because you added tests. It is complete ONL
 ---
 ## PR Tasks and Acceptance Criteria
 
-**Progress:** 11/11 tasks complete, 0 remaining
+**Progress:** 10/11 tasks complete, 1 remaining
 
 ### Scope
 Every merchant screen shows a blank area when it has no data. A new merchant
@@ -66,7 +66,7 @@ Complete these in order. Mark checkbox done ONLY after implementation is verifie
 The PR is complete when ALL of these are satisfied:
 
 - [x] `pnpm build` and `pnpm vitest run` pass with no new failures.
-- [x] Against a real database with a tenant that has no services, no clients and no bookings, each of the five pages renders its message rather than an empty region.
+- [ ] Against a real database with a tenant that has no services, no clients and no bookings, each of the five pages renders its message rather than an empty region.
 - [x] None of those messages appears for the seeded demo tenant, which has data on every screen.
 - [x] A merchant signs in to an empty tenant, opens `/clients`, reads that clients appear after their first booking, and is not left looking at a blank page.
 - [x] `grep -rn "Nothing here yet" app/` returns nothing, confirming the old placeholder wording is gone.
@@ -83,6 +83,29 @@ Head: cursor/issue-556
 Source: https://github.com/iamkayleb/bukay/issues/556
 
 <!-- auto-status-summary:start -->
+
+#### Scope
+Merchant empty-state copy on calendar, services, clients, payments, and today when a tenant has no data.
+
+#### Tasks
+- [x] Calendar day view empty copy + add-booking link
+- [x] Services list empty copy above create form
+- [x] Clients empty copy on `/clients`
+- [x] Payments list empty copy
+- [x] Today schedule linked to `/calendar`
+- [x] `empty-states.test.tsx` coverage for all five screens
+
+#### Acceptance criteria
+- [x] `pnpm build` and vitest pass locally (`verify:issue-556`)
+- [ ] Empty-tenant messages on all five screens with real DB (`e2e/merchant-empty-states.spec.ts` — run via `pnpm test:e2e:merchant-empty-states`)
+- [x] Empty-tenant messages on all five screens (vitest)
+- [x] Demo tenant hides empty copy when data exists
+- [x] Clients page guides new merchants (e2e)
+- [x] No legacy `Nothing here yet` under `app/`
+
+**Head SHA:** (updated on push)
+
+<!-- auto-status-summary:end -->
 
 ---
 

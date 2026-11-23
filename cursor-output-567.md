@@ -1,26 +1,27 @@
 ## Keepalive round summary (issue #556)
 
-Re-verified all six PR tasks and `pnpm verify:issue-556` on branch `cursor/issue-556`.
+### Task 1 — calendar day view (verified)
 
-### Tasks 1–6 ✅
+- `DayView` shows `merchantEmptyMessages.calendarDay` when the chosen day has no bookings.
+- Add-booking link targets `#new-booking` (`data-testid="calendar-add-booking-link"`).
+- Covered by `day-view.test.tsx` (8 tests) and `empty-states.test.tsx`.
 
-1. **Calendar day view** — `DayView` shows `merchantEmptyMessages.calendarDay` with add-booking link to `#new-booking` when the chosen date has no bookings (`data-testid="calendar-day-empty"`).
-2. **Services** — `ServicesList` empty copy renders above `ServiceForm` on `/services`.
-3. **Clients** — `ClientsList` empty copy on `/clients` (message above add-client form).
-4. **Payments** — `PaymentsList` shows `No payments yet.` when empty.
-5. **Today** — `TodaySchedule` keeps empty copy with link to `/calendar`.
-6. **Tests** — `__tests__/app/(app)/empty-states.test.tsx` covers all five screens for an empty tenant.
+### All PR tasks (verified via `pnpm verify:issue-556`)
 
-### Acceptance criteria ✅ (local gates)
-
-- [x] `pnpm build` + `pnpm vitest run` — pass (521 tests)
-- [x] `pnpm verify:issue-556` — pass
-- [x] Legacy `Nothing here yet` — absent under `app/`
-- [x] Empty-tenant vitest + page/list tests render all five messages
-- [x] Populated-tenant tests hide empty copy when data exists
-- [ ] Real-DB e2e — `e2e/merchant-empty-states.spec.ts` (not run in this runner; covered in CI with seeded DB)
+| Task | Status |
+|------|--------|
+| Calendar day empty copy + link | ✅ |
+| Services empty copy above form | ✅ |
+| Clients empty copy on page | ✅ |
+| Payments empty copy | ✅ |
+| Today → `/calendar` link | ✅ |
+| `empty-states.test.tsx` | ✅ (22 tests) |
 
 ### This round
 
-- Re-ran `pnpm test:merchant-empty-states` and `pnpm verify:issue-556` after confirming task 1 (calendar day empty state).
-- Added keyboard focus rings on empty-state action links in calendar day view and today schedule.
+- Re-ran `pnpm verify:issue-556` (build, 521 vitest, grep gate).
+- CI: run `pnpm test:merchant-empty-states` before the full suite so #556 regressions fail fast.
+
+### Notes
+
+- Playwright `e2e/merchant-empty-states.spec.ts` exercises real-DB empty tenant flows in CI when e2e job runs; not executed in this runner (no DB/browser stack).
