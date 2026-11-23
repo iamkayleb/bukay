@@ -40,4 +40,18 @@ describe("merchant empty copy (#556)", () => {
     expect(merchantEmptyActionLinkClassName).toContain("text-emerald-300");
     expect(merchantEmptyActionLinkClassName).toContain("focus-visible:outline-emerald-400");
   });
+
+  it("matches PR #556 task wording for each merchant empty screen", () => {
+    expect(merchantEmptyMessages.calendarDay).toContain("No bookings on this date");
+    expect(merchantEmptyActions.calendarAddBooking.length).toBeGreaterThan(0);
+    expect(merchantEmptyMessages.services).toContain(
+      "No services yet — add your first so customers can book"
+    );
+    expect(merchantEmptyMessages.clients).toContain(
+      "No clients yet — they appear here after their first booking"
+    );
+    expect(merchantEmptyMessages.payments).toContain("No payments yet");
+    expect(merchantEmptyMessages.today).toBe("No appointments yet.");
+    expect(merchantEmptyHrefs.todayCalendar).toBe("/calendar");
+  });
 });

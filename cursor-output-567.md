@@ -1,22 +1,16 @@
-## Keepalive round summary (issue #556)
+## Round summary
 
-Re-verified **task 1** (calendar `DayView` empty day) and the full merchant empty-state stack after orchestrator task reset.
+Verified issue #556 merchant empty states on `cursor/issue-556`. Implementation was already present; this round confirmed behavior with `pnpm test:merchant-empty-states`, `pnpm build`, and `pnpm vitest run` (525 tests passed).
 
-### Task 1 — calendar day view ✅
+Added a PR task wording guard in `merchant-empty-copy.test.ts`.
 
-- `app/(app)/calendar/day-view.tsx` shows `merchantEmptyMessages.calendarDay` with add-booking link (`data-testid="calendar-day-empty"`, `calendar-add-booking-link`) to `#new-booking`.
-- New vitest on `CalendarPage`: empty `DayView` href matches `id="new-booking"` on the same page shell.
+### Remaining
 
-### Tasks 2–6 ✅
+- **AC:** Real-database check — covered by `e2e/merchant-empty-states.spec.ts` but not executed in this environment (no `DATABASE_URL`).
 
-Services, clients, payments, today empty copy and `empty-states.test.tsx` — unchanged; covered by vitest.
+### Commands run
 
-### Acceptance criteria (this runner)
-
-| Criterion | Status |
-|-----------|--------|
-| `pnpm build` + `pnpm vitest run` | ✅ pass (523 tests) |
-| `pnpm verify:issue-556` | ✅ pass |
-| No `Nothing here yet` under `app/` | ✅ grep clean |
-| Empty vs demo tenant (vitest) | ✅ pass |
-| Real DB / Playwright e2e | ⏳ needs `DATABASE_URL` + `pnpm test:e2e:merchant-empty-states` |
+- `pnpm test:merchant-empty-states` — 62 passed
+- `pnpm build` — success
+- `pnpm vitest run` — 525 passed
+- `bash -c '! grep -rn "Nothing here yet" app/'` — no matches
