@@ -17,6 +17,15 @@ beforeEach(() => {
 });
 
 describe("DayView empty day", () => {
+  it("issue #556: empty chosen date shows copy and link to add a booking", async () => {
+    const html = await renderDayViewHtml([]);
+
+    expect(html).toContain("No bookings on this date");
+    expect(html).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
+    expect(html).toContain(merchantEmptyActions.calendarAddBooking);
+    expect(html).not.toContain("Nothing here yet");
+  });
+
   it('shows "No bookings on this date" with a link to add a booking', async () => {
     const html = await renderDayViewHtml([]);
 
