@@ -131,6 +131,11 @@ describe("issue #556 against real SQLite (empty tenant)", () => {
     expect(calendarHtml).toContain('aria-label="Day schedule"');
     expect(calendarHtml).toContain('data-testid="merchant-empty-state"');
     expect(calendarHtml).not.toContain('aria-label="Day bookings"');
+
+    const messagePos = calendarHtml.indexOf(merchantEmptyMessages.calendarDay);
+    const linkPos = calendarHtml.indexOf('data-testid="calendar-add-booking-link"');
+    expect(messagePos).toBeGreaterThan(-1);
+    expect(linkPos).toBeGreaterThan(messagePos);
   });
 
   it("merchant on empty tenant sees clients guidance on /clients instead of a blank page", async () => {
