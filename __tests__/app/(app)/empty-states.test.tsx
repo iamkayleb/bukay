@@ -3,12 +3,13 @@
 import { execSync } from "node:child_process";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createRoot, type Root } from "react-dom/client";
+import { createRoot } from "react-dom/client";
 import { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import CalendarPage from "@/app/(app)/calendar/page";
 import { DayView } from "@/app/(app)/calendar/day-view";
+import { renderDayViewHtml } from "./helpers/render-day-view";
 import { PaymentsList } from "@/app/(app)/payments/payments-list";
 import PaymentsPage from "@/app/(app)/payments/page";
 import ClientsPage from "@/app/(app)/clients/page";
@@ -90,52 +91,13 @@ beforeEach(() => {
   state.bookingFindMany.mockResolvedValue([]);
 });
 
-async function renderEmptyCalendarDayHtml(): Promise<string> {
-  (
-    globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
-  ).IS_REACT_ACT_ENVIRONMENT = true;
-
-  const container = document.createElement("div");
-  document.body.appendChild(container);
-  const root = createRoot(container);
-
-  vi.stubGlobal(
-    "fetch",
-    vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ ok: true, bookings: [] }),
-    })
-  );
-  vi.stubGlobal("location", {
-    ...window.location,
-    search: "?date=2026-10-04",
-  });
-
-  try {
-    await act(async () => {
-      root.render(<DayView tenantId="tenant-empty" timeZone="Africa/Lagos" />);
-    });
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-    return container.innerHTML;
-  } finally {
-    act(() => {
-      root.unmount();
-    });
-    container.remove();
-    vi.unstubAllGlobals();
-  }
-}
-
 describe("merchant empty states", () => {
   const now = new Date("2026-10-04T12:00:00.000Z");
 
   it("renders each page with an empty tenant and asserts each message appears", async () => {
     signInAs("tenant-empty");
 
-    const calendarHtml = await renderEmptyCalendarDayHtml();
+    const calendarHtml = await renderDayViewHtml([]);
     const todayHtml = renderToStaticMarkup(await TodaySchedule({ now }));
 
     const pages = [

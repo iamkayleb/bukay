@@ -5,46 +5,8 @@ import { createRoot } from "react-dom/client";
 import { act } from "react";
 
 import { DayView } from "@/app/(app)/calendar/day-view";
+import { renderDayViewHtml } from "../helpers/render-day-view";
 import { merchantEmptyActions, merchantEmptyMessages } from "@/app/(app)/merchant-empty-copy";
-
-async function renderDayViewHtml(bookings: unknown[]): Promise<string> {
-  (
-    globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
-  ).IS_REACT_ACT_ENVIRONMENT = true;
-
-  const container = document.createElement("div");
-  document.body.appendChild(container);
-  const root = createRoot(container);
-
-  vi.stubGlobal(
-    "fetch",
-    vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ ok: true, bookings }),
-    })
-  );
-  vi.stubGlobal("location", {
-    ...window.location,
-    search: "?date=2026-10-04",
-  });
-
-  try {
-    await act(async () => {
-      root.render(<DayView tenantId="tenant-empty" timeZone="Africa/Lagos" />);
-    });
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-    return container.innerHTML;
-  } finally {
-    act(() => {
-      root.unmount();
-    });
-    container.remove();
-    vi.unstubAllGlobals();
-  }
-}
 
 beforeEach(() => {
   vi.restoreAllMocks();
