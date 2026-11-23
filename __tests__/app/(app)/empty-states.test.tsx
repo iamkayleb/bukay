@@ -105,6 +105,7 @@ describe("merchant empty states", () => {
     signInAs("tenant-empty");
     const html = renderToStaticMarkup(await ServicesList());
     expect(html).toContain("No services yet — add your first so customers can book.");
+    expect(html).toContain('role="status"');
   });
 
   it("renders services empty copy on the services page", async () => {
