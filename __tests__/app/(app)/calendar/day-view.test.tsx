@@ -65,6 +65,14 @@ describe("DayView empty day", () => {
     expect(linkPos).toBeGreaterThan(emptyStateStart);
   });
 
+  it("renders empty-day message before the add-booking link in document order", async () => {
+    const html = await renderDayViewHtml([]);
+    const messagePos = html.indexOf(merchantEmptyMessages.calendarDay);
+    const linkPos = html.indexOf('data-testid="calendar-add-booking-link"');
+    expect(messagePos).toBeGreaterThan(-1);
+    expect(linkPos).toBeGreaterThan(messagePos);
+  });
+
   it("announces empty-day copy inside the polite live region", async () => {
     const html = await renderDayViewHtml([]);
     const liveStart = html.indexOf('aria-live="polite"');
