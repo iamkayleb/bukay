@@ -1,17 +1,16 @@
-## Round summary (#556)
+## Keepalive round summary (issue #556 / PR #567)
 
-Re-verified merchant empty states on `cursor/issue-556`. Calendar `DayView` shows
-`merchantEmptyMessages.calendarDay` with the `#new-booking` link after loading;
-services, clients, payments, and today use `MerchantEmptyState` with shared copy
-from `merchant-empty-copy.ts`.
+### Task 1 — calendar day view
+Verified `DayView` shows `merchantEmptyMessages.calendarDay` with `MerchantEmptyState`, `#new-booking` link, and `data-testid="calendar-day-empty"`. Tests: `day-view.test.tsx`, `empty-states.test.tsx`, `e2e/merchant-empty-states.spec.ts`.
 
-Added Playwright coverage that a fresh merchant sees the intended copy on all five
-screens (calendar, clients, services, payments, today).
+### Tasks 2–6
+Empty copy on services list, clients page (via `ClientsList`), payments list, today schedule (with `/calendar` link), and consolidated `empty-states.test.tsx` — all present and covered by unit + e2e tests.
 
-### Verification
-
-- `pnpm vitest run` — 520 passed
-- `pnpm build` — succeeded
+### Acceptance criteria
+- `pnpm build` — pass
+- `pnpm vitest run` — 520 tests pass
 - `grep -rn "Nothing here yet" app/` — no matches
+- Demo vs empty tenant behaviour — covered in `empty-states.test.tsx` and `e2e/merchant-empty-states.spec.ts`
 
-All tasks complete; PR ready for review.
+### Commit this round
+Added `pnpm verify:issue-556` (`build` + full vitest) for local acceptance gate.
