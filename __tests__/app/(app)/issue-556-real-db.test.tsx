@@ -20,18 +20,25 @@ import { TodaySchedule } from "@/app/(app)/today/data";
 import { DayView } from "@/app/(app)/calendar/day-view";
 import { GET as listBookings } from "@/app/api/bookings/route";
 import {
+  MERCHANT_EMPTY_COPY,
   merchantEmptyActions,
   merchantEmptyHrefs,
   merchantEmptyMessages,
 } from "@/app/(app)/merchant-empty-copy";
 
-const tenantId = "issue-556-empty-db";
+const auth = vi.hoisted(() => ({
+  tenantId: "issue-556-empty-db",
+}));
+
+const EMPTY_TENANT_ID = "issue-556-empty-db";
+const DEMO_TENANT_SLUG = "demo";
 const timeZone = "Africa/Lagos";
-const calendarDate = "2026-10-04";
+const emptyCalendarDate = "2026-10-04";
+const demoBookingDate = "2026-06-15";
 const db = new PrismaClient();
 
 vi.mock("next/headers", () => ({
-  headers: () => new Headers({ "x-tenant-id": tenantId }),
+  headers: () => new Headers({ "x-tenant-id": auth.tenantId }),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -42,23 +49,26 @@ beforeAll(async () => {
   execFileSync(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "deploy"], {
     stdio: "pipe",
   });
+  execFileSync(process.execPath, ["node_modules/prisma/build/index.js", "db", "seed"], {
+    stdio: "pipe",
+  });
   await db.tenant.upsert({
-    where: { id: tenantId },
+    where: { id: EMPTY_TENANT_ID },
     update: { timezone: timeZone },
-    create: { id: tenantId, slug: tenantId, name: "Empty Shop", timezone: timeZone },
+    create: { id: EMPTY_TENANT_ID, slug: EMPTY_TENANT_ID, name: "Empty Shop", timezone: timeZone },
   });
 }, 120_000);
 
 afterAll(async () => {
-  await db.booking.deleteMany({ where: { tenantId } });
-  await db.payment.deleteMany({ where: { tenantId } });
-  await db.client.deleteMany({ where: { tenantId } });
-  await db.service.deleteMany({ where: { tenantId } });
-  await db.tenant.delete({ where: { id: tenantId } });
+  await db.booking.deleteMany({ where: { tenantId: EMPTY_TENANT_ID } });
+  await db.payment.deleteMany({ where: { tenantId: EMPTY_TENANT_ID } });
+  await db.client.deleteMany({ where: { tenantId: EMPTY_TENANT_ID } });
+  await db.service.deleteMany({ where: { tenantId: EMPTY_TENANT_ID } });
+  await db.tenant.delete({ where: { id: EMPTY_TENANT_ID } });
   await db.$disconnect();
 }, 120_000);
 
-async function renderCalendarDayEmptyHtml(): Promise<string> {
+async function renderCalendarDayHtml(viewTenantId: string, viewDate: string): Promise<string> {
   (
     globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
   ).IS_REACT_ACT_ENVIRONMENT = true;
@@ -76,7 +86,7 @@ async function renderCalendarDayEmptyHtml(): Promise<string> {
         throw new Error(`unexpected fetch: ${url.pathname}`);
       }
       const response = await listBookings(
-        new NextRequest(url, { headers: { "x-tenant-id": tenantId } })
+        new NextRequest(url, { headers: { "x-tenant-id": viewTenantId } })
       );
       const body = await response.json();
       return { ok: response.ok, json: async () => body };
@@ -84,12 +94,12 @@ async function renderCalendarDayEmptyHtml(): Promise<string> {
   );
   vi.stubGlobal("location", {
     ...window.location,
-    search: `?date=${calendarDate}`,
+    search: `?date=${viewDate}`,
   });
 
   try {
     await act(async () => {
-      root.render(<DayView tenantId={tenantId} timeZone={timeZone} />);
+      root.render(<DayView tenantId={viewTenantId} timeZone={timeZone} />);
     });
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -109,11 +119,13 @@ describe("issue #556 against real SQLite (empty tenant)", () => {
   const now = new Date("2026-10-04T12:00:00.000Z");
 
   it("renders each merchant screen empty message for a tenant with no data", async () => {
+    auth.tenantId = EMPTY_TENANT_ID;
+
     const clientsHtml = renderToStaticMarkup(await ClientsPage());
     const servicesHtml = renderToStaticMarkup(await ServicesPage());
     const paymentsHtml = renderToStaticMarkup(await PaymentsPage());
     const todayHtml = renderToStaticMarkup(await TodaySchedule({ now }));
-    const calendarHtml = await renderCalendarDayEmptyHtml();
+    const calendarHtml = await renderCalendarDayHtml(EMPTY_TENANT_ID, emptyCalendarDate);
 
     expect(clientsHtml).toContain(merchantEmptyMessages.clients);
     expect(servicesHtml).toContain(merchantEmptyMessages.services);
@@ -123,5 +135,32 @@ describe("issue #556 against real SQLite (empty tenant)", () => {
     expect(calendarHtml).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
     expect(calendarHtml).toContain(merchantEmptyActions.calendarAddBooking);
     expect(calendarHtml).toContain('data-testid="calendar-day-empty"');
+  });
+});
+
+describe("issue #556 against real SQLite (seeded demo tenant)", () => {
+  const now = new Date("2026-06-15T12:00:00.000Z");
+
+  it("does not show merchant empty copy when demo seed data is present", async () => {
+    const demo = await db.tenant.findUnique({ where: { slug: DEMO_TENANT_SLUG } });
+    expect(demo).not.toBeNull();
+
+    auth.tenantId = demo!.id;
+
+    const clientsHtml = renderToStaticMarkup(await ClientsPage());
+    const servicesHtml = renderToStaticMarkup(await ServicesPage());
+    const paymentsHtml = renderToStaticMarkup(await PaymentsPage());
+    const todayHtml = renderToStaticMarkup(await TodaySchedule({ now }));
+    const calendarHtml = await renderCalendarDayHtml(demo!.id, demoBookingDate);
+
+    const pages = [clientsHtml, servicesHtml, paymentsHtml, todayHtml, calendarHtml];
+    for (const html of pages) {
+      for (const message of MERCHANT_EMPTY_COPY) {
+        expect(html).not.toContain(message);
+      }
+    }
+
+    expect(calendarHtml).toContain('aria-label="Day bookings"');
+    expect(clientsHtml).toContain("Demo Client");
   });
 });

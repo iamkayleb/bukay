@@ -45,7 +45,7 @@ A coverage task is NOT complete just because you added tests. It is complete ONL
 ---
 ## PR Tasks and Acceptance Criteria
 
-**Progress:** 10/11 tasks complete, 1 remaining
+**Progress:** 11/11 tasks complete, 0 remaining
 
 ### Scope
 Every merchant screen shows a blank area when it has no data. A new merchant
@@ -66,13 +66,13 @@ Complete these in order. Mark checkbox done ONLY after implementation is verifie
 The PR is complete when ALL of these are satisfied:
 
 - [x] `pnpm build` and `pnpm vitest run` pass with no new failures.
-- [ ] Against a real database with a tenant that has no services, no clients and no bookings, each of the five pages renders its message rather than an empty region.
+- [x] Against a real database with a tenant that has no services, no clients and no bookings, each of the five pages renders its message rather than an empty region.
 - [x] None of those messages appears for the seeded demo tenant, which has data on every screen.
 - [x] A merchant signs in to an empty tenant, opens `/clients`, reads that clients appear after their first booking, and is not left looking at a blank page.
 - [x] `grep -rn "Nothing here yet" app/` returns nothing, confirming the old placeholder wording is gone.
 
 ### Suggested Next Task
-- Run `pnpm test:e2e:merchant-empty-states` (Playwright + seeded DB) for the remaining real-DB acceptance criterion.
+- All tasks and acceptance criteria verified — ready for merge gate.
 
 ### Source Context
 _For additional background, check these linked issues/PRs:_
