@@ -66,6 +66,9 @@ test("fresh merchant sees calendar day empty copy with add-booking link", async 
   const addBookingLink = page.getByRole("link", { name: merchantEmptyActions.calendarAddBooking });
   await expect(addBookingLink).toBeVisible();
   await expect(addBookingLink).toHaveAttribute("href", merchantEmptyHrefs.calendarAddBooking);
+  await addBookingLink.click();
+  await expect(page.locator("#new-booking")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "New booking" })).toBeVisible();
 });
 
 test("fresh merchant sees clients empty copy before adding anyone", async ({ page }) => {
