@@ -118,6 +118,18 @@ async function renderCalendarDayHtml(viewTenantId: string, viewDate: string): Pr
 describe("issue #556 against real SQLite (empty tenant)", () => {
   const now = new Date("2026-10-04T12:00:00.000Z");
 
+  it("merchant on empty tenant sees clients guidance on /clients instead of a blank page", async () => {
+    auth.tenantId = EMPTY_TENANT_ID;
+
+    const clientsHtml = renderToStaticMarkup(await ClientsPage());
+
+    expect(clientsHtml).toContain(merchantEmptyMessages.clients);
+    expect(clientsHtml).toContain('data-testid="merchant-empty-state"');
+    expect(clientsHtml.indexOf('name="phone"')).toBeGreaterThan(
+      clientsHtml.indexOf(merchantEmptyMessages.clients)
+    );
+  });
+
   it("renders each merchant screen empty message for a tenant with no data", async () => {
     auth.tenantId = EMPTY_TENANT_ID;
 
