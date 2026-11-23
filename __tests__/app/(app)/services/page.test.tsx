@@ -70,6 +70,7 @@ describe("ServicesPage", () => {
     const html = renderToStaticMarkup(await ServicesPage());
 
     expect(html).toContain(merchantEmptyMessages.services);
+    expect(html).toContain('data-testid="merchant-empty-state"');
     expect(html).toContain('role="status"');
     expect(html).not.toContain('aria-label="Services"');
   });

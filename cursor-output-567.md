@@ -1,28 +1,29 @@
-## Keepalive round summary (#556)
+# Keepalive round 567 — issue #556 merchant empty states
 
-Verified merchant empty states on branch `cursor/issue-556`.
+## Summary
 
-### Task verification (11/11)
+Verified all six implementation tasks and five acceptance criteria on branch `cursor/issue-556`.
 
-| Task | Status | Evidence |
-|------|--------|----------|
-| Calendar day-view empty copy + add link | Done | `day-view.tsx`, `day-view.test.tsx` |
-| Services empty above create form | Done | `services-list.tsx`, `services/page.tsx` layout |
-| Clients page empty copy | Done | `clients-list.tsx` via `clients/page.tsx` |
-| Payments empty | Done | `payments-list.tsx` |
-| Today + `/calendar` link | Done | `today/data.tsx` |
-| `empty-states.test.tsx` suite | Done | 22 tests |
+## Verification
 
-### Acceptance criteria
+| Gate | Result |
+|------|--------|
+| `pnpm vitest run` | 519 tests passed (86 files), including `empty-states.test.tsx` (22) |
+| `pnpm build` | Passed |
+| `grep -rn "Nothing here yet" app/` | No matches |
 
-- `pnpm build` — pass (this run)
-- `pnpm vitest run` — 519 tests pass (this run)
-- Empty tenant on real DB — `e2e/merchant-empty-states.spec.ts`
-- Demo tenant without empty copy — empty-states + e2e populated-tenant test
-- Clients journey — e2e `fresh merchant sees clients empty copy`
-- No `Nothing here yet` under `app/` — grep clean + unit test
+## Tasks
 
-### This round
+All merchant screens use `MerchantEmptyState` with copy from `merchant-empty-copy.ts`:
 
-- Re-verified task 1 (calendar day empty state already implemented).
-- Added nested add-booking link assertion in `day-view.test.tsx`.
+- **Calendar** (`day-view.tsx`): "No bookings on this date." + link to `#new-booking`
+- **Services** (`services-list.tsx`): empty message above create form on page
+- **Clients** (`clients-list.tsx` via `page.tsx`): clients-after-booking message
+- **Payments** (`payments-list.tsx`): "No payments yet."
+- **Today** (`data.tsx`): "No appointments yet." + link to `/calendar`
+- **Tests**: `__tests__/app/(app)/empty-states.test.tsx` + page/unit/e2e coverage
+
+## This round
+
+- Asserted `data-testid="merchant-empty-state"` on services page empty tenant render (`services/page.test.tsx`).
+- Checked off all task and acceptance checkboxes in `cursor-prompt-567.md`.
