@@ -133,7 +133,7 @@ export async function TodaySchedule({ now = new Date() }: { now?: Date } = {}) {
           message={merchantEmptyMessages.today}
           action={
             <Link
-              className="text-sm font-medium text-emerald-300 hover:text-emerald-200"
+              className="text-sm font-medium text-emerald-300 hover:text-emerald-200 focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
               href={merchantEmptyHrefs.todayCalendar}
             >
               {merchantEmptyActions.todayAddOnCalendar}
