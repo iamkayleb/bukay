@@ -262,4 +262,16 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(ci).toContain("pnpm build");
     expect(ci).toContain("pnpm test");
   });
+
+  it("acceptance: verify:issue-556 local gate runs build, merchant bundle, and full vitest", () => {
+    const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts as Record<
+      string,
+      string
+    >;
+    const gate = scripts["verify:issue-556"];
+    expect(gate).toContain("pnpm build");
+    expect(gate).toContain("test:merchant-empty-states");
+    expect(gate).toContain("pnpm vitest run");
+    expect(gate).toMatch(/Nothing here yet/);
+  });
 });
