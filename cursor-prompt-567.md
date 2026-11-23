@@ -45,7 +45,7 @@ A coverage task is NOT complete just because you added tests. It is complete ONL
 ---
 ## PR Tasks and Acceptance Criteria
 
-**Progress:** 6/6 tasks complete, 0 remaining (5/5 acceptance criteria verified locally)
+**Progress:** 11/11 tasks complete, 0 remaining
 
 ### Scope
 Every merchant screen shows a blank area when it has no data. A new merchant
@@ -72,7 +72,7 @@ The PR is complete when ALL of these are satisfied:
 - [x] `grep -rn "Nothing here yet" app/` returns nothing, confirming the old placeholder wording is gone.
 
 ### Suggested Next Task
-- In `app/(app)/calendar/day-view.tsx`, when the chosen date has no bookings, show "No bookings on this date" with a link to add one.
+- None — all PR tasks and acceptance criteria verified locally; ready for review/merge.
 
 ### Source Context
 _For additional background, check these linked issues/PRs:_
