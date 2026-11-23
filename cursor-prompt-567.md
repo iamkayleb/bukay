@@ -72,7 +72,7 @@ The PR is complete when ALL of these are satisfied:
 - [x] `grep -rn "Nothing here yet" app/` returns nothing, confirming the old placeholder wording is gone.
 
 ### Suggested Next Task
-- Run `pnpm verify:issue-556:e2e` in CI or locally to close remaining acceptance criteria (empty tenant real DB + demo tenant).
+- Run `pnpm verify:issue-556:e2e` in CI or locally to close any remaining e2e-only acceptance paths.
 
 ### Source Context
 _For additional background, check these linked issues/PRs:_

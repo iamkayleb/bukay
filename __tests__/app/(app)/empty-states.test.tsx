@@ -202,6 +202,7 @@ describe("merchant empty states", () => {
     signInAs("tenant-empty");
     const html = renderToStaticMarkup(await TodaySchedule({ now }));
     expect(html).toContain("No appointments yet.");
+    expect(html).toContain('data-testid="today-empty"');
     expect(html).toContain(`href="${merchantEmptyHrefs.todayCalendar}"`);
     expect(html).toContain(merchantEmptyActions.todayAddOnCalendar);
     expect(html).toContain('role="status"');

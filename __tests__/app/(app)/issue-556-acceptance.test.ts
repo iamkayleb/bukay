@@ -132,6 +132,7 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(pages.find((p) => p.name === "payments")!.html).toContain(
       'data-testid="payments-empty"'
     );
+    expect(pages.find((p) => p.name === "today")!.html).toContain('data-testid="today-empty"');
   });
 
   it("does not show empty copy on server-rendered screens when the tenant has data", async () => {

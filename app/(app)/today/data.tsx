@@ -130,17 +130,19 @@ export async function TodaySchedule({ now = new Date() }: { now?: Date } = {}) {
       </div>
 
       {bookings.length === 0 ? (
-        <MerchantEmptyState
-          message={merchantEmptyMessages.today}
-          action={
-            <Link
-              className={merchantEmptyActionLinkClassName}
-              href={merchantEmptyHrefs.todayCalendar}
-            >
-              {merchantEmptyActions.todayAddOnCalendar}
-            </Link>
-          }
-        />
+        <div data-testid="today-empty" role="region" aria-label="Today schedule">
+          <MerchantEmptyState
+            message={merchantEmptyMessages.today}
+            action={
+              <Link
+                className={merchantEmptyActionLinkClassName}
+                href={merchantEmptyHrefs.todayCalendar}
+              >
+                {merchantEmptyActions.todayAddOnCalendar}
+              </Link>
+            }
+          />
+        </div>
       ) : (
         <ul
           aria-label="Today bookings"

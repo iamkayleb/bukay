@@ -152,6 +152,7 @@ describe("today bookings", () => {
     const html = renderToStaticMarkup(await TodaySchedule({ now }));
 
     expect(html).toContain(merchantEmptyMessages.today);
+    expect(html).toContain('data-testid="today-empty"');
     expect(html).toContain('data-testid="merchant-empty-state"');
     expect(html).toContain('role="status"');
     expect(html).toContain(`href="${merchantEmptyHrefs.todayCalendar}"`);

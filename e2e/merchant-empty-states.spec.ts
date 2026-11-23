@@ -74,6 +74,7 @@ test("fresh merchant sees empty copy on all five merchant screens", async ({ pag
   await expect(page.getByText(merchantEmptyMessages.payments)).toBeVisible();
 
   await page.goto("/today");
+  await expect(page.getByTestId("today-empty")).toBeVisible();
   await expect(page.getByText(merchantEmptyMessages.today)).toBeVisible();
 });
 
