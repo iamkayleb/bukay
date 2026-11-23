@@ -15,7 +15,11 @@ import ClientsPage from "@/app/(app)/clients/page";
 import { ClientsList } from "@/app/(app)/clients/clients-list";
 import ServicesPage from "@/app/(app)/services/page";
 import { ServicesList } from "@/app/(app)/services/services-list";
-import { MERCHANT_EMPTY_COPY, merchantEmptyMessages } from "@/app/(app)/merchant-empty-copy";
+import {
+  MERCHANT_EMPTY_COPY,
+  merchantEmptyMessages,
+  SERVER_MERCHANT_EMPTY_SCREENS,
+} from "@/app/(app)/merchant-empty-copy";
 import { TodaySchedule } from "@/app/(app)/today/data";
 
 const state = vi.hoisted(() => ({
@@ -305,17 +309,15 @@ describe("merchant empty states", () => {
   it("renders every merchant-screen empty message for an empty tenant", async () => {
     signInAs("tenant-empty");
 
-    const serverPages: { name: string; html: string }[] = [
-      { name: "clients", html: renderToStaticMarkup(await ClientsPage()) },
-      { name: "services", html: renderToStaticMarkup(await ServicesPage()) },
-      { name: "payments", html: renderToStaticMarkup(await PaymentsPage()) },
-      { name: "today", html: renderToStaticMarkup(await TodaySchedule({ now })) },
-    ];
+    const serverPageHtml: Record<(typeof SERVER_MERCHANT_EMPTY_SCREENS)[number], string> = {
+      clients: renderToStaticMarkup(await ClientsPage()),
+      services: renderToStaticMarkup(await ServicesPage()),
+      payments: renderToStaticMarkup(await PaymentsPage()),
+      today: renderToStaticMarkup(await TodaySchedule({ now })),
+    };
 
-    for (const page of serverPages) {
-      expect(page.html, page.name).toContain(
-        merchantEmptyMessages[page.name as keyof typeof merchantEmptyMessages]
-      );
+    for (const screen of SERVER_MERCHANT_EMPTY_SCREENS) {
+      expect(serverPageHtml[screen], screen).toContain(merchantEmptyMessages[screen]);
     }
 
     (

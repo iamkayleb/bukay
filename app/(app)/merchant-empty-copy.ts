@@ -7,4 +7,14 @@ export const merchantEmptyMessages = {
   today: "No appointments yet.",
 } as const;
 
+export type MerchantEmptyMessageKey = keyof typeof merchantEmptyMessages;
+
+/** Server-rendered merchant screens (calendar day copy is shown by client DayView). */
+export const SERVER_MERCHANT_EMPTY_SCREENS = [
+  "clients",
+  "services",
+  "payments",
+  "today",
+] as const satisfies readonly MerchantEmptyMessageKey[];
+
 export const MERCHANT_EMPTY_COPY = Object.values(merchantEmptyMessages);
