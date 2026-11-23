@@ -21,11 +21,17 @@ describe("merchant empty copy (#556)", () => {
   });
 
   it("pins issue #556 empty copy on each merchant screen", () => {
-    expect(merchantEmptyMessages.calendarDay).toContain("No bookings on this date");
-    expect(merchantEmptyMessages.services).toContain("No services yet");
-    expect(merchantEmptyMessages.clients).toContain("No clients yet");
-    expect(merchantEmptyMessages.payments).toContain("No payments yet");
-    expect(merchantEmptyMessages.today).toContain("No appointments yet");
+    expect(merchantEmptyMessages.calendarDay).toBe("No bookings on this date.");
+    expect(merchantEmptyMessages.services).toBe(
+      "No services yet — add your first so customers can book."
+    );
+    expect(merchantEmptyMessages.clients).toBe(
+      "No clients yet — they appear here after their first booking."
+    );
+    expect(merchantEmptyMessages.payments).toBe("No payments yet.");
+    expect(merchantEmptyMessages.today).toBe("No appointments yet.");
     expect(merchantEmptyHrefs.todayCalendar).toBe("/calendar");
+    expect(merchantEmptyActions.todayAddOnCalendar).toBe("Add a booking on the calendar");
+    expect(merchantEmptyActions.calendarAddBooking).toBe("Add a booking");
   });
 });
