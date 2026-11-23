@@ -11,7 +11,9 @@ export async function ClientsList() {
 
   if (clients.length === 0) {
     return (
-      <MerchantEmptyState message={merchantEmptyMessages.clients} />
+      <div data-testid="clients-empty" role="region" aria-label="Clients list">
+        <MerchantEmptyState message={merchantEmptyMessages.clients} />
+      </div>
     );
   }
 

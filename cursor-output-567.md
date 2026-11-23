@@ -1,14 +1,14 @@
 ## Keepalive round summary (PR #567 / issue #556)
 
 ### Verified this round
-- **Task 1 (`day-view.tsx`)**: empty date shows `merchantEmptyMessages.calendarDay` with add-booking link (`#new-booking` on the calendar page).
-- **Task 2 (`services-list.tsx`)**: empty tenant shows services copy in a `services-empty` region; `ServicesPage` still renders `ServiceForm` below the list.
-- `pnpm vitest run '__tests__/app/(app)/calendar/day-view.test.tsx' '__tests__/app/(app)/services/services-list.test.tsx'`
-- `pnpm test:merchant-empty-states` — 72 tests pass (full suite run this round).
+- **Task 1 (`day-view.tsx`)**: empty date shows `merchantEmptyMessages.calendarDay` with add-booking link (`#new-booking`).
+- **Task 2 (`services-list.tsx`)**: empty services copy in `services-empty` region above `ServiceForm` on `ServicesPage` (unchanged; re-verified).
+- **Task 3 (`clients/page.tsx` via `ClientsList`)**: empty clients copy in new `clients-empty` labeled region above `ClientForm`; tests updated.
+- `pnpm test:merchant-empty-states` — 72 tests pass.
 
 ### Code this round
-- Wrap services empty state in `data-testid="services-empty"` region (parity with calendar day empty region).
+- Wrap clients empty state in `data-testid="clients-empty"` region (parity with calendar/services).
 
 ### Task status
-- Tasks 1–2 marked complete in `cursor-prompt-567.md`.
-- Next: clients empty copy on `/clients`.
+- Tasks 1–3 marked complete in `cursor-prompt-567.md`.
+- Next: payments empty copy in `payments-list.tsx`.

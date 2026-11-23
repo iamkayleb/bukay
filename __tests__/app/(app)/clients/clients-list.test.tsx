@@ -56,7 +56,10 @@ describe("ClientsList", () => {
     const html = renderToStaticMarkup(await ClientsList());
 
     expect(html).toContain(merchantEmptyMessages.clients);
+    expect(html).toContain('data-testid="clients-empty"');
     expect(html).toContain('data-testid="merchant-empty-state"');
+    expect(html).toContain('role="region"');
+    expect(html).toContain('aria-label="Clients list"');
     expect(html).toContain('role="status"');
     expect(html).not.toContain('aria-label="Clients"');
   });

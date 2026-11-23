@@ -45,7 +45,7 @@ A coverage task is NOT complete just because you added tests. It is complete ONL
 ---
 ## PR Tasks and Acceptance Criteria
 
-**Progress:** 2/11 tasks complete, 9 remaining
+**Progress:** 3/11 tasks complete, 8 remaining
 
 ### Scope
 Every merchant screen shows a blank area when it has no data. A new merchant
@@ -57,7 +57,7 @@ Complete these in order. Mark checkbox done ONLY after implementation is verifie
 
 - [x] In `app/(app)/calendar/day-view.tsx`, when the chosen date has no bookings, show "No bookings on this date" with a link to add one.
 - [x] In `app/(app)/services/services-list.tsx`, when the tenant has no services, show "No services yet — add your first so customers can book" above the create form.
-- [ ] In `app/(app)/clients/page.tsx`, when the tenant has no clients, show "No clients yet — they appear here after their first booking".
+- [x] In `app/(app)/clients/page.tsx`, when the tenant has no clients, show "No clients yet — they appear here after their first booking".
 - [ ] In `app/(app)/payments/payments-list.tsx`, when there are no payments, show "No payments yet" once that file exists.
 - [ ] In `app/(app)/today/data.tsx`, keep the existing "No appointments yet" message and link it to `/calendar` so the merchant can add one.
 - [ ] Add `__tests__/app/(app)/empty-states.test.tsx` rendering each page with an empty tenant and asserting each message appears.
@@ -72,7 +72,7 @@ The PR is complete when ALL of these are satisfied:
 - [ ] `grep -rn "Nothing here yet" app/` returns nothing, confirming the old placeholder wording is gone.
 
 ### Suggested Next Task
-- In `app/(app)/clients/page.tsx`, when the tenant has no clients, show "No clients yet — they appear here after their first booking".
+- In `app/(app)/payments/payments-list.tsx`, when there are no payments, show "No payments yet" once that file exists.
 
 ### Source Context
 _For additional background, check these linked issues/PRs:_

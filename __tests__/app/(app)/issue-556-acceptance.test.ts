@@ -86,6 +86,7 @@ describe("issue #556 acceptance (vitest)", () => {
     const html = renderToStaticMarkup(await ClientsPage());
 
     expect(html).toContain(merchantEmptyMessages.clients);
+    expect(html).toContain('data-testid="clients-empty"');
     expect(html).toContain('data-testid="merchant-empty-state"');
     expect(html.indexOf('name="phone"')).toBeGreaterThan(html.indexOf(merchantEmptyMessages.clients));
   });
