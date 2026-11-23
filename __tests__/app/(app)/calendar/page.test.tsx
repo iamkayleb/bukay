@@ -52,6 +52,7 @@ describe("CalendarPage", () => {
     const html = renderToStaticMarkup(await CalendarPage());
 
     expect(html).toContain('id="new-booking"');
+    expect(html).toContain("scroll-mt-8");
     expect(merchantEmptyHrefs.calendarAddBooking).toBe("#new-booking");
     expect(html).toContain("Calendar");
   });
