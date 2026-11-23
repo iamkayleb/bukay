@@ -1,24 +1,18 @@
-## Keepalive round summary (issue #556 / PR #567)
+## Keepalive round summary (issue #556)
 
-Verified all PR tasks and acceptance criteria locally (`pnpm verify:issue-556`).
+Re-ran `pnpm verify:issue-556` locally after broadening `test:merchant-empty-states` with `calendar/page.test.tsx` so the calendar empty-state link target (`#new-booking`) is part of the focused gate.
 
-### Tasks
+### Task 1 — calendar day view ✅
 
-- [x] **Calendar day view** — `DayView` renders `MerchantEmptyState` with `merchantEmptyMessages.calendarDay`, `#new-booking` link, and `data-testid="calendar-day-empty"` when the day has no bookings (`day-view.test.tsx`, `empty-states.test.tsx`, e2e).
-- [x] **Services list** — empty copy above create form (`services-list.test.tsx`, `empty-states.test.tsx`, e2e).
-- [x] **Clients page** — empty copy via `ClientsList` above add form (`clients/page.test.tsx`, `empty-states.test.tsx`, e2e).
-- [x] **Payments list** — `No payments yet.` (`payments-list.test.tsx`, `empty-states.test.tsx`, e2e).
-- [x] **Today schedule** — `No appointments yet.` with `/calendar` link (`today/page.test.tsx`, `empty-states.test.tsx`, e2e).
-- [x] **`empty-states.test.tsx`** — all five screens with empty tenant.
+- `DayView` shows `merchantEmptyMessages.calendarDay` and an add-booking link to `#new-booking` when the day has no bookings.
+- Verified: `day-view.test.tsx` (8), `calendar/page.test.tsx` (2), `empty-states.test.tsx` (22), full suite (521).
+
+### Remaining PR tasks (2–6)
+
+Implemented on branch; covered by `empty-states.test.tsx`, page/list tests, and `e2e/merchant-empty-states.spec.ts`.
 
 ### Acceptance criteria
 
-- [x] `pnpm build` and `pnpm vitest run` — pass (521 tests).
-- [x] Empty tenant messages on all five pages — unit + e2e coverage.
-- [x] Seeded demo tenant — no empty copy on populated screens (unit + e2e).
-- [x] Fresh merchant `/clients` — guided empty copy, not a blank page (e2e).
-- [x] `grep -rn "Nothing here yet" app/` — no matches.
-
-### Commit this round
-
-Broaden `test:merchant-empty-states` to include `clients/page.test.tsx` and `today/page.test.tsx` so the verify gate exercises page shells for tasks 3 and 5.
+- [x] `pnpm build` + `pnpm vitest run` — pass
+- [x] Legacy `Nothing here yet` — absent under `app/`
+- [ ] Real-DB e2e — run via `pnpm test:e2e:merchant-empty-states` in UI acceptance (not executed this round)
