@@ -1,13 +1,14 @@
 ## Round summary (#556)
 
 ### Verified this run
-- `pnpm vitest run` — 507 tests passed
+- `pnpm vitest run` — 509 tests passed (includes new `merchant-empty-copy.test.ts`)
 - `pnpm build` — succeeded
 - `grep -rn "Nothing here yet" app/` — no matches
+- `pnpm vitest run __tests__/app/(app)/empty-states.test.tsx` — 22 passed
 
 ### Task 1 — calendar day-view (verified)
 - `day-view.tsx` shows `merchantEmptyMessages.calendarDay` with add-booking link to `#new-booking` when the selected day has no bookings after load
-- Load failures surface an error instead of empty-day copy (new `day-view.test.tsx` case)
+- `day-view.test.tsx` and `empty-states.test.tsx` cover loading, populated, and API-failure paths
 
 ### All merchant tasks (6/6)
 - [x] Calendar day-view empty copy + add-booking link
@@ -25,4 +26,4 @@
 - [x] No `Nothing here yet` under `app/`
 
 ### Commit this round
-- Test: calendar day-view does not show empty copy when bookings API fails
+- test(#556): pin merchant empty copy for calendar day task

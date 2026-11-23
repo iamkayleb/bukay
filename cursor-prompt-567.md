@@ -83,6 +83,12 @@ Head: cursor/issue-556
 Source: https://github.com/iamkayleb/bukay/issues/556
 
 <!-- auto-status-summary:start -->
+## Automated Status Summary
+
+**Progress:** 11/11 tasks complete, 0 remaining
+
+All six merchant empty-state tasks and five acceptance criteria verified locally (`pnpm vitest run`, `pnpm build`, no `Nothing here yet` under `app/`).
+<!-- auto-status-summary:end -->
 
 ---
 
