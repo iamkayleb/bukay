@@ -1,29 +1,24 @@
 ## Keepalive round summary (issue #556 / PR #567)
 
-Verified merchant empty states on branch `cursor/issue-556`. Ran `pnpm build`, `pnpm vitest run` (521 tests), and `pnpm verify:issue-556`.
+Verified all PR tasks and acceptance criteria locally (`pnpm verify:issue-556`).
 
-### Task 1 — calendar day view
-`DayView` renders `merchantEmptyMessages.calendarDay` via `MerchantEmptyState`, with add-booking link to `#new-booking` (`data-testid="calendar-day-empty"`). Covered by `day-view.test.tsx`, `empty-states.test.tsx`, and `e2e/merchant-empty-states.spec.ts`.
+### Tasks
 
-### Tasks 2–6
-Services, clients (`ClientsList` on `/clients`), payments, today (`/calendar` link), and consolidated `empty-states.test.tsx` — all implemented and passing.
+- [x] **Calendar day view** — `DayView` renders `MerchantEmptyState` with `merchantEmptyMessages.calendarDay`, `#new-booking` link, and `data-testid="calendar-day-empty"` when the day has no bookings (`day-view.test.tsx`, `empty-states.test.tsx`, e2e).
+- [x] **Services list** — empty copy above create form (`services-list.test.tsx`, `empty-states.test.tsx`, e2e).
+- [x] **Clients page** — empty copy via `ClientsList` above add form (`clients/page.test.tsx`, `empty-states.test.tsx`, e2e).
+- [x] **Payments list** — `No payments yet.` (`payments-list.test.tsx`, `empty-states.test.tsx`, e2e).
+- [x] **Today schedule** — `No appointments yet.` with `/calendar` link (`today/page.test.tsx`, `empty-states.test.tsx`, e2e).
+- [x] **`empty-states.test.tsx`** — all five screens with empty tenant.
 
 ### Acceptance criteria
-- Build + vitest — pass locally
-- Empty vs demo tenant — unit tests + Playwright `e2e/merchant-empty-states.spec.ts`
-- Legacy copy — `grep -rn "Nothing here yet" app/` returns nothing; CI enforces the same
 
-### This round
-Aligned `pnpm verify:issue-556` with the acceptance-criterion `grep -rn` check.
+- [x] `pnpm build` and `pnpm vitest run` — pass (521 tests).
+- [x] Empty tenant messages on all five pages — unit + e2e coverage.
+- [x] Seeded demo tenant — no empty copy on populated screens (unit + e2e).
+- [x] Fresh merchant `/clients` — guided empty copy, not a blank page (e2e).
+- [x] `grep -rn "Nothing here yet" app/` — no matches.
 
-✅ Completed: In `app/(app)/calendar/day-view.tsx`, when the chosen date has no bookings, show "No bookings on this date" with a link to add one.
-✅ Completed: In `app/(app)/services/services-list.tsx`, when the tenant has no services, show "No services yet — add your first so customers can book" above the create form.
-✅ Completed: In `app/(app)/clients/page.tsx`, when the tenant has no clients, show "No clients yet — they appear here after their first booking".
-✅ Completed: In `app/(app)/payments/payments-list.tsx`, when there are no payments, show "No payments yet" once that file exists.
-✅ Completed: In `app/(app)/today/data.tsx`, keep the existing "No appointments yet" message and link it to `/calendar` so the merchant can add one.
-✅ Completed: Add `__tests__/app/(app)/empty-states.test.tsx` rendering each page with an empty tenant and asserting each message appears.
-✅ Completed: `pnpm build` and `pnpm vitest run` pass with no new failures.
-✅ Completed: Against a real database with a tenant that has no services, no clients and no bookings, each of the five pages renders its message rather than an empty region.
-✅ Completed: None of those messages appears for the seeded demo tenant, which has data on every screen.
-✅ Completed: A merchant signs in to an empty tenant, opens `/clients`, reads that clients appear after their first booking, and is not left looking at a blank page.
-✅ Completed: `grep -rn "Nothing here yet" app/` returns nothing, confirming the old placeholder wording is gone.
+### Commit this round
+
+Broaden `test:merchant-empty-states` to include `clients/page.test.tsx` and `today/page.test.tsx` so the verify gate exercises page shells for tasks 3 and 5.
