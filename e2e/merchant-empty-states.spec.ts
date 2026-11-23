@@ -79,6 +79,13 @@ test("fresh merchant sees clients empty copy before adding anyone", async ({ pag
   await expect(page.getByRole("heading", { name: "Clients", exact: true })).toBeVisible();
   await expect(page.getByTestId("merchant-empty-state")).toBeVisible();
   await expect(page.getByText(merchantEmptyMessages.clients)).toBeVisible();
+  const emptyState = page.getByTestId("merchant-empty-state");
+  const phoneField = page.locator('input[name="phone"]');
+  await expect(phoneField).toBeVisible();
+  const [emptyBox, phoneBox] = await Promise.all([emptyState.boundingBox(), phoneField.boundingBox()]);
+  expect(emptyBox).not.toBeNull();
+  expect(phoneBox).not.toBeNull();
+  expect(emptyBox!.y).toBeLessThan(phoneBox!.y);
 });
 
 test("fresh merchant sees empty copy on services, payments, and today", async ({ page }) => {

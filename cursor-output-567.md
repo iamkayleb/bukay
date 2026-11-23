@@ -1,11 +1,12 @@
 ## Round summary (#556)
 
 Re-verified all six implementation tasks and five acceptance criteria on
-`cursor/issue-556`. Calendar `DayView` still shows `merchantEmptyMessages.calendarDay`
-with the add-booking link after loading completes; services, clients, payments,
-and today screens render `MerchantEmptyState` copy for empty tenants.
+`cursor/issue-556`. Calendar `DayView` shows `merchantEmptyMessages.calendarDay`
+with the add-booking link after loading; services, clients, payments, and today
+render `MerchantEmptyState` for empty tenants.
 
-Added a Playwright assertion that the today empty-state link opens `/calendar`.
+Extended merchant empty-state e2e so clients copy appears above the add-client
+form, matching the issue acceptance story.
 
 ### Verification
 
