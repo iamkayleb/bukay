@@ -3,7 +3,11 @@ import { createHash, randomInt } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import { expect, test, type Page } from "@playwright/test";
 
-import { merchantEmptyActions, merchantEmptyMessages } from "../app/(app)/merchant-empty-copy";
+import {
+  merchantEmptyActions,
+  merchantEmptyHrefs,
+  merchantEmptyMessages,
+} from "../app/(app)/merchant-empty-copy";
 
 /**
  * Merchant empty-state copy — issue #556.
@@ -59,9 +63,9 @@ test("fresh merchant sees calendar day empty copy with add-booking link", async 
   await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
   await expect(page.getByText("Loading bookings...")).toBeHidden({ timeout: 15_000 });
   await expect(page.getByText(merchantEmptyMessages.calendarDay)).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: merchantEmptyActions.calendarAddBooking })
-  ).toBeVisible();
+  const addBookingLink = page.getByRole("link", { name: merchantEmptyActions.calendarAddBooking });
+  await expect(addBookingLink).toBeVisible();
+  await expect(addBookingLink).toHaveAttribute("href", merchantEmptyHrefs.calendarAddBooking);
 });
 
 test("fresh merchant sees clients empty copy before adding anyone", async ({ page }) => {
