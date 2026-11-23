@@ -9,6 +9,7 @@ export function MerchantEmptyState({ message, action }: MerchantEmptyStateProps)
   return (
     <div
       role="status"
+      data-testid="merchant-empty-state"
       className="rounded-lg border border-dashed border-slate-800 bg-slate-900/40 px-5 py-8 text-center"
     >
       <p className="text-sm text-slate-400">{message}</p>

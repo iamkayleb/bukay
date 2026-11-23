@@ -11,6 +11,7 @@ describe("MerchantEmptyState", () => {
     );
 
     expect(html).toContain('role="status"');
+    expect(html).toContain('data-testid="merchant-empty-state"');
     expect(html).toContain(merchantEmptyMessages.payments);
   });
 

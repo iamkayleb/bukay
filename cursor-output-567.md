@@ -1,10 +1,24 @@
-# Keepalive round 567 — issue #556
+## Keepalive round summary (PR #567 / issue #556)
 
-## Completed this round
+Verified all six implementation tasks and five acceptance criteria on branch `cursor/issue-556`.
 
-- **Task 1 (calendar `day-view.tsx`):** Verified empty day shows `merchantEmptyMessages.calendarDay` with `#new-booking` add link via `MerchantEmptyState`. Added `data-testid="calendar-day-empty"` on the day schedule region for stable tests.
-- **Checks:** `pnpm vitest run __tests__/app/(app)/calendar/day-view.test.tsx` (5 passed); `pnpm vitest run __tests__/app/(app)/empty-states.test.tsx` (22 passed); `pnpm build` OK; `grep -rn "Nothing here yet" app/` empty.
+### Task 1 — calendar day empty state
 
-## Next
+`DayView` shows `merchantEmptyMessages.calendarDay` ("No bookings on this date.") with an "Add a booking" link to `#new-booking` when the selected day has no bookings after load. Covered by `__tests__/app/(app)/calendar/day-view.test.tsx` and `e2e/merchant-empty-states.spec.ts`.
 
-- Task 2: services empty copy above create form (already implemented on branch — verify and check off next round).
+### Tasks 2–5 — server screens
+
+Empty copy is rendered via `MerchantEmptyState` and centralized strings in `merchant-empty-copy.ts` on services, clients, payments, and today (today includes `/calendar` link).
+
+### Task 6 — empty-states suite
+
+`__tests__/app/(app)/empty-states.test.tsx` asserts all five messages for an empty tenant, demo-tenant negatives, and no legacy "Nothing here yet" under `app/`.
+
+### This round
+
+- Added `data-testid="merchant-empty-state"` on `MerchantEmptyState` for stable selectors across merchant empty screens.
+- `pnpm vitest run`: 513 passed.
+- `pnpm build`: succeeded.
+- `grep -rn "Nothing here yet" app/`: no matches.
+
+**Progress:** 11/11 tasks complete.
