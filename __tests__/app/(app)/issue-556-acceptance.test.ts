@@ -128,6 +128,10 @@ describe("issue #556 acceptance (vitest)", () => {
       expect(page.html, page.name).toContain(messages[page.name]);
       expect(page.html, page.name).toContain('data-testid="merchant-empty-state"');
     }
+
+    expect(pages.find((p) => p.name === "payments")!.html).toContain(
+      'data-testid="payments-empty"'
+    );
   });
 
   it("does not show empty copy on server-rendered screens when the tenant has data", async () => {

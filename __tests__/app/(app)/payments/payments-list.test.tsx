@@ -9,6 +9,7 @@ describe("PaymentsList", () => {
     const html = renderToStaticMarkup(<PaymentsList payments={[]} />);
 
     expect(html).toContain(merchantEmptyMessages.payments);
+    expect(html).toContain('data-testid="payments-empty"');
     expect(html).toContain('data-testid="merchant-empty-state"');
     expect(html).toContain('role="status"');
     expect(html).not.toContain('aria-label="Payments"');

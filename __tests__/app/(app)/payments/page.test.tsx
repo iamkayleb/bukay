@@ -64,6 +64,7 @@ describe("PaymentsPage", () => {
     const html = renderToStaticMarkup(await PaymentsPage());
 
     expect(html).toContain(merchantEmptyMessages.payments);
+    expect(html).toContain('data-testid="payments-empty"');
     expect(html).toContain('role="status"');
     expect(html).not.toContain('aria-label="Payments"');
   });

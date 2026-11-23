@@ -78,7 +78,11 @@ function formatPaymentDate(value: Date): string {
 
 export function PaymentsList({ payments }: { payments: PaymentRow[] }) {
   if (payments.length === 0) {
-    return <MerchantEmptyState message={merchantEmptyMessages.payments} />;
+    return (
+      <div data-testid="payments-empty" role="region" aria-label="Payments list">
+        <MerchantEmptyState message={merchantEmptyMessages.payments} />
+      </div>
+    );
   }
 
   return (
