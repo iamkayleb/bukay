@@ -2,7 +2,7 @@
 
 Re-verified issue #556 merchant empty states on `cursor/issue-556`:
 
-- **Task 1 (calendar day view):** Empty days show `MerchantEmptyState` with "No bookings on this date." and an in-page link (`href="#new-booking"`, "Add a booking"); `#new-booking` form uses `scroll-mt-8` so the anchor lands clearly below the header.
+- **Task 1 (calendar day view):** Empty days show `MerchantEmptyState` with "No bookings on this date.", `role="status"`, and in-page "Add a booking" (`href="#new-booking"`); test now asserts accessible status role.
 - All five screens use `MerchantEmptyState` with the issue copy; today links to `/calendar`.
 - `pnpm build` and `pnpm vitest run` (488 tests) pass locally.
 - `__tests__/app/(app)/empty-states.test.tsx` (16 tests) covers empty and populated tenants plus `grep` for legacy copy.
@@ -10,7 +10,7 @@ Re-verified issue #556 merchant empty states on `cursor/issue-556`:
 
 ## Tasks completed
 
-- [x] Calendar day view: "No bookings on this date." + Add a booking link (`empty-states.test.tsx` jsdom)
+- [x] Calendar day view: "No bookings on this date." + Add a booking link
 - [x] Services list empty copy above create form
 - [x] Clients page empty copy via `ClientsList`
 - [x] Payments list: "No payments yet."
