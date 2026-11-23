@@ -11,4 +11,4 @@
 - Real DB / browser: `pnpm test:e2e:merchant-empty-states` (requires migrated DB + running app)
 
 ### Commit this round
-- Added `test:e2e:merchant-empty-states` script in `package.json` for the Playwright acceptance suite.
+- CI job step guards against reintroducing `Nothing here yet` in `app/`.

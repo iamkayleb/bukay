@@ -60,5 +60,8 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Guard merchant empty-state copy (#556)
+        run: test ! grep -rq "Nothing here yet" app/
+
       - name: Build
         run: pnpm build
