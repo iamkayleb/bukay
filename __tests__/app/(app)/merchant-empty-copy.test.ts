@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  merchantEmptyActionLinkClassName,
   merchantEmptyActions,
   merchantEmptyHrefs,
   merchantEmptyMessages,
@@ -33,5 +34,10 @@ describe("merchant empty copy (#556)", () => {
     expect(merchantEmptyHrefs.todayCalendar).toBe("/calendar");
     expect(merchantEmptyActions.todayAddOnCalendar).toBe("Add a booking on the calendar");
     expect(merchantEmptyActions.calendarAddBooking).toBe("Add a booking");
+  });
+
+  it("pins shared empty-state action link styling", () => {
+    expect(merchantEmptyActionLinkClassName).toContain("text-emerald-300");
+    expect(merchantEmptyActionLinkClassName).toContain("focus-visible:outline-emerald-400");
   });
 });

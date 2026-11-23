@@ -4,6 +4,7 @@ import { prisma } from "@/app/db/prisma";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 import { MerchantEmptyState } from "../components/merchant-empty-state";
 import {
+  merchantEmptyActionLinkClassName,
   merchantEmptyActions,
   merchantEmptyHrefs,
   merchantEmptyMessages,
@@ -133,7 +134,7 @@ export async function TodaySchedule({ now = new Date() }: { now?: Date } = {}) {
           message={merchantEmptyMessages.today}
           action={
             <Link
-              className="text-sm font-medium text-emerald-300 hover:text-emerald-200 focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+              className={merchantEmptyActionLinkClassName}
               href={merchantEmptyHrefs.todayCalendar}
             >
               {merchantEmptyActions.todayAddOnCalendar}

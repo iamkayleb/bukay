@@ -19,6 +19,10 @@ export const merchantEmptyHrefs = {
   todayCalendar: "/calendar",
 } as const;
 
+/** Shared Tailwind classes for empty-state action links (calendar + today). */
+export const merchantEmptyActionLinkClassName =
+  "text-sm font-medium text-emerald-300 hover:text-emerald-200 focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400";
+
 export type MerchantEmptyMessageKey = keyof typeof merchantEmptyMessages;
 
 /** Server-rendered merchant screens (calendar day copy is shown by client DayView). */
