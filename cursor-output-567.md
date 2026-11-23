@@ -1,18 +1,13 @@
 ## Round summary
 
-Re-verified issue **#556** on `cursor/issue-556`. Merchant empty states were already implemented; this round re-ran `pnpm build`, `pnpm vitest run` (536 tests), and `pnpm test:merchant-empty-states` (73 tests).
+Re-verified issue **#556** on `cursor/issue-556` after the keepalive task reset.
 
-### Task 1 (calendar day-view) — verified
+### Verified this round
 
-- Empty chosen date shows **No bookings on this date.** with **Add a booking** linking to `#new-booking` (`MerchantEmptyState` in `day-view.tsx`).
-- Tightened real-SQLite regression assertions for the day-schedule empty region.
+- **Task 1 (calendar `day-view.tsx`)**: Empty chosen date shows **No bookings on this date.** with **Add a booking** linking to `#new-booking` via `MerchantEmptyState`.
+- **Tasks 2–6**: Services, clients, payments, today empty copy and `empty-states.test.tsx` — covered by `pnpm test:merchant-empty-states` (73 tests).
+- **Acceptance**: `pnpm build`, `pnpm vitest run` (536 tests), real-SQLite `issue-556-real-db.test.tsx`, demo tenant hides all five messages, `grep` finds no **Nothing here yet** under `app/`.
 
-### Tasks 2–6 and acceptance — verified
+### Commit
 
-- Services, clients, payments, today, and `empty-states.test.tsx` coverage confirmed via merchant-empty-states suite and `issue-556-acceptance.test.ts`.
-- Legacy **Nothing here yet** copy absent under `app/`.
-- Real-db empty vs demo-tenant tests pass.
-
-### Prompt checkboxes
-
-- All six implementation tasks and five acceptance criteria marked `[x]` in `cursor-prompt-567.md` after verification.
+- Tightened real-SQLite task-1 assertion: empty day does not render the bookings list (`aria-label="Day bookings"`).
