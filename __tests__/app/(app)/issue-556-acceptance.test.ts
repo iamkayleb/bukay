@@ -153,6 +153,11 @@ describe("issue #556 acceptance (vitest)", () => {
     );
     expect(merchantEmptyHrefs.calendarAddBooking).toBe("#new-booking");
     expect(html).not.toContain('aria-label="Day bookings"');
+
+    const messagePos = html.indexOf(merchantEmptyMessages.calendarDay);
+    const linkPos = html.indexOf('data-testid="calendar-add-booking-link"');
+    expect(messagePos).toBeGreaterThan(-1);
+    expect(linkPos).toBeGreaterThan(messagePos);
   });
 
   it("PR task 6: each merchant page with an empty tenant shows its empty-state message", async () => {

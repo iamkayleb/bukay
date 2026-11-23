@@ -1,12 +1,12 @@
 ## Keepalive round — issue #556
 
-All six PR tasks and five acceptance criteria were re-verified locally on `cursor/issue-556`.
+Re-verified all six PR tasks and five acceptance criteria on `cursor/issue-556`.
 
 ### Tasks verified
 
 | # | Task | Verification |
 |---|------|----------------|
-| 1 | Calendar day empty + add booking link | `day-view.tsx`, `day-view.test.tsx`, `empty-states.test.tsx` |
+| 1 | Calendar day empty + add booking link | `day-view.tsx`, `day-view.test.tsx`, `issue-556-acceptance.test.ts` |
 | 2 | Services empty above create form | `services-list.tsx`, `ServicesPage` order in tests |
 | 3 | Clients empty guidance | `clients-list.tsx` via `clients/page.tsx` |
 | 4 | Payments empty | `payments-list.tsx` |
@@ -16,11 +16,12 @@ All six PR tasks and five acceptance criteria were re-verified locally on `curso
 ### Acceptance criteria
 
 - `pnpm build` — pass
-- `pnpm vitest run` — 545 tests pass
-- `pnpm verify:issue-556:quick` — 82 tests pass (includes real-db empty tenant)
+- `pnpm vitest run` — 548 tests pass
+- `pnpm verify:issue-556` — full gate pass (build + merchant bundle + vitest + grep)
 - `grep -rn "Nothing here yet" app/` — no matches
-- Demo tenant: empty copy hidden when data present (`empty-states.test.tsx` + acceptance suite)
+- Real SQLite empty tenant — `issue-556-real-db.test.tsx`
+- Demo tenant: empty copy hidden when data present
 
 ### Code change this round
 
-Added acceptance guards that each merchant screen imports shared `merchant-empty-copy` keys (PR tasks 1–5 wiring).
+Strengthened PR task 1 acceptance: assert empty-day message precedes the add-booking link in rendered `DayView` HTML.
