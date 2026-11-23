@@ -144,17 +144,19 @@ export function DayView({ tenantId, timeZone }: { tenantId: string | null; timeZ
         ) : error ? (
           <p role="alert">{error}</p>
         ) : bookings.length === 0 ? (
-          <MerchantEmptyState
-            message="No bookings on this date."
-            action={
-              <a
-                className="text-sm font-medium text-emerald-300 hover:text-emerald-200"
-                href="#new-booking"
-              >
-                Add a booking
-              </a>
-            }
-          />
+          <div role="region" aria-label="Day schedule">
+            <MerchantEmptyState
+              message="No bookings on this date."
+              action={
+                <a
+                  className="text-sm font-medium text-emerald-300 hover:text-emerald-200"
+                  href="#new-booking"
+                >
+                  Add a booking
+                </a>
+              }
+            />
+          </div>
         ) : (
           <ul
             aria-label="Day bookings"

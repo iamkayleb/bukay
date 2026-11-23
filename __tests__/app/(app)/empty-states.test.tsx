@@ -195,6 +195,7 @@ describe("merchant empty states", () => {
       const html = container.innerHTML;
       expect(html).toContain("No bookings on this date.");
       expect(html).toContain('role="status"');
+      expect(html).toContain('aria-label="Day schedule"');
       expect(html).toContain('href="#new-booking"');
       expect(html).toContain("Add a booking");
     } finally {
