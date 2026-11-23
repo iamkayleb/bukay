@@ -2,10 +2,10 @@
 
 Re-verified issue #556 merchant empty states on `cursor/issue-556`:
 
-- All five screens use `MerchantEmptyState` with the issue copy; calendar and today include add-booking actions.
-- `MerchantEmptyState` exposes `role="status"` so assistive tech announces empty copy instead of a silent blank region.
+- **Task 1 (calendar day view):** Empty days show `MerchantEmptyState` with "No bookings on this date." and an in-page link (`href="#new-booking"`, "Add a booking"); `#new-booking` form uses `scroll-mt-8` so the anchor lands clearly below the header.
+- All five screens use `MerchantEmptyState` with the issue copy; today links to `/calendar`.
 - `pnpm build` and `pnpm vitest run` (488 tests) pass locally.
-- DayView jsdom test confirms populated days hide "No bookings on this date."
+- `__tests__/app/(app)/empty-states.test.tsx` (16 tests) covers empty and populated tenants plus `grep` for legacy copy.
 - `grep -rn "Nothing here yet" app/` returns no matches.
 
 ## Tasks completed
