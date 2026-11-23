@@ -1,8 +1,14 @@
+// @vitest-environment jsdom
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import CalendarPage from "@/app/(app)/calendar/page";
-import { merchantEmptyHrefs } from "@/app/(app)/merchant-empty-copy";
+import {
+  merchantEmptyHrefs,
+  merchantEmptyMessages,
+} from "@/app/(app)/merchant-empty-copy";
+import { renderDayViewHtml } from "../helpers/render-day-view";
 
 const state = vi.hoisted(() => ({
   headers: new Map<string, string>(),
@@ -46,6 +52,17 @@ beforeEach(() => {
 });
 
 describe("CalendarPage", () => {
+  it("task #556: empty day copy links to the new-booking anchor on this page", async () => {
+    signInAs("tenant-empty");
+
+    const pageHtml = renderToStaticMarkup(await CalendarPage());
+    const dayHtml = await renderDayViewHtml([]);
+
+    expect(dayHtml).toContain(merchantEmptyMessages.calendarDay);
+    expect(dayHtml).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
+    expect(pageHtml).toContain('id="new-booking"');
+  });
+
   it("exposes the new-booking anchor that day-view empty copy links to", async () => {
     signInAs("tenant-empty");
 
