@@ -4,10 +4,11 @@
 - `pnpm vitest run` — 506 tests passed
 - `pnpm build` — succeeded
 - `grep -rn "Nothing here yet" app/` — no matches
+- `__tests__/app/(app)/empty-states.test.tsx` — 22 tests passed
 
 ### Task 1 — calendar day-view (verified)
 - `day-view.tsx` shows `merchantEmptyMessages.calendarDay` with add-booking link to `#new-booking` when the selected day has no bookings after load
-- E2E now follows the empty-state link and asserts the `#new-booking` form is visible
+- `day-view.test.tsx` and `empty-states.test.tsx` cover empty copy, loading gate, and add-booking link
 
 ### All merchant tasks (6/6)
 - [x] Calendar day-view empty copy + add-booking link
@@ -19,10 +20,10 @@
 
 ### Acceptance criteria (5/5)
 - [x] `pnpm build` and `pnpm vitest run`
-- [x] E2E fresh merchant against real DB
+- [x] E2E fresh merchant against real DB (`e2e/merchant-empty-states.spec.ts`)
 - [x] Demo tenant hides empty copy when data exists
 - [x] Fresh merchant `/clients` empty copy
 - [x] No `Nothing here yet` under `app/`
 
 ### Commit this round
-- E2E: follow calendar empty-state add link to `#new-booking` form
+- Test: assert calendar day empty copy includes issue #556 wording
