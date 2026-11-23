@@ -11,6 +11,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run --coverage",
+    "test:merchant-empty-states": "vitest run empty-states.test.tsx day-view.test.tsx merchant-empty-copy.test.ts merchant-empty-state.test.tsx",
     "lighthouse:mobile": "lhci autorun --config=lighthouserc.json",
     "prisma:generate": "prisma generate",
     "postinstall": "prisma generate",
