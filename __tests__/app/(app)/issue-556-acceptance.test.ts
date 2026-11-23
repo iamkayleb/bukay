@@ -100,6 +100,7 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(html).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
     expect(html).toContain(merchantEmptyActions.calendarAddBooking);
     expect(merchantEmptyHrefs.calendarAddBooking).toBe("#new-booking");
+    expect(html).not.toContain('aria-label="Day bookings"');
   });
 
   it("renders each merchant screen empty message for an empty tenant", async () => {
