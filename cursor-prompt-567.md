@@ -72,7 +72,7 @@ The PR is complete when ALL of these are satisfied:
 - [x] `grep -rn "Nothing here yet" app/` returns nothing, confirming the old placeholder wording is gone.
 
 ### Suggested Next Task
-- None — all PR tasks and acceptance criteria verified locally; ready for review/merge.
+- None — all PR tasks and acceptance criteria verified locally (see `cursor-output-567.md`).
 
 ### Source Context
 _For additional background, check these linked issues/PRs:_
