@@ -132,6 +132,62 @@ describe("DayView empty day", () => {
     expect(html).toContain(merchantEmptyActions.calendarAddBooking);
   });
 
+  it("shows empty-day copy after the merchant picks another date with no bookings", async () => {
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, bookings: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("location", {
+      ...window.location,
+      search: "?date=2026-10-04",
+    });
+
+    try {
+      await act(async () => {
+        root.render(<DayView tenantId="tenant-empty" timeZone="Africa/Lagos" />);
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(container.textContent).toContain(merchantEmptyMessages.calendarDay);
+
+      const dateInput = container.querySelector('input[type="date"]');
+      expect(dateInput).not.toBeNull();
+
+      await act(async () => {
+        dateInput!.dispatchEvent(new Event("input", { bubbles: true }));
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+          dateInput,
+          "2026-10-05"
+        );
+        dateInput!.dispatchEvent(new Event("change", { bubbles: true }));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2);
+      expect(container.textContent).toContain(merchantEmptyMessages.calendarDay);
+      expect(container.textContent).toContain(merchantEmptyActions.calendarAddBooking);
+    } finally {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("does not show the empty copy when the day has bookings", async () => {
     const html = await renderDayViewHtml([
       {

@@ -84,29 +84,6 @@ Source: https://github.com/iamkayleb/bukay/issues/556
 
 <!-- auto-status-summary:start -->
 
-#### Scope
-Merchant empty-state copy on calendar, services, clients, payments, and today when a tenant has no data.
-
-#### Tasks
-- [x] Calendar day view empty copy + add-booking link
-- [x] Services list empty copy above create form
-- [x] Clients empty copy on `/clients`
-- [x] Payments list empty copy
-- [x] Today schedule linked to `/calendar`
-- [x] `empty-states.test.tsx` coverage for all five screens
-
-#### Acceptance criteria
-- [x] `pnpm build` and vitest pass locally (`verify:issue-556`)
-- [ ] Empty-tenant messages on all five screens with real DB (`e2e/merchant-empty-states.spec.ts`)
-- [x] Empty-tenant messages on all five screens (vitest)
-- [x] Demo tenant hides empty copy when data exists
-- [x] Clients page guides new merchants (vitest + e2e spec present)
-- [x] No legacy `Nothing here yet` under `app/`
-
-**Head SHA:** (updated on push)
-
-<!-- auto-status-summary:end -->
-
 ---
 
 ## Repository Guidance
