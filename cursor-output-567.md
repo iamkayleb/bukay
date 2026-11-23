@@ -1,16 +1,20 @@
 ## Keepalive round summary (issue #556 / PR #567)
 
 ### Task 1 — calendar day view
-Verified `DayView` shows `merchantEmptyMessages.calendarDay` with `MerchantEmptyState`, `#new-booking` link, and `data-testid="calendar-day-empty"`. Tests: `day-view.test.tsx`, `empty-states.test.tsx`, `e2e/merchant-empty-states.spec.ts`.
+Verified `DayView` shows `merchantEmptyMessages.calendarDay` with `MerchantEmptyState`, `#new-booking` link (`data-testid="calendar-add-booking-link"`), and `data-testid="calendar-day-empty"`. `pnpm vitest run __tests__/app/(app)/calendar/day-view.test.tsx` — 7 passed.
 
 ### Tasks 2–6
-Empty copy on services list, clients page (via `ClientsList`), payments list, today schedule (with `/calendar` link), and consolidated `empty-states.test.tsx` — all present and covered by unit + e2e tests.
+- **Services:** `ServicesList` renders empty copy; page layout places list (empty state) above `ServiceForm`.
+- **Clients:** `ClientsList` on `ClientsPage` shows clients empty copy above `ClientForm`.
+- **Payments:** `PaymentsList` shows `No payments yet.`
+- **Today:** `TodaySchedule` links to `/calendar` via `merchantEmptyHrefs.todayCalendar`.
+- **Tests:** `__tests__/app/(app)/empty-states.test.tsx` — 22 passed (empty + populated tenants).
 
-### Acceptance criteria
+### Acceptance criteria (this round)
 - `pnpm build` — pass
 - `pnpm vitest run` — 520 tests pass
 - `grep -rn "Nothing here yet" app/` — no matches
-- Demo vs empty tenant behaviour — covered in `empty-states.test.tsx` and `e2e/merchant-empty-states.spec.ts`
+- Real DB / demo tenant — `e2e/merchant-empty-states.spec.ts`
 
 ### Commit this round
-Added `pnpm verify:issue-556` (`build` + full vitest) for local acceptance gate.
+Expanded `test:merchant-empty-states` to include payments and services list tests; `verify:issue-556` runs the targeted suite before full vitest.
