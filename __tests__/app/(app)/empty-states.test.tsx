@@ -135,6 +135,9 @@ describe("merchant empty states", () => {
   it("renders each page with an empty tenant and asserts each message appears", async () => {
     signInAs("tenant-empty");
 
+    const calendarHtml = await renderEmptyCalendarDayHtml();
+    const todayHtml = renderToStaticMarkup(await TodaySchedule({ now }));
+
     const pages = [
       {
         name: "clients",
@@ -153,12 +156,12 @@ describe("merchant empty states", () => {
       },
       {
         name: "today",
-        html: renderToStaticMarkup(await TodaySchedule({ now })),
+        html: todayHtml,
         message: merchantEmptyMessages.today,
       },
       {
         name: "calendar",
-        html: await renderEmptyCalendarDayHtml(),
+        html: calendarHtml,
         message: merchantEmptyMessages.calendarDay,
       },
     ];
@@ -166,6 +169,11 @@ describe("merchant empty states", () => {
     for (const page of pages) {
       expect(page.html, page.name).toContain(page.message);
     }
+
+    expect(calendarHtml).toContain('href="#new-booking"');
+    expect(calendarHtml).toContain(merchantEmptyActions.calendarAddBooking);
+    expect(todayHtml).toContain('href="/calendar"');
+    expect(todayHtml).toContain(merchantEmptyActions.todayAddOnCalendar);
   });
 
   it("renders clients empty copy on the clients page", async () => {
