@@ -1,34 +1,23 @@
-## Round summary
+## Keepalive round summary
 
-Re-verified issue #556 merchant empty states on `cursor/issue-556`. Implementation for all six PR tasks was already on the branch; this round added a populated-tenant guard to the Vitest acceptance gate.
+### Verified (task 1)
+- `app/(app)/calendar/day-view.tsx` shows `merchantEmptyMessages.calendarDay` (`No bookings on this date.`) with `MerchantEmptyState`, add-booking link (`#new-booking`), and `data-testid="calendar-day-empty"`.
+- `pnpm vitest run __tests__/app/(app)/calendar/day-view.test.tsx` — 10/10 passed.
 
-### PR tasks (verified)
+### All implementation tasks
+- [x] Calendar day-view empty state + add-booking link
+- [x] Services list empty copy (page renders it above `ServiceForm`)
+- [x] Clients page empty copy via `ClientsList`
+- [x] Payments list empty copy
+- [x] Today schedule empty copy linked to `/calendar`
+- [x] `__tests__/app/(app)/empty-states.test.tsx`
 
-| Task | Verification |
-|------|----------------|
-| Calendar `day-view.tsx` empty day + add-booking link | `day-view.test.tsx`, `empty-states.test.tsx`, `issue-556-acceptance.test.ts` |
-| Services empty copy above create form | `services-list.test.tsx`, `empty-states.test.tsx` |
-| Clients empty copy on `/clients` | `clients/page.test.tsx`, `issue-556-acceptance.test.ts` |
-| Payments empty copy | `payments-list.test.tsx`, `empty-states.test.tsx` |
-| Today empty copy linked to `/calendar` | `today/page.test.tsx`, `empty-states.test.tsx` |
-| `empty-states.test.tsx` aggregate | 22 tests passing |
+### Acceptance (local)
+- [x] `pnpm build` and `pnpm vitest run` (532 tests)
+- [x] Real SQLite empty tenant — new `__tests__/app/(app)/issue-556-real-db.test.tsx`
+- [x] Demo tenant vitest gate (`issue-556-acceptance.test.ts`)
+- [x] Clients empty copy acceptance test
+- [x] No `Nothing here yet` under `app/`
 
-### Acceptance criteria (this run)
-
-| Criterion | Status |
-|-----------|--------|
-| `pnpm build` and `pnpm vitest run` | Pass (531 tests) |
-| Real DB empty tenant (five screens) | `e2e/merchant-empty-states.spec.ts` (run via `pnpm test:e2e:merchant-empty-states`) |
-| Demo tenant hides empty copy | New `issue-556-acceptance` test + `empty-states` populated suite |
-| Empty `/clients` guidance | `issue-556-acceptance` + e2e |
-| No `Nothing here yet` under `app/` | `grep` clean; covered in acceptance tests |
-
-### Commands (this run)
-
-- `pnpm test:merchant-empty-states` — 68 passed (after new test)
-- `pnpm vitest run` — 532 passed
-- `pnpm build` — success
-
-### This commit
-
-- `issue-556-acceptance.test.ts`: assert server-rendered screens omit empty copy when tenant has data
+### Follow-up
+- Playwright `e2e/merchant-empty-states.spec.ts` still exercises full browser sign-in; not wired into `ci.yml` yet.
