@@ -144,6 +144,7 @@ describe("merchant empty states", () => {
 
     expect(calendarHtml).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
     expect(calendarHtml).toContain(merchantEmptyActions.calendarAddBooking);
+    expect(calendarHtml).not.toContain('aria-label="Day bookings"');
     expect(todayHtml).toContain(`href="${merchantEmptyHrefs.todayCalendar}"`);
     expect(todayHtml).toContain(merchantEmptyActions.todayAddOnCalendar);
   });

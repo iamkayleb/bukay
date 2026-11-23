@@ -97,10 +97,10 @@ Merchant empty-state copy on calendar, services, clients, payments, and today wh
 
 #### Acceptance criteria
 - [x] `pnpm build` and vitest pass locally (`verify:issue-556`)
-- [ ] Empty-tenant messages on all five screens with real DB (`e2e/merchant-empty-states.spec.ts` — run via `pnpm test:e2e:merchant-empty-states`)
+- [ ] Empty-tenant messages on all five screens with real DB (`e2e/merchant-empty-states.spec.ts`)
 - [x] Empty-tenant messages on all five screens (vitest)
 - [x] Demo tenant hides empty copy when data exists
-- [x] Clients page guides new merchants (e2e)
+- [x] Clients page guides new merchants (vitest + e2e spec present)
 - [x] No legacy `Nothing here yet` under `app/`
 
 **Head SHA:** (updated on push)
