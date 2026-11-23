@@ -1,15 +1,13 @@
 ## Round summary (#556)
 
 ### Verified locally
-- `pnpm vitest run` — 501 tests passed (including `empty-states.test.tsx` and `day-view.test.tsx`)
+- `pnpm vitest run` — 502 tests passed (including `empty-states.test.tsx`, `day-view.test.tsx`, `today/page.test.tsx`)
 - `pnpm build` — succeeded
 - `grep -rn "Nothing here yet" app/` — no matches
 
-### First task (calendar day view)
-Already implemented in `day-view.tsx` via `MerchantEmptyState`, copy in `merchant-empty-copy.ts`, and `href="#new-booking"` link.
-
 ### This round
-- Added Playwright coverage: seeded demo owner does not see merchant empty copy on clients, services, payments, or the pinned calendar day (`e2e/merchant-empty-states.spec.ts`).
+- Centralized merchant empty-state link targets in `merchant-empty-copy.ts` (`merchantEmptyHrefs`) and wired `day-view.tsx` + `today/data.tsx` to use them.
+- Re-ran targeted vitest suites for calendar, today, and empty-state coverage.
 
-### All PR tasks and acceptance criteria
-Marked complete in `cursor-prompt-567.md` after verification above.
+### Task status
+All six implementation tasks and five acceptance criteria verified on branch `cursor/issue-556`.

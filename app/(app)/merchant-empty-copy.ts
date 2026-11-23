@@ -13,6 +13,12 @@ export const merchantEmptyActions = {
   todayAddOnCalendar: "Add a booking on the calendar",
 } as const;
 
+/** Empty-state link targets — keep in sync with empty-states tests. */
+export const merchantEmptyHrefs = {
+  calendarAddBooking: "#new-booking",
+  todayCalendar: "/calendar",
+} as const;
+
 export type MerchantEmptyMessageKey = keyof typeof merchantEmptyMessages;
 
 /** Server-rendered merchant screens (calendar day copy is shown by client DayView). */

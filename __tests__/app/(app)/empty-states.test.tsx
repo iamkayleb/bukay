@@ -20,6 +20,7 @@ import {
   CLIENT_MERCHANT_EMPTY_SCREENS,
   MERCHANT_EMPTY_COPY,
   merchantEmptyActions,
+  merchantEmptyHrefs,
   merchantEmptyMessages,
   SERVER_MERCHANT_EMPTY_SCREENS,
 } from "@/app/(app)/merchant-empty-copy";
@@ -132,9 +133,9 @@ describe("merchant empty states", () => {
       expect(page.html, page.name).toContain(page.message);
     }
 
-    expect(calendarHtml).toContain('href="#new-booking"');
+    expect(calendarHtml).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
     expect(calendarHtml).toContain(merchantEmptyActions.calendarAddBooking);
-    expect(todayHtml).toContain('href="/calendar"');
+    expect(todayHtml).toContain(`href="${merchantEmptyHrefs.todayCalendar}"`);
     expect(todayHtml).toContain(merchantEmptyActions.todayAddOnCalendar);
   });
 
@@ -190,7 +191,7 @@ describe("merchant empty states", () => {
     signInAs("tenant-empty");
     const html = renderToStaticMarkup(await TodaySchedule({ now }));
     expect(html).toContain("No appointments yet.");
-    expect(html).toContain('href="/calendar"');
+    expect(html).toContain(`href="${merchantEmptyHrefs.todayCalendar}"`);
     expect(html).toContain(merchantEmptyActions.todayAddOnCalendar);
     expect(html).toContain('role="status"');
   });
@@ -336,7 +337,7 @@ describe("merchant empty states", () => {
       expect(html).toContain(merchantEmptyMessages.calendarDay);
       expect(html).toContain('role="status"');
       expect(html).toContain('aria-label="Day schedule"');
-      expect(html).toContain('href="#new-booking"');
+      expect(html).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
       expect(html).toContain(merchantEmptyActions.calendarAddBooking);
     } finally {
       act(() => {
@@ -436,6 +437,13 @@ describe("empty-state copy inventory", () => {
     expect(allScreens.sort()).toEqual(
       (Object.keys(merchantEmptyMessages) as (keyof typeof merchantEmptyMessages)[]).sort()
     );
+  });
+
+  it("pins empty-state navigation targets", () => {
+    expect(merchantEmptyHrefs).toEqual({
+      calendarAddBooking: "#new-booking",
+      todayCalendar: "/calendar",
+    });
   });
 });
 

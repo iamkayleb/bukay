@@ -6,7 +6,11 @@ import { act } from "react";
 
 import { DayView } from "@/app/(app)/calendar/day-view";
 import { renderDayViewHtml } from "../helpers/render-day-view";
-import { merchantEmptyActions, merchantEmptyMessages } from "@/app/(app)/merchant-empty-copy";
+import {
+  merchantEmptyActions,
+  merchantEmptyHrefs,
+  merchantEmptyMessages,
+} from "@/app/(app)/merchant-empty-copy";
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -17,7 +21,7 @@ describe("DayView empty day", () => {
     const html = await renderDayViewHtml([]);
 
     expect(html).toContain(merchantEmptyMessages.calendarDay);
-    expect(html).toContain('href="#new-booking"');
+    expect(html).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
     expect(html).toContain(merchantEmptyActions.calendarAddBooking);
     expect(html).toContain('aria-label="Day schedule"');
     expect(html).toContain('role="status"');
