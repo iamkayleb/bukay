@@ -305,4 +305,58 @@ describe("populated tenant", () => {
     expect(pages[2]).toContain("paid");
     expect(pages[3]).toContain("Ada Okonkwo");
   });
+
+  it("does not show calendar day empty copy when the day has bookings", async () => {
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          ok: true,
+          bookings: [
+            {
+              id: "book-1",
+              startsAt: "2026-10-04T10:00:00.000Z",
+              status: "confirmed",
+              client: { name: "Ada Okonkwo" },
+              service: { name: "Classic Haircut" },
+            },
+          ],
+        }),
+      })
+    );
+    vi.stubGlobal("location", {
+      ...window.location,
+      search: "?date=2026-10-04",
+    });
+
+    try {
+      await act(async () => {
+        root.render(<DayView tenantId="tenant-demo" timeZone="Africa/Lagos" />);
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      const html = container.innerHTML;
+      expect(html).not.toContain("No bookings on this date.");
+      expect(html).toContain("Ada Okonkwo");
+      expect(html).toContain("Classic Haircut");
+    } finally {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+      vi.unstubAllGlobals();
+    }
+  });
 });

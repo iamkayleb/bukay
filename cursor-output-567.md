@@ -4,7 +4,8 @@ Re-verified issue #556 merchant empty states on `cursor/issue-556`:
 
 - All five screens use `MerchantEmptyState` with the issue copy; calendar and today include add-booking actions.
 - `MerchantEmptyState` exposes `role="status"` so assistive tech announces empty copy instead of a silent blank region.
-- `pnpm build` and `pnpm vitest run` (487 tests) pass locally.
+- `pnpm build` and `pnpm vitest run` (488 tests) pass locally.
+- DayView jsdom test confirms populated days hide "No bookings on this date."
 - `grep -rn "Nothing here yet" app/` returns no matches.
 
 ## Tasks completed
