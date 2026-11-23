@@ -96,4 +96,46 @@ describe("DayView empty day", () => {
     expect(html).not.toContain(merchantEmptyMessages.calendarDay);
     expect(html).toContain("Ada Okonkwo");
   });
+
+  it("shows a load error instead of empty-day copy when bookings cannot be fetched", async () => {
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({ ok: false }),
+      })
+    );
+    vi.stubGlobal("location", {
+      ...window.location,
+      search: "?date=2026-10-04",
+    });
+
+    try {
+      await act(async () => {
+        root.render(<DayView tenantId="tenant-empty" timeZone="Africa/Lagos" />);
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(container.textContent).toContain("Unable to load bookings");
+      expect(container.textContent).not.toContain(merchantEmptyMessages.calendarDay);
+      expect(container.textContent).not.toContain(merchantEmptyActions.calendarAddBooking);
+    } finally {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+      vi.unstubAllGlobals();
+    }
+  });
 });
