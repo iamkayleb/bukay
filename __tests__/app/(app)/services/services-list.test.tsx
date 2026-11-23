@@ -123,6 +123,9 @@ describe("ServicesList", () => {
     const html = renderToStaticMarkup(await ServicesList());
 
     expect(html).toContain("No services yet — add your first so customers can book.");
+    expect(html).toContain('data-testid="merchant-empty-state"');
+    expect(html).toContain('role="status"');
+    expect(html).not.toContain('aria-label="Services"');
     expect(html).not.toContain("Classic Haircut");
     expect(html).not.toContain("Other Tenant Facial");
   });
