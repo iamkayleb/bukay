@@ -62,6 +62,7 @@ test("fresh merchant sees calendar day empty copy with add-booking link", async 
 
   await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
   await expect(page.getByText("Loading bookings...")).toBeHidden({ timeout: 15_000 });
+  await expect(page.getByTestId("calendar-day-empty")).toBeVisible();
   await expect(page.getByText(merchantEmptyMessages.calendarDay)).toBeVisible();
   const addBookingLink = page.getByRole("link", { name: merchantEmptyActions.calendarAddBooking });
   await expect(addBookingLink).toBeVisible();
