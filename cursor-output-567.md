@@ -1,21 +1,25 @@
 ## Keepalive round summary (issue #556)
 
-Re-verified **Task 1** (calendar day view empty state) and the full `pnpm verify:issue-556` gate on branch `cursor/issue-556`.
+Re-verified all six PR tasks and the `pnpm verify:issue-556` gate on branch `cursor/issue-556`.
 
-### Task 1 — calendar day view ✅
+### Tasks 1–6 ✅
 
-- When the chosen date has no bookings, `DayView` renders `merchantEmptyMessages.calendarDay` (`No bookings on this date.`) inside `data-testid="calendar-day-empty"`.
-- Add-booking action links to `merchantEmptyHrefs.calendarAddBooking` (`#new-booking`); `NewBookingForm` exposes `id="new-booking"` with `scroll-mt-8` for in-page navigation.
-- Verified: `day-view.test.tsx` (8), `calendar/page.test.tsx` (2), `empty-states.test.tsx` (22), `pnpm vitest run` (521), `pnpm build`.
+1. **Calendar day view** — `DayView` shows `merchantEmptyMessages.calendarDay` with add-booking link to `#new-booking` when the chosen date has no bookings.
+2. **Services** — `ServicesList` empty copy renders above `ServiceForm` on `/services`.
+3. **Clients** — `ClientsList` empty copy on `/clients` (message above add-client form).
+4. **Payments** — `PaymentsList` shows `No payments yet.` when empty.
+5. **Today** — `TodaySchedule` keeps empty copy with link to `/calendar`.
+6. **Tests** — `__tests__/app/(app)/empty-states.test.tsx` covers all five screens for an empty tenant.
 
-### PR tasks 2–6 ✅
+### Acceptance criteria ✅ (local gates)
 
-All implemented on branch; covered by `empty-states.test.tsx`, page/list tests, and `e2e/merchant-empty-states.spec.ts`.
-
-### Acceptance criteria ✅ (unit/build gates)
-
-- [x] `pnpm build` + `pnpm vitest run` — pass
+- [x] `pnpm build` + `pnpm vitest run` — pass (521 tests)
+- [x] `pnpm verify:issue-556` — pass
 - [x] Legacy `Nothing here yet` — absent under `app/`
-- [x] Empty-tenant vitest renders all five messages (including calendar day + today `/calendar` link)
-- [x] Populated-tenant tests assert empty copy is hidden when data exists
-- [ ] Real-DB e2e — `e2e/merchant-empty-states.spec.ts` (UI lane; not run this round)
+- [x] Empty-tenant vitest + page/list tests render all five messages
+- [x] Populated-tenant tests hide empty copy when data exists
+- [ ] Real-DB e2e — `e2e/merchant-empty-states.spec.ts` (not run; no DB in this runner)
+
+### This round
+
+- Extended `test:merchant-empty-states` to include `payments/page`, `services/page`, and `clients/clients-list` page-level regressions.
