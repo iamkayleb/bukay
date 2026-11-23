@@ -162,8 +162,9 @@ describe("merchant empty states", () => {
   });
 
   it("renders calendar day empty copy on DayView when the day has no bookings", async () => {
-    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT =
-      true;
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
 
     const container = document.createElement("div");
     document.body.appendChild(container);
