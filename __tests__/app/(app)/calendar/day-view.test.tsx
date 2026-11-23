@@ -24,6 +24,7 @@ describe("DayView empty day", () => {
     expect(html).toContain("No bookings on this date");
     expect(html).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
     expect(html).toContain(merchantEmptyActions.calendarAddBooking);
+    expect(html).toContain('role="region"');
     expect(html).toContain('aria-label="Day schedule"');
     expect(html).toContain('role="status"');
   });
