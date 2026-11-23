@@ -100,6 +100,9 @@ test("fresh merchant sees empty copy on services, payments, and today", async ({
   });
   await expect(todayCalendarLink).toBeVisible();
   await expect(todayCalendarLink).toHaveAttribute("href", merchantEmptyHrefs.todayCalendar);
+  await todayCalendarLink.click();
+  await expect(page).toHaveURL(/\/calendar/, { timeout: 15_000 });
+  await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
 });
 
 test("seeded demo tenant does not show merchant empty copy on populated screens", async ({
