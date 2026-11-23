@@ -90,8 +90,83 @@ beforeEach(() => {
   state.bookingFindMany.mockResolvedValue([]);
 });
 
+async function renderEmptyCalendarDayHtml(): Promise<string> {
+  (
+    globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+  ).IS_REACT_ACT_ENVIRONMENT = true;
+
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, bookings: [] }),
+    })
+  );
+  vi.stubGlobal("location", {
+    ...window.location,
+    search: "?date=2026-10-04",
+  });
+
+  try {
+    await act(async () => {
+      root.render(<DayView tenantId="tenant-empty" timeZone="Africa/Lagos" />);
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    return container.innerHTML;
+  } finally {
+    act(() => {
+      root.unmount();
+    });
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+}
+
 describe("merchant empty states", () => {
   const now = new Date("2026-10-04T12:00:00.000Z");
+
+  it("renders each page with an empty tenant and asserts each message appears", async () => {
+    signInAs("tenant-empty");
+
+    const pages = [
+      {
+        name: "clients",
+        html: renderToStaticMarkup(await ClientsPage()),
+        message: merchantEmptyMessages.clients,
+      },
+      {
+        name: "services",
+        html: renderToStaticMarkup(await ServicesPage()),
+        message: merchantEmptyMessages.services,
+      },
+      {
+        name: "payments",
+        html: renderToStaticMarkup(await PaymentsPage()),
+        message: merchantEmptyMessages.payments,
+      },
+      {
+        name: "today",
+        html: renderToStaticMarkup(await TodaySchedule({ now })),
+        message: merchantEmptyMessages.today,
+      },
+      {
+        name: "calendar",
+        html: await renderEmptyCalendarDayHtml(),
+        message: merchantEmptyMessages.calendarDay,
+      },
+    ];
+
+    for (const page of pages) {
+      expect(page.html, page.name).toContain(page.message);
+    }
+  });
 
   it("renders clients empty copy on the clients page", async () => {
     signInAs("tenant-empty");
