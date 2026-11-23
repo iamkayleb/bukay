@@ -1,24 +1,15 @@
-## Verification (2026-11-23)
+## Round summary
 
-Verified locally:
+Verified merchant empty states on `cursor/issue-556` (issue #556).
 
-- `pnpm vitest run` — 499+ tests passed (including `empty-states.test.tsx`, `day-view.test.tsx`, `payments/page.test.tsx`)
+### Task verification
+
+- **Calendar day view** — `DayView` shows `merchantEmptyMessages.calendarDay` and `#new-booking` link after load; covered by `__tests__/app/(app)/calendar/day-view.test.tsx` and `empty-states.test.tsx`.
+- **Services, clients, payments, today** — `MerchantEmptyState` + centralized copy in `merchant-empty-copy.ts`; shell tests in `empty-states.test.tsx`.
+- **E2E** — Added `e2e/merchant-empty-states.spec.ts` for fresh-tenant calendar and clients copy against a real DB.
+
+### Commands
+
+- `pnpm vitest run` — 501 passed
 - `pnpm build` — succeeded
 - `grep -rn "Nothing here yet" app/` — no matches
-
-### Tasks (6/6)
-
-- [x] Calendar `day-view.tsx` — `MerchantEmptyState` with `merchantEmptyMessages.calendarDay` and `#new-booking` link
-- [x] `services-list.tsx` — services empty copy; rendered above `ServiceForm` on services page
-- [x] `clients/page.tsx` — clients empty copy via `ClientsList` above `ClientForm`
-- [x] `payments-list.tsx` — `No payments yet.` empty state
-- [x] `today/data.tsx` — `No appointments yet.` with link to `/calendar`
-- [x] `__tests__/app/(app)/empty-states.test.tsx` — five-page empty tenant sweep
-
-### Acceptance criteria (5/5)
-
-- [x] `pnpm build` and `pnpm vitest run` pass
-- [x] Empty tenant renders messages on all five screens (unit/render tests)
-- [x] Demo tenant with data does not show empty copy (`populated tenant` tests)
-- [x] Clients page shows post-booking guidance for empty tenant
-- [x] No `Nothing here yet` under `app/`
