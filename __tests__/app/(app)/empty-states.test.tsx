@@ -136,6 +136,7 @@ describe("merchant empty states", () => {
     for (const page of pages) {
       if (page.name === "calendar") {
         expect(page.html, page.name).toContain('data-testid="calendar-day-empty"');
+        expect(page.html, page.name).toContain('data-testid="calendar-add-booking-link"');
         expect(page.html, page.name).toContain('data-testid="merchant-empty-state"');
       } else {
         expect(page.html, page.name).toContain('data-testid="merchant-empty-state"');

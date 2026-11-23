@@ -1,20 +1,20 @@
 ## Keepalive round summary (issue #556)
 
-Re-verified all six PR tasks after orchestrator reset; task 1 (`DayView` empty day) confirmed in code and tests.
+Re-verified task 1 after orchestrator reset: calendar `DayView` empty day UX is implemented and locked in tests.
 
 ### Task 1 — calendar day view ✅
 
-- Empty chosen date shows `merchantEmptyMessages.calendarDay` with add-booking link to `#new-booking` (`data-testid="calendar-day-empty"`).
-- No blank `Day bookings` list when the day is empty (regression in `day-view` + `empty-states` tests).
+- Empty chosen date shows `merchantEmptyMessages.calendarDay` with add-booking link to `#new-booking` (`data-testid="calendar-day-empty"`, `calendar-add-booking-link`).
+- Aggregate `empty-states` test now asserts the add-booking link test id alongside copy and href.
 
 ### Tasks 2–6 ✅
 
-Implementation and vitest coverage unchanged and passing (services, clients, payments, today, `empty-states.test.tsx`).
+Services, clients, payments, today, and `empty-states.test.tsx` unchanged and covered by vitest.
 
 ### Verification (this runner)
 
-- `pnpm verify:issue-556` — pass (build, merchant-empty vitest gate, full vitest, no legacy copy)
-- `pnpm vitest run` — 522 tests pass
+- `pnpm verify:issue-556` — pass (build, merchant-empty vitest gate, 522 vitest tests, no legacy copy)
+- `pnpm vitest run '__tests__/app/(app)/empty-states.test.tsx'` — 22 tests pass
 
 ### Remaining acceptance criterion
 
