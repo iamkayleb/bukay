@@ -1,16 +1,31 @@
 ## Round summary
 
-Verified issue #556 merchant empty states on `cursor/issue-556`. Implementation was already present; this round confirmed behavior with `pnpm test:merchant-empty-states`, `pnpm build`, and `pnpm vitest run` (525 tests passed).
+Re-verified issue #556 on `cursor/issue-556` after keepalive task reset (0/11 PR checkboxes).
 
-Added a PR task wording guard in `merchant-empty-copy.test.ts`.
+### Verified (implementation + tests)
 
-### Remaining
+| PR task | Status |
+|---------|--------|
+| Calendar `day-view.tsx` empty day + add-booking link | Done — `MerchantEmptyState`, `#new-booking` |
+| Services empty copy above create form | Done — `ServicesList` + `ServicesPage` |
+| Clients empty copy on `/clients` | Done — `ClientsList` in page |
+| Payments empty copy | Done — `payments-list.tsx` |
+| Today empty copy linked to `/calendar` | Done — `today/data.tsx` |
+| `empty-states.test.tsx` aggregate coverage | Done — 22 tests |
 
-- **AC:** Real-database check — covered by `e2e/merchant-empty-states.spec.ts` but not executed in this environment (no `DATABASE_URL`).
+### Commands (this run)
 
-### Commands run
-
-- `pnpm test:merchant-empty-states` — 62 passed
+- `pnpm test:merchant-empty-states` — 63 passed
+- `pnpm vitest run` — 526 passed
 - `pnpm build` — success
-- `pnpm vitest run` — 525 passed
 - `bash -c '! grep -rn "Nothing here yet" app/'` — no matches
+
+### This commit
+
+- Drop unrelated `api/bookings.ts` formatter drift from the PR
+- Add `issue-556-acceptance.test.ts` for unit-verifiable acceptance criteria
+
+### Follow-up
+
+- Check off completed task / acceptance checkboxes on the PR body (no `GITHUB_TOKEN` in this runner for `gh pr edit`)
+- AC “real database”: `e2e/merchant-empty-states.spec.ts` (CI with DB + Playwright browsers)
