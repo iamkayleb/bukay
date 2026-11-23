@@ -42,6 +42,14 @@ describe("DayView empty day", () => {
     expect(regionSlice).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
   });
 
+  it("nests the add-booking link inside the merchant empty state", async () => {
+    const html = await renderDayViewHtml([]);
+    const emptyStateStart = html.indexOf('data-testid="merchant-empty-state"');
+    const linkPos = html.indexOf('data-testid="calendar-add-booking-link"');
+    expect(emptyStateStart).toBeGreaterThan(-1);
+    expect(linkPos).toBeGreaterThan(emptyStateStart);
+  });
+
   it("does not show the empty copy while bookings are loading", async () => {
     (
       globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
