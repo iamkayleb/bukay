@@ -12,7 +12,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run --coverage",
     "test:merchant-empty-states": "vitest run empty-states.test.tsx day-view.test.tsx merchant-empty-copy.test.ts merchant-empty-state.test.tsx",
-    "verify:issue-556": "pnpm build && pnpm vitest run",
+    "verify:issue-556": "pnpm build && pnpm vitest run && (grep -rq 'Nothing here yet' app/ && exit 1 || exit 0)",
     "lighthouse:mobile": "lhci autorun --config=lighthouserc.json",
     "prisma:generate": "prisma generate",
     "postinstall": "prisma generate",
