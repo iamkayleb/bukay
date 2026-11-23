@@ -146,6 +146,9 @@ describe("issue #556 against real SQLite (empty tenant)", () => {
     expect(calendarHtml).toContain(merchantEmptyMessages.calendarDay);
     expect(calendarHtml).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
     expect(calendarHtml).toContain(merchantEmptyActions.calendarAddBooking);
+    expect(calendarHtml).toContain(
+      `aria-label="${merchantEmptyActions.calendarAddBooking} for this date"`
+    );
     expect(calendarHtml).toContain('data-testid="calendar-day-empty"');
   });
 });
