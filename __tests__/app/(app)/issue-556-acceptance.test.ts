@@ -12,6 +12,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ClientsPage from "@/app/(app)/clients/page";
 import PaymentsPage from "@/app/(app)/payments/page";
 import ServicesPage from "@/app/(app)/services/page";
+import { ServicesList } from "@/app/(app)/services/services-list";
 import { TodaySchedule } from "@/app/(app)/today/data";
 import {
   merchantEmptyActions,
@@ -80,7 +81,7 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(MERCHANT_EMPTY_COPY).toEqual(Object.values(merchantEmptyMessages));
   });
 
-  it("shows clients guidance on /clients for an empty tenant (not a blank list region)", async () => {
+  it("PR task 3: clients page shows empty-tenant guidance instead of a blank list", async () => {
     state.headers.set("x-tenant-id", "tenant-empty");
 
     const html = renderToStaticMarkup(await ClientsPage());
@@ -89,6 +90,41 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(html).toContain('data-testid="clients-empty"');
     expect(html).toContain('data-testid="merchant-empty-state"');
     expect(html.indexOf('name="phone"')).toBeGreaterThan(html.indexOf(merchantEmptyMessages.clients));
+  });
+
+  it("PR task 2: services list shows empty copy above the create form", async () => {
+    state.headers.set("x-tenant-id", "tenant-empty");
+
+    const listHtml = renderToStaticMarkup(await ServicesList());
+    expect(listHtml).toContain(merchantEmptyMessages.services);
+    expect(listHtml).toContain('data-testid="services-empty"');
+
+    const pageHtml = renderToStaticMarkup(await ServicesPage());
+    expect(pageHtml).toContain(merchantEmptyMessages.services);
+    expect(pageHtml.indexOf('name="durationMinutes"')).toBeGreaterThan(
+      pageHtml.indexOf(merchantEmptyMessages.services)
+    );
+  });
+
+  it("PR task 4: payments page shows empty copy when there are no payments", async () => {
+    state.headers.set("x-tenant-id", "tenant-empty");
+    const html = renderToStaticMarkup(await PaymentsPage());
+
+    expect(html).toContain(merchantEmptyMessages.payments);
+    expect(html).toContain('data-testid="payments-empty"');
+  });
+
+  it("PR task 5: today keeps empty copy and links merchants to /calendar", async () => {
+    const now = new Date("2026-10-04T12:00:00.000Z");
+    state.headers.set("x-tenant-id", "tenant-empty");
+
+    const html = renderToStaticMarkup(await TodaySchedule({ now }));
+
+    expect(html).toContain(merchantEmptyMessages.today);
+    expect(html).toContain('data-testid="today-empty"');
+    expect(html).toContain('data-testid="today-calendar-link"');
+    expect(html).toContain(`href="${merchantEmptyHrefs.todayCalendar}"`);
+    expect(html).toContain(merchantEmptyActions.todayAddOnCalendar);
   });
 
   it("PR task 1: day-view shows empty-day copy and add-booking link when the date has no bookings", async () => {
@@ -107,7 +143,7 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(html).not.toContain('aria-label="Day bookings"');
   });
 
-  it("renders each merchant screen empty message for an empty tenant", async () => {
+  it("PR task 6: each merchant page with an empty tenant shows its empty-state message", async () => {
     const now = new Date("2026-10-04T12:00:00.000Z");
     state.headers.set("x-tenant-id", "tenant-empty");
 

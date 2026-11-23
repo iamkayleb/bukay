@@ -45,7 +45,7 @@ A coverage task is NOT complete just because you added tests. It is complete ONL
 ---
 ## PR Tasks and Acceptance Criteria
 
-**Progress:** 11/11 tasks complete, 0 remaining
+**Progress:** 6/6 tasks complete, 0 remaining (5/5 acceptance criteria verified locally)
 
 ### Scope
 Every merchant screen shows a blank area when it has no data. A new merchant
