@@ -10,12 +10,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import ClientsPage from "@/app/(app)/clients/page";
+import PaymentsPage from "@/app/(app)/payments/page";
+import ServicesPage from "@/app/(app)/services/page";
+import { TodaySchedule } from "@/app/(app)/today/data";
 import { merchantEmptyMessages, MERCHANT_EMPTY_COPY } from "@/app/(app)/merchant-empty-copy";
 import { renderDayViewHtml } from "./helpers/render-day-view";
 
 const state = vi.hoisted(() => ({
   headers: new Map<string, string>(),
-  findMany: vi.fn(),
+  clientFindMany: vi.fn(),
+  serviceFindMany: vi.fn(),
+  paymentFindMany: vi.fn(),
+  bookingFindMany: vi.fn(),
   tenantFindUnique: vi.fn(),
 }));
 
@@ -31,16 +37,25 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/app/db/prisma", () => ({
   prisma: {
-    client: { findMany: (...args: unknown[]) => state.findMany(...args) },
+    client: { findMany: (...args: unknown[]) => state.clientFindMany(...args) },
+    service: { findMany: (...args: unknown[]) => state.serviceFindMany(...args) },
+    payment: { findMany: (...args: unknown[]) => state.paymentFindMany(...args) },
+    booking: { findMany: (...args: unknown[]) => state.bookingFindMany(...args) },
     tenant: { findUnique: (...args: unknown[]) => state.tenantFindUnique(...args) },
   },
 }));
 
 beforeEach(() => {
   state.headers.clear();
-  state.findMany.mockReset();
+  state.clientFindMany.mockReset();
+  state.serviceFindMany.mockReset();
+  state.paymentFindMany.mockReset();
+  state.bookingFindMany.mockReset();
   state.tenantFindUnique.mockReset();
-  state.findMany.mockResolvedValue([]);
+  state.clientFindMany.mockResolvedValue([]);
+  state.serviceFindMany.mockResolvedValue([]);
+  state.paymentFindMany.mockResolvedValue([]);
+  state.bookingFindMany.mockResolvedValue([]);
   state.tenantFindUnique.mockResolvedValue({ timezone: "Africa/Lagos" });
 });
 
@@ -71,7 +86,34 @@ describe("issue #556 acceptance (vitest)", () => {
     const html = await renderDayViewHtml([]);
 
     expect(html).toContain(merchantEmptyMessages.calendarDay);
+    expect(html).toContain("No bookings on this date");
     expect(html).toContain('data-testid="calendar-add-booking-link"');
     expect(html).toContain('href="#new-booking"');
+  });
+
+  it("renders each merchant screen empty message for an empty tenant", async () => {
+    const now = new Date("2026-10-04T12:00:00.000Z");
+    state.headers.set("x-tenant-id", "tenant-empty");
+
+    const pages = [
+      { name: "clients", html: renderToStaticMarkup(await ClientsPage()) },
+      { name: "services", html: renderToStaticMarkup(await ServicesPage()) },
+      { name: "payments", html: renderToStaticMarkup(await PaymentsPage()) },
+      { name: "today", html: renderToStaticMarkup(await TodaySchedule({ now })) },
+      { name: "calendar", html: await renderDayViewHtml([]) },
+    ];
+
+    const messages: Record<(typeof pages)[number]["name"], string> = {
+      clients: merchantEmptyMessages.clients,
+      services: merchantEmptyMessages.services,
+      payments: merchantEmptyMessages.payments,
+      today: merchantEmptyMessages.today,
+      calendar: merchantEmptyMessages.calendarDay,
+    };
+
+    for (const page of pages) {
+      expect(page.html, page.name).toContain(messages[page.name]);
+      expect(page.html, page.name).toContain('data-testid="merchant-empty-state"');
+    }
   });
 });
