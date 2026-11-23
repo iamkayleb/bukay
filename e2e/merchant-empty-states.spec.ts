@@ -87,9 +87,11 @@ test("fresh merchant sees empty copy on services, payments, and today", async ({
 
   await page.goto("/today");
   await expect(page.getByText(merchantEmptyMessages.today)).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: merchantEmptyActions.todayAddOnCalendar })
-  ).toBeVisible();
+  const todayCalendarLink = page.getByRole("link", {
+    name: merchantEmptyActions.todayAddOnCalendar,
+  });
+  await expect(todayCalendarLink).toBeVisible();
+  await expect(todayCalendarLink).toHaveAttribute("href", merchantEmptyHrefs.todayCalendar);
 });
 
 test("seeded demo tenant does not show merchant empty copy on populated screens", async ({
