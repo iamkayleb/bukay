@@ -100,6 +100,9 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(html).toContain('data-testid="calendar-add-booking-link"');
     expect(html).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
     expect(html).toContain(merchantEmptyActions.calendarAddBooking);
+    expect(html).toContain(
+      `aria-label="${merchantEmptyActions.calendarAddBooking} for this date"`
+    );
     expect(merchantEmptyHrefs.calendarAddBooking).toBe("#new-booking");
     expect(html).not.toContain('aria-label="Day bookings"');
   });
