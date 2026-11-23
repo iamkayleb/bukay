@@ -1,11 +1,16 @@
-## Keepalive round summary (PR #567 / issue #556)
+## Round summary
 
-### Verified this round
-- **Task 1 (`day-view.tsx`)**: empty chosen date shows `No bookings on this date.` with add-booking link to `#new-booking` and accessible `aria-label` (`pnpm test:merchant-empty-states`, `pnpm build`, `pnpm vitest run` — 535 tests).
-- **Tasks 2–6** and **acceptance criteria**: same verification gate; real-DB coverage in `issue-556-real-db.test.tsx`.
+Verified issue **#556** merchant empty states on branch `cursor/issue-556`. Implementation was already present; this round re-ran `pnpm build`, full `pnpm vitest run` (535 tests), and `pnpm test:merchant-empty-states` (72 tests).
 
-### Code this round
-- `__tests__/app/(app)/issue-556-acceptance.test.ts`: assert empty-day add-booking link `aria-label`.
+### Task 1 (calendar day-view)
 
-### Task status
-- All 11 PR tasks and acceptance criteria marked complete in `cursor-prompt-567.md`.
+- Empty day shows `merchantEmptyMessages.calendarDay` ("No bookings on this date.") via `MerchantEmptyState`.
+- "Add a booking" links to `#new-booking` on the same calendar page.
+
+### Follow-up test
+
+- `issue-556-real-db.test.tsx`: assert services empty copy appears **above** the create form on real SQLite (task 2 layout).
+
+### Prompt checkboxes
+
+- All six implementation tasks and five acceptance criteria marked `[x]` in `cursor-prompt-567.md` after verification.

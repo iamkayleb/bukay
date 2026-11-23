@@ -141,6 +141,9 @@ describe("issue #556 against real SQLite (empty tenant)", () => {
 
     expect(clientsHtml).toContain(merchantEmptyMessages.clients);
     expect(servicesHtml).toContain(merchantEmptyMessages.services);
+    expect(servicesHtml.indexOf('name="durationMinutes"')).toBeGreaterThan(
+      servicesHtml.indexOf(merchantEmptyMessages.services)
+    );
     expect(paymentsHtml).toContain(merchantEmptyMessages.payments);
     expect(todayHtml).toContain(merchantEmptyMessages.today);
     expect(calendarHtml).toContain(merchantEmptyMessages.calendarDay);
