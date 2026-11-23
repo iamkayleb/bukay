@@ -41,6 +41,7 @@ describe("DayView empty day", () => {
     expect(html).toContain('data-testid="calendar-add-booking-link"');
     expect(html).toContain('data-testid="merchant-empty-state"');
     expect(html).toContain('role="status"');
+    expect(html).toContain('aria-label="Add a booking for this date"');
   });
 
   it("keeps calendar day empty copy inside the day schedule region", async () => {

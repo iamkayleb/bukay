@@ -162,6 +162,7 @@ export function DayView({ tenantId, timeZone }: { tenantId: string | null; timeZ
                   className={merchantEmptyActionLinkClassName}
                   data-testid="calendar-add-booking-link"
                   href={merchantEmptyHrefs.calendarAddBooking}
+                  aria-label={`${merchantEmptyActions.calendarAddBooking} for this date`}
                 >
                   {merchantEmptyActions.calendarAddBooking}
                 </a>
