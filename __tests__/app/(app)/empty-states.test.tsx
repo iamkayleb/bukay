@@ -301,6 +301,61 @@ describe("merchant empty states", () => {
     const html = renderToStaticMarkup(await ClientsList());
     expect(html).toContain("No clients yet — they appear here after their first booking.");
   });
+
+  it("renders every merchant-screen empty message for an empty tenant", async () => {
+    signInAs("tenant-empty");
+
+    const serverPages: { name: string; html: string }[] = [
+      { name: "clients", html: renderToStaticMarkup(await ClientsPage()) },
+      { name: "services", html: renderToStaticMarkup(await ServicesPage()) },
+      { name: "payments", html: renderToStaticMarkup(await PaymentsPage()) },
+      { name: "today", html: renderToStaticMarkup(await TodaySchedule({ now })) },
+    ];
+
+    for (const page of serverPages) {
+      expect(page.html, page.name).toContain(
+        merchantEmptyMessages[page.name as keyof typeof merchantEmptyMessages]
+      );
+    }
+
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ ok: true, bookings: [] }),
+      })
+    );
+    vi.stubGlobal("location", {
+      ...window.location,
+      search: "?date=2026-10-04",
+    });
+
+    try {
+      await act(async () => {
+        root.render(<DayView tenantId="tenant-empty" timeZone="Africa/Lagos" />);
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(container.textContent).toContain(merchantEmptyMessages.calendarDay);
+    } finally {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+      vi.unstubAllGlobals();
+    }
+  });
 });
 
 const EMPTY_COPY = MERCHANT_EMPTY_COPY;
