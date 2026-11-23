@@ -235,7 +235,7 @@ describe("merchant empty states", () => {
       });
 
       expect(container.textContent).toContain("Loading bookings...");
-      expect(container.textContent).not.toContain("No bookings on this date.");
+      expect(container.textContent).not.toContain(merchantEmptyMessages.calendarDay);
 
       await act(async () => {
         resolveFetch({
@@ -246,7 +246,7 @@ describe("merchant empty states", () => {
         await new Promise((resolve) => setTimeout(resolve, 0));
       });
 
-      expect(container.textContent).toContain("No bookings on this date.");
+      expect(container.textContent).toContain(merchantEmptyMessages.calendarDay);
     } finally {
       act(() => {
         root.unmount();
@@ -287,7 +287,7 @@ describe("merchant empty states", () => {
       });
 
       const html = container.innerHTML;
-      expect(html).toContain("No bookings on this date.");
+      expect(html).toContain(merchantEmptyMessages.calendarDay);
       expect(html).toContain('role="status"');
       expect(html).toContain('aria-label="Day schedule"');
       expect(html).toContain('href="#new-booking"');
@@ -499,7 +499,7 @@ describe("populated tenant", () => {
       });
 
       const html = container.innerHTML;
-      expect(html).not.toContain("No bookings on this date.");
+      expect(html).not.toContain(merchantEmptyMessages.calendarDay);
       expect(html).toContain("Ada Okonkwo");
       expect(html).toContain("Classic Haircut");
     } finally {
