@@ -192,6 +192,60 @@ describe("merchant empty states", () => {
     expect(html).toContain('id="new-booking"');
   });
 
+  it("does not show calendar day empty copy while bookings are loading", async () => {
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    let resolveFetch!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise((resolve) => {
+            resolveFetch = resolve;
+          })
+      )
+    );
+    vi.stubGlobal("location", {
+      ...window.location,
+      search: "?date=2026-10-04",
+    });
+
+    try {
+      await act(async () => {
+        root.render(<DayView tenantId="tenant-empty" timeZone="Africa/Lagos" />);
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(container.textContent).toContain("Loading bookings...");
+      expect(container.textContent).not.toContain("No bookings on this date.");
+
+      await act(async () => {
+        resolveFetch({
+          ok: true,
+          json: async () => ({ ok: true, bookings: [] }),
+        });
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(container.textContent).toContain("No bookings on this date.");
+    } finally {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("renders calendar day empty copy on DayView when the day has no bookings", async () => {
     (
       globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }

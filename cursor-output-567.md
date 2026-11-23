@@ -1,36 +1,21 @@
-## Completed this run
+## Run summary
 
-Verified all six implementation tasks and acceptance gates on `cursor/issue-556`:
+Verified merchant empty states on branch `cursor/issue-556` for issue #556.
 
-- **Calendar** (`day-view.tsx`): empty day shows "No bookings on this date." and `Add a booking` → `#new-booking` inside a labeled day-schedule region.
-- **Services** (`services-list.tsx`): empty copy above `ServiceForm` on `/services`.
-- **Clients** (`clients-list.tsx` via `page.tsx`): empty copy above `ClientForm` on `/clients`.
-- **Payments** (`payments-list.tsx`): "No payments yet." on `/payments`.
-- **Today** (`data.tsx`): "No appointments yet." with link to `/calendar`.
-- **Tests**: `__tests__/app/(app)/empty-states.test.tsx` covers empty tenant, demo tenant, legacy grep guard, and calendar `DayView` client fetch.
+### Task progress
 
-## Verification
+- [x] Calendar (`day-view.tsx`): empty day shows "No bookings on this date." and `Add a booking` → `#new-booking`
+- [x] Services (`services-list.tsx`): empty copy above `ServiceForm` on `/services`
+- [x] Clients (`ClientsList` via `page.tsx`): empty copy above `ClientForm` on `/clients`
+- [x] Payments (`payments-list.tsx`): "No payments yet." on `/payments`
+- [x] Today (`data.tsx`): "No appointments yet." with link to `/calendar`
+- [x] Tests (`empty-states.test.tsx`): empty tenant, demo tenant, legacy grep guard, `DayView` fetch + loading guard
 
-- `pnpm vitest run` — 488 passed
-- `pnpm vitest run '__tests__/app/(app)/empty-states.test.tsx'` — 17 passed (after consolidated page-shell test)
-- `pnpm build` — success
-- `grep -rn "Nothing here yet" app/` — no matches
+### Verification
 
-## Tasks completed
-
-- [x] Calendar day view empty state + add-booking link
-- [x] Services list empty copy above create form
-- [x] Clients page empty copy
-- [x] Payments list: "No payments yet."
-- [x] Today schedule linked to `/calendar`
-- [x] `empty-states.test.tsx`
-
-## Acceptance criteria
-
-- [x] Build and full vitest green
-- [x] Empty-tenant rendering (mocked Prisma/fetch in tests; real DB checked via same components)
-- [x] Populated demo tenant hides empty copy
-- [x] Clients empty message on `/clients`
-- [x] Legacy "Nothing here yet" removed from `app/`
+- `pnpm vitest run` — 490 passed (including new calendar loading guard)
+- `pnpm vitest run '__tests__/app/(app)/empty-states.test.tsx'` — 18 passed
+- `pnpm build` — succeeded
+- `grep -rn "Nothing here yet" app/` — no matches (also asserted in tests)
 
 **Progress:** 11/11 tasks complete, 0 remaining
