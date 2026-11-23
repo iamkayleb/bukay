@@ -17,4 +17,9 @@ export const SERVER_MERCHANT_EMPTY_SCREENS = [
   "today",
 ] as const satisfies readonly MerchantEmptyMessageKey[];
 
+/** Client-rendered merchant screens that fetch data after mount. */
+export const CLIENT_MERCHANT_EMPTY_SCREENS = [
+  "calendarDay",
+] as const satisfies readonly MerchantEmptyMessageKey[];
+
 export const MERCHANT_EMPTY_COPY = Object.values(merchantEmptyMessages);

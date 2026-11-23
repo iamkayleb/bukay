@@ -16,6 +16,7 @@ import { ClientsList } from "@/app/(app)/clients/clients-list";
 import ServicesPage from "@/app/(app)/services/page";
 import { ServicesList } from "@/app/(app)/services/services-list";
 import {
+  CLIENT_MERCHANT_EMPTY_SCREENS,
   MERCHANT_EMPTY_COPY,
   merchantEmptyMessages,
   SERVER_MERCHANT_EMPTY_SCREENS,
@@ -381,6 +382,14 @@ describe("empty-state copy inventory", () => {
       "No payments yet.",
       "No appointments yet.",
     ]);
+  });
+
+  it("partitions empty screens into server and client surfaces", () => {
+    const allScreens = [...SERVER_MERCHANT_EMPTY_SCREENS, ...CLIENT_MERCHANT_EMPTY_SCREENS];
+    expect(new Set(allScreens).size).toBe(5);
+    expect(allScreens.sort()).toEqual(
+      (Object.keys(merchantEmptyMessages) as (keyof typeof merchantEmptyMessages)[]).sort()
+    );
   });
 });
 
