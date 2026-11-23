@@ -21,6 +21,7 @@ describe("DayView empty day", () => {
     const html = await renderDayViewHtml([]);
 
     expect(html).toContain("No bookings on this date");
+    expect(html).toContain('data-testid="calendar-day-empty"');
     expect(html).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
     expect(html).toContain(merchantEmptyActions.calendarAddBooking);
     expect(html).not.toContain("Nothing here yet");
