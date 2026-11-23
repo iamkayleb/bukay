@@ -12,11 +12,11 @@ Empty copy is rendered via `MerchantEmptyState` and centralized strings in `merc
 
 ### Task 6 — empty-states suite
 
-`__tests__/app/(app)/empty-states.test.tsx` asserts all five messages for an empty tenant, demo-tenant negatives, and no legacy "Nothing here yet" under `app/`.
+`__tests__/app/(app)/empty-states.test.tsx` asserts all five messages for an empty tenant, demo-tenant negatives, stable `data-testid` hooks, and no legacy "Nothing here yet" under `app/`.
 
 ### This round
 
-- Added `data-testid="merchant-empty-state"` on `MerchantEmptyState` for stable selectors across merchant empty screens.
+- Strengthened the umbrella empty-states test to assert `merchant-empty-state` / `calendar-day-empty` test ids on all five screens.
 - `pnpm vitest run`: 513 passed.
 - `pnpm build`: succeeded.
 - `grep -rn "Nothing here yet" app/`: no matches.
