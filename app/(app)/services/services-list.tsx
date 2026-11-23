@@ -79,7 +79,11 @@ export async function ServicesList() {
   const services = tenantId ? await listTenantServices(tenantId) : [];
 
   if (services.length === 0) {
-    return <MerchantEmptyState message={merchantEmptyMessages.services} />;
+    return (
+      <div data-testid="services-empty" role="region" aria-label="Services list">
+        <MerchantEmptyState message={merchantEmptyMessages.services} />
+      </div>
+    );
   }
 
   return (

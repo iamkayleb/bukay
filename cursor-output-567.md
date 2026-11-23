@@ -1,13 +1,14 @@
 ## Keepalive round summary (PR #567 / issue #556)
 
 ### Verified this round
-- **Task 1 (calendar `day-view.tsx`)**: empty chosen date shows `No bookings on this date` with add-booking link to `#new-booking` (no bookings list chrome)
-- `pnpm test:merchant-empty-states` — 71 tests pass
-- `pnpm build` — pass
-- `pnpm vitest run` — 534 tests pass
+- **Task 1 (`day-view.tsx`)**: empty date shows `merchantEmptyMessages.calendarDay` with add-booking link (`#new-booking` on the calendar page).
+- **Task 2 (`services-list.tsx`)**: empty tenant shows services copy in a `services-empty` region; `ServicesPage` still renders `ServiceForm` below the list.
+- `pnpm vitest run '__tests__/app/(app)/calendar/day-view.test.tsx' '__tests__/app/(app)/services/services-list.test.tsx'`
+- `pnpm test:merchant-empty-states` — 72 tests pass (full suite run this round).
 
 ### Code this round
-- Assert DayView empty days omit the populated `Day bookings` list in `issue-556-acceptance.test.ts`.
+- Wrap services empty state in `data-testid="services-empty"` region (parity with calendar day empty region).
 
 ### Task status
-- Task 1 complete (`cursor-prompt-567.md`).
+- Tasks 1–2 marked complete in `cursor-prompt-567.md`.
+- Next: clients empty copy on `/clients`.
