@@ -18,6 +18,7 @@ import { ServicesList } from "@/app/(app)/services/services-list";
 import {
   CLIENT_MERCHANT_EMPTY_SCREENS,
   MERCHANT_EMPTY_COPY,
+  merchantEmptyActions,
   merchantEmptyMessages,
   SERVER_MERCHANT_EMPTY_SCREENS,
 } from "@/app/(app)/merchant-empty-copy";
@@ -145,7 +146,7 @@ describe("merchant empty states", () => {
     const html = renderToStaticMarkup(await TodaySchedule({ now }));
     expect(html).toContain("No appointments yet.");
     expect(html).toContain('href="/calendar"');
-    expect(html).toContain("Add a booking on the calendar");
+    expect(html).toContain(merchantEmptyActions.todayAddOnCalendar);
     expect(html).toContain('role="status"');
   });
 
@@ -291,7 +292,7 @@ describe("merchant empty states", () => {
       expect(html).toContain('role="status"');
       expect(html).toContain('aria-label="Day schedule"');
       expect(html).toContain('href="#new-booking"');
-      expect(html).toContain("Add a booking");
+      expect(html).toContain(merchantEmptyActions.calendarAddBooking);
     } finally {
       act(() => {
         root.unmount();

@@ -7,6 +7,12 @@ export const merchantEmptyMessages = {
   today: "No appointments yet.",
 } as const;
 
+/** Empty-state action labels — keep in sync with empty-states tests. */
+export const merchantEmptyActions = {
+  calendarAddBooking: "Add a booking",
+  todayAddOnCalendar: "Add a booking on the calendar",
+} as const;
+
 export type MerchantEmptyMessageKey = keyof typeof merchantEmptyMessages;
 
 /** Server-rendered merchant screens (calendar day copy is shown by client DayView). */

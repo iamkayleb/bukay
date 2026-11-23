@@ -3,7 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/app/db/prisma";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 import { MerchantEmptyState } from "../components/merchant-empty-state";
-import { merchantEmptyMessages } from "../merchant-empty-copy";
+import { merchantEmptyActions, merchantEmptyMessages } from "../merchant-empty-copy";
 import { resolveSignedInTenantId } from "../services/services-list";
 
 const DEFAULT_TIME_ZONE = "Africa/Lagos";
@@ -132,7 +132,7 @@ export async function TodaySchedule({ now = new Date() }: { now?: Date } = {}) {
               className="text-sm font-medium text-emerald-300 hover:text-emerald-200"
               href="/calendar"
             >
-              Add a booking on the calendar
+              {merchantEmptyActions.todayAddOnCalendar}
             </Link>
           }
         />

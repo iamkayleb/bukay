@@ -83,6 +83,19 @@ Head: cursor/issue-556
 Source: https://github.com/iamkayleb/bukay/issues/556
 
 <!-- auto-status-summary:start -->
+## Automated Status Summary
+
+**Progress:** 11/11 complete — merchant empty states implemented and verified.
+
+### Verified this round
+- Calendar `DayView` shows `merchantEmptyMessages.calendarDay` with `#new-booking` action after load.
+- Shared `merchantEmptyActions` constants wire calendar/today links; `pnpm vitest run` (492 tests) and `pnpm build` pass locally.
+- `grep -rn "Nothing here yet" app/` returns no matches (also covered in `empty-states.test.tsx`).
+
+### Tasks
+All six implementation tasks and five acceptance criteria are satisfied on `cursor/issue-556`.
+
+<!-- auto-status-summary:end -->
 
 ---
 

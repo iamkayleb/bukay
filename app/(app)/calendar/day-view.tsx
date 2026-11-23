@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { MerchantEmptyState } from "../components/merchant-empty-state";
-import { merchantEmptyMessages } from "../merchant-empty-copy";
+import { merchantEmptyActions, merchantEmptyMessages } from "../merchant-empty-copy";
 import { calendarDayRange, dateInZone } from "@/app/lib/calendar";
 type Booking = {
   id: string;
@@ -153,7 +153,7 @@ export function DayView({ tenantId, timeZone }: { tenantId: string | null; timeZ
                   className="text-sm font-medium text-emerald-300 hover:text-emerald-200"
                   href="#new-booking"
                 >
-                  Add a booking
+                  {merchantEmptyActions.calendarAddBooking}
                 </a>
               }
             />
