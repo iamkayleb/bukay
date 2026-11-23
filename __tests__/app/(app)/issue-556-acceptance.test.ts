@@ -5,6 +5,7 @@
  * Real-database and demo-tenant flows: e2e/merchant-empty-states.spec.ts and CI build step.
  */
 import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -229,5 +230,18 @@ describe("issue #556 acceptance (vitest)", () => {
         expect(html).not.toContain(message);
       }
     }
+  });
+
+  it("acceptance: CI runs the merchant-empty vitest bundle and legacy placeholder grep", () => {
+    const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts as Record<
+      string,
+      string
+    >;
+    const bundle = scripts["test:merchant-empty-states"];
+    expect(bundle).toContain("issue-556-acceptance.test.ts");
+    expect(bundle).toContain("empty-states.test.tsx");
+    expect(bundle).toContain("calendar/day-view.test.tsx");
+    expect(scripts["verify:issue-556:quick"]).toContain("test:merchant-empty-states");
+    expect(scripts["verify:issue-556:quick"]).toContain("Nothing here yet");
   });
 });

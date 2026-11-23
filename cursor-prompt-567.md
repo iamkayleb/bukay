@@ -72,7 +72,7 @@ The PR is complete when ALL of these are satisfied:
 - [x] `grep -rn "Nothing here yet" app/` returns nothing, confirming the old placeholder wording is gone.
 
 ### Suggested Next Task
-- None — all PR tasks and acceptance criteria verified locally (see `cursor-output-567.md`).
+- All tasks complete — ready for review / merge.
 
 ### Source Context
 _For additional background, check these linked issues/PRs:_
@@ -83,6 +83,20 @@ Head: cursor/issue-556
 Source: https://github.com/iamkayleb/bukay/issues/556
 
 <!-- auto-status-summary:start -->
+## Automated Status Summary
+
+**Progress:** 11/11 PR tasks and 5/5 acceptance criteria verified locally.
+
+| Area | Status |
+|------|--------|
+| Calendar day empty + `#new-booking` link | `day-view.tsx`, `day-view.test.tsx`, e2e |
+| Services / clients / payments / today | `MerchantEmptyState` + shared copy |
+| Real SQLite empty tenant | `issue-556-real-db.test.tsx` |
+| Demo tenant has data | acceptance + e2e |
+| Build + full vitest | `pnpm build`, `pnpm vitest run` (539 tests) |
+
+Last verified: `pnpm verify:issue-556:quick` and full suite on `cursor/issue-556`.
+<!-- auto-status-summary:end -->
 
 ---
 
