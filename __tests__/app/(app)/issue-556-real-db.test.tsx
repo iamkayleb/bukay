@@ -18,6 +18,7 @@ import ServicesPage from "@/app/(app)/services/page";
 import PaymentsPage from "@/app/(app)/payments/page";
 import { TodaySchedule } from "@/app/(app)/today/data";
 import { DayView } from "@/app/(app)/calendar/day-view";
+import { waitForDayViewSettled } from "./helpers/render-day-view";
 import { GET as listBookings } from "@/app/api/bookings/route";
 import {
   MERCHANT_EMPTY_COPY,
@@ -101,10 +102,7 @@ async function renderCalendarDayHtml(viewTenantId: string, viewDate: string): Pr
     await act(async () => {
       root.render(<DayView tenantId={viewTenantId} timeZone={timeZone} />);
     });
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
+    await waitForDayViewSettled(container);
     return container.innerHTML;
   } finally {
     act(() => {
