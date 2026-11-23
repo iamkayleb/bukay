@@ -56,6 +56,27 @@ async function signInAsDemoOwner(page: Page) {
   await signInWithPhone(page, DEMO_OWNER_PHONE);
 }
 
+test("fresh merchant sees empty copy on all five merchant screens", async ({ page }) => {
+  await signIn(page);
+
+  await page.goto("/calendar");
+  await expect(page.getByText("Loading bookings...")).toBeHidden({ timeout: 15_000 });
+  await expect(page.getByTestId("calendar-day-empty")).toBeVisible();
+  await expect(page.getByText(merchantEmptyMessages.calendarDay)).toBeVisible();
+
+  await page.goto("/clients");
+  await expect(page.getByText(merchantEmptyMessages.clients)).toBeVisible();
+
+  await page.goto("/services");
+  await expect(page.getByText(merchantEmptyMessages.services)).toBeVisible();
+
+  await page.goto("/payments");
+  await expect(page.getByText(merchantEmptyMessages.payments)).toBeVisible();
+
+  await page.goto("/today");
+  await expect(page.getByText(merchantEmptyMessages.today)).toBeVisible();
+});
+
 test("fresh merchant sees calendar day empty copy with add-booking link", async ({ page }) => {
   await signIn(page);
   await page.goto("/calendar");

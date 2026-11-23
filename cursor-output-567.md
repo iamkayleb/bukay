@@ -1,12 +1,12 @@
 ## Round summary (#556)
 
-Re-verified all six implementation tasks and five acceptance criteria on
-`cursor/issue-556`. Calendar `DayView` shows `merchantEmptyMessages.calendarDay`
-with the add-booking link after loading; services, clients, payments, and today
-render `MerchantEmptyState` for empty tenants.
+Re-verified merchant empty states on `cursor/issue-556`. Calendar `DayView` shows
+`merchantEmptyMessages.calendarDay` with the `#new-booking` link after loading;
+services, clients, payments, and today use `MerchantEmptyState` with shared copy
+from `merchant-empty-copy.ts`.
 
-Extended merchant empty-state e2e so clients copy appears above the add-client
-form, matching the issue acceptance story.
+Added Playwright coverage that a fresh merchant sees the intended copy on all five
+screens (calendar, clients, services, payments, today).
 
 ### Verification
 
