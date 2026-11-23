@@ -139,6 +139,8 @@ describe("merchant empty states", () => {
     const html = renderToStaticMarkup(await TodaySchedule({ now }));
     expect(html).toContain("No appointments yet.");
     expect(html).toContain('href="/calendar"');
+    expect(html).toContain("Add a booking on the calendar");
+    expect(html).toContain('role="status"');
   });
 
   it("shows the intended empty copy on each merchant page shell", async () => {

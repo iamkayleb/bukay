@@ -1,21 +1,27 @@
-## Run summary
+## Run 567 — issue #556 empty states
 
-Verified merchant empty states on branch `cursor/issue-556` for issue #556.
+Verified merchant empty-state copy and links for all scoped screens.
 
-### Task progress
+### Task verification
 
-- [x] Calendar (`day-view.tsx`): empty day shows "No bookings on this date." and `Add a booking` → `#new-booking`
-- [x] Services (`services-list.tsx`): empty copy above `ServiceForm` on `/services`
-- [x] Clients (`ClientsList` via `page.tsx`): empty copy above `ClientForm` on `/clients`
-- [x] Payments (`payments-list.tsx`): "No payments yet." on `/payments`
-- [x] Today (`data.tsx`): "No appointments yet." with link to `/calendar`
-- [x] Tests (`empty-states.test.tsx`): empty tenant, demo tenant, legacy grep guard, `DayView` fetch + loading guard
+1. **Calendar day view** — `DayView` shows `MerchantEmptyState` with “No bookings on this date.” and `href="#new-booking"` (“Add a booking”) after load; loading guard covered in tests.
+2. **Services** — empty message renders via `ServicesList` above `ServiceForm` on `ServicesPage`.
+3. **Clients** — empty message on `ClientsPage` via `ClientsList`, above `ClientForm`.
+4. **Payments** — `PaymentsList` shows “No payments yet.” on page and component tests.
+5. **Today** — “No appointments yet.” with `Link` to `/calendar` and visible CTA copy.
+6. **Tests** — `__tests__/app/(app)/empty-states.test.tsx` (18 cases) plus related service/today tests.
 
-### Verification
+### Acceptance checks (local)
 
-- `pnpm vitest run` — 490 passed (including new calendar loading guard)
-- `pnpm vitest run '__tests__/app/(app)/empty-states.test.tsx'` — 18 passed
+- `pnpm vitest run` — 490 passed
 - `pnpm build` — succeeded
-- `grep -rn "Nothing here yet" app/` — no matches (also asserted in tests)
+- `grep -rn "Nothing here yet" app/` — no matches
 
-**Progress:** 11/11 tasks complete, 0 remaining
+### Commands
+
+```
+pnpm vitest run __tests__/app/(app)/empty-states.test.tsx
+pnpm vitest run
+pnpm build
+grep -rn "Nothing here yet" app/ || true
+```
