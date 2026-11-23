@@ -22,6 +22,7 @@ import { waitForDayViewSettled } from "./helpers/render-day-view";
 import { GET as listBookings } from "@/app/api/bookings/route";
 import {
   MERCHANT_EMPTY_COPY,
+  calendarAddBookingHref,
   merchantEmptyActions,
   merchantEmptyHrefs,
   merchantEmptyMessages,
@@ -123,7 +124,7 @@ describe("issue #556 against real SQLite (empty tenant)", () => {
 
     expect(calendarHtml).toContain("No bookings on this date");
     expect(calendarHtml).toContain(merchantEmptyMessages.calendarDay);
-    expect(calendarHtml).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
+    expect(calendarHtml).toContain(`href="${calendarAddBookingHref(emptyCalendarDate)}"`);
     expect(calendarHtml).toContain(merchantEmptyActions.calendarAddBooking);
     expect(calendarHtml).toContain('data-testid="calendar-add-booking-link"');
     expect(calendarHtml).toContain('data-testid="calendar-day-empty"');
@@ -161,7 +162,7 @@ describe("issue #556 against real SQLite (empty tenant)", () => {
     expect(paymentsHtml).toContain(merchantEmptyMessages.payments);
     expect(todayHtml).toContain(merchantEmptyMessages.today);
     expect(calendarHtml).toContain(merchantEmptyMessages.calendarDay);
-    expect(calendarHtml).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
+    expect(calendarHtml).toContain(`href="${calendarAddBookingHref(emptyCalendarDate)}"`);
     expect(calendarHtml).toContain(merchantEmptyActions.calendarAddBooking);
     expect(calendarHtml).toContain(
       `aria-label="${merchantEmptyActions.calendarAddBooking} for this date"`

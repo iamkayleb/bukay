@@ -16,6 +16,7 @@ import ServicesPage from "@/app/(app)/services/page";
 import { ServicesList } from "@/app/(app)/services/services-list";
 import { TodaySchedule } from "@/app/(app)/today/data";
 import {
+  calendarAddBookingHref,
   merchantEmptyActions,
   merchantEmptyHrefs,
   merchantEmptyMessages,
@@ -133,7 +134,7 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(source).toContain("merchantEmptyMessages.calendarDay");
     expect(source).toContain("calendar-day-empty");
     expect(source).toContain("calendar-add-booking-link");
-    expect(source).toContain("merchantEmptyHrefs.calendarAddBooking");
+    expect(source).toContain("calendarAddBookingHref");
     expect(source).toContain("MerchantEmptyState");
     expect(merchantEmptyMessages.calendarDay).toContain(PR_TASK_1_CALENDAR_SNIPPET);
   });
@@ -145,7 +146,7 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(html).toContain(PR_TASK_1_CALENDAR_SNIPPET);
     expect(html).toContain('data-testid="calendar-day-empty"');
     expect(html).toContain('data-testid="calendar-add-booking-link"');
-    expect(html).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
+    expect(html).toContain(`href="${calendarAddBookingHref("2026-10-04")}"`);
     expect(html).toContain(merchantEmptyActions.calendarAddBooking);
     expect(html).toContain(
       `aria-label="${merchantEmptyActions.calendarAddBooking} for this date"`

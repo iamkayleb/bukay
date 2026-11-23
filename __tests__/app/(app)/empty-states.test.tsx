@@ -17,6 +17,7 @@ import { ClientsList } from "@/app/(app)/clients/clients-list";
 import ServicesPage from "@/app/(app)/services/page";
 import { ServicesList } from "@/app/(app)/services/services-list";
 import {
+  calendarAddBookingHref,
   CLIENT_MERCHANT_EMPTY_SCREENS,
   MERCHANT_EMPTY_COPY,
   merchantEmptyActions,
@@ -143,7 +144,7 @@ describe("merchant empty states", () => {
       }
     }
 
-    expect(calendarHtml).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
+    expect(calendarHtml).toContain(`href="${calendarAddBookingHref("2026-10-04")}"`);
     expect(calendarHtml).toContain(merchantEmptyActions.calendarAddBooking);
     expect(calendarHtml).not.toContain('aria-label="Day bookings"');
     expect(todayHtml).toContain('data-testid="today-calendar-link"');
@@ -264,7 +265,7 @@ describe("merchant empty states", () => {
 
     const dayHtml = await renderDayViewHtml([]);
     expect(dayHtml).toContain(merchantEmptyMessages.calendarDay);
-    expect(dayHtml).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
+    expect(dayHtml).toContain(`href="${calendarAddBookingHref("2026-10-04")}"`);
     expect(dayHtml).toContain(merchantEmptyActions.calendarAddBooking);
     expect(merchantEmptyHrefs.calendarAddBooking).toBe("#new-booking");
   });
@@ -357,7 +358,7 @@ describe("merchant empty states", () => {
       expect(html).toContain(merchantEmptyMessages.calendarDay);
       expect(html).toContain('role="status"');
       expect(html).toContain('aria-label="Day schedule"');
-      expect(html).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
+      expect(html).toContain(`href="${calendarAddBookingHref("2026-10-04")}"`);
       expect(html).toContain(merchantEmptyActions.calendarAddBooking);
     } finally {
       act(() => {

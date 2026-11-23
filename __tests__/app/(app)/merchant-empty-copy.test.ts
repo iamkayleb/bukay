@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  calendarAddBookingHref,
   merchantEmptyActionLinkClassName,
   merchantEmptyActions,
   merchantEmptyHrefs,
@@ -13,6 +14,8 @@ describe("merchant empty copy (#556)", () => {
     expect(merchantEmptyMessages.calendarDay).toBe("No bookings on this date.");
     expect(merchantEmptyActions.calendarAddBooking).toBe("Add a booking");
     expect(merchantEmptyHrefs.calendarAddBooking).toBe("#new-booking");
+    expect(calendarAddBookingHref("2026-10-04")).toBe("?date=2026-10-04#new-booking");
+    expect(calendarAddBookingHref("")).toBe("#new-booking");
   });
 
   it("lists exactly five merchant-screen messages", () => {

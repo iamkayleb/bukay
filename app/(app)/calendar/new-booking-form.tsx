@@ -2,6 +2,10 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { calendarDayRange } from "@/app/lib/calendar";
+import {
+  CALENDAR_BOOKING_DATE_EVENT,
+  type CalendarBookingDateDetail,
+} from "../merchant-empty-copy";
 
 /** Match DayView: use `?date=YYYY-MM-DD` when present so empty-day "add booking" lands on that day. */
 function bookingDateFromSearch(): string {
@@ -28,6 +32,17 @@ export function NewBookingForm({
   const [bookingDate, setBookingDate] = useState("");
   useEffect(() => {
     setBookingDate(bookingDateFromSearch());
+  }, []);
+
+  useEffect(() => {
+    const onPickedDate = (event: Event) => {
+      const detail = (event as CustomEvent<CalendarBookingDateDetail>).detail;
+      if (detail?.date && /^\d{4}-\d{2}-\d{2}$/.test(detail.date)) {
+        setBookingDate(detail.date);
+      }
+    };
+    window.addEventListener(CALENDAR_BOOKING_DATE_EVENT, onPickedDate);
+    return () => window.removeEventListener(CALENDAR_BOOKING_DATE_EVENT, onPickedDate);
   }, []);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

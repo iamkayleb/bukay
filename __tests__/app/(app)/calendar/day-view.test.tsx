@@ -7,10 +7,13 @@ import { act } from "react";
 import { DayView } from "@/app/(app)/calendar/day-view";
 import { renderDayViewHtml } from "../helpers/render-day-view";
 import {
+  calendarAddBookingHref,
   merchantEmptyActions,
-  merchantEmptyHrefs,
   merchantEmptyMessages,
 } from "@/app/(app)/merchant-empty-copy";
+
+const TEST_DAY = "2026-10-04";
+const TEST_DAY_ADD_HREF = calendarAddBookingHref(TEST_DAY);
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -22,7 +25,7 @@ describe("DayView empty day", () => {
 
     expect(html).toContain("No bookings on this date");
     expect(html).toContain('data-testid="calendar-day-empty"');
-    expect(html).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
+    expect(html).toContain(`href="${TEST_DAY_ADD_HREF}"`);
     expect(html).toContain(merchantEmptyActions.calendarAddBooking);
     expect(html).not.toContain("Nothing here yet");
   });
@@ -33,7 +36,7 @@ describe("DayView empty day", () => {
     expect(html).not.toContain("Loading bookings...");
     expect(html).toContain(merchantEmptyMessages.calendarDay);
     expect(html).toContain("No bookings on this date");
-    expect(html).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
+    expect(html).toContain(`href="${TEST_DAY_ADD_HREF}"`);
     expect(html).toContain(merchantEmptyActions.calendarAddBooking);
     expect(html).toContain('role="region"');
     expect(html).toContain('aria-label="Day schedule"');
@@ -51,7 +54,7 @@ describe("DayView empty day", () => {
     const regionSlice = html.slice(regionStart, regionStart + 900);
     expect(regionSlice).toContain(merchantEmptyMessages.calendarDay);
     expect(regionSlice).toContain(merchantEmptyActions.calendarAddBooking);
-    expect(regionSlice).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
+    expect(regionSlice).toContain(`href="${TEST_DAY_ADD_HREF}"`);
   });
 
   it("nests the add-booking link inside the merchant empty state", async () => {
@@ -180,6 +183,9 @@ describe("DayView empty day", () => {
       expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2);
       expect(container.textContent).toContain(merchantEmptyMessages.calendarDay);
       expect(container.textContent).toContain(merchantEmptyActions.calendarAddBooking);
+
+      const addLink = container.querySelector('[data-testid="calendar-add-booking-link"]');
+      expect(addLink?.getAttribute("href")).toBe(calendarAddBookingHref("2026-10-05"));
     } finally {
       act(() => {
         root.unmount();

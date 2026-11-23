@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import CalendarPage from "@/app/(app)/calendar/page";
 import {
+  calendarAddBookingHref,
   merchantEmptyHrefs,
   merchantEmptyMessages,
 } from "@/app/(app)/merchant-empty-copy";
@@ -59,7 +60,7 @@ describe("CalendarPage", () => {
     const dayHtml = await renderDayViewHtml([]);
 
     expect(dayHtml).toContain(merchantEmptyMessages.calendarDay);
-    expect(dayHtml).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
+    expect(dayHtml).toContain(`href="${calendarAddBookingHref("2026-10-04")}"`);
     expect(pageHtml).toContain('id="new-booking"');
   });
 

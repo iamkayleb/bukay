@@ -90,7 +90,10 @@ test("fresh merchant sees calendar day empty copy with add-booking link", async 
     name: `${merchantEmptyActions.calendarAddBooking} for this date`,
   });
   await expect(addBookingLink).toBeVisible();
-  await expect(addBookingLink).toHaveAttribute("href", merchantEmptyHrefs.calendarAddBooking);
+  await expect(addBookingLink).toHaveAttribute(
+    "href",
+    /^\?date=\d{4}-\d{2}-\d{2}#new-booking$/
+  );
   await expect(addBookingLink).toHaveAttribute(
     "aria-label",
     `${merchantEmptyActions.calendarAddBooking} for this date`

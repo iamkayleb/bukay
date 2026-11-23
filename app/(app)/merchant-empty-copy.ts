@@ -19,6 +19,27 @@ export const merchantEmptyHrefs = {
   todayCalendar: "/calendar",
 } as const;
 
+/** Empty-day link carries the chosen day so NewBookingForm can prefill without a full navigation. */
+export function calendarAddBookingHref(selectedDate: string): string {
+  if (selectedDate && /^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) {
+    return `?date=${selectedDate}${merchantEmptyHrefs.calendarAddBooking}`;
+  }
+  return merchantEmptyHrefs.calendarAddBooking;
+}
+
+export const CALENDAR_BOOKING_DATE_EVENT = "bukay:calendar-booking-date";
+
+export type CalendarBookingDateDetail = { date: string };
+
+export function dispatchCalendarBookingDate(date: string): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent<CalendarBookingDateDetail>(CALENDAR_BOOKING_DATE_EVENT, {
+      detail: { date },
+    })
+  );
+}
+
 /** Shared Tailwind classes for empty-state action links (calendar + today). */
 export const merchantEmptyActionLinkClassName =
   "text-sm font-medium text-emerald-300 hover:text-emerald-200 focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400";

@@ -2,9 +2,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { MerchantEmptyState } from "../components/merchant-empty-state";
 import {
+  calendarAddBookingHref,
+  dispatchCalendarBookingDate,
   merchantEmptyActionLinkClassName,
   merchantEmptyActions,
-  merchantEmptyHrefs,
   merchantEmptyMessages,
 } from "../merchant-empty-copy";
 import { calendarDayRange, dateInZone } from "@/app/lib/calendar";
@@ -161,8 +162,11 @@ export function DayView({ tenantId, timeZone }: { tenantId: string | null; timeZ
                 <a
                   className={merchantEmptyActionLinkClassName}
                   data-testid="calendar-add-booking-link"
-                  href={merchantEmptyHrefs.calendarAddBooking}
+                  href={calendarAddBookingHref(date)}
                   aria-label={`${merchantEmptyActions.calendarAddBooking} for this date`}
+                  onClick={() => {
+                    if (date) dispatchCalendarBookingDate(date);
+                  }}
                 >
                   {merchantEmptyActions.calendarAddBooking}
                 </a>
