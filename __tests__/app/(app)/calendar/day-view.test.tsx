@@ -124,6 +124,14 @@ describe("DayView empty day", () => {
     }
   });
 
+  it("renders guidance instead of an empty day bookings list when there are no bookings", async () => {
+    const html = await renderDayViewHtml([]);
+
+    expect(html).not.toContain('aria-label="Day bookings"');
+    expect(html).toContain(merchantEmptyMessages.calendarDay);
+    expect(html).toContain(merchantEmptyActions.calendarAddBooking);
+  });
+
   it("does not show the empty copy when the day has bookings", async () => {
     const html = await renderDayViewHtml([
       {

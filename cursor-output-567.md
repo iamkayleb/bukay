@@ -1,27 +1,20 @@
 ## Keepalive round summary (issue #556)
 
-### Task 1 — calendar day view (verified)
+### Task 1 — calendar day view (re-verified)
 
-- `DayView` shows `merchantEmptyMessages.calendarDay` when the chosen day has no bookings.
+- `DayView` shows `merchantEmptyMessages.calendarDay` when the chosen day has no bookings (not a blank list).
 - Add-booking link targets `#new-booking` (`data-testid="calendar-add-booking-link"`).
-- Covered by `day-view.test.tsx` (8 tests) and `empty-states.test.tsx`.
+- Added regression: empty day must not render the populated `Day bookings` list markup.
 
-### All PR tasks (verified via `pnpm verify:issue-556`)
+### Verification (this runner)
 
-| Task | Status |
-|------|--------|
-| Calendar day empty copy + link | ✅ |
-| Services empty copy above form | ✅ |
-| Clients empty copy on page | ✅ |
-| Payments empty copy | ✅ |
-| Today → `/calendar` link | ✅ |
-| `empty-states.test.tsx` | ✅ (22 tests) |
+- `pnpm build` — pass
+- `pnpm vitest run` — 521 tests pass
+- `pnpm test:merchant-empty-states` — 58 tests pass
+- `grep -rn "Nothing here yet" app/` — no matches
 
-### This round
+### PR status
 
-- Re-ran `pnpm verify:issue-556` (build, 521 vitest, grep gate).
-- CI: run `pnpm test:merchant-empty-states` before the full suite so #556 regressions fail fast.
+All six implementation tasks are complete in code and covered by vitest. Remaining acceptance criterion: real-DB confirmation via `pnpm test:e2e:merchant-empty-states` (UI Acceptance workflow on PR).
 
-### Notes
-
-- Playwright `e2e/merchant-empty-states.spec.ts` exercises real-DB empty tenant flows in CI when e2e job runs; not executed in this runner (no DB/browser stack).
+**Head SHA:** 401ce69 (pre-commit; will update on push)
