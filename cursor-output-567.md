@@ -1,15 +1,11 @@
 ## Round summary
 
-Verified issue **#556** merchant empty states on branch `cursor/issue-556`. Implementation was already present; this round re-ran `pnpm build`, full `pnpm vitest run` (535 tests), and `pnpm test:merchant-empty-states` (72 tests).
+Re-verified issue **#556** on `cursor/issue-556`. Calendar **task 1** was already implemented in `day-view.tsx` via `MerchantEmptyState` and `merchantEmpty-copy`; this round ran `pnpm build`, `pnpm vitest run` (535 tests), and `pnpm test:merchant-empty-states` (72 tests).
 
-### Task 1 (calendar day-view)
+### Task 1 (calendar day-view) — verified
 
-- Empty day shows `merchantEmptyMessages.calendarDay` ("No bookings on this date.") via `MerchantEmptyState`.
-- "Add a booking" links to `#new-booking` on the same calendar page.
-
-### Follow-up test
-
-- `issue-556-real-db.test.tsx`: assert services empty copy appears **above** the create form on real SQLite (task 2 layout).
+- Empty day shows **No bookings on this date** with **Add a booking** linking to `#new-booking`.
+- Added a real SQLite regression test mapping explicitly to task 1.
 
 ### Prompt checkboxes
 

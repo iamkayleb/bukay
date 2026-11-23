@@ -118,6 +118,18 @@ async function renderCalendarDayHtml(viewTenantId: string, viewDate: string): Pr
 describe("issue #556 against real SQLite (empty tenant)", () => {
   const now = new Date("2026-10-04T12:00:00.000Z");
 
+  it("task 1: chosen date with no bookings shows guidance and a link to add one", async () => {
+    auth.tenantId = EMPTY_TENANT_ID;
+
+    const calendarHtml = await renderCalendarDayHtml(EMPTY_TENANT_ID, emptyCalendarDate);
+
+    expect(calendarHtml).toContain("No bookings on this date");
+    expect(calendarHtml).toContain(merchantEmptyMessages.calendarDay);
+    expect(calendarHtml).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
+    expect(calendarHtml).toContain(merchantEmptyActions.calendarAddBooking);
+    expect(calendarHtml).toContain('data-testid="calendar-add-booking-link"');
+  });
+
   it("merchant on empty tenant sees clients guidance on /clients instead of a blank page", async () => {
     auth.tenantId = EMPTY_TENANT_ID;
 
