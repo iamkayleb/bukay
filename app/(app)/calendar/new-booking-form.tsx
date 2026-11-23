@@ -1,7 +1,14 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { calendarDayRange } from "@/app/lib/calendar";
+
+/** Match DayView: use `?date=YYYY-MM-DD` when present so empty-day "add booking" lands on that day. */
+function bookingDateFromSearch(): string {
+  if (typeof window === "undefined") return "";
+  const selected = new URLSearchParams(window.location.search).get("date");
+  return selected && /^\d{4}-\d{2}-\d{2}$/.test(selected) ? selected : "";
+}
 
 type Option = { id: string; name: string };
 export function NewBookingForm({
@@ -18,6 +25,10 @@ export function NewBookingForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [clientId, setClientId] = useState("");
+  const [bookingDate, setBookingDate] = useState("");
+  useEffect(() => {
+    setBookingDate(bookingDateFromSearch());
+  }, []);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -103,7 +114,14 @@ export function NewBookingForm({
       </label>
       <label className="block">
         Date
-        <input required type="date" name="date" className={field} />
+        <input
+          required
+          type="date"
+          name="date"
+          className={field}
+          value={bookingDate}
+          onChange={(event) => setBookingDate(event.target.value)}
+        />
       </label>
       <label className="block">
         Time
