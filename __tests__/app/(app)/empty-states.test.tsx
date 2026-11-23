@@ -251,11 +251,17 @@ describe("merchant empty states", () => {
     }
   });
 
-  it("renders the calendar new-booking form for an empty tenant", async () => {
+  it("renders calendar day empty copy with an add-booking link to #new-booking", async () => {
     signInAs("tenant-empty");
-    const html = renderToStaticMarkup(await CalendarPage());
-    expect(html).toContain("Calendar");
-    expect(html).toContain('id="new-booking"');
+    const pageHtml = renderToStaticMarkup(await CalendarPage());
+    expect(pageHtml).toContain("Calendar");
+    expect(pageHtml).toContain('id="new-booking"');
+
+    const dayHtml = await renderDayViewHtml([]);
+    expect(dayHtml).toContain(merchantEmptyMessages.calendarDay);
+    expect(dayHtml).toContain(`href="${merchantEmptyHrefs.calendarAddBooking}"`);
+    expect(dayHtml).toContain(merchantEmptyActions.calendarAddBooking);
+    expect(merchantEmptyHrefs.calendarAddBooking).toBe("#new-booking");
   });
 
   it("does not show calendar day empty copy while bookings are loading", async () => {
