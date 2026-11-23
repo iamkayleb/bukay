@@ -27,7 +27,7 @@ If a task mentions "coverage" or a percentage target (e.g., "≥95%", "to 95%"),
 1. After adding tests, run TARGETED coverage verification to avoid timeouts:
    - For a specific script like `scripts/foo.py`, run:
      `pytest tests/scripts/test_foo.py --cov=scripts/foo --cov-report=term-missing -m "not slow"`
-   - If no matching test exists, run:
+   - If no matching test file exists, run:
      `pytest tests/ --cov=scripts/foo --cov-report=term-missing -m "not slow" -x`
 2. Find the specific script in the coverage output table
 3. Verify the `Cover` column shows the target percentage or higher

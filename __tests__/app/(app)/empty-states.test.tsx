@@ -141,6 +141,36 @@ describe("merchant empty states", () => {
     expect(html).toContain('href="/calendar"');
   });
 
+  it("shows the intended empty copy on each merchant page shell", async () => {
+    signInAs("tenant-empty");
+    const pages: { name: string; html: string; message: string }[] = [
+      {
+        name: "clients",
+        html: renderToStaticMarkup(await ClientsPage()),
+        message: "No clients yet — they appear here after their first booking.",
+      },
+      {
+        name: "services",
+        html: renderToStaticMarkup(await ServicesPage()),
+        message: "No services yet — add your first so customers can book.",
+      },
+      {
+        name: "payments",
+        html: renderToStaticMarkup(await PaymentsPage()),
+        message: "No payments yet.",
+      },
+      {
+        name: "today",
+        html: renderToStaticMarkup(await TodaySchedule({ now })),
+        message: "No appointments yet.",
+      },
+    ];
+
+    for (const page of pages) {
+      expect(page.html, page.name).toContain(page.message);
+    }
+  });
+
   it("renders all server-driven empty-state copy for an empty tenant", async () => {
     signInAs("tenant-empty");
     const rendered = [
