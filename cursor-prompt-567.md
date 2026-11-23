@@ -93,7 +93,7 @@ Source: https://github.com/iamkayleb/bukay/issues/556
 | Services / clients / payments / today | `MerchantEmptyState` + shared copy |
 | Real SQLite empty tenant | `issue-556-real-db.test.tsx` |
 | Demo tenant has data | acceptance + e2e |
-| Build + full vitest | `pnpm build`, `pnpm vitest run` (539 tests) |
+| Build + full vitest | `pnpm build`, `pnpm vitest run` (541 tests) |
 
 Last verified: `pnpm verify:issue-556:quick` and full suite on `cursor/issue-556`.
 <!-- auto-status-summary:end -->

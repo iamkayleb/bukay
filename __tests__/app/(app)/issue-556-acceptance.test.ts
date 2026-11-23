@@ -128,6 +128,16 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(html).toContain(merchantEmptyActions.todayAddOnCalendar);
   });
 
+  it("PR task 1: day-view source wires calendar empty copy and add-booking link", () => {
+    const source = readFileSync("app/(app)/calendar/day-view.tsx", "utf8");
+    expect(source).toContain("merchantEmptyMessages.calendarDay");
+    expect(source).toContain("calendar-day-empty");
+    expect(source).toContain("calendar-add-booking-link");
+    expect(source).toContain("merchantEmptyHrefs.calendarAddBooking");
+    expect(source).toContain("MerchantEmptyState");
+    expect(merchantEmptyMessages.calendarDay).toContain(PR_TASK_1_CALENDAR_SNIPPET);
+  });
+
   it("PR task 1: day-view shows empty-day copy and add-booking link when the date has no bookings", async () => {
     const html = await renderDayViewHtml([]);
 
