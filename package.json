@@ -13,7 +13,7 @@
     "test": "vitest run --coverage",
     "test:issue-556:pr-task-1": "vitest run __tests__/app/\\(app\\)/calendar/day-view.test.tsx # issue #556 calendar day empty state",
     "verify:issue-556:pr-task-1": "pnpm test:issue-556:pr-task-1 && vitest run __tests__/app/\\(app\\)/issue-556-real-db.test.tsx -t \"task 1\"",
-    "verify:issue-556:pr-tasks-1-6": "pnpm verify:issue-556:pr-task-1 && vitest run __tests__/app/\\(app\\)/issue-556-acceptance.test.ts -t \"PR task\" && vitest run __tests__/app/\\(app\\)/empty-states.test.tsx -t \"renders each page with an empty tenant and asserts each message appears\"",
+    "verify:issue-556:pr-tasks-1-6": "pnpm verify:issue-556:pr-task-1 && vitest run __tests__/app/\\(app\\)/issue-556-acceptance.test.ts -t \"PR task\" && vitest run __tests__/app/\\(app\\)/empty-states.test.tsx -t \"renders each page with an empty tenant and asserts each message appears\" && vitest run __tests__/app/\\(app\\)/issue-556-task-checklist.test.ts",
     "verify:issue-556:pr-complete": "pnpm verify:issue-556:pr-tasks-1-6 && pnpm verify:issue-556:acceptance-gate",
     "verify:issue-556:keepalive": "pnpm verify:issue-556:pr-complete",
     "test:issue-556:acceptance-criteria": "vitest run __tests__/app/\\(app\\)/issue-556-acceptance.test.ts __tests__/app/\\(app\\)/issue-556-real-db.test.tsx",
