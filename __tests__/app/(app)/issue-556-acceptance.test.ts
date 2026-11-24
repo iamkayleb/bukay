@@ -160,6 +160,14 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(linkPos).toBeGreaterThan(messagePos);
   });
 
+  it("PR task 1: empty-day copy is exposed as MerchantEmptyState paragraph text", async () => {
+    const html = await renderDayViewHtml([]);
+
+    expect(html).toContain(`>${merchantEmptyMessages.calendarDay}<`);
+    expect(html).toContain('data-testid="merchant-empty-state"');
+    expect(html).toContain('role="status"');
+  });
+
   it("PR task 6: each merchant page with an empty tenant shows its empty-state message", async () => {
     const now = new Date("2026-10-04T12:00:00.000Z");
     state.headers.set("x-tenant-id", "tenant-empty");
