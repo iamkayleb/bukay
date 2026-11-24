@@ -1,19 +1,13 @@
-## Keepalive round summary (#567 / issue #556)
+## Keepalive round summary (PR #567 / issue #556)
 
-### Verified this round
-- **PR task 1 (calendar day-view):** `DayView` shows `merchantEmptyMessages.calendarDay` and an “Add a booking” link when the chosen date has no bookings (`app/(app)/calendar/day-view.tsx`).
-- **PR tasks 2–6:** Empty states on services, clients, payments, today, and `empty-states.test.tsx` — covered by `pnpm verify:issue-556:pr-tasks-1-6`.
-- **Acceptance:** `pnpm vitest run` (558 tests), `pnpm build`, real-DB `issue-556-real-db.test.tsx`, demo-tenant guards in acceptance tests, `grep` for legacy “Nothing here yet” — all green.
+Verified **PR task 1** and the full merchant empty-state scope:
 
-### Code change
-- `package.json`: `test:issue-556:pr-task-1` now runs the full `day-view.test.tsx` suite so PR task 1 smoke tests run under CI `verify:issue-556:pr-task-1` (previously only tests titled `issue #556` ran).
+- `pnpm verify:issue-556:pr-task-1` — day-view unit + real-db calendar empty state
+- `pnpm verify:issue-556:pr-tasks-1-6` — all six implementation tasks
+- `pnpm verify:issue-556:acceptance-gate` — `pnpm build`, acceptance vitest, `empty-states.test.tsx`, legacy copy grep
+- `pnpm vitest run` — 558 tests passed
+- `grep -rn "Nothing here yet" app/` — no matches
 
-### Commands
-```bash
-pnpm verify:issue-556:pr-task-1
-pnpm verify:issue-556:pr-tasks-1-6
-pnpm vitest run
-pnpm build
-```
+Added `verify:issue-556:pr-complete` to chain task gates before the acceptance gate.
 
-**Progress:** 11/11 tasks and acceptance criteria marked complete in `cursor-prompt-567.md`.
+All six implementation tasks and five acceptance criteria are satisfied on `cursor/issue-556`.

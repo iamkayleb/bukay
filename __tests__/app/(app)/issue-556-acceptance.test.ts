@@ -359,6 +359,19 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(gate).toContain("renders each page with an empty tenant");
   });
 
+  it("acceptance: verify:issue-556:pr-complete chains task gates before acceptance gate", () => {
+    const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts as Record<
+      string,
+      string
+    >;
+    const complete = scripts["verify:issue-556:pr-complete"];
+    expect(complete).toContain("verify:issue-556:pr-tasks-1-6");
+    expect(complete).toContain("verify:issue-556:acceptance-gate");
+    expect(complete.indexOf("verify:issue-556:pr-tasks-1-6")).toBeLessThan(
+      complete.indexOf("verify:issue-556:acceptance-gate")
+    );
+  });
+
   it("acceptance: package exposes build + vitest and acceptance-criteria vitest gates", () => {
     const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts as Record<
       string,
