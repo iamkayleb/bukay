@@ -6,6 +6,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import ClientsPage from "@/app/(app)/clients/page";
@@ -221,5 +222,21 @@ describe("issue #556 PR task checklist", () => {
     }
     expect(html).toContain("Ada Okonkwo");
     expect(html).toContain('aria-label="Day bookings"');
+  });
+
+  it("acceptance AC: verify scripts chain build, acceptance criteria, and full vitest", () => {
+    const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts as Record<
+      string,
+      string
+    >;
+    const acceptanceGate = scripts["verify:issue-556:acceptance-gate"];
+    const prComplete = scripts["verify:issue-556:pr-complete"];
+
+    expect(acceptanceGate.startsWith("pnpm build")).toBe(true);
+    expect(acceptanceGate).toContain("test:issue-556:acceptance-criteria");
+    expect(acceptanceGate).toContain("empty-states.test.tsx");
+    expect(prComplete).toContain("verify:issue-556:acceptance-gate");
+    expect(prComplete).toContain("pnpm vitest run");
+    expect(scripts["verify:issue-556:keepalive"]).toBe("pnpm verify:issue-556:pr-complete");
   });
 });
