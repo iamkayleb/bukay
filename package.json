@@ -11,7 +11,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run --coverage",
-    "test:issue-556:pr-task-1": "vitest run __tests__/app/\\(app\\)/calendar/day-view.test.tsx",
+    "test:issue-556:pr-task-1": "vitest run __tests__/app/\\(app\\)/calendar/day-view.test.tsx # issue #556 calendar day empty state",
     "verify:issue-556:pr-task-1": "pnpm test:issue-556:pr-task-1 && vitest run __tests__/app/\\(app\\)/issue-556-real-db.test.tsx -t \"task 1\"",
     "verify:issue-556:pr-tasks-1-6": "vitest run __tests__/app/\\(app\\)/issue-556-acceptance.test.ts -t \"PR task\" && vitest run __tests__/app/\\(app\\)/empty-states.test.tsx -t \"renders each page with an empty tenant and asserts each message appears\"",
     "test:issue-556:acceptance-criteria": "vitest run __tests__/app/\\(app\\)/issue-556-acceptance.test.ts __tests__/app/\\(app\\)/issue-556-real-db.test.tsx",
