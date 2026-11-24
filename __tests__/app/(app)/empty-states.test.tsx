@@ -357,7 +357,7 @@ describe("merchant empty states", () => {
       const html = container.innerHTML;
       expect(html).toContain(merchantEmptyMessages.calendarDay);
       expect(html).toContain('role="status"');
-      expect(html).toContain('aria-label="Day schedule"');
+      expect(html).toContain('aria-labelledby="calendar-day-empty-message"');
       expect(html).toContain(`href="${calendarAddBookingHref("2026-10-04")}"`);
       expect(html).toContain(merchantEmptyActions.calendarAddBooking);
     } finally {

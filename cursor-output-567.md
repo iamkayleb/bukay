@@ -2,13 +2,12 @@
 
 ## Summary
 
-Re-verified all six PR implementation tasks and five acceptance criteria. `DayView` already shows **No bookings on this date** with an **Add a booking** link when the chosen day has no bookings (`MerchantEmptyState` + `calendarAddBookingHref`).
+Verified **PR task 1**: `DayView` shows **No bookings on this date** with an **Add a booking** link when the chosen day has no bookings. Linked the day-schedule region to the empty message via `aria-labelledby` for clearer screen-reader naming.
 
 ## This round
 
-- Asserted `role="status"` on the calendar day empty state in the real SQLite gate (`issue-556-real-db.test.tsx` task 1).
-- Ran `pnpm verify:issue-556:pr-complete`, `pnpm build`, and `pnpm vitest run` (560 tests).
-- Confirmed `grep -rn "Nothing here yet" app/` returns no matches.
+- `DayView` empty day: `aria-labelledby="calendar-day-empty-message"` + `MerchantEmptyState` `messageId` prop.
+- Ran `pnpm verify:issue-556:pr-task-1`, `pnpm verify:issue-556:pr-complete`, `pnpm build`, and `pnpm vitest run` (560 tests).
 
 ## Completed tasks
 

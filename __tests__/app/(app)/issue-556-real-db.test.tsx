@@ -132,7 +132,7 @@ describe("issue #556 against real SQLite (empty tenant)", () => {
     expect(calendarHtml).toContain(merchantEmptyActions.calendarAddBooking);
     expect(calendarHtml).toContain('data-testid="calendar-add-booking-link"');
     expect(calendarHtml).toContain('data-testid="calendar-day-empty"');
-    expect(calendarHtml).toContain('aria-label="Day schedule"');
+    expect(calendarHtml).toContain('aria-labelledby="calendar-day-empty-message"');
     expect(calendarHtml).toContain('data-testid="merchant-empty-state"');
     expect(calendarHtml).toContain('role="status"');
     expect(calendarHtml).not.toContain('aria-label="Day bookings"');

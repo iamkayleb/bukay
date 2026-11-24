@@ -61,7 +61,8 @@ describe("DayView empty day", () => {
     expect(html).toContain(`href="${TEST_DAY_ADD_HREF}"`);
     expect(html).toContain(merchantEmptyActions.calendarAddBooking);
     expect(html).toContain('role="region"');
-    expect(html).toContain('aria-label="Day schedule"');
+    expect(html).toContain('aria-labelledby="calendar-day-empty-message"');
+    expect(html).toContain('id="calendar-day-empty-message"');
     expect(html).toContain('data-testid="calendar-day-empty"');
     expect(html).toContain('data-testid="calendar-add-booking-link"');
     expect(html).toContain('data-testid="merchant-empty-state"');
@@ -71,7 +72,7 @@ describe("DayView empty day", () => {
 
   it("keeps calendar day empty copy inside the day schedule region", async () => {
     const html = await renderDayViewHtml([]);
-    const regionStart = html.indexOf('aria-label="Day schedule"');
+    const regionStart = html.indexOf('aria-labelledby="calendar-day-empty-message"');
     expect(regionStart).toBeGreaterThan(-1);
     const regionSlice = html.slice(regionStart, regionStart + 900);
     expect(regionSlice).toContain(merchantEmptyMessages.calendarDay);

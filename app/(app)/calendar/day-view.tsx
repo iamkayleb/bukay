@@ -154,11 +154,12 @@ export function DayView({ tenantId, timeZone }: { tenantId: string | null; timeZ
         ) : bookings.length === 0 ? (
           <div
             role="region"
-            aria-label="Day schedule"
+            aria-labelledby="calendar-day-empty-message"
             data-testid="calendar-day-empty"
             data-merchant-empty-headline={merchantEmptyCalendarDayHeadline}
           >
             <MerchantEmptyState
+              messageId="calendar-day-empty-message"
               message={merchantEmptyMessages.calendarDay}
               action={
                 <a
