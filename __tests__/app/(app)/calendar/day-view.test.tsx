@@ -27,6 +27,10 @@ describe("PR task 1 — calendar day empty state", () => {
 
     expect(html).toContain("No bookings on this date");
     expect(html).toContain(merchantEmptyMessages.calendarDay);
+    expect(html).toContain(
+      `data-merchant-empty-headline="${merchantEmptyCalendarDayHeadline}"`
+    );
+    expect(html).toContain('data-testid="calendar-day-empty"');
     expect(html).toContain('data-testid="calendar-add-booking-link"');
     expect(html).toContain(`href="${TEST_DAY_ADD_HREF}"`);
     expect(html).toContain(merchantEmptyActions.calendarAddBooking);
