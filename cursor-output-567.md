@@ -2,11 +2,11 @@
 
 ## Summary
 
-Verified **PR task 1**: `DayView` shows **No bookings on this date** with an **Add a booking** link when the chosen day has no bookings. Linked the day-schedule region to the empty message via `aria-labelledby` for clearer screen-reader naming.
+Verified **PR task 1**: `DayView` shows **No bookings on this date** with an **Add a booking** link when the chosen day has no bookings (`data-merchant-empty-headline`, `aria-labelledby`, real-db gate).
 
 ## This round
 
-- `DayView` empty day: `aria-labelledby="calendar-day-empty-message"` + `MerchantEmptyState` `messageId` prop.
+- Tightened `issue-556-acceptance.test.ts` PR task 1 assertions for headline data attribute and labelled empty region.
 - Ran `pnpm verify:issue-556:pr-task-1`, `pnpm verify:issue-556:pr-complete`, `pnpm build`, and `pnpm vitest run` (560 tests).
 
 ## Completed tasks
@@ -17,3 +17,11 @@ Verified **PR task 1**: `DayView` shows **No bookings on this date** with an **A
 ✅ Completed: In `app/(app)/payments/payments-list.tsx`, when there are no payments, show "No payments yet" once that file exists.
 ✅ Completed: In `app/(app)/today/data.tsx`, keep the existing "No appointments yet" message and link it to `/calendar` so the merchant can add one.
 ✅ Completed: Add `__tests__/app/(app)/empty-states.test.tsx` rendering each page with an empty tenant and asserting each message appears.
+
+## Acceptance criteria
+
+✅ `pnpm build` and `pnpm vitest run` pass.
+✅ Real-db empty tenant renders all five merchant messages (`issue-556-real-db.test.tsx`).
+✅ Demo tenant does not show empty copy when seeded data exists.
+✅ Clients page guidance verified for empty tenant.
+✅ No `Nothing here yet` under `app/`.

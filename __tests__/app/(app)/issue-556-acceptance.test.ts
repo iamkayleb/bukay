@@ -89,7 +89,9 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(html).toContain(merchantEmptyMessages.clients);
     expect(html).toContain('data-testid="clients-empty"');
     expect(html).toContain('data-testid="merchant-empty-state"');
-    expect(html.indexOf('name="phone"')).toBeGreaterThan(html.indexOf(merchantEmptyMessages.clients));
+    expect(html.indexOf('name="phone"')).toBeGreaterThan(
+      html.indexOf(merchantEmptyMessages.clients)
+    );
   });
 
   it("PR task 3: clients/page.tsx composes ClientsList for the empty-state region", () => {
@@ -139,6 +141,8 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(source).toContain("merchantEmptyCalendarDayHeadline");
     expect(source).toContain("calendar-day-empty");
     expect(source).toContain("calendar-add-booking-link");
+    expect(source).toContain("data-merchant-empty-headline");
+    expect(source).toContain('aria-labelledby="calendar-day-empty-message"');
     expect(source).toContain("calendarAddBookingHref");
     expect(source).toContain("MerchantEmptyState");
     expect(source).toContain("dispatchCalendarBookingDate");
@@ -152,13 +156,13 @@ describe("issue #556 acceptance (vitest)", () => {
 
     expect(html).toContain(merchantEmptyMessages.calendarDay);
     expect(html).toContain(merchantEmptyCalendarDayHeadline);
+    expect(html).toContain(`data-merchant-empty-headline="${merchantEmptyCalendarDayHeadline}"`);
+    expect(html).toContain('aria-labelledby="calendar-day-empty-message"');
     expect(html).toContain('data-testid="calendar-day-empty"');
     expect(html).toContain('data-testid="calendar-add-booking-link"');
     expect(html).toContain(`href="${calendarAddBookingHref("2026-10-04")}"`);
     expect(html).toContain(merchantEmptyActions.calendarAddBooking);
-    expect(html).toContain(
-      `aria-label="${merchantEmptyActions.calendarAddBooking} for this date"`
-    );
+    expect(html).toContain(`aria-label="${merchantEmptyActions.calendarAddBooking} for this date"`);
     expect(merchantEmptyHrefs.calendarAddBooking).toBe("#new-booking");
     expect(html).not.toContain('aria-label="Day bookings"');
 
