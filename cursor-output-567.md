@@ -1,21 +1,23 @@
 # Keepalive round — PR #567 / issue #556
 
-## Task 1 (calendar day-view)
+## Verified this round
 
-- **Requirement:** Empty chosen date → "No bookings on this date" + link to add a booking.
-- **Implementation:** `app/(app)/calendar/day-view.tsx` uses `MerchantEmptyState` with `merchantEmptyMessages.calendarDay` and `calendarAddBookingHref(date)`.
-- **Verification:** `pnpm run verify:issue-556:pr-task-1`, `issue-556-task-checklist` task 1, `day-view.test.tsx`, `empty-states.test.tsx`, `issue-556-real-db` task 1.
-
-## Full PR gate (this round)
-
-| Check | Result |
-|-------|--------|
+| Gate | Result |
+|------|--------|
 | `pnpm build` | pass |
-| `pnpm vitest run` | 90 files, 580 tests pass |
-| `pnpm run verify:issue-556:pr-tasks-1-6` | pass |
+| `pnpm vitest run` | 90 files, 581 tests pass |
+| `pnpm verify:issue-556:pr-tasks-1-6` | pass |
 | `grep -rn "Nothing here yet" app/` | no matches |
+
+## Task 1 (calendar `day-view.tsx`)
+
+Empty chosen date shows `No bookings on this date.` via `MerchantEmptyState`, with `Add a booking` linking to `?date=YYYY-MM-DD#new-booking` and `dispatchCalendarBookingDate` on click.
+
+## PR tasks 1–6 and acceptance criteria
+
+All six implementation tasks and five acceptance criteria verified locally (including `issue-556-real-db.test.tsx`).
 
 ## Commit
 
-- Added source-contract test for task 1 in `issue-556-task-checklist.test.ts`.
-- Updated `cursor-prompt-567.md` checkboxes to 11/11 complete.
+- Tighten task 1 source-contract assertions in `issue-556-task-checklist.test.ts`.
+- Mark all PR task / AC checkboxes in `cursor-prompt-567.md`.
