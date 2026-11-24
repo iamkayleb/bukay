@@ -140,6 +140,7 @@ describe("merchant empty states", () => {
         expect(page.html, page.name).toContain('data-testid="calendar-day-empty"');
         expect(page.html, page.name).toContain('data-testid="calendar-add-booking-link"');
         expect(page.html, page.name).toContain('data-testid="merchant-empty-state"');
+        expect(page.html, page.name).toContain('role="region"');
       } else {
         expect(page.html, page.name).toContain('data-testid="merchant-empty-state"');
       }
