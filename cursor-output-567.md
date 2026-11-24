@@ -6,8 +6,8 @@ Verified **PR task 1**: `DayView` shows **No bookings on this date** with an **A
 
 ## This round
 
-- Tightened `issue-556-acceptance.test.ts` PR task 1 assertions for headline data attribute and labelled empty region.
-- Ran `pnpm verify:issue-556:pr-task-1`, `pnpm verify:issue-556:pr-complete`, `pnpm build`, and `pnpm vitest run` (560 tests).
+- Re-verified task 1 with `pnpm verify:issue-556:pr-task-1`, `pnpm verify:issue-556:acceptance-gate`, `pnpm build`, and `pnpm vitest run` (560 tests).
+- Added acceptance regression that calendar `day-view.tsx` no longer references legacy `SectionPlaceholder` / "Nothing here yet" copy.
 
 ## Completed tasks
 

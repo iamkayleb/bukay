@@ -180,6 +180,13 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(html).toContain('role="status"');
   });
 
+  it("PR task 1: day-view removed legacy SectionPlaceholder copy", () => {
+    const source = readFileSync("app/(app)/calendar/day-view.tsx", "utf8");
+    expect(source).not.toContain("SectionPlaceholder");
+    expect(source).not.toContain("Nothing here yet");
+    expect(source).not.toContain("Nothing here");
+  });
+
   it("PR task 6: each merchant page with an empty tenant shows its empty-state message", async () => {
     const now = new Date("2026-10-04T12:00:00.000Z");
     state.headers.set("x-tenant-id", "tenant-empty");
