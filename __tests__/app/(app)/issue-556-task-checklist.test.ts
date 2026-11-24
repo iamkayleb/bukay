@@ -150,15 +150,42 @@ describe("issue #556 PR task checklist", () => {
   it("task 6: all five screens expose their empty message for an empty tenant", async () => {
     const calendarHtml = await renderDayViewHtml([], { date: calendarDay });
     const pages = [
-      renderToStaticMarkup(await ClientsPage()),
-      renderToStaticMarkup(await ServicesPage()),
-      renderToStaticMarkup(await PaymentsPage()),
-      renderToStaticMarkup(await TodaySchedule({ now })),
-      calendarHtml,
+      {
+        name: "clients",
+        html: renderToStaticMarkup(await ClientsPage()),
+        message: merchantEmptyMessages.clients,
+        emptyTestId: "clients-empty",
+      },
+      {
+        name: "services",
+        html: renderToStaticMarkup(await ServicesPage()),
+        message: merchantEmptyMessages.services,
+        emptyTestId: "services-empty",
+      },
+      {
+        name: "payments",
+        html: renderToStaticMarkup(await PaymentsPage()),
+        message: merchantEmptyMessages.payments,
+        emptyTestId: "payments-empty",
+      },
+      {
+        name: "today",
+        html: renderToStaticMarkup(await TodaySchedule({ now })),
+        message: merchantEmptyMessages.today,
+        emptyTestId: "today-empty",
+      },
+      {
+        name: "calendar",
+        html: calendarHtml,
+        message: merchantEmptyMessages.calendarDay,
+        emptyTestId: "calendar-day-empty",
+      },
     ];
 
-    for (const message of Object.values(merchantEmptyMessages)) {
-      expect(pages.some((html) => html.includes(message))).toBe(true);
+    for (const page of pages) {
+      expect(page.html, page.name).toContain(page.message);
+      expect(page.html, page.name).toContain(`data-testid="${page.emptyTestId}"`);
+      expect(page.html, page.name).toContain('data-testid="merchant-empty-state"');
     }
   });
 

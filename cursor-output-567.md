@@ -1,6 +1,6 @@
 ## Keepalive round summary (issue #556)
 
-Re-verified **PR task 1** (calendar `DayView` empty day) and the full **#556** acceptance gate on `cursor/issue-556` after the orchestrator reset task checkboxes.
+Re-verified **PR task 1** (calendar `DayView` empty day) on `cursor/issue-556` after the orchestrator reset task checkboxes.
 
 ### Verification (this round)
 
@@ -11,7 +11,7 @@ Re-verified **PR task 1** (calendar `DayView` empty day) and the full **#556** a
 
 ### Test tweak
 
-- `issue-556-real-db.test.tsx` (task 1): assert `role="region"` on the calendar-day empty wrapper against real SQLite + bookings API.
+- `issue-556-task-checklist.test.ts` (task 6): assert each of the five screens exposes its `data-testid` empty region plus `merchant-empty-state`.
 
 ### Completed tasks
 
