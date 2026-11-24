@@ -131,4 +131,61 @@ describe("issue #556 PR task checklist", () => {
     }).trim();
     expect(matches).toBe("");
   });
+
+  it("acceptance: demo tenant with data does not show empty-state copy", async () => {
+    state.headers.set("x-tenant-id", "tenant-demo");
+    state.clientFindMany.mockResolvedValue([
+      { id: "client-1", tenantId: "tenant-demo", name: "Ada Okonkwo", phone: "+2348000000001" },
+    ]);
+    state.serviceFindMany.mockResolvedValue([
+      {
+        id: "svc-1",
+        tenantId: "tenant-demo",
+        name: "Classic Haircut",
+        description: null,
+        durationMinutes: 30,
+        priceCents: 5000,
+        bufferMinutes: 0,
+        currency: "NGN",
+        active: true,
+      },
+    ]);
+    state.paymentFindMany.mockResolvedValue([
+      {
+        id: "pay-1",
+        amountCents: 5000,
+        currency: "NGN",
+        status: "paid",
+        createdAt: new Date("2026-10-04T09:00:00.000Z"),
+        booking: {
+          client: { name: "Ada Okonkwo" },
+          service: { name: "Classic Haircut" },
+        },
+      },
+    ]);
+    state.bookingFindMany.mockResolvedValue([
+      {
+        id: "book-1",
+        startsAt: new Date("2026-10-04T10:00:00.000Z"),
+        endsAt: new Date("2026-10-04T10:30:00.000Z"),
+        status: "confirmed",
+        client: { name: "Ada Okonkwo" },
+        service: { name: "Classic Haircut" },
+      },
+    ]);
+
+    const serverPages = [
+      renderToStaticMarkup(await ClientsPage()),
+      renderToStaticMarkup(await ServicesPage()),
+      renderToStaticMarkup(await PaymentsPage()),
+      renderToStaticMarkup(await TodaySchedule({ now })),
+    ];
+
+    for (const html of serverPages) {
+      for (const message of Object.values(merchantEmptyMessages)) {
+        expect(html).not.toContain(message);
+      }
+    }
+    expect(serverPages[0]).toContain("Ada Okonkwo");
+  });
 });

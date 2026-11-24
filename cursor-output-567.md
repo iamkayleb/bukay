@@ -1,20 +1,11 @@
-# Issue #556 — keepalive round 567
+## Issue #556 — keepalive round 567
 
-## Task 1 (calendar day-view)
+Verified merchant empty states (tasks 1–6) and acceptance criteria:
 
-Verified on branch `cursor/issue-556`. When the chosen date has zero bookings (after load settles), `DayView` renders `MerchantEmptyState` with **No bookings on this date.** and an **Add a booking** link (`calendarAddBookingHref` → `?date=…#new-booking`).
+- `pnpm build` — pass
+- `pnpm vitest run` — 573 tests pass (including `issue-556-real-db.test.tsx` empty + demo tenants)
+- `grep -rn "Nothing here yet" app/` — no matches
 
-## Commands run (pass)
+Added `acceptance: demo tenant with data does not show empty-state copy` to `issue-556-task-checklist.test.ts` so the PR task gate also guards acceptance criterion 3.
 
-| Command | Result |
-|---------|--------|
-| `pnpm verify:issue-556:keepalive` | full PR gate (build + tasks 1–6 + acceptance) |
-| `pnpm test:issue-556:pr-task-1` | 14 passed (day-view) |
-| `pnpm test:merchant-empty-states` | 102 passed |
-| `pnpm build` | success |
-| `pnpm vitest run` | 565 passed |
-| `grep -rn "Nothing here yet" app/` | no matches |
-
-## PR status
-
-All 6 implementation tasks and 5 acceptance criteria are satisfied on this branch. Orchestrator progress updated to **11/11** in `cursor-prompt-567.md`.
+All prompt checkboxes marked complete in `cursor-prompt-567.md`.
