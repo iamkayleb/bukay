@@ -206,7 +206,7 @@ describe("DayView empty day", () => {
     }
   });
 
-  it("dispatches the chosen date when the empty-day add-booking link is clicked", async () => {
+  it("issue #556: dispatches the chosen date when the empty-day add-booking link is clicked", async () => {
     (
       globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
     ).IS_REACT_ACT_ENVIRONMENT = true;
