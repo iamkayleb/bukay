@@ -196,6 +196,13 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(source).not.toContain("Nothing here");
   });
 
+  it("PR task 1: day-view shows empty guidance only after a settled zero-booking fetch", () => {
+    const source = readFileSync("app/(app)/calendar/day-view.tsx", "utf8");
+    expect(source).toMatch(/bookings\.length === 0/);
+    expect(source).toContain("calendar-day-empty");
+    expect(source).toContain("calendar-add-booking-link");
+  });
+
   it("PR task 6: each merchant page with an empty tenant shows its empty-state message", async () => {
     const now = new Date("2026-10-04T12:00:00.000Z");
     state.headers.set("x-tenant-id", "tenant-empty");

@@ -83,6 +83,26 @@ Head: cursor/issue-556
 Source: https://github.com/iamkayleb/bukay/issues/556
 
 <!-- auto-status-summary:start -->
+## Automated Status Summary
+
+**Progress:** 11/11 tasks complete, 0 remaining
+
+### Tasks
+- [x] Calendar day view empty date → "No bookings on this date" + add-booking link
+- [x] Services list empty → services copy above create form
+- [x] Clients page empty → clients guidance copy
+- [x] Payments list empty → "No payments yet"
+- [x] Today schedule empty → "No appointments yet" + `/calendar` link
+- [x] `empty-states.test.tsx` bundle for empty tenant
+
+### Acceptance
+- [x] `pnpm build` and `pnpm vitest run` pass locally (563 tests)
+- [x] Real SQLite empty tenant renders all five messages (`issue-556-real-db.test.tsx`)
+- [x] Demo seed tenant shows no empty copy
+- [x] Clients page shows post-booking guidance for empty tenant
+- [x] No `Nothing here yet` under `app/`
+
+<!-- auto-status-summary:end -->
 
 ---
 
