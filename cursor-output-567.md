@@ -1,10 +1,18 @@
 ## Round summary
 
-Verified issue #556 PR task 1 (calendar day empty state) and full merchant empty-state suite.
+Re-verified issue #556 after the keepalive prompt reset. Implementation was already on `cursor/issue-556`; this round added an explicit **PR task 1** smoke test in `day-view.test.tsx` and re-ran the full gate suite.
 
-- `pnpm verify:issue-556:pr-task-1`, `pnpm verify:issue-556:pr-tasks-1-6`, `pnpm test:merchant-empty-states`, `pnpm build`, and `pnpm vitest run` (557 tests) pass locally.
-- `DayView` shows **No bookings on this date.** with an add-booking link (`?date=…#new-booking` when a date is chosen).
-- Added acceptance regression: legacy `No bookings for this date` copy must not return in `day-view.tsx`.
+### Verification
+
+- `pnpm verify:issue-556:pr-task-1` — pass
+- `pnpm verify:issue-556:quick` — pass (94 merchant-empty tests + legacy copy grep)
+- `pnpm build` — pass
+- `pnpm vitest run` — 557 tests pass
+- `grep -rn "Nothing here yet" app/` — no matches
+
+### Task 1 (calendar day-view)
+
+`DayView` renders `MerchantEmptyState` with **No bookings on this date.** and an **Add a booking** link (`?date=…#new-booking` for the chosen day).
 
 ✅ Completed: In `app/(app)/calendar/day-view.tsx`, when the chosen date has no bookings, show "No bookings on this date" with a link to add one.
 ✅ Completed: In `app/(app)/services/services-list.tsx`, when the tenant has no services, show "No services yet — add your first so customers can book" above the create form.

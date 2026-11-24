@@ -21,6 +21,18 @@ beforeEach(() => {
   vi.restoreAllMocks();
 });
 
+describe("PR task 1 — calendar day empty state", () => {
+  it('shows "No bookings on this date" with a link to add one', async () => {
+    const html = await renderDayViewHtml([]);
+
+    expect(html).toContain("No bookings on this date");
+    expect(html).toContain(merchantEmptyMessages.calendarDay);
+    expect(html).toContain('data-testid="calendar-add-booking-link"');
+    expect(html).toContain(`href="${TEST_DAY_ADD_HREF}"`);
+    expect(html).toContain(merchantEmptyActions.calendarAddBooking);
+  });
+});
+
 describe("DayView empty day", () => {
   it("issue #556: empty chosen date shows copy and link to add a booking", async () => {
     const html = await renderDayViewHtml([]);
