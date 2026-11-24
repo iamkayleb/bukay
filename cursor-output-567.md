@@ -2,15 +2,17 @@
 
 Re-verified PR tasks 1–6 and acceptance criteria after checkbox reset.
 
-- **Task 1:** `day-view.tsx` shows `No bookings on this date` + `Add a booking` (`calendar-day-empty`, `calendar-add-booking-link`).
-- **Test tweak:** `issue-556-task-checklist.test.ts` task 1 now asserts `calendar-day-empty` and `data-merchant-empty-headline`.
+### Task 1 (`day-view.tsx`)
+- Empty chosen day shows `merchantEmptyMessages.calendarDay` and `Add a booking` via `calendarAddBookingHref`.
+- Markup: `calendar-day-empty`, `calendar-add-booking-link`, `data-merchant-empty-headline`.
 
-**Gates (this round):**
+### This round
+- **Test:** `issue-556-real-db` demo tenant asserts calendar does not render empty-day test ids or headline copy.
 
-- `pnpm verify:issue-556:pr-tasks-1-6` — pass
+### Gates (this round)
+- `pnpm verify:issue-556:pr-complete` — pass
 - `pnpm build` — pass
 - `pnpm vitest run` — 575 passed
-- `pnpm test:issue-556:acceptance-criteria` — pass (SQLite real-db + acceptance)
 - `grep -rn "Nothing here yet" app/` — no matches
 
 All task and acceptance checkboxes updated in `cursor-prompt-567.md`.

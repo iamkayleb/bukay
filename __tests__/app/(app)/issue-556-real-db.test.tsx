@@ -209,6 +209,9 @@ describe("issue #556 against real SQLite (seeded demo tenant)", () => {
     }
 
     expect(calendarHtml).toContain('aria-label="Day bookings"');
+    expect(calendarHtml).not.toContain('data-testid="calendar-day-empty"');
+    expect(calendarHtml).not.toContain('data-testid="calendar-add-booking-link"');
+    expect(calendarHtml).not.toContain(merchantEmptyCalendarDayHeadline);
     expect(clientsHtml).toContain("Demo Client");
   });
 });
