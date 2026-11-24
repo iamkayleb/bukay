@@ -196,4 +196,25 @@ describe("issue #556 PR task checklist", () => {
     }
     expect(serverPages[0]).toContain("Ada Okonkwo");
   });
+
+  it("acceptance: demo tenant day view with bookings does not show empty-state copy", async () => {
+    const html = await renderDayViewHtml(
+      [
+        {
+          id: "book-1",
+          startsAt: "2026-10-04T10:00:00.000Z",
+          status: "confirmed",
+          client: { name: "Ada Okonkwo" },
+          service: { name: "Classic Haircut" },
+        },
+      ],
+      { date: calendarDay }
+    );
+
+    for (const message of Object.values(merchantEmptyMessages)) {
+      expect(html).not.toContain(message);
+    }
+    expect(html).toContain("Ada Okonkwo");
+    expect(html).toContain('aria-label="Day bookings"');
+  });
 });
