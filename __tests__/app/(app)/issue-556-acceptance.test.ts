@@ -92,6 +92,12 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(html.indexOf('name="phone"')).toBeGreaterThan(html.indexOf(merchantEmptyMessages.clients));
   });
 
+  it("PR task 3: clients/page.tsx composes ClientsList for the empty-state region", () => {
+    const source = readFileSync("app/(app)/clients/page.tsx", "utf8");
+    expect(source).toContain("ClientsList");
+    expect(source).not.toContain("MerchantEmptyState");
+  });
+
   it("PR task 2: services list shows empty copy above the create form", async () => {
     state.headers.set("x-tenant-id", "tenant-empty");
 
