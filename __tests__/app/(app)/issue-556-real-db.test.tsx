@@ -136,6 +136,9 @@ describe("issue #556 against real SQLite (empty tenant)", () => {
     expect(calendarHtml).toContain('id="calendar-day-empty-message"');
     expect(calendarHtml).toContain('data-testid="merchant-empty-state"');
     expect(calendarHtml).toContain('role="status"');
+    expect(calendarHtml).toContain('aria-live="polite"');
+    expect(calendarHtml).toContain('aria-busy="false"');
+    expect(calendarHtml).not.toContain("Loading bookings...");
     expect(calendarHtml).not.toContain('aria-label="Day bookings"');
 
     const messagePos = calendarHtml.indexOf(merchantEmptyMessages.calendarDay);

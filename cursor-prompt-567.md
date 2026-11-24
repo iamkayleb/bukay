@@ -115,7 +115,7 @@ If a file is synced from Workflows, fix it in Workflows first.
 - First-party consumers currently reference reusable workflows with `@main`. Match that unless you are intentionally pinning to an exact commit SHA for a controlled reason.
 - `ci.yml` and `autofix-versions.env` are repo-specific.
 - `pr-00-gate.yml` is a create-only standard file. Keep it aligned with the standard gate unless this repo has a documented reason to diverge.
-- Synced workflows, prompts, scripts, and consumer docs are managed through `.github/sync-manifest.yml` in Workflows.
+- Synced workflows, prompts, and consumer docs are managed through `.github/sync-manifest.yml` in Workflows.
 
 ## Pull Request Readiness Invariant
 
