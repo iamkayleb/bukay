@@ -420,6 +420,7 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(gate).toContain("PR task");
     expect(gate).toContain("empty-states.test.tsx");
     expect(gate).toContain("renders each page with an empty tenant");
+    expect(gate).toContain("issue-556-task-checklist.test.ts");
   });
 
   it("acceptance: verify:issue-556:pr-complete chains task gates before acceptance gate", () => {
