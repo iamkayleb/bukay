@@ -83,6 +83,19 @@ Head: cursor/issue-556
 Source: https://github.com/iamkayleb/bukay/issues/556
 
 <!-- auto-status-summary:start -->
+## Automated Status Summary
+
+**Progress:** 11/11 tasks complete — merchant empty states (#556) ready for merge.
+
+| Gate | Result |
+|------|--------|
+| `pnpm test:issue-556:pr-task-1` | pass |
+| `pnpm test:issue-556:acceptance-criteria` | pass |
+| `pnpm verify:issue-556:quick` | pass |
+| `pnpm build` + `pnpm vitest run` | pass (551 tests) |
+| Legacy `Nothing here yet` under `app/` | removed |
+
+<!-- auto-status-summary:end -->
 
 ---
 

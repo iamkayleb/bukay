@@ -300,6 +300,18 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(gate).toContain("issue #556");
   });
 
+  it("acceptance: package exposes build + vitest and acceptance-criteria vitest gates", () => {
+    const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts as Record<
+      string,
+      string
+    >;
+    const acceptanceCriteria = scripts["test:issue-556:acceptance-criteria"];
+    expect(acceptanceCriteria).toContain("issue-556-acceptance.test.ts");
+    expect(acceptanceCriteria).toContain("issue-556-real-db.test.tsx");
+    expect(scripts["verify:issue-556"]).toContain("pnpm build");
+    expect(scripts["verify:issue-556"]).toContain("pnpm vitest run");
+  });
+
   it("PR tasks 1–5: each merchant screen wires MerchantEmptyState through merchant-empty-copy", () => {
     const screenSources: Record<string, string> = {
       calendarDay: "app/(app)/calendar/day-view.tsx",
