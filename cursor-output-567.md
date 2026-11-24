@@ -1,16 +1,24 @@
 ## Keepalive round summary (issue #556)
 
-### Task 1 (calendar day-view)
+### Tasks 1–6
 
 **Status:** Verified complete.
 
-- `app/(app)/calendar/day-view.tsx` shows `merchantEmptyMessages.calendarDay` (`No bookings on this date.`) when the settled fetch returns zero bookings, with `Add a booking` → `calendarAddBookingHref(date)` (`?date=…#new-booking`).
-- **Checks:** `pnpm verify:issue-556:pr-task-1`, `issue-556-task-checklist.test.ts` (task 1), `day-view.test.tsx`, `empty-states.test.tsx`, `issue-556-real-db.test.tsx`.
+| Task | Verification |
+|------|----------------|
+| 1 Calendar day-view empty state + add-booking link | `pnpm verify:issue-556:pr-task-1`, `issue-556-task-checklist.test.ts` task 1, `day-view.test.tsx` PR task 1, `issue-556-real-db.test.tsx` task 1 |
+| 2 Services empty copy above form | task checklist + `empty-states.test.tsx` |
+| 3 Clients empty copy on page | task checklist + real-db clients test |
+| 4 Payments empty copy | task checklist + `payments-list.test.tsx` |
+| 5 Today → `/calendar` link | task checklist + `today/page.test.tsx` |
+| 6 Five-screen integration test | `empty-states.test.tsx` “renders each page…” |
 
-### Tasks 2–6
+### Acceptance criteria
 
-Already on branch; re-verified via `pnpm verify:issue-556:pr-complete` (584 vitest tests, build, grep clean).
+- `pnpm verify:issue-556:pr-complete` — **pass** (`pnpm build`, 584 vitest tests, grep clean)
+- Real SQLite empty + demo tenants — `issue-556-real-db.test.tsx` (4/4)
+- Legacy `Nothing here yet` — absent under `app/`
 
 ### This round
 
-- Pinned `id="calendar-day-empty-message"` in PR task 1 checklist render test (aria-labelledby target).
+- Re-verified task 1 (`pnpm verify:issue-556:pr-task-1`) and pinned `id="calendar-day-empty-message"` in the focused PR task 1 `day-view.test.tsx` gate.

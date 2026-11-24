@@ -73,6 +73,14 @@ describe("PR task 1 — calendar day empty state", () => {
     expect(source).toContain('messageId="calendar-day-empty-message"');
     expect(source).toContain('aria-labelledby="calendar-day-empty-message"');
   });
+
+  it("renders the labelled empty message id when the chosen day has no bookings", async () => {
+    const html = await renderDayViewHtml([]);
+
+    expect(html).toContain('id="calendar-day-empty-message"');
+    expect(html).toContain(merchantEmptyMessages.calendarDay);
+    expect(html).toContain('data-testid="calendar-add-booking-link"');
+  });
 });
 
 describe("DayView empty day", () => {
