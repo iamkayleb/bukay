@@ -45,6 +45,16 @@ describe("PR task 1 — calendar day empty state", () => {
     expect(TEST_DAY_ADD_HREF).toContain("#new-booking");
     expect(html).toContain(`href="${TEST_DAY_ADD_HREF}"`);
   });
+
+  it("shows empty guidance only after the live region finishes loading", async () => {
+    const html = await renderDayViewHtml([]);
+
+    expect(html).toContain('aria-live="polite"');
+    expect(html).toContain('aria-busy="false"');
+    expect(html).not.toContain("Loading bookings...");
+    expect(html).toContain(merchantEmptyMessages.calendarDay);
+    expect(html).toContain('data-testid="calendar-day-empty"');
+  });
 });
 
 describe("DayView empty day", () => {

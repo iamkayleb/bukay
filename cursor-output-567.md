@@ -5,9 +5,10 @@ Re-verified PR tasks 1–6 and acceptance criteria after checkbox reset.
 ### Task 1 (`day-view.tsx`)
 - Empty chosen day shows `merchantEmptyMessages.calendarDay` and `Add a booking` via `calendarAddBookingHref`.
 - Markup: `calendar-day-empty`, `calendar-add-booking-link`, `data-merchant-empty-headline`.
+- New test: empty guidance appears only when `aria-busy="false"` on the live region.
 
-### This round
-- **Test:** `issue-556-real-db` demo tenant asserts calendar does not render empty-day test ids or headline copy.
+### Tasks 2–6
+- Services, clients, payments, today, and `empty-states.test.tsx` — verified via `pnpm verify:issue-556:pr-tasks-1-6`.
 
 ### Gates (this round)
 - `pnpm verify:issue-556:pr-complete` — pass
