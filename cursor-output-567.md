@@ -1,13 +1,21 @@
-## Verification (issue #556, PR task 1 — keepalive re-check)
+# Keepalive round 567 — issue #556
 
-Ran locally on `cursor/issue-556` (2026-11-24):
+## Task 1 (calendar day empty state)
 
-- `pnpm verify:issue-556:pr-task-1` — pass (day-view unit + real SQLite task 1)
-- `pnpm vitest run __tests__/app/(app)/` — 118 tests pass
-- `pnpm vitest run` — 564 tests pass
-- `pnpm build` — pass
-- `grep -rn "Nothing here yet" app/` — no matches
+**Status:** Verified complete.
 
-**Task 1** (`day-view.tsx`): when the chosen date has no bookings (after load), the day schedule shows **No bookings on this date.** via `MerchantEmptyState`, with `data-testid="calendar-day-empty"` and an **Add a booking** link to `?date=YYYY-MM-DD#new-booking`.
+- `app/(app)/calendar/day-view.tsx` renders `MerchantEmptyState` with `merchantEmptyMessages.calendarDay` (“No bookings on this date.”) and an add-booking link when `bookings.length === 0` after load.
+- Gates: `pnpm verify:issue-556:pr-task-1` (14 day-view tests + real-db `task 1`), now chained at the start of `pnpm verify:issue-556:pr-tasks-1-6`.
 
-Tasks 2–6 and acceptance criteria verified via existing gates (`verify:issue-556:pr-tasks-1-6`, `test:issue-556:acceptance-criteria`, `issue-556-real-db`).
+## Full PR verification (local)
+
+| Gate | Result |
+|------|--------|
+| `pnpm verify:issue-556:pr-task-1` | pass |
+| `pnpm verify:issue-556:pr-tasks-1-6` | pass |
+| `pnpm verify:issue-556:acceptance-gate` | pass (`pnpm build`, acceptance + empty-states, no “Nothing here yet”) |
+| `pnpm vitest run` | 565 passed |
+
+## Tasks 2–6
+
+All implementation and regression tests were already on branch `cursor/issue-556`; re-verified via `pnpm verify:issue-556:pr-complete` equivalent checks above.

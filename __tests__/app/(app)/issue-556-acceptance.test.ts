@@ -394,6 +394,10 @@ describe("issue #556 acceptance (vitest)", () => {
       string
     >;
     const gate = scripts["verify:issue-556:pr-tasks-1-6"];
+    expect(gate).toContain("verify:issue-556:pr-task-1");
+    expect(gate.indexOf("verify:issue-556:pr-task-1")).toBeLessThan(
+      gate.indexOf("issue-556-acceptance.test.ts")
+    );
     expect(gate).toContain("issue-556-acceptance.test.ts");
     expect(gate).toContain("PR task");
     expect(gate).toContain("empty-states.test.tsx");

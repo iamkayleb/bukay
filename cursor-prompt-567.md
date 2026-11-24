@@ -72,7 +72,7 @@ The PR is complete when ALL of these are satisfied:
 - [x] `grep -rn "Nothing here yet" app/` returns nothing, confirming the old placeholder wording is gone.
 
 ### Suggested Next Task
-- Sync auto-status-summary on the GitHub PR body with verified 11/11 progress; request review/merge when CI is green.
+- None — all PR tasks and acceptance criteria verified locally via `pnpm verify:issue-556:pr-complete`.
 
 ### Source Context
 _For additional background, check these linked issues/PRs:_
@@ -83,24 +83,6 @@ Head: cursor/issue-556
 Source: https://github.com/iamkayleb/bukay/issues/556
 
 <!-- auto-status-summary:start -->
-## Automated Status Summary
-
-**Progress:** 11/11 tasks complete, 0 remaining
-
-### Tasks
-- [x] Calendar day view empty date → "No bookings on this date" + add-booking link
-- [x] Services list empty tenant → services copy above create form
-- [x] Clients page empty tenant → clients guidance copy
-- [x] Payments list empty → "No payments yet"
-- [x] Today schedule empty → appointments copy + link to `/calendar`
-- [x] `empty-states.test.tsx` regression bundle for all five screens
-
-### Acceptance
-- [x] Build + vitest green locally
-- [x] Real-db empty tenant shows all five messages
-- [x] Demo tenant hides empty copy
-- [x] Clients page merchant story (no blank page)
-- [x] Legacy "Nothing here yet" removed from `app/`
 
 ---
 
