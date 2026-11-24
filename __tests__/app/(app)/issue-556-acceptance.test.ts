@@ -439,6 +439,18 @@ describe("issue #556 acceptance (vitest)", () => {
     );
   });
 
+  it("acceptance: verify:issue-556:pr-complete ends with full vitest for build+test AC", () => {
+    const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts as Record<
+      string,
+      string
+    >;
+    const complete = scripts["verify:issue-556:pr-complete"];
+    expect(complete).toContain("pnpm vitest run");
+    expect(complete.indexOf("verify:issue-556:acceptance-gate")).toBeLessThan(
+      complete.indexOf("pnpm vitest run")
+    );
+  });
+
   it("acceptance: keepalive gate aliases full PR completion verifier", () => {
     const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts as Record<
       string,
