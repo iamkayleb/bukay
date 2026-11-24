@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createRoot } from "react-dom/client";
 import { act } from "react";
@@ -65,6 +66,12 @@ describe("PR task 1 — calendar day empty state", () => {
     expect(html).not.toContain("Loading bookings...");
     expect(html).toContain(merchantEmptyMessages.calendarDay);
     expect(html).toContain('data-testid="calendar-day-empty"');
+  });
+
+  it("wires the empty region label to MerchantEmptyState messageId", () => {
+    const source = readFileSync("app/(app)/calendar/day-view.tsx", "utf8");
+    expect(source).toContain('messageId="calendar-day-empty-message"');
+    expect(source).toContain('aria-labelledby="calendar-day-empty-message"');
   });
 });
 
