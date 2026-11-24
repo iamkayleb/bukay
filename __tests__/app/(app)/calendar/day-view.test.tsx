@@ -9,6 +9,7 @@ import { renderDayViewHtml } from "../helpers/render-day-view";
 import {
   calendarAddBookingHref,
   merchantEmptyActions,
+  merchantEmptyCalendarDayHeadline,
   merchantEmptyMessages,
 } from "@/app/(app)/merchant-empty-copy";
 
@@ -23,7 +24,7 @@ describe("DayView empty day", () => {
   it("issue #556: empty chosen date shows copy and link to add a booking", async () => {
     const html = await renderDayViewHtml([]);
 
-    expect(html).toContain("No bookings on this date");
+    expect(html).toContain(merchantEmptyCalendarDayHeadline);
     expect(html).toContain('data-testid="calendar-day-empty"');
     expect(html).toContain(`href="${TEST_DAY_ADD_HREF}"`);
     expect(html).toContain(merchantEmptyActions.calendarAddBooking);
@@ -35,7 +36,7 @@ describe("DayView empty day", () => {
 
     expect(html).not.toContain("Loading bookings...");
     expect(html).toContain(merchantEmptyMessages.calendarDay);
-    expect(html).toContain("No bookings on this date");
+    expect(html).toContain(merchantEmptyCalendarDayHeadline);
     expect(html).toContain(`href="${TEST_DAY_ADD_HREF}"`);
     expect(html).toContain(merchantEmptyActions.calendarAddBooking);
     expect(html).toContain('role="region"');

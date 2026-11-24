@@ -1,6 +1,9 @@
+/** Issue #556 PR task 1 headline (full UI copy includes trailing punctuation in `calendarDay`). */
+export const merchantEmptyCalendarDayHeadline = "No bookings on this date" as const;
+
 /** Merchant-screen empty-state copy for #556 — keep in sync with empty-states tests. */
 export const merchantEmptyMessages = {
-  calendarDay: "No bookings on this date.",
+  calendarDay: `${merchantEmptyCalendarDayHeadline}.`,
   services: "No services yet — add your first so customers can book.",
   clients: "No clients yet — they appear here after their first booking.",
   payments: "No payments yet.",

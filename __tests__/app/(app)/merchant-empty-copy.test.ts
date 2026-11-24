@@ -4,6 +4,7 @@ import {
   calendarAddBookingHref,
   merchantEmptyActionLinkClassName,
   merchantEmptyActions,
+  merchantEmptyCalendarDayHeadline,
   merchantEmptyHrefs,
   merchantEmptyMessages,
   MERCHANT_EMPTY_COPY,
@@ -11,7 +12,7 @@ import {
 
 describe("merchant empty copy (#556)", () => {
   it("pins calendar day empty message with add-booking navigation", () => {
-    expect(merchantEmptyMessages.calendarDay).toBe("No bookings on this date.");
+    expect(merchantEmptyMessages.calendarDay).toBe(`${merchantEmptyCalendarDayHeadline}.`);
     expect(merchantEmptyActions.calendarAddBooking).toBe("Add a booking");
     expect(merchantEmptyHrefs.calendarAddBooking).toBe("#new-booking");
     expect(calendarAddBookingHref("2026-10-04")).toBe("?date=2026-10-04#new-booking");
@@ -45,7 +46,7 @@ describe("merchant empty copy (#556)", () => {
   });
 
   it("matches PR #556 task wording for each merchant empty screen", () => {
-    expect(merchantEmptyMessages.calendarDay).toContain("No bookings on this date");
+    expect(merchantEmptyMessages.calendarDay).toContain(merchantEmptyCalendarDayHeadline);
     expect(merchantEmptyActions.calendarAddBooking.length).toBeGreaterThan(0);
     expect(merchantEmptyMessages.services).toContain(
       "No services yet — add your first so customers can book"

@@ -1,16 +1,15 @@
 ## Keepalive round summary
 
-Verified issue #556 merchant empty states end-to-end on branch `cursor/issue-556`.
+Verified issue #556 merchant empty states on branch `cursor/issue-556`.
 
 ### Verification
 
 - `pnpm test:issue-556:pr-task-1` — calendar day empty state (task 1)
-- `pnpm verify:issue-556:quick` — 89 merchant-empty tests + grep for legacy copy
+- `pnpm verify:issue-556:quick` — merchant-empty bundle + legacy copy grep
 - `pnpm build` — production build succeeded
-- `pnpm vitest run` — 552 tests passed
-- `grep -rn "Nothing here yet" app/` — no matches
+- `pnpm vitest run` — 553 tests passed
 
-### Implementation (already on branch)
+### Implementation
 
 | Screen | Message | Location |
 |--------|---------|----------|
@@ -20,8 +19,6 @@ Verified issue #556 merchant empty states end-to-end on branch `cursor/issue-556
 | Payments | No payments yet. | `payments-list.tsx` |
 | Today | No appointments yet. + `/calendar` link | `today/data.tsx` |
 
-Real-DB coverage: `issue-556-real-db.test.tsx` (empty + demo tenant).
-
 ### Commit
 
-- Pinned PR tasks 1–6 to `test:merchant-empty-states` in `issue-556-acceptance.test.ts`.
+- Centralized PR task 1 headline as `merchantEmptyCalendarDayHeadline` in `merchant-empty-copy.ts`.
