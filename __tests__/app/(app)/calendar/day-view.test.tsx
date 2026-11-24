@@ -38,6 +38,13 @@ describe("PR task 1 — calendar day empty state", () => {
     expect(html).toContain(merchantEmptyActions.calendarAddBooking);
     expect(html).not.toContain('aria-label="Day bookings"');
   });
+
+  it("links add-booking to the in-page new-booking anchor for the chosen day", async () => {
+    const html = await renderDayViewHtml([]);
+
+    expect(TEST_DAY_ADD_HREF).toContain("#new-booking");
+    expect(html).toContain(`href="${TEST_DAY_ADD_HREF}"`);
+  });
 });
 
 describe("DayView empty day", () => {
