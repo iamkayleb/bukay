@@ -333,6 +333,17 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(gate).toContain("issue #556");
   });
 
+  it("PR task 1: verify script chains unit and real-db calendar empty-state gates", () => {
+    const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts as Record<
+      string,
+      string
+    >;
+    const verify = scripts["verify:issue-556:pr-task-1"];
+    expect(verify).toContain("test:issue-556:pr-task-1");
+    expect(verify).toContain("issue-556-real-db.test.tsx");
+    expect(verify).toContain("task 1");
+  });
+
   it("acceptance: package exposes build + vitest and acceptance-criteria vitest gates", () => {
     const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts as Record<
       string,
