@@ -21,6 +21,7 @@ import {
   CLIENT_MERCHANT_EMPTY_SCREENS,
   MERCHANT_EMPTY_COPY,
   merchantEmptyActions,
+  merchantEmptyCalendarDayHeadline,
   merchantEmptyHrefs,
   merchantEmptyMessages,
   SERVER_MERCHANT_EMPTY_SCREENS,
@@ -146,6 +147,9 @@ describe("merchant empty states", () => {
 
     expect(calendarHtml).toContain(`href="${calendarAddBookingHref("2026-10-04")}"`);
     expect(calendarHtml).toContain(merchantEmptyActions.calendarAddBooking);
+    expect(calendarHtml).toContain(
+      `data-merchant-empty-headline="${merchantEmptyCalendarDayHeadline}"`
+    );
     expect(calendarHtml).not.toContain('aria-label="Day bookings"');
     expect(todayHtml).toContain('data-testid="today-calendar-link"');
     expect(todayHtml).toContain(`href="${merchantEmptyHrefs.todayCalendar}"`);
