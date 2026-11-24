@@ -152,6 +152,7 @@ describe("merchant empty states", () => {
       `data-merchant-empty-headline="${merchantEmptyCalendarDayHeadline}"`
     );
     expect(calendarHtml).toContain('aria-labelledby="calendar-day-empty-message"');
+    expect(calendarHtml).toContain('id="calendar-day-empty-message"');
     expect(calendarHtml).not.toContain('aria-label="Day bookings"');
     expect(todayHtml).toContain('data-testid="today-calendar-link"');
     expect(todayHtml).toContain(`href="${merchantEmptyHrefs.todayCalendar}"`);

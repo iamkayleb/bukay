@@ -1,20 +1,24 @@
 ## Keepalive round summary (issue #556)
 
-### Task 1 — calendar day-view empty state
+### Tasks 1–6
 
-**Status:** Verified complete.
+**Status:** Verified complete (no app changes required this round).
 
-`app/(app)/calendar/day-view.tsx` already renders `MerchantEmptyState` when `bookings.length === 0` (after load): copy **"No bookings on this date."** via `merchantEmptyMessages.calendarDay`, plus **Add a booking** linking to `calendarAddBookingHref(date)` (`?date=YYYY-MM-DD#new-booking`) with `dispatchCalendarBookingDate` on click.
+| Task | Verification |
+|------|----------------|
+| 1 Calendar day-view empty state + add-booking link | `pnpm verify:issue-556:pr-task-1`, `issue-556-task-checklist.test.ts` task 1, `issue-556-real-db.test.tsx` task 1 |
+| 2 Services empty copy above form | task checklist + `empty-states.test.tsx` |
+| 3 Clients empty copy on page | task checklist + real-db clients test |
+| 4 Payments empty copy | task checklist + `payments-list.test.tsx` |
+| 5 Today → `/calendar` link | task checklist + `today/page.test.tsx` |
+| 6 Five-screen integration test | `empty-states.test.tsx` “renders each page…” |
 
-### Verification run
+### Acceptance criteria
 
-- `pnpm verify:issue-556:pr-task-1` — pass
-- `pnpm verify:issue-556:pr-complete` — pass (`pnpm build`, 584 vitest tests, acceptance + real-db)
+- `pnpm verify:issue-556:pr-complete` — **pass** (`pnpm build`, 584 vitest tests, grep clean)
+- Real SQLite empty + demo tenants — `issue-556-real-db.test.tsx` (4/4)
+- Legacy `Nothing here yet` — absent under `app/`
 
 ### This round
 
-- Tightened task 6 integration test in `empty-states.test.tsx` to assert calendar headline, `aria-labelledby`, and add-booking link for empty tenant.
-
-### PR tasks 2–6 and acceptance criteria
-
-All six implementation tasks and five acceptance criteria were re-verified via `issue-556-task-checklist.test.ts`, `issue-556-real-db.test.tsx`, `issue-556-acceptance.test.ts`, and `empty-states.test.tsx` (included in `verify:issue-556:pr-complete`).
+- Asserted `id="calendar-day-empty-message"` in the five-screen `empty-states` integration test (matches day-view + real-db).
