@@ -28,6 +28,7 @@ describe("PR task 1 — calendar day empty state", () => {
     const html = await renderDayViewHtml([]);
 
     expect(html).toContain("No bookings on this date");
+    expect(html).not.toContain("No bookings for this date");
     expect(html).toContain(merchantEmptyMessages.calendarDay);
     expect(html).toContain(
       `data-merchant-empty-headline="${merchantEmptyCalendarDayHeadline}"`
