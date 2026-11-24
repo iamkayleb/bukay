@@ -9,6 +9,7 @@ import { renderDayViewHtml } from "../helpers/render-day-view";
 import {
   calendarAddBookingHref,
   CALENDAR_BOOKING_DATE_EVENT,
+  merchantEmptyActionLinkClassName,
   merchantEmptyActions,
   merchantEmptyCalendarDayHeadline,
   merchantEmptyMessages,
@@ -44,6 +45,16 @@ describe("PR task 1 — calendar day empty state", () => {
 
     expect(TEST_DAY_ADD_HREF).toContain("#new-booking");
     expect(html).toContain(`href="${TEST_DAY_ADD_HREF}"`);
+  });
+
+  it("styles the add-booking link with shared merchant empty-state action classes", async () => {
+    const html = await renderDayViewHtml([]);
+
+    const linkStart = html.indexOf('data-testid="calendar-add-booking-link"');
+    expect(linkStart).toBeGreaterThan(-1);
+    const linkTag = html.slice(Math.max(0, linkStart - 220), linkStart + 80);
+    expect(linkTag).toContain(merchantEmptyActionLinkClassName);
+    expect(linkTag).toContain('data-testid="calendar-add-booking-link"');
   });
 
   it("shows empty guidance only after the live region finishes loading", async () => {
