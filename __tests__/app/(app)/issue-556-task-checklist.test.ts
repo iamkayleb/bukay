@@ -80,6 +80,11 @@ describe("issue #556 PR task checklist", () => {
     expect(html).not.toContain("Loading bookings...");
     expect(html).not.toContain("Nothing here yet");
     expect(html).not.toContain('aria-label="Day bookings"');
+
+    const messagePos = html.indexOf(merchantEmptyMessages.calendarDay);
+    const linkPos = html.indexOf('data-testid="calendar-add-booking-link"');
+    expect(messagePos).toBeGreaterThan(-1);
+    expect(linkPos).toBeGreaterThan(messagePos);
   });
 
   it("task 2: services list shows empty copy above the create form on the page", async () => {
