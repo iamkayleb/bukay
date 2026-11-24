@@ -152,7 +152,6 @@ export function DayView({ tenantId, timeZone }: { tenantId: string | null; timeZ
         ) : error ? (
           <p role="alert">{error}</p>
         ) : bookings.length === 0 ? (
-          // Issue #556 task 1: chosen day with zero bookings — not loading, not an error.
           <div
             role="region"
             aria-labelledby="calendar-day-empty-message"

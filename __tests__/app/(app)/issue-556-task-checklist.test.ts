@@ -85,6 +85,7 @@ describe("issue #556 PR task checklist", () => {
   it("task 1: calendar day-view shows no-bookings copy and add-booking link", async () => {
     const html = await renderDayViewHtml([], { date: calendarDay });
 
+    expect(html).toContain("No bookings on this date");
     expect(html).toContain(merchantEmptyCalendarDayHeadline);
     expect(html).toContain(merchantEmptyMessages.calendarDay);
     expect(html).toContain(`href="${calendarAddBookingHref(calendarDay)}"`);
