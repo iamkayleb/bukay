@@ -141,7 +141,9 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(source).toContain("calendar-add-booking-link");
     expect(source).toContain("calendarAddBookingHref");
     expect(source).toContain("MerchantEmptyState");
+    expect(source).toContain("dispatchCalendarBookingDate");
     expect(merchantEmptyMessages.calendarDay).toContain(merchantEmptyCalendarDayHeadline);
+    expect(merchantEmptyCalendarDayHeadline).toBe("No bookings on this date");
     expect(source).not.toContain("No bookings for this date");
   });
 

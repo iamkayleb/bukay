@@ -1,13 +1,14 @@
 ## Keepalive round summary (PR #567 / issue #556)
 
-Re-verified the full merchant empty-state scope on `cursor/issue-556`:
+**Task 1 (calendar day-view)** — already implemented in `day-view.tsx` via `MerchantEmptyState`, showing **No bookings on this date.** and an **Add a booking** link (`?date=…#new-booking`) that dispatches the selected day to `NewBookingForm`.
 
-- `pnpm verify:issue-556:pr-task-1` — calendar day empty copy + add-booking link
-- `pnpm verify:issue-556:pr-tasks-1-6` — all six implementation tasks
-- `pnpm verify:issue-556:pr-complete` — task gates + acceptance gate
-- `pnpm build` and `pnpm vitest run` — 559 tests passed
+Re-verified on this round:
+
+- `pnpm verify:issue-556:pr-task-1`
+- `pnpm verify:issue-556:pr-complete`
+- `pnpm build` and `pnpm vitest run` (560 tests)
 - `grep -rn "Nothing here yet" app/` — no matches
 
-Added a PR task 3 guard asserting `clients/page.tsx` composes `ClientsList` for the empty-state region.
+Added a PR task 1 guard that `day-view.tsx` calls `dispatchCalendarBookingDate` on the add-booking link and pins the issue #556 headline string.
 
-All six implementation tasks and five acceptance criteria are satisfied.
+All six implementation tasks and five acceptance criteria remain satisfied.
