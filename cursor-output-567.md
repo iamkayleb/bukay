@@ -8,8 +8,8 @@ Verified on branch `cursor/issue-556`. When the chosen date has zero bookings (a
 
 | Command | Result |
 |---------|--------|
+| `pnpm verify:issue-556:keepalive` | full PR gate (build + tasks 1–6 + acceptance) |
 | `pnpm test:issue-556:pr-task-1` | 14 passed (day-view) |
-| `pnpm verify:issue-556:pr-tasks-1-6` | PR tasks 1–6 + empty-states regression |
 | `pnpm test:merchant-empty-states` | 102 passed |
 | `pnpm build` | success |
 | `pnpm vitest run` | 565 passed |

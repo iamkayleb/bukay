@@ -426,6 +426,14 @@ describe("issue #556 acceptance (vitest)", () => {
     );
   });
 
+  it("acceptance: keepalive gate aliases full PR completion verifier", () => {
+    const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts as Record<
+      string,
+      string
+    >;
+    expect(scripts["verify:issue-556:keepalive"]).toBe("pnpm verify:issue-556:pr-complete");
+  });
+
   it("acceptance: package exposes build + vitest and acceptance-criteria vitest gates", () => {
     const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts as Record<
       string,

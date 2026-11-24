@@ -72,7 +72,7 @@ The PR is complete when ALL of these are satisfied:
 - [x] `grep -rn "Nothing here yet" app/` returns nothing, confirming the old placeholder wording is gone.
 
 ### Suggested Next Task
-- None — all PR tasks and acceptance criteria verified locally (`pnpm verify:issue-556:pr-complete`).
+- None — all PR tasks and acceptance criteria verified locally (`pnpm verify:issue-556:keepalive`).
 
 ### Source Context
 _For additional background, check these linked issues/PRs:_
@@ -87,7 +87,7 @@ Source: https://github.com/iamkayleb/bukay/issues/556
 
 **Progress:** 11/11 complete (6 PR tasks + 5 acceptance criteria).
 
-All five merchant empty states ship via `MerchantEmptyState` + `merchant-empty-copy.ts`. Calendar day empty state shows **No bookings on this date** with an **Add a booking** link (`#new-booking` + chosen date). Verified: `pnpm build`, `pnpm vitest run` (565 tests), `pnpm test:merchant-empty-states` (102 tests), `pnpm verify:issue-556:pr-complete`.
+All five merchant empty states ship via `MerchantEmptyState` + `merchant-empty-copy.ts`. Calendar day empty state shows **No bookings on this date** with an **Add a booking** link (`#new-booking` + chosen date). Verified: `pnpm build`, `pnpm vitest run` (565 tests), `pnpm test:merchant-empty-states`, `pnpm verify:issue-556:keepalive`.
 
 <!-- auto-status-summary:end -->
 
