@@ -290,6 +290,16 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(gate.indexOf("pnpm build")).toBeLessThan(gate.indexOf("pnpm vitest run"));
   });
 
+  it("PR task 1: package exposes a focused calendar day empty-state vitest gate", () => {
+    const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts as Record<
+      string,
+      string
+    >;
+    const gate = scripts["test:issue-556:pr-task-1"];
+    expect(gate).toContain("day-view.test.tsx");
+    expect(gate).toContain("issue #556");
+  });
+
   it("PR tasks 1–5: each merchant screen wires MerchantEmptyState through merchant-empty-copy", () => {
     const screenSources: Record<string, string> = {
       calendarDay: "app/(app)/calendar/day-view.tsx",
