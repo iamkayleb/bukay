@@ -17,6 +17,7 @@ import { ServicesList } from "@/app/(app)/services/services-list";
 import { TodaySchedule } from "@/app/(app)/today/data";
 import {
   calendarAddBookingHref,
+  CLIENT_MERCHANT_EMPTY_SCREENS,
   merchantEmptyActions,
   merchantEmptyCalendarDayHeadline,
   merchantEmptyHrefs,
@@ -133,6 +134,11 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(html).toContain('data-testid="today-calendar-link"');
     expect(html).toContain(`href="${merchantEmptyHrefs.todayCalendar}"`);
     expect(html).toContain(merchantEmptyActions.todayAddOnCalendar);
+  });
+
+  it("PR task 1: calendar day view is the sole client-fetched merchant empty surface", () => {
+    expect(CLIENT_MERCHANT_EMPTY_SCREENS).toEqual(["calendarDay"]);
+    expect(merchantEmptyMessages.calendarDay).toContain(merchantEmptyCalendarDayHeadline);
   });
 
   it("PR task 1: day-view source wires calendar empty copy and add-booking link", () => {

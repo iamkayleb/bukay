@@ -72,7 +72,7 @@ The PR is complete when ALL of these are satisfied:
 - [x] `grep -rn "Nothing here yet" app/` returns nothing, confirming the old placeholder wording is gone.
 
 ### Suggested Next Task
-- Check off the same tasks on PR #567’s auto-status-summary (GitHub PR body) so keepalive progress matches verified local gates; then request review/merge when CI is green.
+- Sync auto-status-summary on the GitHub PR body with verified 11/11 progress; request review/merge when CI is green.
 
 ### Source Context
 _For additional background, check these linked issues/PRs:_
@@ -89,20 +89,18 @@ Source: https://github.com/iamkayleb/bukay/issues/556
 
 ### Tasks
 - [x] Calendar day view empty date → "No bookings on this date" + add-booking link
-- [x] Services list empty → services copy above create form
-- [x] Clients page empty → clients guidance copy
+- [x] Services list empty tenant → services copy above create form
+- [x] Clients page empty tenant → clients guidance copy
 - [x] Payments list empty → "No payments yet"
-- [x] Today schedule empty → "No appointments yet" + `/calendar` link
-- [x] `empty-states.test.tsx` bundle for empty tenant
+- [x] Today schedule empty → appointments copy + link to `/calendar`
+- [x] `empty-states.test.tsx` regression bundle for all five screens
 
 ### Acceptance
-- [x] `pnpm build` and `pnpm vitest run` pass locally (563 tests)
-- [x] Real SQLite empty tenant renders all five messages (`issue-556-real-db.test.tsx`)
-- [x] Demo seed tenant shows no empty copy
-- [x] Clients page shows post-booking guidance for empty tenant
-- [x] No `Nothing here yet` under `app/`
-
-<!-- auto-status-summary:end -->
+- [x] Build + vitest green locally
+- [x] Real-db empty tenant shows all five messages
+- [x] Demo tenant hides empty copy
+- [x] Clients page merchant story (no blank page)
+- [x] Legacy "Nothing here yet" removed from `app/`
 
 ---
 
