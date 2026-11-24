@@ -81,6 +81,7 @@ describe("issue #556 PR task checklist", () => {
       `data-merchant-empty-headline="${merchantEmptyCalendarDayHeadline}"`
     );
     expect(html).toContain('data-testid="calendar-add-booking-link"');
+    expect(html).toContain('aria-busy="false"');
     expect(html).not.toContain("Loading bookings...");
     expect(html).not.toContain("Nothing here yet");
     expect(html).not.toContain('aria-label="Day bookings"');
