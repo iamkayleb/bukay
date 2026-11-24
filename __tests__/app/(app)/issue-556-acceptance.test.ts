@@ -279,6 +279,7 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(gate).toContain("test:merchant-empty-states");
     expect(gate).toContain("pnpm vitest run");
     expect(gate).toMatch(/Nothing here yet/);
+    expect(gate.indexOf("pnpm build")).toBeLessThan(gate.indexOf("pnpm vitest run"));
   });
 
   it("PR tasks 1–5: each merchant screen wires MerchantEmptyState through merchant-empty-copy", () => {
