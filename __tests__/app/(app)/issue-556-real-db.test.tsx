@@ -24,6 +24,7 @@ import {
   MERCHANT_EMPTY_COPY,
   calendarAddBookingHref,
   merchantEmptyActions,
+  merchantEmptyCalendarDayHeadline,
   merchantEmptyHrefs,
   merchantEmptyMessages,
 } from "@/app/(app)/merchant-empty-copy";
@@ -124,6 +125,9 @@ describe("issue #556 against real SQLite (empty tenant)", () => {
 
     expect(calendarHtml).toContain("No bookings on this date");
     expect(calendarHtml).toContain(merchantEmptyMessages.calendarDay);
+    expect(calendarHtml).toContain(
+      `data-merchant-empty-headline="${merchantEmptyCalendarDayHeadline}"`
+    );
     expect(calendarHtml).toContain(`href="${calendarAddBookingHref(emptyCalendarDate)}"`);
     expect(calendarHtml).toContain(merchantEmptyActions.calendarAddBooking);
     expect(calendarHtml).toContain('data-testid="calendar-add-booking-link"');
