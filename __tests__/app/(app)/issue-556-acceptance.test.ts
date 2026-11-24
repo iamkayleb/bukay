@@ -195,6 +195,15 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(html).toContain('role="status"');
   });
 
+  it("PR task 1: settled empty day sets aria-busy false before showing guidance", async () => {
+    const html = await renderDayViewHtml([]);
+
+    expect(html).toContain('aria-live="polite"');
+    expect(html).toContain('aria-busy="false"');
+    expect(html).not.toContain("Loading bookings...");
+    expect(html).toContain(merchantEmptyMessages.calendarDay);
+  });
+
   it("PR task 1: day-view removed legacy SectionPlaceholder copy", () => {
     const source = readFileSync("app/(app)/calendar/day-view.tsx", "utf8");
     expect(source).not.toContain("SectionPlaceholder");
