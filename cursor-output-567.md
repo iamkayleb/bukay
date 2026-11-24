@@ -1,11 +1,21 @@
-## Keepalive round summary (issue #556)
+# Keepalive round — PR #567 / issue #556
 
-### Verified this round
-- **Task 1** (`day-view.tsx`): empty chosen day shows `No bookings on this date` with add-booking link; `pnpm verify:issue-556:pr-task-1` passes.
-- **Tasks 2–6** and **all acceptance criteria**: `pnpm verify:issue-556:keepalive` passes (`pnpm build`, 579 vitest tests, real-db empty/demo tenant, no `Nothing here yet` in `app/`).
+## Task 1 (calendar day-view)
 
-### Source change
-- `issue-556-task-checklist.test.ts`: assert `verify:issue-556:*` scripts chain build, acceptance-criteria tests, and full vitest for the build+test AC.
+- **Requirement:** Empty chosen date → "No bookings on this date" + link to add a booking.
+- **Implementation:** `app/(app)/calendar/day-view.tsx` uses `MerchantEmptyState` with `merchantEmptyMessages.calendarDay` and `calendarAddBookingHref(date)`.
+- **Verification:** `pnpm run verify:issue-556:pr-task-1`, `issue-556-task-checklist` task 1, `day-view.test.tsx`, `empty-states.test.tsx`, `issue-556-real-db` task 1.
 
-### Progress
-**11/11** tasks and acceptance checkboxes marked complete in `cursor-prompt-567.md`.
+## Full PR gate (this round)
+
+| Check | Result |
+|-------|--------|
+| `pnpm build` | pass |
+| `pnpm vitest run` | 90 files, 580 tests pass |
+| `pnpm run verify:issue-556:pr-tasks-1-6` | pass |
+| `grep -rn "Nothing here yet" app/` | no matches |
+
+## Commit
+
+- Added source-contract test for task 1 in `issue-556-task-checklist.test.ts`.
+- Updated `cursor-prompt-567.md` checkboxes to 11/11 complete.

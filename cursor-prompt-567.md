@@ -72,7 +72,7 @@ The PR is complete when ALL of these are satisfied:
 - [x] `grep -rn "Nothing here yet" app/` returns nothing, confirming the old placeholder wording is gone.
 
 ### Suggested Next Task
-- All PR tasks verified locally (`pnpm verify:issue-556:keepalive`). Await CI / merge gate.
+- All PR tasks verified locally (`pnpm verify:issue-556:pr-complete`).
 
 ### Source Context
 _For additional background, check these linked issues/PRs:_
@@ -83,6 +83,12 @@ Head: cursor/issue-556
 Source: https://github.com/iamkayleb/bukay/issues/556
 
 <!-- auto-status-summary:start -->
+## Automated Status Summary
+
+- **Progress:** 11/11 tasks complete (issue #556 merchant empty states).
+- **Verified:** `pnpm build`, `pnpm vitest run` (580 tests), `pnpm verify:issue-556:pr-tasks-1-6`, real-db suite (`issue-556-real-db.test.tsx`).
+- **Task 1:** `day-view.tsx` shows `No bookings on this date.` plus `Add a booking` link to `?date=…#new-booking` when the chosen day has zero bookings (not while loading).
+<!-- auto-status-summary:end -->
 
 ---
 

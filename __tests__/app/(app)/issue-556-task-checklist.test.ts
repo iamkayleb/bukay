@@ -70,6 +70,15 @@ describe("issue #556 PR task checklist", () => {
   const now = new Date("2026-10-04T12:00:00.000Z");
   const calendarDay = "2026-10-04";
 
+  it("task 1: day-view.tsx wires MerchantEmptyState and add-booking link", () => {
+    const source = readFileSync("app/(app)/calendar/day-view.tsx", "utf8");
+    expect(source).toContain("MerchantEmptyState");
+    expect(source).toContain("merchantEmptyMessages.calendarDay");
+    expect(source).toContain("calendarAddBookingHref");
+    expect(source).toContain('data-testid="calendar-day-empty"');
+    expect(source).toContain('data-testid="calendar-add-booking-link"');
+  });
+
   it("task 1: calendar day-view shows no-bookings copy and add-booking link", async () => {
     const html = await renderDayViewHtml([], { date: calendarDay });
 
