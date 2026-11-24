@@ -72,7 +72,7 @@ The PR is complete when ALL of these are satisfied:
 - [x] `grep -rn "Nothing here yet" app/` returns nothing, confirming the old placeholder wording is gone.
 
 ### Suggested Next Task
-- None — all PR tasks and acceptance criteria verified via `pnpm verify:issue-556:acceptance-gate`.
+- Check off the same tasks on PR #567’s auto-status-summary (GitHub PR body) so keepalive progress matches verified local gates; then request review/merge when CI is green.
 
 ### Source Context
 _For additional background, check these linked issues/PRs:_

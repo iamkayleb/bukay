@@ -1,27 +1,12 @@
-# Keepalive round 567 — issue #556
+## Verification (issue #556, PR #567)
 
-## Summary
+Ran locally on `cursor/issue-556`:
 
-Verified **PR task 1**: `DayView` shows **No bookings on this date** with an **Add a booking** link when the chosen day has no bookings (`data-merchant-empty-headline`, `aria-labelledby`, real-db gate).
+- `pnpm verify:issue-556:pr-task-1` — pass
+- `pnpm verify:issue-556:pr-tasks-1-6` — pass
+- `pnpm verify:issue-556:acceptance-gate` — pass (`pnpm build`, acceptance vitest, `empty-states`, legacy grep)
+- `pnpm vitest run` — 561 tests pass
 
-## This round
+Task 1 (`day-view.tsx`): empty chosen date shows **No bookings on this date.** via `MerchantEmptyState`, `data-testid="calendar-day-empty"`, and add-booking link to `?date=…#new-booking`.
 
-- Re-verified task 1 with `pnpm verify:issue-556:pr-task-1`, `pnpm verify:issue-556:acceptance-gate`, `pnpm build`, and `pnpm vitest run` (560 tests).
-- Added acceptance regression that calendar `day-view.tsx` no longer references legacy `SectionPlaceholder` / "Nothing here yet" copy.
-
-## Completed tasks
-
-✅ Completed: In `app/(app)/calendar/day-view.tsx`, when the chosen date has no bookings, show "No bookings on this date" with a link to add one.
-✅ Completed: In `app/(app)/services/services-list.tsx`, when the tenant has no services, show "No services yet — add your first so customers can book" above the create form.
-✅ Completed: In `app/(app)/clients/page.tsx`, when the tenant has no clients, show "No clients yet — they appear here after their first booking".
-✅ Completed: In `app/(app)/payments/payments-list.tsx`, when there are no payments, show "No payments yet" once that file exists.
-✅ Completed: In `app/(app)/today/data.tsx`, keep the existing "No appointments yet" message and link it to `/calendar` so the merchant can add one.
-✅ Completed: Add `__tests__/app/(app)/empty-states.test.tsx` rendering each page with an empty tenant and asserting each message appears.
-
-## Acceptance criteria
-
-✅ `pnpm build` and `pnpm vitest run` pass.
-✅ Real-db empty tenant renders all five merchant messages (`issue-556-real-db.test.tsx`).
-✅ Demo tenant does not show empty copy when seeded data exists.
-✅ Clients page guidance verified for empty tenant.
-✅ No `Nothing here yet` under `app/`.
+**Follow-up:** PR #567 auto-status-summary still has unchecked task boxes; implementation and tests are complete — check off tasks and acceptance criteria on the PR body after this commit lands (auto-reconcile may match `day-view` / `empty-states` paths).

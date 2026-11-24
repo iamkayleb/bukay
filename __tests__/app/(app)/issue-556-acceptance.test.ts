@@ -151,6 +151,15 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(source).not.toContain("No bookings for this date");
   });
 
+  it("PR task 1: calendar empty day matches issue task copy and add-booking link", async () => {
+    const html = await renderDayViewHtml([]);
+
+    expect(html).toContain("No bookings on this date");
+    expect(html).toContain('data-testid="calendar-add-booking-link"');
+    expect(html).toContain(`>${merchantEmptyActions.calendarAddBooking}<`);
+    expect(html).toContain(`href="${calendarAddBookingHref("2026-10-04")}"`);
+  });
+
   it("PR task 1: day-view shows empty-day copy and add-booking link when the date has no bookings", async () => {
     const html = await renderDayViewHtml([]);
 
