@@ -136,6 +136,7 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(source).toContain("calendarAddBookingHref");
     expect(source).toContain("MerchantEmptyState");
     expect(merchantEmptyMessages.calendarDay).toContain(merchantEmptyCalendarDayHeadline);
+    expect(source).not.toContain("No bookings for this date");
   });
 
   it("PR task 1: day-view shows empty-day copy and add-booking link when the date has no bookings", async () => {

@@ -1,10 +1,10 @@
 ## Round summary
 
-Verified issue #556 merchant empty states (tasks 1–6 and acceptance criteria).
+Verified issue #556 PR task 1 (calendar day empty state) and full merchant empty-state suite.
 
-- `pnpm build`, `pnpm vitest run`, `pnpm test:merchant-empty-states`, and `pnpm verify:issue-556:pr-tasks-1-6` all pass locally.
-- Calendar day view shows `No bookings on this date` with an add-booking link (`#new-booking` + chosen date).
-- CI merchant-empty step now also runs `pnpm verify:issue-556:pr-tasks-1-6`.
+- `pnpm verify:issue-556:pr-task-1`, `pnpm verify:issue-556:pr-tasks-1-6`, `pnpm test:merchant-empty-states`, `pnpm build`, and `pnpm vitest run` (557 tests) pass locally.
+- `DayView` shows **No bookings on this date.** with an add-booking link (`?date=…#new-booking` when a date is chosen).
+- Added acceptance regression: legacy `No bookings for this date` copy must not return in `day-view.tsx`.
 
 ✅ Completed: In `app/(app)/calendar/day-view.tsx`, when the chosen date has no bookings, show "No bookings on this date" with a link to add one.
 ✅ Completed: In `app/(app)/services/services-list.tsx`, when the tenant has no services, show "No services yet — add your first so customers can book" above the create form.
