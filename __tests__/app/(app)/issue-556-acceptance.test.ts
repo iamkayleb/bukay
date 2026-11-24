@@ -329,5 +329,10 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(suite).toContain("merchantEmptyMessages.services");
     expect(suite).toContain("merchantEmptyMessages.payments");
     expect(suite).toContain("merchantEmptyMessages.today");
+    expect(suite).toContain("renderDayViewHtml");
+    expect(suite).toContain("ClientsPage");
+    expect(suite).toContain("ServicesPage");
+    expect(suite).toContain("PaymentsPage");
+    expect(suite).toContain("TodaySchedule");
   });
 });
