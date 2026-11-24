@@ -86,7 +86,7 @@ Source: https://github.com/iamkayleb/bukay/issues/556
 ## Automated Status Summary
 
 - **Progress:** 11/11 tasks complete (issue #556 merchant empty states).
-- **Verified:** `pnpm build`, `pnpm vitest run` (581 tests), `pnpm verify:issue-556:pr-tasks-1-6`, `issue-556-real-db.test.tsx`.
+- **Verified:** `pnpm build`, `pnpm vitest run` (581 tests), `pnpm verify:issue-556:acceptance-gate`, `issue-556-real-db.test.tsx`.
 - **Task 1:** `day-view.tsx` shows `No bookings on this date.` plus `Add a booking` → `?date=…#new-booking` when the chosen day has zero bookings (not while loading).
 <!-- auto-status-summary:end -->
 

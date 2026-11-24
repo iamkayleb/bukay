@@ -251,4 +251,14 @@ describe("issue #556 PR task checklist", () => {
     expect(prComplete).toContain("pnpm vitest run");
     expect(scripts["verify:issue-556:keepalive"]).toBe("pnpm verify:issue-556:pr-complete");
   });
+
+  it("task 1: verify:issue-556:pr-task-1 pins calendar day-view regression tests", () => {
+    const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts as Record<
+      string,
+      string
+    >;
+    expect(scripts["test:issue-556:pr-task-1"]).toContain("day-view.test.tsx");
+    expect(scripts["verify:issue-556:pr-task-1"]).toContain("test:issue-556:pr-task-1");
+    expect(scripts["verify:issue-556:pr-task-1"]).toContain("issue-556-real-db.test.tsx");
+  });
 });

@@ -6,6 +6,7 @@
 |------|--------|
 | `pnpm build` | pass |
 | `pnpm vitest run` | 90 files, 581 tests pass |
+| `pnpm verify:issue-556:acceptance-gate` | pass |
 | `pnpm verify:issue-556:pr-tasks-1-6` | pass |
 | `grep -rn "Nothing here yet" app/` | no matches |
 
@@ -19,5 +20,5 @@ All six implementation tasks and five acceptance criteria verified locally (incl
 
 ## Commit
 
-- Tighten task 1 source-contract assertions in `issue-556-task-checklist.test.ts`.
+- Pin `verify:issue-556:pr-task-1` script contract in `issue-556-task-checklist.test.ts`.
 - Mark all PR task / AC checkboxes in `cursor-prompt-567.md`.
