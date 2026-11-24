@@ -344,6 +344,18 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(verify).toContain("task 1");
   });
 
+  it("PR tasks 1–6: package exposes a single vitest gate for implementation tasks", () => {
+    const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts as Record<
+      string,
+      string
+    >;
+    const gate = scripts["verify:issue-556:pr-tasks-1-6"];
+    expect(gate).toContain("issue-556-acceptance.test.ts");
+    expect(gate).toContain("PR task");
+    expect(gate).toContain("empty-states.test.tsx");
+    expect(gate).toContain("renders each page with an empty tenant");
+  });
+
   it("acceptance: package exposes build + vitest and acceptance-criteria vitest gates", () => {
     const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts as Record<
       string,
