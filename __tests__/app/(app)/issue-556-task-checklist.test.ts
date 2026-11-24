@@ -77,6 +77,9 @@ describe("issue #556 PR task checklist", () => {
     expect(html).toContain(`href="${calendarAddBookingHref(calendarDay)}"`);
     expect(html).toContain(merchantEmptyActions.calendarAddBooking);
     expect(html).toContain('data-testid="calendar-add-booking-link"');
+    expect(html).not.toContain("Loading bookings...");
+    expect(html).not.toContain("Nothing here yet");
+    expect(html).not.toContain('aria-label="Day bookings"');
   });
 
   it("task 2: services list shows empty copy above the create form on the page", async () => {
