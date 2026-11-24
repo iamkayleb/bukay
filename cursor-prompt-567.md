@@ -87,7 +87,7 @@ Source: https://github.com/iamkayleb/bukay/issues/556
 
 **Progress:** 11/11 tasks complete, 0 remaining
 
-Verified with `pnpm verify:issue-556:pr-task-1`, `pnpm verify:issue-556:quick`, `pnpm build`, and `pnpm vitest run` (553 tests).
+Verified with `pnpm verify:issue-556:pr-task-1`, `pnpm verify:issue-556:acceptance-gate`, `pnpm verify:issue-556`, `pnpm build`, and `pnpm vitest run` (553 tests).
 <!-- auto-status-summary:end -->
 
 ---

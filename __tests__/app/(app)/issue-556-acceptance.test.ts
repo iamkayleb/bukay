@@ -309,6 +309,20 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(gate.indexOf("pnpm build")).toBeLessThan(gate.indexOf("pnpm vitest run"));
   });
 
+  it("acceptance: verify:issue-556:acceptance-gate runs build, criteria tests, and legacy copy grep", () => {
+    const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts as Record<
+      string,
+      string
+    >;
+    const gate = scripts["verify:issue-556:acceptance-gate"];
+    expect(gate).toContain("pnpm build");
+    expect(gate).toContain("test:issue-556:acceptance-criteria");
+    expect(gate).toContain("empty-states.test.tsx");
+    expect(gate).toMatch(/Nothing here yet/);
+    expect(gate).not.toMatch(/pnpm vitest run &&/);
+    expect(gate).not.toMatch(/pnpm vitest run$/);
+  });
+
   it("PR task 1: package exposes a focused calendar day empty-state vitest gate", () => {
     const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts as Record<
       string,
