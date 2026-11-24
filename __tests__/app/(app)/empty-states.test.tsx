@@ -149,6 +149,9 @@ describe("merchant empty states", () => {
     expect(calendarHtml).toContain(`href="${calendarAddBookingHref("2026-10-04")}"`);
     expect(calendarHtml).toContain(merchantEmptyActions.calendarAddBooking);
     expect(calendarHtml).toContain(
+      `aria-label="${merchantEmptyActions.calendarAddBooking} for this date"`
+    );
+    expect(calendarHtml).toContain(
       `data-merchant-empty-headline="${merchantEmptyCalendarDayHeadline}"`
     );
     expect(calendarHtml).toContain('role="region"');
