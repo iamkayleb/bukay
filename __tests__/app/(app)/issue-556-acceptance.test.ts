@@ -269,6 +269,26 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(scripts["verify:issue-556:quick"]).toContain("Nothing here yet");
   });
 
+  it("issue #556 PR tasks 1–6: merchant-empty vitest bundle covers each task surface", () => {
+    const bundle = JSON.parse(readFileSync("package.json", "utf8")).scripts[
+      "test:merchant-empty-states"
+    ] as string;
+    const taskSuites = [
+      "calendar/day-view.test.tsx",
+      "services/services-list.test.tsx",
+      "services/page.test.tsx",
+      "clients/page.test.tsx",
+      "clients/clients-list.test.tsx",
+      "payments/payments-list.test.tsx",
+      "payments/page.test.tsx",
+      "today/page.test.tsx",
+      "empty-states.test.tsx",
+    ];
+    for (const suite of taskSuites) {
+      expect(bundle, suite).toContain(suite);
+    }
+  });
+
   it("acceptance: CI runs merchant-empty bundle, full tests, and build", () => {
     const ci = readFileSync(".github/workflows/ci.yml", "utf8");
     expect(ci).toContain("pnpm test:merchant-empty-states");

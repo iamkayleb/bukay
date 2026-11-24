@@ -1,25 +1,27 @@
-## Keepalive round — issue #556
+## Keepalive round summary
 
-Re-verified PR task 1 and full scope on `cursor/issue-556`.
-
-### PR task 1 (calendar day)
-
-`DayView` renders `merchantEmptyMessages.calendarDay` (“No bookings on this date.”) and an add-booking link via `calendarAddBookingHref` when the chosen date has zero bookings (`data-testid="calendar-day-empty"`).
+Verified issue #556 merchant empty states end-to-end on branch `cursor/issue-556`.
 
 ### Verification
 
-- `pnpm test:issue-556:pr-task-1` — pass
-- `pnpm test:issue-556:acceptance-criteria` — pass
-- `pnpm verify:issue-556:quick` — pass (88 merchant-empty tests)
-- `pnpm build` — pass
-- `pnpm vitest run` — 551 tests pass
+- `pnpm test:issue-556:pr-task-1` — calendar day empty state (task 1)
+- `pnpm verify:issue-556:quick` — 89 merchant-empty tests + grep for legacy copy
+- `pnpm build` — production build succeeded
+- `pnpm vitest run` — 552 tests passed
 - `grep -rn "Nothing here yet" app/` — no matches
 
-### Tasks 1–6 and acceptance
+### Implementation (already on branch)
 
-All six implementation tasks and five acceptance criteria are satisfied in code and tests (`issue-556-acceptance`, `empty-states`, `day-view`, `issue-556-real-db`).
+| Screen | Message | Location |
+|--------|---------|----------|
+| Calendar day | No bookings on this date. + add link | `day-view.tsx` |
+| Services | No services yet — … | `services-list.tsx` |
+| Clients | No clients yet — … | `clients-list.tsx` via `clients/page.tsx` |
+| Payments | No payments yet. | `payments-list.tsx` |
+| Today | No appointments yet. + `/calendar` link | `today/data.tsx` |
 
-### Code change this round
+Real-DB coverage: `issue-556-real-db.test.tsx` (empty + demo tenant).
 
-- `package.json`: add `test:issue-556:acceptance-criteria` for acceptance + real-db gates
-- `issue-556-acceptance.test.ts`: assert the new script and build/vitest verify gate
+### Commit
+
+- Pinned PR tasks 1–6 to `test:merchant-empty-states` in `issue-556-acceptance.test.ts`.
