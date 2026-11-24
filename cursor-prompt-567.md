@@ -83,12 +83,6 @@ Head: cursor/issue-556
 Source: https://github.com/iamkayleb/bukay/issues/556
 
 <!-- auto-status-summary:start -->
-## Automated Status Summary
-
-All six PR tasks and five acceptance criteria verified locally via `pnpm verify:issue-556:acceptance-gate` and `pnpm vitest run` (585 tests).
-
-**Progress:** 11/11 tasks complete, 0 remaining
-<!-- auto-status-summary:end -->
 
 ---
 

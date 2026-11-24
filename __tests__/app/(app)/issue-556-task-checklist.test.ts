@@ -118,6 +118,13 @@ describe("issue #556 PR task checklist", () => {
     );
   });
 
+  it("task 3: clients/page.tsx composes ClientsList so empty copy renders on the page", () => {
+    const source = readFileSync("app/(app)/clients/page.tsx", "utf8");
+    expect(source).toContain("ClientsList");
+    expect(source).toContain("ClientForm");
+    expect(source).not.toContain("Nothing here yet");
+  });
+
   it("task 3: clients page shows empty copy above the add-client form", async () => {
     const html = renderToStaticMarkup(await ClientsPage());
 

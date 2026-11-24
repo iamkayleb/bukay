@@ -1,10 +1,10 @@
 ## Keepalive round summary (issue #556)
 
-Verified PR task 1 and full merchant empty-state suite on branch `cursor/issue-556`. `DayView` renders `MerchantEmptyState` with "No bookings on this date." and an in-page **Add a booking** link (`?date=…#new-booking`) when the chosen day has no bookings.
+Verified merchant empty states on branch `cursor/issue-556`. `DayView` renders `MerchantEmptyState` with "No bookings on this date." and an in-page **Add a booking** link (`?date=…#new-booking`) when the chosen day has no bookings.
 
 ### Verification
 
-- `pnpm verify:issue-556:pr-task-1` — pass (18 day-view tests + real SQLite task 1)
+- `pnpm verify:issue-556:pr-task-1` — pass
 - `pnpm verify:issue-556:pr-tasks-1-6` — pass
 - `pnpm verify:issue-556:acceptance-gate` — pass (build + acceptance + empty-states + legacy grep)
 - `pnpm vitest run` — 585 tests pass
@@ -12,7 +12,7 @@ Verified PR task 1 and full merchant empty-state suite on branch `cursor/issue-5
 
 ### Test tweak
 
-- `empty-states.test.tsx`: assert calendar empty day uses `role="region"` in the per-page testid loop (five-screen integration gate).
+- `issue-556-task-checklist.test.ts`: assert `clients/page.tsx` composes `ClientsList` for task 3 page wiring.
 
 ### Completed tasks
 
