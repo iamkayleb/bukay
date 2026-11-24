@@ -87,7 +87,7 @@ Source: https://github.com/iamkayleb/bukay/issues/556
 
 **Progress:** 11/11 tasks complete, 0 remaining
 
-All six PR tasks and five acceptance criteria verified locally (`pnpm verify:issue-556:quick`, `pnpm build`, `pnpm vitest run`).
+All six PR tasks and five acceptance criteria verified locally (`pnpm test:issue-556:pr-task-1`, `pnpm verify:issue-556:quick`, `pnpm build`, `pnpm vitest run`).
 <!-- auto-status-summary:end -->
 
 ---

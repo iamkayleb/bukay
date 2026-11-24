@@ -130,6 +130,7 @@ describe("issue #556 acceptance (vitest)", () => {
   it("PR task 1: day-view source wires calendar empty copy and add-booking link", () => {
     const source = readFileSync("app/(app)/calendar/day-view.tsx", "utf8");
     expect(source).toContain("merchantEmptyMessages.calendarDay");
+    expect(source).toContain("merchantEmptyCalendarDayHeadline");
     expect(source).toContain("calendar-day-empty");
     expect(source).toContain("calendar-add-booking-link");
     expect(source).toContain("calendarAddBookingHref");

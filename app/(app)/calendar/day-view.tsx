@@ -6,6 +6,7 @@ import {
   dispatchCalendarBookingDate,
   merchantEmptyActionLinkClassName,
   merchantEmptyActions,
+  merchantEmptyCalendarDayHeadline,
   merchantEmptyMessages,
 } from "../merchant-empty-copy";
 import { calendarDayRange, dateInZone } from "@/app/lib/calendar";
@@ -155,6 +156,7 @@ export function DayView({ tenantId, timeZone }: { tenantId: string | null; timeZ
             role="region"
             aria-label="Day schedule"
             data-testid="calendar-day-empty"
+            data-merchant-empty-headline={merchantEmptyCalendarDayHeadline}
           >
             <MerchantEmptyState
               message={merchantEmptyMessages.calendarDay}

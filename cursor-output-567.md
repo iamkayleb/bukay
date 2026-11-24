@@ -21,4 +21,4 @@ Verified issue #556 merchant empty states on branch `cursor/issue-556`.
 
 ### Commit
 
-- Centralized PR task 1 headline as `merchantEmptyCalendarDayHeadline` in `merchant-empty-copy.ts`.
+- Exposed `data-merchant-empty-headline` on calendar day empty region, wired to `merchantEmptyCalendarDayHeadline`.
