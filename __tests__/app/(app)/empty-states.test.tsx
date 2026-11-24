@@ -151,6 +151,7 @@ describe("merchant empty states", () => {
     expect(calendarHtml).toContain(
       `data-merchant-empty-headline="${merchantEmptyCalendarDayHeadline}"`
     );
+    expect(calendarHtml).toContain('role="region"');
     expect(calendarHtml).toContain('aria-labelledby="calendar-day-empty-message"');
     expect(calendarHtml).toContain('id="calendar-day-empty-message"');
     expect(calendarHtml).not.toContain('aria-label="Day bookings"');

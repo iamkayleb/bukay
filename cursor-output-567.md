@@ -1,24 +1,27 @@
 ## Keepalive round summary (issue #556)
 
-### Tasks 1–6
+Verified merchant empty states on branch `cursor/issue-556`. Task 1 (`day-view.tsx`) already renders `MerchantEmptyState` with "No bookings on this date." and an in-page **Add a booking** link (`?date=…#new-booking`).
 
-**Status:** Verified complete.
+### Verification
 
-| Task | Verification |
-|------|----------------|
-| 1 Calendar day-view empty state + add-booking link | `pnpm verify:issue-556:pr-task-1`, `issue-556-task-checklist.test.ts` task 1, `day-view.test.tsx` PR task 1, `issue-556-real-db.test.tsx` task 1 |
-| 2 Services empty copy above form | task checklist + `empty-states.test.tsx` |
-| 3 Clients empty copy on page | task checklist + real-db clients test |
-| 4 Payments empty copy | task checklist + `payments-list.test.tsx` |
-| 5 Today → `/calendar` link | task checklist + `today/page.test.tsx` |
-| 6 Five-screen integration test | `empty-states.test.tsx` “renders each page…” |
+- `pnpm verify:issue-556:pr-complete` — pass (build + full vitest + acceptance gate)
+- `pnpm verify:issue-556:pr-tasks-1-6` — pass
+- `grep -rn "Nothing here yet" app/` — no matches
 
-### Acceptance criteria
+### Test tweak
 
-- `pnpm verify:issue-556:pr-complete` — **pass** (`pnpm build`, 584 vitest tests, grep clean)
-- Real SQLite empty + demo tenants — `issue-556-real-db.test.tsx` (4/4)
-- Legacy `Nothing here yet` — absent under `app/`
+- `empty-states.test.tsx`: assert calendar empty day uses `role="region"` in the five-screen integration test.
 
-### This round
+### Completed tasks
 
-- Re-verified task 1 (`pnpm verify:issue-556:pr-task-1`) and pinned `id="calendar-day-empty-message"` in the focused PR task 1 `day-view.test.tsx` gate.
+✅ Completed: In `app/(app)/calendar/day-view.tsx`, when the chosen date has no bookings, show "No bookings on this date" with a link to add one.
+✅ Completed: In `app/(app)/services/services-list.tsx`, when the tenant has no services, show "No services yet — add your first so customers can book" above the create form.
+✅ Completed: In `app/(app)/clients/page.tsx`, when the tenant has no clients, show "No clients yet — they appear here after their first booking".
+✅ Completed: In `app/(app)/payments/payments-list.tsx`, when there are no payments, show "No payments yet" once that file exists.
+✅ Completed: In `app/(app)/today/data.tsx`, keep the existing "No appointments yet" message and link it to `/calendar` so the merchant can add one.
+✅ Completed: Add `__tests__/app/(app)/empty-states.test.tsx` rendering each page with an empty tenant and asserting each message appears.
+✅ Completed: `pnpm build` and `pnpm vitest run` pass with no new failures.
+✅ Completed: Against a real database with a tenant that has no services, no clients and no bookings, each of the five pages renders its message rather than an empty region.
+✅ Completed: None of those messages appears for the seeded demo tenant, which has data on every screen.
+✅ Completed: A merchant signs in to an empty tenant, opens `/clients`, reads that clients appear after their first booking, and is not left looking at a blank page.
+✅ Completed: `grep -rn "Nothing here yet" app/` returns nothing, confirming the old placeholder wording is gone.
