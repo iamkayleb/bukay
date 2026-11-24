@@ -76,6 +76,10 @@ describe("issue #556 PR task checklist", () => {
     expect(html).toContain(merchantEmptyMessages.calendarDay);
     expect(html).toContain(`href="${calendarAddBookingHref(calendarDay)}"`);
     expect(html).toContain(merchantEmptyActions.calendarAddBooking);
+    expect(html).toContain('data-testid="calendar-day-empty"');
+    expect(html).toContain(
+      `data-merchant-empty-headline="${merchantEmptyCalendarDayHeadline}"`
+    );
     expect(html).toContain('data-testid="calendar-add-booking-link"');
     expect(html).not.toContain("Loading bookings...");
     expect(html).not.toContain("Nothing here yet");
