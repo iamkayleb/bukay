@@ -150,6 +150,7 @@ describe("issue #556 against real SQLite (empty tenant)", () => {
     const clientsHtml = renderToStaticMarkup(await ClientsPage());
 
     expect(clientsHtml).toContain(merchantEmptyMessages.clients);
+    expect(clientsHtml).toContain('data-testid="clients-empty"');
     expect(clientsHtml).toContain('data-testid="merchant-empty-state"');
     expect(clientsHtml.indexOf('name="phone"')).toBeGreaterThan(
       clientsHtml.indexOf(merchantEmptyMessages.clients)

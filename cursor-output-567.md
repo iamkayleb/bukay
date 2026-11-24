@@ -1,15 +1,12 @@
-# Keepalive round 567 — issue #556
+## Keepalive round — issue #556
 
-## Progress: 1/11 tasks verified this round
+Verified merchant empty states end-to-end:
 
-### Task 1 — calendar `day-view.tsx`
+- `pnpm verify:issue-556:pr-task-1` — calendar day empty copy + add-booking link
+- `pnpm verify:issue-556:pr-tasks-1-6` — tasks 1–6 gates
+- `pnpm verify:issue-556:acceptance-gate` — build + acceptance + empty-states suite
+- `pnpm vitest run` — 565 tests passed
 
-Verified `pnpm verify:issue-556:pr-task-1`:
+Task 1 (`day-view.tsx`) was already implemented via `MerchantEmptyState`, `merchantEmptyMessages.calendarDay`, and `calendarAddBookingHref`. Strengthened real-DB coverage for the `/clients` acceptance path with `data-testid="clients-empty"`.
 
-- Empty chosen date shows **No bookings on this date** (`merchantEmptyMessages.calendarDay`) and **Add a booking** link to `?date=…#new-booking`.
-- Real SQLite empty tenant reproduces the same UI (including `calendar-day-empty-message` label wiring).
-- `pnpm build` and full `pnpm vitest run` (565 tests) pass.
-
-### Remaining
-
-PR tasks 2–6 and acceptance criteria unchanged; implementation already on branch from prior commits.
+All 11 task/acceptance checkboxes marked complete in `cursor-prompt-567.md`.
