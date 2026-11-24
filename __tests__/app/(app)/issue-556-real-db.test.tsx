@@ -171,6 +171,9 @@ describe("issue #556 against real SQLite (empty tenant)", () => {
     );
     expect(paymentsHtml).toContain(merchantEmptyMessages.payments);
     expect(todayHtml).toContain(merchantEmptyMessages.today);
+    expect(todayHtml).toContain(`href="${merchantEmptyHrefs.todayCalendar}"`);
+    expect(todayHtml).toContain(merchantEmptyActions.todayAddOnCalendar);
+    expect(todayHtml).toContain('data-testid="today-calendar-link"');
     expect(calendarHtml).toContain(merchantEmptyMessages.calendarDay);
     expect(calendarHtml).toContain(`href="${calendarAddBookingHref(emptyCalendarDate)}"`);
     expect(calendarHtml).toContain(merchantEmptyActions.calendarAddBooking);
