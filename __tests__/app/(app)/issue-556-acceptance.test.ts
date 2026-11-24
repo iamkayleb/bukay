@@ -204,7 +204,16 @@ describe("issue #556 acceptance (vitest)", () => {
 
   it("PR task 1: day-view shows empty guidance only after a settled zero-booking fetch", () => {
     const source = readFileSync("app/(app)/calendar/day-view.tsx", "utf8");
-    expect(source).toMatch(/bookings\.length === 0/);
+    const liveStart = source.indexOf('aria-live="polite"');
+    expect(liveStart).toBeGreaterThan(-1);
+    const liveRegion = source.slice(liveStart, liveStart + 1200);
+    expect(liveRegion).toContain("loading ?");
+    expect(liveRegion).toContain("error ?");
+    expect(liveRegion).toMatch(/bookings\.length === 0/);
+    expect(liveRegion).toContain("merchantEmptyMessages.calendarDay");
+    expect(liveRegion.indexOf("merchantEmptyMessages.calendarDay")).toBeGreaterThan(
+      liveRegion.indexOf("loading ?")
+    );
     expect(source).toContain("calendar-day-empty");
     expect(source).toContain("calendar-add-booking-link");
   });
