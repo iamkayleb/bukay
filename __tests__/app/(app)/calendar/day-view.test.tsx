@@ -8,6 +8,7 @@ import { DayView } from "@/app/(app)/calendar/day-view";
 import { renderDayViewHtml } from "../helpers/render-day-view";
 import {
   calendarAddBookingHref,
+  CALENDAR_BOOKING_DATE_EVENT,
   merchantEmptyActions,
   merchantEmptyCalendarDayHeadline,
   merchantEmptyMessages,
@@ -25,9 +26,7 @@ describe("DayView empty day", () => {
     const html = await renderDayViewHtml([]);
 
     expect(html).toContain(merchantEmptyCalendarDayHeadline);
-    expect(html).toContain(
-      `data-merchant-empty-headline="${merchantEmptyCalendarDayHeadline}"`
-    );
+    expect(html).toContain(`data-merchant-empty-headline="${merchantEmptyCalendarDayHeadline}"`);
     expect(html).toContain('data-testid="calendar-day-empty"');
     expect(html).toContain(`href="${TEST_DAY_ADD_HREF}"`);
     expect(html).toContain(merchantEmptyActions.calendarAddBooking);
@@ -199,6 +198,61 @@ describe("DayView empty day", () => {
       const addLink = container.querySelector('[data-testid="calendar-add-booking-link"]');
       expect(addLink?.getAttribute("href")).toBe(calendarAddBookingHref("2026-10-05"));
     } finally {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("dispatches the chosen date when the empty-day add-booking link is clicked", async () => {
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ ok: true, bookings: [] }),
+      })
+    );
+    vi.stubGlobal("location", {
+      ...window.location,
+      search: "?date=2026-10-04",
+    });
+
+    const received: string[] = [];
+    const onDate = (event: Event) => {
+      received.push((event as CustomEvent<{ date: string }>).detail.date);
+    };
+
+    try {
+      window.addEventListener(CALENDAR_BOOKING_DATE_EVENT, onDate);
+
+      await act(async () => {
+        root.render(<DayView tenantId="tenant-empty" timeZone="Africa/Lagos" />);
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      const link = container.querySelector('[data-testid="calendar-add-booking-link"]');
+      expect(link).not.toBeNull();
+
+      await act(async () => {
+        link!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+
+      expect(received).toEqual(["2026-10-04"]);
+    } finally {
+      window.removeEventListener(CALENDAR_BOOKING_DATE_EVENT, onDate);
       act(() => {
         root.unmount();
       });
