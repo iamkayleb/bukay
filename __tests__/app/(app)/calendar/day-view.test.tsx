@@ -32,8 +32,11 @@ describe("PR task 1 — calendar day empty state", () => {
     );
     expect(html).toContain('data-testid="calendar-day-empty"');
     expect(html).toContain('data-testid="calendar-add-booking-link"');
+    expect(html).toContain('data-testid="merchant-empty-state"');
+    expect(html).toContain('role="status"');
     expect(html).toContain(`href="${TEST_DAY_ADD_HREF}"`);
     expect(html).toContain(merchantEmptyActions.calendarAddBooking);
+    expect(html).not.toContain('aria-label="Day bookings"');
   });
 });
 
