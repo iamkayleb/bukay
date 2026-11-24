@@ -145,11 +145,13 @@ describe("merchant empty states", () => {
       }
     }
 
+    expect(calendarHtml).toContain(merchantEmptyCalendarDayHeadline);
     expect(calendarHtml).toContain(`href="${calendarAddBookingHref("2026-10-04")}"`);
     expect(calendarHtml).toContain(merchantEmptyActions.calendarAddBooking);
     expect(calendarHtml).toContain(
       `data-merchant-empty-headline="${merchantEmptyCalendarDayHeadline}"`
     );
+    expect(calendarHtml).toContain('aria-labelledby="calendar-day-empty-message"');
     expect(calendarHtml).not.toContain('aria-label="Day bookings"');
     expect(todayHtml).toContain('data-testid="today-calendar-link"');
     expect(todayHtml).toContain(`href="${merchantEmptyHrefs.todayCalendar}"`);

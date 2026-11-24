@@ -1,19 +1,20 @@
-# Keepalive round — issue #556 (task 1)
+## Keepalive round summary (issue #556)
 
-## Verified
+### Task 1 — calendar day-view empty state
 
-| Gate | Result |
-|------|--------|
-| `pnpm verify:issue-556:pr-task-1` | pass |
-| `pnpm verify:issue-556:pr-tasks-1-6` | pass |
-| `pnpm build` | pass |
-| `pnpm vitest run` | 90 files, 584 tests pass |
-| `grep -rn "Nothing here yet" app/` | no matches |
+**Status:** Verified complete.
 
-## Task 1 — `day-view.tsx`
+`app/(app)/calendar/day-view.tsx` already renders `MerchantEmptyState` when `bookings.length === 0` (after load): copy **"No bookings on this date."** via `merchantEmptyMessages.calendarDay`, plus **Add a booking** linking to `calendarAddBookingHref(date)` (`?date=YYYY-MM-DD#new-booking`) with `dispatchCalendarBookingDate` on click.
 
-When the chosen date has zero bookings after load (not while loading), `DayView` renders `MerchantEmptyState` with **No bookings on this date.** and an **Add a booking** link to `?date=YYYY-MM-DD#new-booking`, with `dispatchCalendarBookingDate` on click.
+### Verification run
 
-## Remaining PR tasks
+- `pnpm verify:issue-556:pr-task-1` — pass
+- `pnpm verify:issue-556:pr-complete` — pass (`pnpm build`, 584 vitest tests, acceptance + real-db)
 
-Tasks 2–6 and acceptance criteria were already implemented on `cursor/issue-556`; this round re-verified task 1 and pinned the `messageId` / `aria-labelledby` wiring in `day-view.test.tsx`.
+### This round
+
+- Tightened task 6 integration test in `empty-states.test.tsx` to assert calendar headline, `aria-labelledby`, and add-booking link for empty tenant.
+
+### PR tasks 2–6 and acceptance criteria
+
+All six implementation tasks and five acceptance criteria were re-verified via `issue-556-task-checklist.test.ts`, `issue-556-real-db.test.tsx`, `issue-556-acceptance.test.ts`, and `empty-states.test.tsx` (included in `verify:issue-556:pr-complete`).
