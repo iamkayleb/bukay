@@ -500,4 +500,12 @@ describe("issue #556 acceptance (vitest)", () => {
     expect(suite).toContain("PaymentsPage");
     expect(suite).toContain("TodaySchedule");
   });
+
+  it("PR task 1: e2e exercises calendar empty copy and add-booking link in the browser", () => {
+    const e2e = readFileSync("e2e/merchant-empty-states.spec.ts", "utf8");
+    expect(e2e).toContain("fresh merchant sees calendar day empty copy with add-booking link");
+    expect(e2e).toContain("merchantEmptyMessages.calendarDay");
+    expect(e2e).toContain("merchantEmptyActions.calendarAddBooking");
+    expect(e2e).toContain("#new-booking");
+  });
 });

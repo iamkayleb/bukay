@@ -1,19 +1,11 @@
-## Issue #556 — keepalive round 567
+## Keepalive round summary (issue #556 / PR #567)
 
-Re-verified PR tasks 1–6 and acceptance criteria after checkbox reset.
+### Verified this round
+- **Task 1** (`day-view.tsx`): empty chosen day shows `merchantEmptyMessages.calendarDay` and `Add a booking` link via `MerchantEmptyState`; unit (`day-view.test.tsx`), checklist, real SQLite (`issue-556-real-db.test.tsx` task 1), and `pnpm verify:issue-556:pr-task-1` all pass.
+- **Tasks 2–6** and **acceptance criteria**: `pnpm verify:issue-556:keepalive` (build + `test:issue-556:acceptance-criteria` + empty-states + grep) and full `pnpm vitest run` (577 tests).
 
-### Task 1 (`day-view.tsx`)
-- Empty chosen day shows `merchantEmptyMessages.calendarDay` and `Add a booking` via `calendarAddBookingHref`.
-- Markup: `calendar-day-empty`, `calendar-add-booking-link`, `data-merchant-empty-headline`.
-- Real SQLite task 1 gate now asserts settled live region (`aria-busy="false"`, no loading copy).
+### Source change
+- Pinned Playwright coverage for task 1 in `issue-556-acceptance.test.ts` (e2e calendar empty + add-booking link).
 
-### Tasks 2–6
-- Services, clients, payments, today, and `empty-states.test.tsx` — verified via `pnpm verify:issue-556:pr-tasks-1-6`.
-
-### Gates (this round)
-- `pnpm verify:issue-556:pr-complete` — pass
-- `pnpm build` — pass
-- `pnpm vitest run` — 577 passed
-- `grep -rn "Nothing here yet" app/` — no matches
-
-All task and acceptance checkboxes updated in `cursor-prompt-567.md`.
+### Progress
+**11/11** tasks and acceptance checkboxes marked complete in `cursor-prompt-567.md`.
