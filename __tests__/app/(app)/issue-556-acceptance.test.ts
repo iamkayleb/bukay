@@ -291,6 +291,7 @@ describe("issue #556 acceptance (vitest)", () => {
   it("acceptance: CI runs merchant-empty bundle, full tests, and build", () => {
     const ci = readFileSync(".github/workflows/ci.yml", "utf8");
     expect(ci).toContain("pnpm test:merchant-empty-states");
+    expect(ci).toContain("pnpm verify:issue-556:pr-tasks-1-6");
     expect(ci).toMatch(/Nothing here yet/);
     expect(ci).toContain("pnpm build");
     expect(ci).toContain("pnpm test");

@@ -60,6 +60,7 @@ jobs:
       - name: Merchant empty states (#556)
         run: |
           pnpm test:merchant-empty-states
+          pnpm verify:issue-556:pr-tasks-1-6
           test ! grep -rq "Nothing here yet" app/
 
       - name: Test
