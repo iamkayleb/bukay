@@ -124,6 +124,7 @@ describe("issue #556 against real SQLite (empty tenant)", () => {
     const calendarHtml = await renderCalendarDayHtml(EMPTY_TENANT_ID, emptyCalendarDate);
 
     expect(calendarHtml).toContain("No bookings on this date");
+    expect(calendarHtml).not.toContain("No bookings for this date");
     expect(calendarHtml).toContain(merchantEmptyMessages.calendarDay);
     expect(calendarHtml).toContain(
       `data-merchant-empty-headline="${merchantEmptyCalendarDayHeadline}"`
