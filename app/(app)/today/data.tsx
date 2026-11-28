@@ -190,7 +190,12 @@ export async function listTodaysBookings(
   return { timeZone, bookings };
 }
 
-/** Today's booking count, paid-payment cents (by payment `createdAt`), and unpaid booking count for the tenant day window. */
+/**
+ * Today dashboard figures for the signed-in tenant's calendar day (boundaries from `zonedDayRange`):
+ * - `bookingsCount`: bookings whose `startsAt` falls in [start, end)
+ * - `moneyTakenCents`: sum of `amountCents` for payments with status `paid` and `createdAt` in [start, end)
+ * - `unpaidCount`: today's bookings with no related payment in status `paid`
+ */
 export async function getTodaySummary(
   tenantId: string,
   now = new Date()

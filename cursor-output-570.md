@@ -1,6 +1,6 @@
 ## Keepalive run summary
 
-Verified: `pnpm build`, full `pnpm vitest run` (507 tests), and `__tests__/app/(app)/today/summary.test.ts` against SQLite (`prisma migrate deploy`).
+Verified on `cursor/issue-553` (2026-11-28): `pnpm build`, full `pnpm vitest run` (507 tests), and `__tests__/app/(app)/today/summary.test.ts` (15 tests) against SQLite (`prisma migrate deploy`).
 
 ### Tasks
 
@@ -22,5 +22,5 @@ Verified: `pnpm build`, full `pnpm vitest run` (507 tests), and `__tests__/app/(
 
 ### This run
 
-- Re-verified `pnpm build` and full `pnpm vitest run` on `cursor/issue-553`.
-- `loadTodayScheduleData` now derives summary figures from the same `findMany` used for the list (one booking query per page load); `getTodaySummary` keeps the lighter `queryTodaySummaryFigures` path.
+- Re-verified `pnpm build` and full `pnpm vitest run` (507 passed).
+- Documented the three return fields on `getTodaySummary` in `data.tsx`.
