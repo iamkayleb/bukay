@@ -186,8 +186,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         updateData.slotLock = bookingSlotLock(existingBooking.serviceId, updateData.startsAt);
       }
 
-      const intervalChanging =
-        updateData.startsAt !== undefined || updateData.endsAt !== undefined;
+      const intervalChanging = updateData.startsAt !== undefined || updateData.endsAt !== undefined;
       const candidateInterval = mergeBookingInterval(existingBooking, {
         startsAt: updateData.startsAt,
         endsAt: updateData.endsAt,
