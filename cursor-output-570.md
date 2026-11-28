@@ -1,6 +1,6 @@
 ## Keepalive run summary
 
-Verified: `pnpm build`, full `pnpm vitest run` (497 tests), and targeted `__tests__/app/(app)/today/summary.test.ts` + `page.test.tsx` against PostgreSQL with `prisma migrate deploy`.
+Verified: `pnpm build`, full `pnpm vitest run` (498 tests), and targeted `__tests__/app/(app)/today/summary.test.ts` + `page.test.tsx` against PostgreSQL with `prisma migrate deploy`.
 
 ### Tasks
 
@@ -22,4 +22,4 @@ Verified: `pnpm build`, full `pnpm vitest run` (497 tests), and targeted `__test
 
 ### This run
 
-- Routed `getTodaySummary` and `listTodaysBookings` through `loadTodayScheduleData` so summary figures and the appointment list always share one query path and day window.
+- Re-verified the full implementation on `cursor/issue-553`; added an integration test that `getTodaySummary` and `listTodaysBookings` agree on `bookingsCount` after the unified `loadTodayScheduleData` loader.

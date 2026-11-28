@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { prisma } from "@/app/db/prisma";
-import { getTodaySummary, zonedDayRange } from "@/app/(app)/today/data";
+import { getTodaySummary, listTodaysBookings, zonedDayRange } from "@/app/(app)/today/data";
 import { TodaySummaryPanel } from "@/app/(app)/today/summary";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -151,6 +151,24 @@ afterAll(async () => {
 
 describe("today summary", () => {
   const now = new Date("2026-10-04T12:00:00.000Z");
+
+  it("keeps summary bookingsCount aligned with listTodaysBookings for the same day window", async () => {
+    await createBookingWithPayment({
+      startsAt: new Date("2026-10-04T10:00:00.000Z"),
+      paymentStatus: "paid",
+      amountCents: 5_000_00,
+      paymentCreatedAt: new Date("2026-10-04T10:15:00.000Z"),
+    });
+    await createBookingOnly(new Date("2026-10-04T16:00:00.000Z"));
+
+    const [{ bookings }, { summary }] = await Promise.all([
+      listTodaysBookings(seed.tenantId, now),
+      getTodaySummary(seed.tenantId, now),
+    ]);
+
+    expect(summary.bookingsCount).toBe(bookings.length);
+    expect(summary.bookingsCount).toBe(2);
+  });
 
   it("returns a bookingsCount of 1 for a single booking scheduled today", async () => {
     await createBookingWithPayment({
