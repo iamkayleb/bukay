@@ -87,9 +87,7 @@ export function DayView({ tenantId, timeZone }: { tenantId: string | null; timeZ
 
   function handleCancel(booking: Booking) {
     if (
-      !window.confirm(
-        `Cancel the booking for ${booking.client.name} at ${booking.service.name}?`
-      )
+      !window.confirm(`Cancel the booking for ${booking.client.name} at ${booking.service.name}?`)
     ) {
       return;
     }

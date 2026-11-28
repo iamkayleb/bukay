@@ -34,7 +34,7 @@ jobs:
     with:
       # ---- project settings ----------------------------------------------
       package-manager: pnpm
-      node-version: '20'
+      node-version: '24'
 
       # Whatever the app needs before it can answer a request. A UI lane that
       # runs against an empty database tests the empty state and nothing else.
