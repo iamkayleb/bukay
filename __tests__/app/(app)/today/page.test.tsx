@@ -157,6 +157,12 @@ describe("today bookings", () => {
 
     const html = renderToStaticMarkup(await TodaySchedule({ now }));
     expect(html).toContain("Bookings today");
+    expect(html.indexOf('aria-label="Today summary"')).toBeLessThan(html.indexOf("Ada Okonkwo"));
+
+    const summarySection = html.split('aria-label="Today summary"')[1]?.split("</dl>")[0] ?? "";
+    expect(summarySection).toMatch(/Bookings today[\s\S]*<dd[^>]*>\s*2\s*<\/dd>/);
+    expect(summarySection).toMatch(/Unpaid today[\s\S]*<dd[^>]*>\s*2\s*<\/dd>/);
+
     expect(html).toContain("Ada Okonkwo");
     expect(html).toContain("Classic Haircut");
     expect(html).toContain("Bola Adeyemi");
