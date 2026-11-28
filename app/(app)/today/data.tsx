@@ -157,7 +157,7 @@ async function loadTodayScheduleData(
   const { timeZone, currency, start, end } = await resolveTenantDayContext(tenantId, now);
 
   return runWithTenantContext({ tenantId }, async () => {
-    const [bookingRows, summary] = await Promise.all([
+    const [bookingRows, moneyTakenCents] = await Promise.all([
       prisma.booking.findMany({
         where: bookingsInDayWhere(tenantId, start, end),
         orderBy: { startsAt: "asc" },
@@ -171,13 +171,13 @@ async function loadTodayScheduleData(
           payments: { select: { status: true } },
         },
       }),
-      queryTodaySummaryFigures(tenantId, start, end, currency),
+      sumPaidTodayCents(tenantId, start, end),
     ]);
 
     return {
       timeZone,
       bookings: mapBookingRows(bookingRows),
-      summary,
+      summary: computeTodaySummaryFigures(bookingRows, moneyTakenCents, currency),
     };
   });
 }
@@ -195,7 +195,12 @@ export async function getTodaySummary(
   tenantId: string,
   now = new Date()
 ): Promise<{ timeZone: string; summary: TodaySummary }> {
-  const { timeZone, summary } = await loadTodayScheduleData(tenantId, now);
+  const { timeZone, currency, start, end } = await resolveTenantDayContext(tenantId, now);
+
+  const summary = await runWithTenantContext({ tenantId }, () =>
+    queryTodaySummaryFigures(tenantId, start, end, currency)
+  );
+
   return { timeZone, summary };
 }
 
