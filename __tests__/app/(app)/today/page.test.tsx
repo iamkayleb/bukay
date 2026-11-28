@@ -217,6 +217,10 @@ describe("today bookings", () => {
 
     expect(html).toContain("No appointments yet.");
     expect(html).not.toContain("Ada Okonkwo");
+    expect(html).toContain('aria-label="Today summary"');
+    const summarySection = html.split('aria-label="Today summary"')[1]?.split("</dl>")[0] ?? "";
+    expect(summarySection).toMatch(/Bookings today[\s\S]*<dd[^>]*>\s*0\s*<\/dd>/);
+    expect(summarySection).toContain(formatPrice(0, "NGN"));
   });
 
   it("shows money taken from paid payments in the summary panel", async () => {
