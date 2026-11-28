@@ -25,6 +25,52 @@ type BookingRow = {
   service: { name: string };
 };
 
+type TenantDayContext = {
+  timeZone: string;
+  currency: string;
+  start: Date;
+  end: Date;
+};
+
+async function resolveTenantDayContext(tenantId: string, now: Date): Promise<TenantDayContext> {
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { timezone: true, currency: true },
+  });
+  const timeZone = tenant?.timezone?.trim() || DEFAULT_TIME_ZONE;
+  const currency = tenant?.currency?.trim() || "NGN";
+  const { start, end } = zonedDayRange(timeZone, now);
+  return { timeZone, currency, start, end };
+}
+
+function bookingsInDayWhere(tenantId: string, start: Date, end: Date) {
+  return {
+    tenantId,
+    startsAt: { gte: start, lt: end },
+  };
+}
+
+function mapBookingRows(rows: BookingRow[]): TodayBooking[] {
+  return rows.map((row) => ({
+    id: row.id,
+    startsAt: row.startsAt,
+    endsAt: row.endsAt,
+    status: row.status,
+    clientName: row.client.name,
+    serviceName: row.service.name,
+  }));
+}
+
+function summarizeUnpaidBookings(
+  bookings: { payments: { status: string }[] }[]
+): { bookingsCount: number; unpaidCount: number } {
+  const bookingsCount = bookings.length;
+  const unpaidCount = bookings.filter(
+    (booking) => !booking.payments.some((payment) => payment.status === "paid")
+  ).length;
+  return { bookingsCount, unpaidCount };
+}
+
 export function zonedDayRange(timeZone: string, now: Date): { start: Date; end: Date } {
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -60,19 +106,11 @@ export async function listTodaysBookings(
   tenantId: string,
   now = new Date()
 ): Promise<{ timeZone: string; bookings: TodayBooking[] }> {
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { timezone: true },
-  });
-  const timeZone = tenant?.timezone?.trim() || DEFAULT_TIME_ZONE;
-  const { start, end } = zonedDayRange(timeZone, now);
+  const { timeZone, start, end } = await resolveTenantDayContext(tenantId, now);
 
   const rows = await runWithTenantContext({ tenantId }, () =>
     prisma.booking.findMany({
-      where: {
-        tenantId,
-        startsAt: { gte: start, lt: end },
-      },
+      where: bookingsInDayWhere(tenantId, start, end),
       orderBy: { startsAt: "asc" },
       select: {
         id: true,
@@ -87,14 +125,7 @@ export async function listTodaysBookings(
 
   return {
     timeZone,
-    bookings: rows.map((row: BookingRow) => ({
-      id: row.id,
-      startsAt: row.startsAt,
-      endsAt: row.endsAt,
-      status: row.status,
-      clientName: row.client.name,
-      serviceName: row.service.name,
-    })),
+    bookings: mapBookingRows(rows),
   };
 }
 
@@ -102,47 +133,76 @@ export async function getTodaySummary(
   tenantId: string,
   now = new Date()
 ): Promise<{ timeZone: string; summary: TodaySummary }> {
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { timezone: true, currency: true },
-  });
-  const timeZone = tenant?.timezone?.trim() || DEFAULT_TIME_ZONE;
-  const currency = tenant?.currency?.trim() || "NGN";
-  const { start, end } = zonedDayRange(timeZone, now);
+  const { timeZone, currency, start, end } = await resolveTenantDayContext(tenantId, now);
 
   return runWithTenantContext({ tenantId }, async () => {
-    const bookingsCount = await prisma.booking.count({
-      where: {
-        tenantId,
-        startsAt: { gte: start, lt: end },
-      },
-    });
+    const [paidToday, todaysBookings] = await Promise.all([
+      prisma.payment.aggregate({
+        where: {
+          tenantId,
+          status: "paid",
+          createdAt: { gte: start, lt: end },
+        },
+        _sum: { amountCents: true },
+      }),
+      prisma.booking.findMany({
+        where: bookingsInDayWhere(tenantId, start, end),
+        select: {
+          payments: { select: { status: true } },
+        },
+      }),
+    ]);
 
-    const paidToday = await prisma.payment.aggregate({
-      where: {
-        tenantId,
-        status: "paid",
-        createdAt: { gte: start, lt: end },
-      },
-      _sum: { amountCents: true },
-    });
-
-    const todaysBookings = await prisma.booking.findMany({
-      where: {
-        tenantId,
-        startsAt: { gte: start, lt: end },
-      },
-      select: {
-        payments: { select: { status: true } },
-      },
-    });
-
-    const unpaidCount = todaysBookings.filter(
-      (booking) => !booking.payments.some((payment) => payment.status === "paid")
-    ).length;
+    const { bookingsCount, unpaidCount } = summarizeUnpaidBookings(todaysBookings);
 
     return {
       timeZone,
+      summary: {
+        bookingsCount,
+        moneyTakenCents: paidToday._sum.amountCents ?? 0,
+        unpaidCount,
+        currency,
+      },
+    };
+  });
+}
+
+async function loadTodayScheduleData(
+  tenantId: string,
+  now = new Date()
+): Promise<{ timeZone: string; bookings: TodayBooking[]; summary: TodaySummary }> {
+  const { timeZone, currency, start, end } = await resolveTenantDayContext(tenantId, now);
+
+  return runWithTenantContext({ tenantId }, async () => {
+    const [bookingRows, paidToday] = await Promise.all([
+      prisma.booking.findMany({
+        where: bookingsInDayWhere(tenantId, start, end),
+        orderBy: { startsAt: "asc" },
+        select: {
+          id: true,
+          startsAt: true,
+          endsAt: true,
+          status: true,
+          client: { select: { name: true } },
+          service: { select: { name: true } },
+          payments: { select: { status: true } },
+        },
+      }),
+      prisma.payment.aggregate({
+        where: {
+          tenantId,
+          status: "paid",
+          createdAt: { gte: start, lt: end },
+        },
+        _sum: { amountCents: true },
+      }),
+    ]);
+
+    const { bookingsCount, unpaidCount } = summarizeUnpaidBookings(bookingRows);
+
+    return {
+      timeZone,
+      bookings: mapBookingRows(bookingRows),
       summary: {
         bookingsCount,
         moneyTakenCents: paidToday._sum.amountCents ?? 0,
@@ -170,14 +230,9 @@ const emptySummary: TodaySummary = {
 
 export async function TodaySchedule({ now = new Date() }: { now?: Date } = {}) {
   const tenantId = await resolveSignedInTenantId();
-  const [schedule, summaryResult] = tenantId
-    ? await Promise.all([listTodaysBookings(tenantId, now), getTodaySummary(tenantId, now)])
-    : [
-        { timeZone: DEFAULT_TIME_ZONE, bookings: [] },
-        { timeZone: DEFAULT_TIME_ZONE, summary: emptySummary },
-      ];
-  const { timeZone, bookings } = schedule;
-  const { summary } = summaryResult;
+  const { timeZone, bookings, summary } = tenantId
+    ? await loadTodayScheduleData(tenantId, now)
+    : { timeZone: DEFAULT_TIME_ZONE, bookings: [], summary: emptySummary };
 
   return (
     <section className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10 sm:px-6 sm:py-14">
