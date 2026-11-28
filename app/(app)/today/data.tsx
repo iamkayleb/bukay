@@ -79,9 +79,10 @@ function mapBookingRows(rows: BookingRow[]): TodayBooking[] {
   }));
 }
 
-function summarizeUnpaidBookings(
-  bookings: { payments: { status: string }[] }[]
-): { bookingsCount: number; unpaidCount: number } {
+function summarizeUnpaidBookings(bookings: { payments: { status: string }[] }[]): {
+  bookingsCount: number;
+  unpaidCount: number;
+} {
   const bookingsCount = bookings.length;
   const unpaidCount = bookings.filter(
     (booking) => !booking.payments.some((payment) => payment.status === "paid")

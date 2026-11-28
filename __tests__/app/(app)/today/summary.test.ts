@@ -205,11 +205,7 @@ describe("computeTodaySummaryFigures", () => {
 
   it("returns the three headline figures from bookings and paid cents", () => {
     const figures = computeTodaySummaryFigures(
-      [
-        { payments: [{ status: "paid" }] },
-        { payments: [{ status: "pending" }] },
-        { payments: [] },
-      ],
+      [{ payments: [{ status: "paid" }] }, { payments: [{ status: "pending" }] }, { payments: [] }],
       25_000_00,
       "NGN"
     );

@@ -38,7 +38,9 @@ vi.mock("@/app/db/prisma", () => ({
   prisma: {
     booking: {
       findMany: (...args: unknown[]) => state.findMany(...args),
-      count: async (args: { where?: { tenantId?: string; startsAt?: { gte?: Date; lt?: Date } } }) => {
+      count: async (args: {
+        where?: { tenantId?: string; startsAt?: { gte?: Date; lt?: Date } };
+      }) => {
         const tenantId = args?.where?.tenantId;
         const gte = args?.where?.startsAt?.gte;
         const lt = args?.where?.startsAt?.lt;

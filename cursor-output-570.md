@@ -18,5 +18,5 @@
 
 ### This round
 
-- Added real-DB test: booking with paid + pending payments counts as paid for `unpaidCount`, sums only paid `createdAt` in day window.
-- Re-verified `pnpm build`, `pnpm vitest run` (515 tests), and today summary/page suites.
+- Re-verified `pnpm build`, `pnpm vitest run` (515 tests), and today summary/page suites on CI runner.
+- Prettier formatting on `/today` sources and tests (format check for changed paths).
