@@ -158,7 +158,7 @@ describe("today bookings", () => {
     expect(range.end.toISOString()).toBe("2026-10-04T23:00:00.000Z");
   });
 
-  it("getTodaySummary returns booking count, paid cents today, and unpaid count", async () => {
+  it("[AC-2] getTodaySummary returns booking count, paid cents today, and unpaid count", async () => {
     state.paidPayments = [
       {
         tenantId: "tenant-1",

@@ -22,4 +22,5 @@ Verified: `pnpm build`, full `pnpm vitest run` (506 tests), and targeted `__test
 
 ### This run
 
-- Re-ran build and full vitest; tagged DB pending-payment test with `[AC-4]` for acceptance traceability.
+- Re-verified `pnpm build` (clean `.next`), full `pnpm vitest run` (506 passing), and today summary/page tests.
+- Tagged mocked `getTodaySummary` coverage with `[AC-2]` in `page.test.tsx` (DB `[AC-2]` remains in `summary.test.ts`).
