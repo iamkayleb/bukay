@@ -7,6 +7,7 @@ import {
   merchantEmptyActionLinkClassName,
   merchantEmptyActions,
   merchantEmptyCalendarDayHeadline,
+  merchantEmptyMessages,
 } from "../merchant-empty-copy";
 import { calendarDayRange, dateInZone } from "@/app/lib/calendar";
 type Booking = {
@@ -159,7 +160,7 @@ export function DayView({ tenantId, timeZone }: { tenantId: string | null; timeZ
           >
             <MerchantEmptyState
               messageId="calendar-day-empty-message"
-              message={`${merchantEmptyCalendarDayHeadline}.`}
+              message={merchantEmptyMessages.calendarDay}
               action={
                 <a
                   className={merchantEmptyActionLinkClassName}
