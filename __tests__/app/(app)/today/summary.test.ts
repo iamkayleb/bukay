@@ -249,6 +249,23 @@ describe("queryTodaySummaryFigures", () => {
 describe("getTodaySummaryFigures", () => {
   const now = new Date("2026-10-04T12:00:00.000Z");
 
+  it("returns the three issue #553 summary metrics (bookings, paid cents today, unpaid)", async () => {
+    await createBookingWithPayment({
+      startsAt: new Date("2026-10-04T08:30:00.000Z"),
+      paymentStatus: "paid",
+      amountCents: 2_500_00,
+      paymentCreatedAt: new Date("2026-10-04T08:45:00.000Z"),
+    });
+    await createBookingOnly(new Date("2026-10-04T13:30:00.000Z"));
+
+    const figures = await getTodaySummaryFigures(seed.tenantId, now);
+
+    expect(figures.bookingsCount).toBe(2);
+    expect(figures.moneyTakenCents).toBe(2_500_00);
+    expect(figures.unpaidCount).toBe(1);
+    expect(figures.currency).toBe("NGN");
+  });
+
   it("returns booking count, paid cents created today, and unpaid count in one object", async () => {
     const baseline = await getTodaySummaryFigures(seed.tenantId, now);
     expect(baseline).toEqual({
