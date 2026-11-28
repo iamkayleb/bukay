@@ -161,22 +161,21 @@ function formatBookingTime(value: Date, timeZone: string): string {
   }).format(value);
 }
 
+const emptySummary: TodaySummary = {
+  bookingsCount: 0,
+  moneyTakenCents: 0,
+  unpaidCount: 0,
+  currency: "NGN",
+};
+
 export async function TodaySchedule({ now = new Date() }: { now?: Date } = {}) {
   const tenantId = await resolveSignedInTenantId();
-  const schedule = tenantId
-    ? await listTodaysBookings(tenantId, now)
-    : { timeZone: DEFAULT_TIME_ZONE, bookings: [] };
-  const summaryResult = tenantId
-    ? await getTodaySummary(tenantId, now)
-    : {
-        timeZone: DEFAULT_TIME_ZONE,
-        summary: {
-          bookingsCount: 0,
-          moneyTakenCents: 0,
-          unpaidCount: 0,
-          currency: "NGN",
-        },
-      };
+  const [schedule, summaryResult] = tenantId
+    ? await Promise.all([listTodaysBookings(tenantId, now), getTodaySummary(tenantId, now)])
+    : [
+        { timeZone: DEFAULT_TIME_ZONE, bookings: [] },
+        { timeZone: DEFAULT_TIME_ZONE, summary: emptySummary },
+      ];
   const { timeZone, bookings } = schedule;
   const { summary } = summaryResult;
 

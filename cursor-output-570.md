@@ -1,6 +1,6 @@
 ## Keepalive run summary
 
-Verified: `pnpm build`, full `pnpm vitest run` (497 tests), and targeted today summary/page tests against SQLite with `prisma migrate deploy`.
+Verified: `pnpm build`, full `pnpm vitest run` (497 tests), and targeted `__tests__/app/(app)/today/summary.test.ts` + `page.test.tsx` against SQLite with `prisma migrate deploy`.
 
 ### Tasks
 
@@ -22,5 +22,5 @@ Verified: `pnpm build`, full `pnpm vitest run` (497 tests), and targeted today s
 
 ### This run
 
-- Re-verified build and full vitest on `cursor/issue-553`.
-- Extended `page.test.tsx` empty-state case to assert the summary panel still renders zero figures when there are no appointments.
+- Confirmed `getTodaySummary` + `TodaySummaryPanel` on `cursor/issue-553`.
+- Loaded bookings and summary in parallel in `TodaySchedule` via `Promise.all`.
