@@ -307,7 +307,7 @@ describe("today summary", () => {
     expect(summary.currency).toBe("NGN");
   });
 
-  it("returns zero figures on a day with no bookings", async () => {
+  it("[AC-3] returns zero figures on a day with no bookings", async () => {
     const { summary } = await getTodaySummary(seed.tenantId, now);
 
     expect(summary).toEqual({

@@ -321,7 +321,7 @@ describe("today bookings", () => {
     expect(summarySection).toMatch(/Unpaid today[\s\S]*<dd[^>]*>\s*1\s*<\/dd>/);
   });
 
-  it("shows zero summary figures while still rendering the summary section", async () => {
+  it("[AC-3] shows zero summary figures while still rendering the summary section", async () => {
     state.headers.set("cookie", tenantSessionCookie("tenant-empty"));
     state.bookings = [];
 
