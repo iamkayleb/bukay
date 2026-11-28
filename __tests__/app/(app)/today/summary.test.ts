@@ -9,6 +9,7 @@ import {
   getTodaySummary,
   getTodaySummaryFigures,
   listTodaysBookings,
+  queryTodaySummaryFigures,
   zonedDayRange,
 } from "@/app/(app)/today/data";
 import { TodaySummaryPanel } from "@/app/(app)/today/summary";
@@ -202,6 +203,33 @@ describe("computeTodaySummaryFigures", () => {
       bookingsCount: 3,
       moneyTakenCents: 25_000_00,
       unpaidCount: 2,
+      currency: "NGN",
+    });
+  });
+});
+
+describe("queryTodaySummaryFigures", () => {
+  const now = new Date("2026-10-04T12:00:00.000Z");
+
+  it("queries booking count, paid amountCents sum, and unpaid count for the tenant day window", async () => {
+    const { start, end } = zonedDayRange("Africa/Lagos", now);
+
+    await createBookingWithPayment({
+      startsAt: new Date("2026-10-04T10:00:00.000Z"),
+      paymentStatus: "paid",
+      amountCents: 4_000_00,
+      paymentCreatedAt: new Date("2026-10-04T10:20:00.000Z"),
+    });
+    await createBookingOnly(new Date("2026-10-04T18:00:00.000Z"));
+
+    const figures = await runWithTenantContext({ tenantId: seed.tenantId }, () =>
+      queryTodaySummaryFigures(seed.tenantId, start, end, "NGN")
+    );
+
+    expect(figures).toEqual({
+      bookingsCount: 2,
+      moneyTakenCents: 4_000_00,
+      unpaidCount: 1,
       currency: "NGN",
     });
   });

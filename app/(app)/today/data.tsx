@@ -131,7 +131,7 @@ export function zonedDayRange(timeZone: string, now: Date): { start: Date; end: 
 }
 
 /** Loads today's booking count, paid cents (by payment `createdAt`), and unpaid booking count. */
-async function queryTodaySummaryFigures(
+export async function queryTodaySummaryFigures(
   tenantId: string,
   start: Date,
   end: Date,

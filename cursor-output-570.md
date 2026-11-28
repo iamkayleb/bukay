@@ -2,7 +2,7 @@
 
 ### Tasks (verified)
 
-- [x] `getTodaySummary`, `getTodaySummaryFigures`, and `queryTodaySummaryFigures` in `app/(app)/today/data.tsx` return `bookingsCount`, `moneyTakenCents` (sum of paid `amountCents` by payment `createdAt`), and `unpaidCount`.
+- [x] In `app/(app)/today/data.tsx`, `getTodaySummary` / `getTodaySummaryFigures` / `queryTodaySummaryFigures` return today's booking count, paid `amountCents` sum (by payment `createdAt`), and unpaid booking count.
 - [x] Day boundaries use `zonedDayRange` via `resolveTenantDayContext`; schedule list and summary share `loadTodayScheduleData`.
 - [x] `app/(app)/today/summary.tsx` — `TodaySummaryPanel` with three labeled figures.
 - [x] Summary rendered above the list in `TodaySchedule` (`data.tsx`).
@@ -10,7 +10,7 @@
 
 ### Acceptance criteria (verified)
 
-- [x] `pnpm build` and `pnpm vitest run` — pass (run 2026-11-28; 511 tests).
+- [x] `pnpm build` and `pnpm vitest run` — pass (run 2026-11-28; 513 tests).
 - [x] `[AC-2]` Seeded DB + one today booking → `bookingsCount` 1 (`summary.test.ts`, `page.test.tsx`).
 - [x] `[AC-3]` Empty day shows zeros; summary section still present.
 - [x] `[AC-4]` Pending payment → unpaid, not money taken.
@@ -18,5 +18,5 @@
 
 ### This round
 
-- Re-verified full suite after restoring corrupted `cursor-output-570.md` working tree state.
-- Added `page.test.tsx` coverage for `getTodaySummaryFigures` (three headline metrics via mocked Prisma).
+- Exported `queryTodaySummaryFigures` and added a direct real-DB test for the three headline metrics inside the `zonedDayRange` window.
+- Re-verified `pnpm build`, `pnpm vitest run` (513 tests), and today summary/page suites.
