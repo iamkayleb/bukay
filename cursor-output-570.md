@@ -1,26 +1,22 @@
-## Keepalive run summary
+## Progress: 10/10 tasks complete
 
-Verified on `cursor/issue-553` (2026-11-28): clean `pnpm build`, full `pnpm vitest run` (509 tests), and `__tests__/app/(app)/today/summary.test.ts` (18 tests) against SQLite (`prisma migrate deploy`).
+### Tasks (verified)
 
-### Tasks
+- [x] `getTodaySummary`, `getTodaySummaryFigures`, and `queryTodaySummaryFigures` in `app/(app)/today/data.tsx` return `bookingsCount`, `moneyTakenCents` (sum of paid `amountCents` by payment `createdAt`), and `unpaidCount`.
+- [x] Day boundaries use `zonedDayRange` via `resolveTenantDayContext`; schedule list and summary share `loadTodayScheduleData`.
+- [x] `app/(app)/today/summary.tsx` — `TodaySummaryPanel` with three labeled figures.
+- [x] Summary rendered above the list in `TodaySchedule` (`data.tsx`).
+- [x] `__tests__/app/(app)/today/summary.test.ts` — real DB: bookings/payments, empty day (`[AC-3]`), timezone boundary.
 
-- [x] In `app/(app)/today/data.tsx`, add a function returning the count of today's bookings, the sum of `amountCents` for payments with status `paid` created today, and the count of today's bookings with no paid payment (`getTodaySummaryFigures` / `getTodaySummary` / `queryTodaySummaryFigures` / `computeTodaySummaryFigures`).
-- [x] Use the existing `zonedDayRange` in `app/(app)/today/data.tsx` for the day boundary so the figures match the list below them.
-- [x] Add `app/(app)/today/summary.tsx` rendering the three figures with labels.
-- [x] Render it above the appointment list in `app/(app)/today/data.tsx` (`TodaySummaryPanel` in `TodaySchedule`).
-- [x] Add `__tests__/app/(app)/today/summary.test.ts` covering a day with bookings and payments, an empty day, and the timezone boundary, against a real database.
+### Acceptance criteria (verified)
 
-### Acceptance criteria
+- [x] `pnpm build` and `pnpm vitest run` — pass (run 2026-11-28).
+- [x] `[AC-2]` Seeded DB + one today booking → `bookingsCount` 1 (`summary.test.ts`, `page.test.tsx`).
+- [x] `[AC-3]` Empty day shows zeros; summary section still present.
+- [x] `[AC-4]` Pending payment → unpaid, not money taken.
+- [x] `[AC-5]` Vitest real-DB increment test; Playwright `e2e/today.spec.ts` calendar → today journey.
 
-- [x] `pnpm build` and `pnpm vitest run` pass with no new failures.
-- [x] With a seeded database and a booking created for today, the summary function returns a count of 1 (`summary.test.ts` — real DB, `[AC-2]`).
-- [x] On a day with no bookings the three figures read zero rather than the section being absent (`[AC-3]`).
-- [x] A booking whose payment status is `pending` counts toward unpaid, not toward money taken (`[AC-4]` in summary + page tests).
-- [x] A merchant signs in, adds a booking for today through `/calendar`, opens `/today`, and sees the booking count rise by one (`e2e/today.spec.ts`; DB increment in `summary.test.ts` `[AC-5]`).
+### This round
 
-**Progress:** 10/10 tasks complete, 0 remaining
-
-### This run
-
-- Added real-database `getTodaySummaryFigures` coverage for a fully paid same-day booking.
-- Re-verified `pnpm build` (clean `.next`) and full `pnpm vitest run`.
+- Added `getTodaySummaryFigures` integration test asserting all three task metrics in one call (empty → paid + unpaid booking).
+- Re-ran: `pnpm vitest run '__tests__/app/(app)/today/summary.test.ts'`, full `pnpm vitest run`, `pnpm build`.
