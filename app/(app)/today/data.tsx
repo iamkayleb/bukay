@@ -165,6 +165,7 @@ export async function listTodaysBookings(
   return { timeZone, bookings };
 }
 
+/** Today's booking count, paid-payment cents (by payment `createdAt`), and unpaid booking count for the tenant day window. */
 export async function getTodaySummary(
   tenantId: string,
   now = new Date()
