@@ -1,6 +1,6 @@
 ## Keepalive run summary
 
-Verified on `cursor/issue-553` (2026-11-28): `pnpm build`, full `pnpm vitest run` (507 tests), and `__tests__/app/(app)/today/summary.test.ts` (15 tests) against SQLite (`prisma migrate deploy`).
+Verified on `cursor/issue-553` (2026-11-28): `pnpm build`, full `pnpm vitest run` (508 tests), and `__tests__/app/(app)/today/summary.test.ts` (16 tests) against SQLite (`prisma migrate deploy`).
 
 ### Tasks
 
@@ -22,5 +22,5 @@ Verified on `cursor/issue-553` (2026-11-28): `pnpm build`, full `pnpm vitest run
 
 ### This run
 
-- Re-verified `pnpm build` and full `pnpm vitest run` (507 passed).
-- Documented the three return fields on `getTodaySummary` in `data.tsx`.
+- Re-verified `pnpm build` and full `pnpm vitest run` after local status file was cleared.
+- Added integration coverage that `getTodaySummary` aggregates multiple `paid` payments by `amountCents` on the tenant day.

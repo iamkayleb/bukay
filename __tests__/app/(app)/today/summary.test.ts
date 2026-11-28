@@ -291,6 +291,27 @@ describe("today summary", () => {
     });
   });
 
+  it("sums amountCents across all paid payments created on the tenant day", async () => {
+    await createBookingWithPayment({
+      startsAt: new Date("2026-10-04T08:00:00.000Z"),
+      paymentStatus: "paid",
+      amountCents: 3_000_00,
+      paymentCreatedAt: new Date("2026-10-04T08:15:00.000Z"),
+    });
+    await createBookingWithPayment({
+      startsAt: new Date("2026-10-04T14:00:00.000Z"),
+      paymentStatus: "paid",
+      amountCents: 4_500_00,
+      paymentCreatedAt: new Date("2026-10-04T14:20:00.000Z"),
+    });
+
+    const { summary } = await getTodaySummary(seed.tenantId, now);
+
+    expect(summary.bookingsCount).toBe(2);
+    expect(summary.moneyTakenCents).toBe(7_500_00);
+    expect(summary.unpaidCount).toBe(0);
+  });
+
   it("returns counts for bookings and payments in the tenant day window", async () => {
     const paidStart = new Date("2026-10-04T10:00:00.000Z");
     const pendingStart = new Date("2026-10-04T15:00:00.000Z");
