@@ -1,17 +1,16 @@
 ## Keepalive round summary (issue #556)
 
-Re-verified **PR task 1** (calendar `DayView` empty day) on `cursor/issue-556` after the orchestrator reset task checkboxes.
+Re-verified all **PR tasks 1–6** and **acceptance criteria** on `cursor/issue-556` after the orchestrator reset task checkboxes to unchecked.
 
 ### Verification (this round)
 
-- `pnpm verify:issue-556:pr-task-1` — pass
-- `pnpm verify:issue-556:acceptance-gate` — pass (build + acceptance + empty-states + legacy grep)
-- `pnpm vitest run` — 586 tests pass
+- `pnpm verify:issue-556:pr-complete` — pass (build + acceptance gate + full vitest)
+- `pnpm verify:issue-556:pr-task-1` — pass (day-view tests + real-DB task 1)
 - `grep -rn "Nothing here yet" app/` — no matches
 
 ### Test tweak
 
-- `issue-556-task-checklist.test.ts` (task 6): assert each of the five screens exposes its `data-testid` empty region plus `merchant-empty-state`.
+- `empty-states.test.tsx`: the five-screen loop now asserts each screen’s `data-testid` empty region (`clients-empty`, `services-empty`, `payments-empty`, `today-empty`, `calendar-day-empty`) in addition to copy and `merchant-empty-state`.
 
 ### Completed tasks
 

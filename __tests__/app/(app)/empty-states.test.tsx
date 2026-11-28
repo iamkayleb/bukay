@@ -108,43 +108,42 @@ describe("merchant empty states", () => {
         name: "clients",
         html: renderToStaticMarkup(await ClientsPage()),
         message: merchantEmptyMessages.clients,
+        emptyTestId: "clients-empty",
       },
       {
         name: "services",
         html: renderToStaticMarkup(await ServicesPage()),
         message: merchantEmptyMessages.services,
+        emptyTestId: "services-empty",
       },
       {
         name: "payments",
         html: renderToStaticMarkup(await PaymentsPage()),
         message: merchantEmptyMessages.payments,
+        emptyTestId: "payments-empty",
       },
       {
         name: "today",
         html: todayHtml,
         message: merchantEmptyMessages.today,
+        emptyTestId: "today-empty",
       },
       {
         name: "calendar",
         html: calendarHtml,
         message: merchantEmptyMessages.calendarDay,
+        emptyTestId: "calendar-day-empty",
       },
     ];
 
     for (const page of pages) {
       expect(page.html, page.name).toContain(page.message);
+      expect(page.html, page.name).toContain(`data-testid="${page.emptyTestId}"`);
+      expect(page.html, page.name).toContain('data-testid="merchant-empty-state"');
     }
 
-    for (const page of pages) {
-      if (page.name === "calendar") {
-        expect(page.html, page.name).toContain('data-testid="calendar-day-empty"');
-        expect(page.html, page.name).toContain('data-testid="calendar-add-booking-link"');
-        expect(page.html, page.name).toContain('data-testid="merchant-empty-state"');
-        expect(page.html, page.name).toContain('role="region"');
-      } else {
-        expect(page.html, page.name).toContain('data-testid="merchant-empty-state"');
-      }
-    }
+    expect(calendarHtml).toContain('data-testid="calendar-add-booking-link"');
+    expect(calendarHtml).toContain('role="region"');
 
     expect(calendarHtml).toContain(merchantEmptyCalendarDayHeadline);
     expect(calendarHtml).toContain(`href="${calendarAddBookingHref("2026-10-04")}"`);
