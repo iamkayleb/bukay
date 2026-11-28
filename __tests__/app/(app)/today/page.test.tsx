@@ -9,12 +9,14 @@ type BookingRow = {
   status: string;
   client: { name: string };
   service: { name: string };
+  payments?: { status: string }[];
 };
 
 const state = vi.hoisted(() => ({
   headers: new Map<string, string>(),
   bookings: [] as BookingRow[],
   timezone: "Africa/Lagos",
+  paidTodayCents: 0,
   findMany: vi.fn(),
   tenantFindUnique: vi.fn(),
 }));
@@ -45,7 +47,12 @@ vi.mock("@/app/db/prisma", () => ({
       },
     },
     payment: {
-      aggregate: async () => ({ _sum: { amountCents: 0 } }),
+      aggregate: async (args: { where?: { status?: string } }) => {
+        if (args?.where?.status !== "paid") {
+          return { _sum: { amountCents: null } };
+        }
+        return { _sum: { amountCents: state.paidTodayCents } };
+      },
     },
     tenant: {
       findUnique: (...args: unknown[]) => state.tenantFindUnique(...args),
@@ -77,6 +84,7 @@ beforeEach(() => {
   vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
   state.headers.clear();
   state.bookings = [];
+  state.paidTodayCents = 0;
   state.timezone = "Africa/Lagos";
   state.findMany.mockReset();
   state.tenantFindUnique.mockReset();
@@ -184,6 +192,23 @@ describe("today bookings", () => {
 
     expect(html).toContain("No appointments yet.");
     expect(html).not.toContain("Ada Okonkwo");
+  });
+
+  it("shows money taken from paid payments in the summary panel", async () => {
+    state.headers.set("cookie", tenantSessionCookie("tenant-1"));
+    state.paidTodayCents = 12_000_00;
+    state.bookings = [
+      booking({
+        payments: [{ status: "paid" }],
+      }),
+    ];
+
+    const html = renderToStaticMarkup(await TodaySchedule({ now }));
+    const summarySection = html.split('aria-label="Today summary"')[1]?.split("</dl>")[0] ?? "";
+
+    expect(summarySection).toContain(formatPrice(12_000_00, "NGN"));
+    expect(summarySection).toMatch(/Bookings today[\s\S]*<dd[^>]*>\s*1\s*<\/dd>/);
+    expect(summarySection).toMatch(/Unpaid today[\s\S]*<dd[^>]*>\s*0\s*<\/dd>/);
   });
 
   it("shows zero summary figures while still rendering the summary section", async () => {
