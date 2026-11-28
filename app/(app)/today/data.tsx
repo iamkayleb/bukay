@@ -50,6 +50,22 @@ function bookingsInDayWhere(tenantId: string, start: Date, end: Date) {
   };
 }
 
+function paidPaymentsInDayWhere(tenantId: string, start: Date, end: Date) {
+  return {
+    tenantId,
+    status: "paid" as const,
+    createdAt: { gte: start, lt: end },
+  };
+}
+
+async function sumPaidTodayCents(tenantId: string, start: Date, end: Date): Promise<number> {
+  const paidToday = await prisma.payment.aggregate({
+    where: paidPaymentsInDayWhere(tenantId, start, end),
+    _sum: { amountCents: true },
+  });
+  return paidToday._sum.amountCents ?? 0;
+}
+
 function mapBookingRows(rows: BookingRow[]): TodayBooking[] {
   return rows.map((row) => ({
     id: row.id,
@@ -136,15 +152,8 @@ export async function getTodaySummary(
   const { timeZone, currency, start, end } = await resolveTenantDayContext(tenantId, now);
 
   return runWithTenantContext({ tenantId }, async () => {
-    const [paidToday, todaysBookings] = await Promise.all([
-      prisma.payment.aggregate({
-        where: {
-          tenantId,
-          status: "paid",
-          createdAt: { gte: start, lt: end },
-        },
-        _sum: { amountCents: true },
-      }),
+    const [moneyTakenCents, todaysBookings] = await Promise.all([
+      sumPaidTodayCents(tenantId, start, end),
       prisma.booking.findMany({
         where: bookingsInDayWhere(tenantId, start, end),
         select: {
@@ -159,7 +168,7 @@ export async function getTodaySummary(
       timeZone,
       summary: {
         bookingsCount,
-        moneyTakenCents: paidToday._sum.amountCents ?? 0,
+        moneyTakenCents,
         unpaidCount,
         currency,
       },
@@ -174,7 +183,7 @@ async function loadTodayScheduleData(
   const { timeZone, currency, start, end } = await resolveTenantDayContext(tenantId, now);
 
   return runWithTenantContext({ tenantId }, async () => {
-    const [bookingRows, paidToday] = await Promise.all([
+    const [bookingRows, moneyTakenCents] = await Promise.all([
       prisma.booking.findMany({
         where: bookingsInDayWhere(tenantId, start, end),
         orderBy: { startsAt: "asc" },
@@ -188,14 +197,7 @@ async function loadTodayScheduleData(
           payments: { select: { status: true } },
         },
       }),
-      prisma.payment.aggregate({
-        where: {
-          tenantId,
-          status: "paid",
-          createdAt: { gte: start, lt: end },
-        },
-        _sum: { amountCents: true },
-      }),
+      sumPaidTodayCents(tenantId, start, end),
     ]);
 
     const { bookingsCount, unpaidCount } = summarizeUnpaidBookings(bookingRows);
@@ -205,7 +207,7 @@ async function loadTodayScheduleData(
       bookings: mapBookingRows(bookingRows),
       summary: {
         bookingsCount,
-        moneyTakenCents: paidToday._sum.amountCents ?? 0,
+        moneyTakenCents,
         unpaidCount,
         currency,
       },

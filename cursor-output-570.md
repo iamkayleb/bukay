@@ -22,5 +22,5 @@ Verified: `pnpm build`, full `pnpm vitest run` (497 tests), and targeted `__test
 
 ### This run
 
-- Confirmed `getTodaySummary` + `TodaySummaryPanel` on `cursor/issue-553`.
-- Loaded bookings and summary in parallel in `TodaySchedule` via `Promise.all`.
+- Confirmed `getTodaySummary` / `TodaySummaryPanel` / E2E on `cursor/issue-553`.
+- Shared `sumPaidTodayCents` + `paidPaymentsInDayWhere` so paid-today money uses one filter for summary and schedule loads.
