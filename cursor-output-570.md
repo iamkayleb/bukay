@@ -1,6 +1,6 @@
 ## Keepalive run summary
 
-Verified: `pnpm build`, full `pnpm vitest run` (506 tests), and targeted `__tests__/app/(app)/today/summary.test.ts` + `page.test.tsx` against SQLite (`prisma migrate deploy`).
+Verified: `pnpm build`, full `pnpm vitest run` (506 tests), and targeted `__tests__/app/(app)/today/summary.test.ts` against SQLite (`prisma migrate deploy`).
 
 ### Tasks
 
@@ -13,13 +13,13 @@ Verified: `pnpm build`, full `pnpm vitest run` (506 tests), and targeted `__test
 ### Acceptance criteria
 
 - [x] `pnpm build` and `pnpm vitest run` pass with no new failures.
-- [x] With a seeded database and a booking created for today, the summary function returns a count of 1 (`summary.test.ts` — real DB).
-- [x] On a day with no bookings the three figures read zero rather than the section being absent.
-- [x] A booking whose payment status is `pending` counts toward unpaid, not toward money taken.
+- [x] With a seeded database and a booking created for today, the summary function returns a count of 1 (`summary.test.ts` — real DB, `[AC-2]`).
+- [x] On a day with no bookings the three figures read zero rather than the section being absent (`[AC-3]`).
+- [x] A booking whose payment status is `pending` counts toward unpaid, not toward money taken (`[AC-4]` in summary + page tests).
 - [x] A merchant signs in, adds a booking for today through `/calendar`, opens `/today`, and sees the booking count rise by one (`e2e/today.spec.ts`).
 
 **Progress:** 10/10 tasks complete, 0 remaining
 
 ### This run
 
-- Re-verified build and vitest gates; tagged empty-day summary tests with `[AC-3]` for UI acceptance wiring.
+- Re-ran build and full vitest; tagged DB pending-payment test with `[AC-4]` for acceptance traceability.

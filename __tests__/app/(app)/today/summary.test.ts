@@ -366,7 +366,7 @@ describe("today summary", () => {
     expect(summary.unpaidCount).toBe(1);
   });
 
-  it("counts pending payments toward unpaid, not money taken", async () => {
+  it("[AC-4] counts pending payments toward unpaid, not money taken", async () => {
     const startsAt = new Date("2026-10-04T09:30:00.000Z");
     await createBookingWithPayment({
       startsAt,
