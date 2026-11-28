@@ -1,6 +1,6 @@
 ## Keepalive run summary
 
-Verified on `cursor/issue-553`: `pnpm build`, full `pnpm vitest run` (500 tests), and targeted `__tests__/app/(app)/today/summary.test.ts` + `page.test.tsx` against SQLite (`prisma migrate deploy`).
+Verified: `pnpm build`, full `pnpm vitest run` (501 tests), and targeted `__tests__/app/(app)/today/summary.test.ts` + `page.test.tsx` against SQLite (`prisma migrate deploy`).
 
 ### Tasks
 
@@ -22,4 +22,4 @@ Verified on `cursor/issue-553`: `pnpm build`, full `pnpm vitest run` (500 tests)
 
 ### This run
 
-- Re-verified build and vitest gates on a clean install; added `getTodaySummary` contract test for the three headline fields.
+- Re-verified gates after `pnpm install`; re-exported `TodaySummaryFigures` from `data.tsx` for callers using `getTodaySummary`.

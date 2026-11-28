@@ -3,6 +3,8 @@ import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 import { resolveSignedInTenantId } from "../services/services-list";
 import { TodaySummaryPanel, type TodaySummaryFigures } from "./summary";
 
+export type { TodaySummaryFigures } from "./summary";
+
 const DEFAULT_TIME_ZONE = "Africa/Lagos";
 
 export type TodayBooking = {
