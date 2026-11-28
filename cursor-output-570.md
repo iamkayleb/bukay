@@ -1,6 +1,6 @@
 ## Keepalive run summary
 
-Verified: `pnpm build`, `pnpm vitest run` (495 tests), and `__tests__/app/(app)/today/summary.test.ts` against SQLite with `prisma migrate deploy`.
+Verified: `pnpm build`, `pnpm vitest run` (497 tests), and `__tests__/app/(app)/today/summary.test.ts` + `page.test.tsx` against SQLite with `prisma migrate deploy`.
 
 ### Tasks
 
@@ -22,6 +22,6 @@ Verified: `pnpm build`, `pnpm vitest run` (495 tests), and `__tests__/app/(app)/
 
 ### This run
 
-- Re-verified full build and vitest on `cursor/issue-553`.
-- Restored `cursor-output-570.md` after accidental wipe.
-- Extended `page.test.tsx` payment aggregate mock and asserted Money taken today renders paid totals.
+- Confirmed `getTodaySummary` + `TodaySummaryPanel` already on branch; build and full vitest green.
+- Added DB test that money taken follows payment `createdAt` day window, not booking `startsAt`.
+- Tightened `page.test.tsx` payment aggregate mock to respect tenant day `createdAt` bounds.

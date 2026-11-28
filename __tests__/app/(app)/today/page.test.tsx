@@ -12,11 +12,18 @@ type BookingRow = {
   payments?: { status: string }[];
 };
 
+type PaidPaymentRow = {
+  tenantId: string;
+  status: string;
+  amountCents: number;
+  createdAt: Date;
+};
+
 const state = vi.hoisted(() => ({
   headers: new Map<string, string>(),
   bookings: [] as BookingRow[],
+  paidPayments: [] as PaidPaymentRow[],
   timezone: "Africa/Lagos",
-  paidTodayCents: 0,
   findMany: vi.fn(),
   tenantFindUnique: vi.fn(),
 }));
@@ -47,11 +54,29 @@ vi.mock("@/app/db/prisma", () => ({
       },
     },
     payment: {
-      aggregate: async (args: { where?: { status?: string } }) => {
+      aggregate: async (args: {
+        where?: {
+          tenantId?: string;
+          status?: string;
+          createdAt?: { gte?: Date; lt?: Date };
+        };
+      }) => {
         if (args?.where?.status !== "paid") {
           return { _sum: { amountCents: null } };
         }
-        return { _sum: { amountCents: state.paidTodayCents } };
+        const tenantId = args?.where?.tenantId;
+        const gte = args?.where?.createdAt?.gte;
+        const lt = args?.where?.createdAt?.lt;
+        const total = state.paidPayments
+          .filter(
+            (row) =>
+              row.status === "paid" &&
+              (!tenantId || row.tenantId === tenantId) &&
+              (!gte || row.createdAt.getTime() >= gte.getTime()) &&
+              (!lt || row.createdAt.getTime() < lt.getTime())
+          )
+          .reduce((sum, row) => sum + row.amountCents, 0);
+        return { _sum: { amountCents: total || null } };
       },
     },
     tenant: {
@@ -84,7 +109,7 @@ beforeEach(() => {
   vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
   state.headers.clear();
   state.bookings = [];
-  state.paidTodayCents = 0;
+  state.paidPayments = [];
   state.timezone = "Africa/Lagos";
   state.findMany.mockReset();
   state.tenantFindUnique.mockReset();
@@ -196,7 +221,14 @@ describe("today bookings", () => {
 
   it("shows money taken from paid payments in the summary panel", async () => {
     state.headers.set("cookie", tenantSessionCookie("tenant-1"));
-    state.paidTodayCents = 12_000_00;
+    state.paidPayments = [
+      {
+        tenantId: "tenant-1",
+        status: "paid",
+        amountCents: 12_000_00,
+        createdAt: new Date("2026-10-04T11:00:00.000Z"),
+      },
+    ];
     state.bookings = [
       booking({
         payments: [{ status: "paid" }],
@@ -208,6 +240,29 @@ describe("today bookings", () => {
 
     expect(summarySection).toContain(formatPrice(12_000_00, "NGN"));
     expect(summarySection).toMatch(/Bookings today[\s\S]*<dd[^>]*>\s*1\s*<\/dd>/);
+    expect(summarySection).toMatch(/Unpaid today[\s\S]*<dd[^>]*>\s*0\s*<\/dd>/);
+  });
+
+  it("omits paid payments recorded outside the tenant day from money taken", async () => {
+    state.headers.set("cookie", tenantSessionCookie("tenant-1"));
+    state.paidPayments = [
+      {
+        tenantId: "tenant-1",
+        status: "paid",
+        amountCents: 12_000_00,
+        createdAt: new Date("2026-10-03T20:00:00.000Z"),
+      },
+    ];
+    state.bookings = [
+      booking({
+        payments: [{ status: "paid" }],
+      }),
+    ];
+
+    const html = renderToStaticMarkup(await TodaySchedule({ now }));
+    const summarySection = html.split('aria-label="Today summary"')[1]?.split("</dl>")[0] ?? "";
+
+    expect(summarySection).toContain(formatPrice(0, "NGN"));
     expect(summarySection).toMatch(/Unpaid today[\s\S]*<dd[^>]*>\s*0\s*<\/dd>/);
   });
 

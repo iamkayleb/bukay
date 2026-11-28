@@ -265,4 +265,19 @@ describe("today summary", () => {
     expect(summary.moneyTakenCents).toBe(0);
     expect(summary.unpaidCount).toBe(1);
   });
+
+  it("sums money taken only from paid payments created on the tenant day, not by booking time", async () => {
+    await createBookingWithPayment({
+      startsAt: new Date("2026-10-04T14:00:00.000Z"),
+      paymentStatus: "paid",
+      amountCents: 9_000_00,
+      paymentCreatedAt: new Date("2026-10-03T22:30:00.000Z"),
+    });
+
+    const { summary } = await getTodaySummary(seed.tenantId, now);
+
+    expect(summary.bookingsCount).toBe(1);
+    expect(summary.moneyTakenCents).toBe(0);
+    expect(summary.unpaidCount).toBe(0);
+  });
 });
