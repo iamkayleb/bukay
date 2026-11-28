@@ -154,6 +154,28 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
+describe("TodaySummaryPanel", () => {
+  it("renders the three labeled figures when counts are non-zero", () => {
+    const html = renderToStaticMarkup(
+      TodaySummaryPanel({
+        summary: {
+          bookingsCount: 2,
+          moneyTakenCents: 12_000_00,
+          unpaidCount: 1,
+          currency: "NGN",
+        },
+      })
+    );
+
+    expect(html).toContain("Bookings today");
+    expect(html).toContain("Money taken today");
+    expect(html).toContain("Unpaid today");
+    expect(html).toMatch(/Bookings today[\s\S]*<dd[^>]*>\s*2\s*<\/dd>/);
+    expect(html).toMatch(/Unpaid today[\s\S]*<dd[^>]*>\s*1\s*<\/dd>/);
+    expect(html).toContain("₦");
+  });
+});
+
 describe("computeTodaySummaryFigures", () => {
   it("returns the three headline figures from bookings and paid cents", () => {
     const figures = computeTodaySummaryFigures(
