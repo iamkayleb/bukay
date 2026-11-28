@@ -1,8 +1,9 @@
 import { execFileSync } from "node:child_process";
 import { PrismaClient } from "@prisma/client";
 import { NextRequest } from "next/server";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { POST, GET } from "@/app/api/bookings/route";
+import { TEST_SESSION_SECRET, tenantRequestHeaders } from "@/__tests__/helpers/tenant-auth";
 
 const db = new PrismaClient();
 const ids = ["manual-booking-one", "manual-booking-two"];
@@ -13,7 +14,7 @@ function request(input: Record<string, unknown>, tenantId = ids[0]) {
   return POST(
     new NextRequest("http://localhost/api/bookings", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-tenant-id": tenantId },
+      headers: tenantRequestHeaders(tenantId, { "Content-Type": "application/json" }),
       body: JSON.stringify({
         serviceId,
         startsAt: "2026-06-16T10:00:00Z",
@@ -25,6 +26,7 @@ function request(input: Record<string, unknown>, tenantId = ids[0]) {
   );
 }
 beforeAll(async () => {
+  vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
   execFileSync(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "deploy"]);
   for (const id of ids) {
     await db.tenant.create({ data: { id, slug: id, name: id } });
@@ -70,7 +72,7 @@ describe("manual booking creation against real SQLite", () => {
     });
     const listing = await GET(
       new NextRequest("http://localhost/api/bookings?from=2026-06-16&to=2026-06-16", {
-        headers: { "x-tenant-id": ids[0] },
+        headers: tenantRequestHeaders(ids[0]),
       })
     );
     expect((await listing.json()).bookings.some((b: { id: string }) => b.id === booking.id)).toBe(

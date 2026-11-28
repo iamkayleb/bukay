@@ -8,10 +8,16 @@ import { GET as GET_ONE } from "@/app/api/clients/[id]/route";
 import { submitCreateClientForm } from "@/app/(app)/clients/client-form";
 import { ClientsList } from "@/app/(app)/clients/clients-list";
 import { getTenantClientWithBookings } from "@/app/(app)/clients/data";
+import {
+  TEST_SESSION_SECRET,
+  tenantRequestHeaders,
+  tenantSessionCookie,
+} from "@/__tests__/helpers/tenant-auth";
 
+const requestHeaders = vi.hoisted(() => ({ cookie: "" }));
 // Real SQLite and the application's guarded Prisma client; no delegate mocks.
 vi.mock("next/headers", () => ({
-  headers: () => new Headers({ "x-tenant-id": "clients-route-integration" }),
+  headers: () => new Headers(requestHeaders.cookie ? { cookie: requestHeaders.cookie } : {}),
 }));
 
 const db = new PrismaClient();
@@ -22,7 +28,7 @@ const tenants = [tenantId, otherTenantId];
 function request(body?: unknown, method = "POST", tenant = tenantId) {
   return new NextRequest("http://localhost/api/clients", {
     method,
-    headers: { "x-tenant-id": tenant, "content-type": "application/json" },
+    headers: tenantRequestHeaders(tenant, { "content-type": "application/json" }),
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 }
@@ -36,6 +42,7 @@ async function clearTenantRows() {
 }
 
 beforeAll(async () => {
+  vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
   execFileSync(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "deploy"], {
     stdio: "pipe",
   });
@@ -43,7 +50,10 @@ beforeAll(async () => {
     await db.tenant.upsert({ where: { id }, update: {}, create: { id, slug: id, name: id } });
   }
 });
-beforeEach(clearTenantRows);
+beforeEach(() => {
+  requestHeaders.cookie = tenantSessionCookie(tenantId);
+  return clearTenantRows();
+});
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -157,7 +167,7 @@ describe("clients routes against SQLite", () => {
         new NextRequest("http://localhost/api/clients", {
           method: init.method,
           body: init.body,
-          headers: { "content-type": "application/json", "x-tenant-id": tenantId },
+          headers: tenantRequestHeaders(tenantId, { "content-type": "application/json" }),
         })
       )
     );

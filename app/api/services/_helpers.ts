@@ -2,8 +2,6 @@ import { sessionFromCookies } from "@/app/lib/auth/session";
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 
-import { prisma } from "@/app/db/prisma";
-import { resolveTenant } from "@/app/lib/resolve-tenant";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 
 export type ServiceRecord = {
@@ -47,30 +45,19 @@ export async function runForTenant<T>(
   req: NextRequest,
   callback: (tenantId: string) => Promise<T>
 ): Promise<T | NextResponse> {
-  const resolved = resolveTenant({
-    headers: req.headers,
-    session: sessionFromCookies(req.headers.get("cookie")),
-  });
+  const session = sessionFromCookies(req.headers.get("cookie"));
+  const tenantId = session?.tenantId?.trim();
 
-  if (resolved.tenantId?.trim()) {
-    const tenantId = resolved.tenantId.trim();
-    return runWithTenantContext({ tenantId }, () => callback(tenantId));
+  if (!session || !tenantId) {
+    return jsonError("unauthorized", 401);
   }
 
-  if (resolved.tenantSlug?.trim()) {
-    const tenant = await prisma.tenant.findUnique({
-      where: { slug: resolved.tenantSlug.trim() },
-      select: { id: true },
-    });
-
-    if (!tenant) {
-      return jsonError("tenant_not_found", 404);
-    }
-
-    return runWithTenantContext({ tenantId: tenant.id }, () => callback(tenant.id));
+  const headerTenantId = req.headers.get("x-tenant-id")?.trim();
+  if (headerTenantId && headerTenantId !== tenantId) {
+    return jsonError("tenant_forbidden", 403);
   }
 
-  return jsonError("tenant_required", 400);
+  return runWithTenantContext({ tenantId }, () => callback(tenantId));
 }
 
 export function serializeService(service: ServiceRecord) {

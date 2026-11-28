@@ -21,6 +21,7 @@ export async function resolveSignedInTenantId(): Promise<string | null> {
   const resolved = resolveTenant({
     headers: { get: (name) => headerList.get(name) },
     session: sessionFromCookies(headerList.get("cookie")),
+    requireSession: true,
   });
 
   const tenantId = resolved.tenantId?.trim();

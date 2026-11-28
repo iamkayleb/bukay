@@ -102,7 +102,7 @@ describe("(app) authenticated layout", () => {
     const componentName = result.type.displayName ?? result.type.name;
     expect(componentName).toBe("AppShell");
     expect(result.props.userPhone).toBe("+2348012345678");
-    expect(result.props.tenantName).toBe("acme");
+    expect(result.props.tenantName).toBe("Bukay");
     expect(result.props.children).toBe("child-content");
   });
 

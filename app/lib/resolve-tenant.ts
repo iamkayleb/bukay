@@ -8,12 +8,14 @@ export type ResolveTenantRequest = {
     get(name: string): string | null;
   };
   session?: TenantSession | null;
+  /** When true, subdomain slug resolution is skipped (merchant-only callers). */
+  requireSession?: boolean;
 };
 
 export type ResolvedTenant = {
   tenantId?: string;
   tenantSlug?: string;
-  source: "session" | "subdomain" | "header" | "none";
+  source: "session" | "subdomain" | "none";
 };
 
 const RESERVED_SUBDOMAINS = new Set(["www", "app", "api", "admin", "static", "assets", "cdn"]);
@@ -40,7 +42,7 @@ export function extractSubdomain(host: string | null | undefined): string | unde
 }
 
 export function resolveTenant(req: ResolveTenantRequest): ResolvedTenant {
-  const sessionTenantId = req.session?.tenantId;
+  const sessionTenantId = req.session?.tenantId?.trim();
   if (sessionTenantId) {
     return {
       tenantId: sessionTenantId,
@@ -49,9 +51,8 @@ export function resolveTenant(req: ResolveTenantRequest): ResolvedTenant {
     };
   }
 
-  const headerTenantId = req.headers.get("x-tenant-id");
-  if (headerTenantId) {
-    return { tenantId: headerTenantId, source: "header" };
+  if (req.requireSession) {
+    return { source: "none" };
   }
 
   const slug = extractSubdomain(req.headers.get("host"));
