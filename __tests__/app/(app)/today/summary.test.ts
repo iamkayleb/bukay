@@ -4,7 +4,12 @@ import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { prisma } from "@/app/db/prisma";
-import { getTodaySummary, listTodaysBookings, zonedDayRange } from "@/app/(app)/today/data";
+import {
+  computeTodaySummaryFigures,
+  getTodaySummary,
+  listTodaysBookings,
+  zonedDayRange,
+} from "@/app/(app)/today/data";
 import { TodaySummaryPanel } from "@/app/(app)/today/summary";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -147,6 +152,27 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await prisma.$disconnect();
+});
+
+describe("computeTodaySummaryFigures", () => {
+  it("returns the three headline figures from bookings and paid cents", () => {
+    const figures = computeTodaySummaryFigures(
+      [
+        { payments: [{ status: "paid" }] },
+        { payments: [{ status: "pending" }] },
+        { payments: [] },
+      ],
+      25_000_00,
+      "NGN"
+    );
+
+    expect(figures).toEqual({
+      bookingsCount: 3,
+      moneyTakenCents: 25_000_00,
+      unpaidCount: 2,
+      currency: "NGN",
+    });
+  });
 });
 
 describe("today summary", () => {

@@ -87,6 +87,16 @@ function summarizeUnpaidBookings(
   return { bookingsCount, unpaidCount };
 }
 
+/** Booking count, paid cents created today, and unpaid booking count for the tenant day window. */
+export function computeTodaySummaryFigures(
+  bookings: { payments: { status: string }[] }[],
+  moneyTakenCents: number,
+  currency: string
+): TodaySummaryFigures {
+  const { bookingsCount, unpaidCount } = summarizeUnpaidBookings(bookings);
+  return { bookingsCount, moneyTakenCents, unpaidCount, currency };
+}
+
 export function zonedDayRange(timeZone: string, now: Date): { start: Date; end: Date } {
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -142,17 +152,10 @@ async function loadTodayScheduleData(
       sumPaidTodayCents(tenantId, start, end),
     ]);
 
-    const { bookingsCount, unpaidCount } = summarizeUnpaidBookings(bookingRows);
-
     return {
       timeZone,
       bookings: mapBookingRows(bookingRows),
-      summary: {
-        bookingsCount,
-        moneyTakenCents,
-        unpaidCount,
-        currency,
-      },
+      summary: computeTodaySummaryFigures(bookingRows, moneyTakenCents, currency),
     };
   });
 }
