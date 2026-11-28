@@ -1,9 +1,12 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { NextRequest } from "next/server";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { POST } from "@/app/api/bookings/route";
 import { prisma } from "@/app/db/prisma";
+import { TEST_SESSION_SECRET, tenantRequestHeaders } from "@/__tests__/helpers/tenant-auth";
 import {
   computeTodaySummaryFigures,
   getTodaySummary,
@@ -79,6 +82,17 @@ async function ensureSeed(): Promise<SeedIds> {
         },
       }));
 
+    for (const dayOfWeek of [0, 1, 2, 3, 4, 5, 6]) {
+      const existing = await prisma.businessHour.findFirst({
+        where: { tenantId: tenant.id, dayOfWeek },
+      });
+      if (!existing) {
+        await prisma.businessHour.create({
+          data: { tenantId: tenant.id, dayOfWeek, opensAt: "09:00", closesAt: "18:00" },
+        });
+      }
+    }
+
     return { tenantId: tenant.id, serviceId: service.id, clientId: client.id };
   });
 }
@@ -144,6 +158,7 @@ async function createBookingWithPayment(options: {
 }
 
 beforeAll(async () => {
+  vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
   applyMigrations();
   seed = await ensureSeed();
 });
@@ -364,6 +379,29 @@ describe("today summary", () => {
 
     const after = await getTodaySummary(seed.tenantId, now);
     expect(after.summary.bookingsCount).toBe(before.summary.bookingsCount + 1);
+  });
+
+  it("[AC-5] calendar booking POST raises today summary booking count by one", async () => {
+    const before = await getTodaySummary(seed.tenantId, now);
+    expect(before.summary.bookingsCount).toBe(0);
+
+    const startsAt = "2026-10-04T13:00:00.000Z";
+    const response = await POST(
+      new NextRequest("http://localhost/api/bookings", {
+        method: "POST",
+        headers: tenantRequestHeaders(seed.tenantId, { "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          serviceId: seed.serviceId,
+          startsAt,
+          clientId: seed.clientId,
+        }),
+      })
+    );
+    expect(response.status).toBe(201);
+
+    const after = await getTodaySummary(seed.tenantId, now);
+    expect(after.summary.bookingsCount).toBe(before.summary.bookingsCount + 1);
+    expect(after.summary.unpaidCount).toBe(1);
   });
 
   it("returns booking count, paid cents created today, and unpaid count from getTodaySummary", async () => {
