@@ -91,6 +91,7 @@ vi.mock("@/app/db/prisma", () => ({
 import {
   TodaySchedule,
   getTodaySummary,
+  getTodaySummaryFigures,
   listTodaysBookings,
   zonedDayRange,
 } from "@/app/(app)/today/data";
@@ -183,6 +184,25 @@ describe("today bookings", () => {
       bookingsCount: 2,
       moneyTakenCents: 5_000_00,
       unpaidCount: 1,
+      currency: "NGN",
+    });
+  });
+
+  it("getTodaySummaryFigures returns booking count, paid cents, and unpaid count", async () => {
+    state.paidPayments = [
+      {
+        tenantId: "tenant-1",
+        status: "paid",
+        amountCents: 5_000_00,
+        createdAt: new Date("2026-10-04T11:00:00.000Z"),
+      },
+    ];
+    state.bookings = [booking({ payments: [{ status: "paid" }] })];
+
+    await expect(getTodaySummaryFigures("tenant-1", now)).resolves.toEqual({
+      bookingsCount: 1,
+      moneyTakenCents: 5_000_00,
+      unpaidCount: 0,
       currency: "NGN",
     });
   });

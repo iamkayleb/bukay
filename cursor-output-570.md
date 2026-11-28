@@ -10,7 +10,7 @@
 
 ### Acceptance criteria (verified)
 
-- [x] `pnpm build` and `pnpm vitest run` — pass (run 2026-11-28).
+- [x] `pnpm build` and `pnpm vitest run` — pass (run 2026-11-28; 511 tests).
 - [x] `[AC-2]` Seeded DB + one today booking → `bookingsCount` 1 (`summary.test.ts`, `page.test.tsx`).
 - [x] `[AC-3]` Empty day shows zeros; summary section still present.
 - [x] `[AC-4]` Pending payment → unpaid, not money taken.
@@ -18,5 +18,5 @@
 
 ### This round
 
-- Added `getTodaySummaryFigures` integration test asserting all three task metrics in one call (empty → paid + unpaid booking).
-- Re-ran: `pnpm vitest run '__tests__/app/(app)/today/summary.test.ts'`, full `pnpm vitest run`, `pnpm build`.
+- Re-verified full suite after restoring corrupted `cursor-output-570.md` working tree state.
+- Added `page.test.tsx` coverage for `getTodaySummaryFigures` (three headline metrics via mocked Prisma).
