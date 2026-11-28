@@ -22,4 +22,4 @@ Verified: `pnpm build`, full `pnpm vitest run` (501 tests), and targeted `__test
 
 ### This run
 
-- Re-verified gates after `pnpm install`; re-exported `TodaySummaryFigures` from `data.tsx` for callers using `getTodaySummary`.
+- Re-verified build and vitest after `pnpm install`; restored keepalive status file; added DB test that `getTodaySummary` returns the tenant timezone with summary figures.

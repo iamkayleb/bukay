@@ -210,6 +210,13 @@ describe("getTodaySummary", () => {
       currency: "NGN",
     });
   });
+
+  it("returns the tenant timezone used for the day window", async () => {
+    const { timeZone, summary } = await getTodaySummary(seed.tenantId, now);
+
+    expect(timeZone).toBe("Africa/Lagos");
+    expect(summary.currency).toBe("NGN");
+  });
 });
 
 describe("today summary", () => {
