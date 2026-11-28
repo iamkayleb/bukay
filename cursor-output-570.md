@@ -10,7 +10,7 @@
 
 ### Acceptance criteria (verified)
 
-- [x] `pnpm build` and `pnpm vitest run` — pass (run 2026-11-28; 513 tests).
+- [x] `pnpm build` and `pnpm vitest run` — pass (run 2026-11-28; 515 tests).
 - [x] `[AC-2]` Seeded DB + one today booking → `bookingsCount` 1 (`summary.test.ts`, `page.test.tsx`).
 - [x] `[AC-3]` Empty day shows zeros; summary section still present.
 - [x] `[AC-4]` Pending payment → unpaid, not money taken.
@@ -18,5 +18,5 @@
 
 ### This round
 
-- Exported `queryTodaySummaryFigures` and added a direct real-DB test for the three headline metrics inside the `zonedDayRange` window.
-- Re-verified `pnpm build`, `pnpm vitest run` (513 tests), and today summary/page suites.
+- Added real-DB test: booking with paid + pending payments counts as paid for `unpaidCount`, sums only paid `createdAt` in day window.
+- Re-verified `pnpm build`, `pnpm vitest run` (515 tests), and today summary/page suites.

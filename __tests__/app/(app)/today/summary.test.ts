@@ -545,6 +545,53 @@ describe("today summary", () => {
     expect(summary.unpaidCount).toBe(1);
   });
 
+  it("treats a booking as paid when any related payment is paid", async () => {
+    const startsAt = new Date("2026-10-04T10:30:00.000Z");
+    const endsAt = new Date(startsAt.getTime() + 30 * 60_000);
+
+    await runWithTenantContext({ tenantId: seed.tenantId }, async () => {
+      const booking = await prisma.booking.create({
+        data: {
+          tenantId: seed.tenantId,
+          clientId: seed.clientId,
+          serviceId: seed.serviceId,
+          startsAt,
+          endsAt,
+          status: "confirmed",
+          slotLock: `${seed.serviceId}|${startsAt.toISOString()}`,
+        },
+      });
+
+      await prisma.payment.createMany({
+        data: [
+          {
+            tenantId: seed.tenantId,
+            bookingId: booking.id,
+            amountCents: 5_000_00,
+            currency: "NGN",
+            status: "paid",
+            paidAt: new Date("2026-10-04T10:35:00.000Z"),
+            createdAt: new Date("2026-10-04T10:35:00.000Z"),
+          },
+          {
+            tenantId: seed.tenantId,
+            bookingId: booking.id,
+            amountCents: 3_000_00,
+            currency: "NGN",
+            status: "pending",
+            createdAt: new Date("2026-10-04T10:36:00.000Z"),
+          },
+        ],
+      });
+    });
+
+    const { summary } = await getTodaySummary(seed.tenantId, now);
+
+    expect(summary.bookingsCount).toBe(1);
+    expect(summary.moneyTakenCents).toBe(5_000_00);
+    expect(summary.unpaidCount).toBe(0);
+  });
+
   it("sums money taken only from paid payments created on the tenant day, not by booking time", async () => {
     await createBookingWithPayment({
       startsAt: new Date("2026-10-04T14:00:00.000Z"),
