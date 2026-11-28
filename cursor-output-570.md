@@ -1,6 +1,6 @@
 ## Keepalive run summary
 
-Verified: `pnpm build`, full `pnpm vitest run` (501 tests), and targeted `__tests__/app/(app)/today/summary.test.ts` + `page.test.tsx` against SQLite (`prisma migrate deploy`).
+Verified: `pnpm build`, full `pnpm vitest run` (502 tests), and targeted `__tests__/app/(app)/today/summary.test.ts` + `page.test.tsx` against SQLite (`prisma migrate deploy`).
 
 ### Tasks
 
@@ -22,4 +22,4 @@ Verified: `pnpm build`, full `pnpm vitest run` (501 tests), and targeted `__test
 
 ### This run
 
-- Re-verified build and vitest after `pnpm install`; restored keepalive status file; added DB test that `getTodaySummary` returns the tenant timezone with summary figures.
+- Re-ran build and full vitest after `pnpm install`; restored `cursor-output-570.md`; added integration test locking all three `getTodaySummary` headline figures.

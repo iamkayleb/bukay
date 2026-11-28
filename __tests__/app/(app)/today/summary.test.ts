@@ -240,7 +240,7 @@ describe("today summary", () => {
     expect(summary.bookingsCount).toBe(2);
   });
 
-  it("returns a bookingsCount of 1 for a single booking scheduled today", async () => {
+  it("[AC-2] returns bookingsCount 1 for a single booking on the tenant day (real database)", async () => {
     await createBookingWithPayment({
       startsAt: new Date("2026-10-04T10:00:00.000Z"),
       paymentStatus: "paid",
@@ -251,6 +251,25 @@ describe("today summary", () => {
     const { summary } = await getTodaySummary(seed.tenantId, now);
 
     expect(summary.bookingsCount).toBe(1);
+  });
+
+  it("returns booking count, paid cents created today, and unpaid count from getTodaySummary", async () => {
+    await createBookingWithPayment({
+      startsAt: new Date("2026-10-04T09:00:00.000Z"),
+      paymentStatus: "paid",
+      amountCents: 7_500_00,
+      paymentCreatedAt: new Date("2026-10-04T09:30:00.000Z"),
+    });
+    await createBookingOnly(new Date("2026-10-04T15:00:00.000Z"));
+
+    const { summary } = await getTodaySummary(seed.tenantId, now);
+
+    expect(summary).toMatchObject({
+      bookingsCount: 2,
+      moneyTakenCents: 7_500_00,
+      unpaidCount: 1,
+      currency: "NGN",
+    });
   });
 
   it("returns counts for bookings and payments in the tenant day window", async () => {
