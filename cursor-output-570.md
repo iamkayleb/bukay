@@ -1,6 +1,6 @@
 ## Keepalive run summary
 
-Verified: `pnpm build`, full `pnpm vitest run` (506 tests), and targeted `__tests__/app/(app)/today/summary.test.ts` against SQLite (`prisma migrate deploy`).
+Verified: `pnpm build`, full `pnpm vitest run` (507 tests), and `__tests__/app/(app)/today/summary.test.ts` against SQLite (`prisma migrate deploy`).
 
 ### Tasks
 
@@ -16,11 +16,11 @@ Verified: `pnpm build`, full `pnpm vitest run` (506 tests), and targeted `__test
 - [x] With a seeded database and a booking created for today, the summary function returns a count of 1 (`summary.test.ts` — real DB, `[AC-2]`).
 - [x] On a day with no bookings the three figures read zero rather than the section being absent (`[AC-3]`).
 - [x] A booking whose payment status is `pending` counts toward unpaid, not toward money taken (`[AC-4]` in summary + page tests).
-- [x] A merchant signs in, adds a booking for today through `/calendar`, opens `/today`, and sees the booking count rise by one (`e2e/today.spec.ts`).
+- [x] A merchant signs in, adds a booking for today through `/calendar`, opens `/today`, and sees the booking count rise by one (`e2e/today.spec.ts`; DB increment in `summary.test.ts` `[AC-5]`).
 
 **Progress:** 10/10 tasks complete, 0 remaining
 
 ### This run
 
-- Re-verified `pnpm build` (clean `.next`), full `pnpm vitest run` (506 passing), and today summary/page tests.
-- Tagged mocked `getTodaySummary` coverage with `[AC-2]` in `page.test.tsx` (DB `[AC-2]` remains in `summary.test.ts`).
+- Re-verified `pnpm build` and full `pnpm vitest run` on `cursor/issue-553`.
+- Added `[AC-5]` real-DB test asserting `getTodaySummary` booking count rises by one after `createBookingOnly`.

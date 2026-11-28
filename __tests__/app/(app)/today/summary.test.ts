@@ -262,6 +262,16 @@ describe("today summary", () => {
     expect(summary.bookingsCount).toBe(1);
   });
 
+  it("[AC-5] today booking count rises by one after creating a same-day booking (real database)", async () => {
+    const before = await getTodaySummary(seed.tenantId, now);
+    expect(before.summary.bookingsCount).toBe(0);
+
+    await createBookingOnly(new Date("2026-10-04T12:30:00.000Z"));
+
+    const after = await getTodaySummary(seed.tenantId, now);
+    expect(after.summary.bookingsCount).toBe(before.summary.bookingsCount + 1);
+  });
+
   it("returns booking count, paid cents created today, and unpaid count from getTodaySummary", async () => {
     await createBookingWithPayment({
       startsAt: new Date("2026-10-04T09:00:00.000Z"),
