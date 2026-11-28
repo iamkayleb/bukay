@@ -57,6 +57,7 @@ vi.mock("@/app/db/prisma", () => ({
 }));
 
 import { TodaySchedule, listTodaysBookings, zonedDayRange } from "@/app/(app)/today/data";
+import { formatPrice } from "@/app/(app)/services/services-list";
 import { TEST_SESSION_SECRET, tenantSessionCookie } from "@/__tests__/helpers/tenant-auth";
 
 function booking(overrides: Partial<BookingRow> = {}): BookingRow {
@@ -177,5 +178,22 @@ describe("today bookings", () => {
 
     expect(html).toContain("No appointments yet.");
     expect(html).not.toContain("Ada Okonkwo");
+  });
+
+  it("shows zero summary figures while still rendering the summary section", async () => {
+    state.headers.set("cookie", tenantSessionCookie("tenant-empty"));
+    state.bookings = [];
+
+    const html = renderToStaticMarkup(await TodaySchedule({ now }));
+
+    expect(html).toContain('aria-label="Today summary"');
+    expect(html).toContain("Bookings today");
+    expect(html).toContain("Money taken today");
+    expect(html).toContain("Unpaid today");
+    expect(html).toContain("No appointments yet.");
+
+    const summarySection = html.split('aria-label="Today summary"')[1]?.split("</dl>")[0] ?? "";
+    expect(summarySection).toMatch(/>\s*0\s*</);
+    expect(summarySection).toContain(formatPrice(0, "NGN"));
   });
 });
