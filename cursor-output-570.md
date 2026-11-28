@@ -1,10 +1,10 @@
 ## Keepalive run summary
 
-Verified: `pnpm build`, full `pnpm vitest run` (497 tests), and targeted `__tests__/app/(app)/today/summary.test.ts` + `page.test.tsx` against SQLite with `prisma migrate deploy`.
+Verified: `pnpm build`, full `pnpm vitest run` (497 tests), and targeted `__tests__/app/(app)/today/summary.test.ts` + `page.test.tsx` against PostgreSQL with `prisma migrate deploy`.
 
 ### Tasks
 
-- [x] In `app/(app)/today/data.tsx`, add a function returning the count of today's bookings, the sum of `amountCents` for payments with status `paid` created today, and the count of today's bookings with no paid payment (`getTodaySummary`).
+- [x] In `app/(app)/today/data.tsx`, add a function returning the count of today's bookings, the sum of `amountCents` for payments with status `paid` created today, and the count of today's bookings with no paid payment (`getTodaySummary` via `loadTodayScheduleData`).
 - [x] Use the existing `zonedDayRange` in `app/(app)/today/data.tsx` for the day boundary so the figures match the list below them.
 - [x] Add `app/(app)/today/summary.tsx` rendering the three figures with labels.
 - [x] Render it above the appointment list in `app/(app)/today/data.tsx` (`TodaySummaryPanel` in `TodaySchedule`).
@@ -22,5 +22,4 @@ Verified: `pnpm build`, full `pnpm vitest run` (497 tests), and targeted `__test
 
 ### This run
 
-- Confirmed `getTodaySummary` / `TodaySummaryPanel` / E2E on `cursor/issue-553`.
-- Shared `sumPaidTodayCents` + `paidPaymentsInDayWhere` so paid-today money uses one filter for summary and schedule loads.
+- Routed `getTodaySummary` and `listTodaysBookings` through `loadTodayScheduleData` so summary figures and the appointment list always share one query path and day window.

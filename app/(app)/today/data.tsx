@@ -118,64 +118,6 @@ export function zonedDayRange(timeZone: string, now: Date): { start: Date; end: 
   return { start, end };
 }
 
-export async function listTodaysBookings(
-  tenantId: string,
-  now = new Date()
-): Promise<{ timeZone: string; bookings: TodayBooking[] }> {
-  const { timeZone, start, end } = await resolveTenantDayContext(tenantId, now);
-
-  const rows = await runWithTenantContext({ tenantId }, () =>
-    prisma.booking.findMany({
-      where: bookingsInDayWhere(tenantId, start, end),
-      orderBy: { startsAt: "asc" },
-      select: {
-        id: true,
-        startsAt: true,
-        endsAt: true,
-        status: true,
-        client: { select: { name: true } },
-        service: { select: { name: true } },
-      },
-    })
-  );
-
-  return {
-    timeZone,
-    bookings: mapBookingRows(rows),
-  };
-}
-
-export async function getTodaySummary(
-  tenantId: string,
-  now = new Date()
-): Promise<{ timeZone: string; summary: TodaySummary }> {
-  const { timeZone, currency, start, end } = await resolveTenantDayContext(tenantId, now);
-
-  return runWithTenantContext({ tenantId }, async () => {
-    const [moneyTakenCents, todaysBookings] = await Promise.all([
-      sumPaidTodayCents(tenantId, start, end),
-      prisma.booking.findMany({
-        where: bookingsInDayWhere(tenantId, start, end),
-        select: {
-          payments: { select: { status: true } },
-        },
-      }),
-    ]);
-
-    const { bookingsCount, unpaidCount } = summarizeUnpaidBookings(todaysBookings);
-
-    return {
-      timeZone,
-      summary: {
-        bookingsCount,
-        moneyTakenCents,
-        unpaidCount,
-        currency,
-      },
-    };
-  });
-}
-
 async function loadTodayScheduleData(
   tenantId: string,
   now = new Date()
@@ -213,6 +155,22 @@ async function loadTodayScheduleData(
       },
     };
   });
+}
+
+export async function listTodaysBookings(
+  tenantId: string,
+  now = new Date()
+): Promise<{ timeZone: string; bookings: TodayBooking[] }> {
+  const { timeZone, bookings } = await loadTodayScheduleData(tenantId, now);
+  return { timeZone, bookings };
+}
+
+export async function getTodaySummary(
+  tenantId: string,
+  now = new Date()
+): Promise<{ timeZone: string; summary: TodaySummary }> {
+  const { timeZone, summary } = await loadTodayScheduleData(tenantId, now);
+  return { timeZone, summary };
 }
 
 function formatBookingTime(value: Date, timeZone: string): string {
