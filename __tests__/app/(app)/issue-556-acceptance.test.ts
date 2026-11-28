@@ -315,6 +315,22 @@ describe("issue #556 acceptance (vitest)", () => {
     }
   });
 
+  it("acceptance: empty-tenant /clients shows first-booking guidance above add-client form", async () => {
+    state.headers.set("x-tenant-id", "tenant-empty");
+    state.clientFindMany.mockResolvedValue([]);
+
+    const html = renderToStaticMarkup(await ClientsPage());
+
+    expect(html).toContain(merchantEmptyMessages.clients);
+    expect(html).toContain('data-testid="clients-empty"');
+    expect(html).toContain('data-testid="merchant-empty-state"');
+    expect(html).toContain('role="status"');
+    expect(html.indexOf('name="phone"')).toBeGreaterThan(
+      html.indexOf(merchantEmptyMessages.clients)
+    );
+    expect(html).not.toContain("Nothing here yet");
+  });
+
   it("acceptance: CI runs the merchant-empty vitest bundle and legacy placeholder grep", () => {
     const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts as Record<
       string,
