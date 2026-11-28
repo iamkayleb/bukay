@@ -222,6 +222,26 @@ describe("computeTodaySummaryFigures", () => {
 describe("queryTodaySummaryFigures", () => {
   const now = new Date("2026-10-04T12:00:00.000Z");
 
+  it("matches getTodaySummaryFigures for the same tenant day", async () => {
+    await createBookingWithPayment({
+      startsAt: new Date("2026-10-04T09:00:00.000Z"),
+      paymentStatus: "paid",
+      amountCents: 1_000_00,
+      paymentCreatedAt: new Date("2026-10-04T09:15:00.000Z"),
+    });
+    await createBookingOnly(new Date("2026-10-04T16:30:00.000Z"));
+
+    const { start, end } = zonedDayRange("Africa/Lagos", now);
+    const [direct, viaContext] = await Promise.all([
+      runWithTenantContext({ tenantId: seed.tenantId }, () =>
+        queryTodaySummaryFigures(seed.tenantId, start, end, "NGN")
+      ),
+      getTodaySummaryFigures(seed.tenantId, now),
+    ]);
+
+    expect(direct).toEqual(viaContext);
+  });
+
   it("queries booking count, paid amountCents sum, and unpaid count for the tenant day window", async () => {
     const { start, end } = zonedDayRange("Africa/Lagos", now);
 

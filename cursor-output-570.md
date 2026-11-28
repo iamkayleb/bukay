@@ -10,7 +10,7 @@
 
 ### Acceptance criteria (verified)
 
-- [x] `pnpm build` and `pnpm vitest run` — pass (run 2026-11-28; 516 tests on CI runner).
+- [x] `pnpm build` and `pnpm vitest run` — pass (run 2026-11-28; 517 tests, `DATABASE_URL=file:./dev.db`).
 - [x] `[AC-2]` Seeded DB + one today booking → `bookingsCount` 1 (`summary.test.ts`, `page.test.tsx`).
 - [x] `[AC-3]` Empty day shows zeros; summary section still present.
 - [x] `[AC-4]` Pending payment → unpaid, not money taken.
@@ -18,5 +18,5 @@
 
 ### This round
 
-- Re-verified `pnpm build`, full `pnpm vitest run` (516 tests), and targeted today suites.
-- All 5 tasks and 5 acceptance criteria satisfied on `cursor/issue-553`; added page test for zero summary without session.
+- Re-verified `pnpm build`, full `pnpm vitest run` (517 tests), and `__tests__/app/(app)/today/summary.test.ts`.
+- Added test asserting `queryTodaySummaryFigures` matches `getTodaySummaryFigures` for the same tenant day.
