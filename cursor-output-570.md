@@ -1,6 +1,6 @@
 ## Keepalive run summary
 
-Verified: `pnpm build`, full `pnpm vitest run` (502 tests), and targeted `__tests__/app/(app)/today/summary.test.ts` + `page.test.tsx` against SQLite (`prisma migrate deploy`).
+Verified: `pnpm build`, full `pnpm vitest run` (504 tests), and targeted `__tests__/app/(app)/today/summary.test.ts` + `page.test.tsx` against SQLite (`prisma migrate deploy`).
 
 ### Tasks
 
@@ -22,4 +22,5 @@ Verified: `pnpm build`, full `pnpm vitest run` (502 tests), and targeted `__test
 
 ### This run
 
-- Re-ran build and full vitest after `pnpm install`; restored `cursor-output-570.md`; added integration test locking all three `getTodaySummary` headline figures.
+- Re-verified build and full vitest after `pnpm install`; restored `cursor-output-570.md`.
+- Added `[AC-4]` schedule test asserting pending payments increase unpaid count only.
