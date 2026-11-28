@@ -343,6 +343,17 @@ describe("today bookings", () => {
     expect(summarySection).toMatch(/Unpaid today[\s\S]*<dd[^>]*>\s*1\s*<\/dd>/);
   });
 
+  it("shows zero summary figures when there is no signed-in tenant", async () => {
+    const html = renderToStaticMarkup(await TodaySchedule({ now }));
+
+    expect(state.findMany).not.toHaveBeenCalled();
+    expect(html).toContain('aria-label="Today summary"');
+    const summarySection = html.split('aria-label="Today summary"')[1]?.split("</dl>")[0] ?? "";
+    expect(summarySection).toMatch(/Bookings today[\s\S]*<dd[^>]*>\s*0\s*<\/dd>/);
+    expect(summarySection).toContain(formatPrice(0, "NGN"));
+    expect(summarySection).toMatch(/Unpaid today[\s\S]*<dd[^>]*>\s*0\s*<\/dd>/);
+  });
+
   it("[AC-3] shows zero summary figures while still rendering the summary section", async () => {
     state.headers.set("cookie", tenantSessionCookie("tenant-empty"));
     state.bookings = [];
