@@ -88,7 +88,12 @@ vi.mock("@/app/db/prisma", () => ({
   },
 }));
 
-import { TodaySchedule, listTodaysBookings, zonedDayRange } from "@/app/(app)/today/data";
+import {
+  TodaySchedule,
+  getTodaySummary,
+  listTodaysBookings,
+  zonedDayRange,
+} from "@/app/(app)/today/data";
 import { formatPrice } from "@/app/(app)/services/services-list";
 import { TEST_SESSION_SECRET, tenantSessionCookie } from "@/__tests__/helpers/tenant-auth";
 
@@ -151,6 +156,35 @@ describe("today bookings", () => {
     const range = zonedDayRange("Africa/Lagos", now);
     expect(range.start.toISOString()).toBe("2026-10-03T23:00:00.000Z");
     expect(range.end.toISOString()).toBe("2026-10-04T23:00:00.000Z");
+  });
+
+  it("getTodaySummary returns booking count, paid cents today, and unpaid count", async () => {
+    state.paidPayments = [
+      {
+        tenantId: "tenant-1",
+        status: "paid",
+        amountCents: 5_000_00,
+        createdAt: new Date("2026-10-04T11:00:00.000Z"),
+      },
+    ];
+    state.bookings = [
+      booking({ payments: [{ status: "paid" }] }),
+      booking({
+        id: "book-unpaid",
+        startsAt: new Date("2026-10-04T16:00:00.000Z"),
+        payments: [{ status: "pending" }],
+      }),
+    ];
+
+    const { summary, timeZone } = await getTodaySummary("tenant-1", now);
+
+    expect(timeZone).toBe("Africa/Lagos");
+    expect(summary).toEqual({
+      bookingsCount: 2,
+      moneyTakenCents: 5_000_00,
+      unpaidCount: 1,
+      currency: "NGN",
+    });
   });
 
   it("lists today's bookings for the signed-in tenant", async () => {
