@@ -177,6 +177,15 @@ describe("TodaySummaryPanel", () => {
 });
 
 describe("computeTodaySummaryFigures", () => {
+  it("returns zero for all three counts when there are no bookings", () => {
+    expect(computeTodaySummaryFigures([], 0, "NGN")).toEqual({
+      bookingsCount: 0,
+      moneyTakenCents: 0,
+      unpaidCount: 0,
+      currency: "NGN",
+    });
+  });
+
   it("returns the three headline figures from bookings and paid cents", () => {
     const figures = computeTodaySummaryFigures(
       [
