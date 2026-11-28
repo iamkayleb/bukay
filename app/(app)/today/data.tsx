@@ -209,6 +209,15 @@ export async function getTodaySummary(
   return { timeZone, summary };
 }
 
+/** Booking count, paid cents created today, and unpaid booking count for the tenant calendar day. */
+export async function getTodaySummaryFigures(
+  tenantId: string,
+  now = new Date()
+): Promise<TodaySummaryFigures> {
+  const { summary } = await getTodaySummary(tenantId, now);
+  return summary;
+}
+
 function formatBookingTime(value: Date, timeZone: string): string {
   return new Intl.DateTimeFormat("en-NG", {
     timeZone,

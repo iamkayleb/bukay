@@ -7,6 +7,7 @@ import { prisma } from "@/app/db/prisma";
 import {
   computeTodaySummaryFigures,
   getTodaySummary,
+  getTodaySummaryFigures,
   listTodaysBookings,
   zonedDayRange,
 } from "@/app/(app)/today/data";
@@ -201,6 +202,28 @@ describe("computeTodaySummaryFigures", () => {
       bookingsCount: 3,
       moneyTakenCents: 25_000_00,
       unpaidCount: 2,
+      currency: "NGN",
+    });
+  });
+});
+
+describe("getTodaySummaryFigures", () => {
+  const now = new Date("2026-10-04T12:00:00.000Z");
+
+  it("returns booking count, paid cents created today, and unpaid booking count", async () => {
+    await createBookingWithPayment({
+      startsAt: new Date("2026-10-04T10:00:00.000Z"),
+      paymentStatus: "pending",
+      amountCents: 9_000_00,
+      paymentCreatedAt: new Date("2026-10-04T10:05:00.000Z"),
+    });
+
+    const figures = await getTodaySummaryFigures(seed.tenantId, now);
+
+    expect(figures).toEqual({
+      bookingsCount: 1,
+      moneyTakenCents: 0,
+      unpaidCount: 1,
       currency: "NGN",
     });
   });

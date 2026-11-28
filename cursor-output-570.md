@@ -1,10 +1,10 @@
 ## Keepalive run summary
 
-Verified on `cursor/issue-553` (2026-11-28): `pnpm build`, full `pnpm vitest run` (508 tests), and `__tests__/app/(app)/today/summary.test.ts` (16 tests) against SQLite (`prisma migrate deploy`).
+Verified on `cursor/issue-553` (2026-11-28): `pnpm build`, full `pnpm vitest run` (509 tests), and `__tests__/app/(app)/today/summary.test.ts` (17 tests) against SQLite (`prisma migrate deploy`).
 
 ### Tasks
 
-- [x] In `app/(app)/today/data.tsx`, add a function returning the count of today's bookings, the sum of `amountCents` for payments with status `paid` created today, and the count of today's bookings with no paid payment (`getTodaySummary` / `queryTodaySummaryFigures` / `computeTodaySummaryFigures`).
+- [x] In `app/(app)/today/data.tsx`, add a function returning the count of today's bookings, the sum of `amountCents` for payments with status `paid` created today, and the count of today's bookings with no paid payment (`getTodaySummaryFigures` / `getTodaySummary` / `queryTodaySummaryFigures` / `computeTodaySummaryFigures`).
 - [x] Use the existing `zonedDayRange` in `app/(app)/today/data.tsx` for the day boundary so the figures match the list below them.
 - [x] Add `app/(app)/today/summary.tsx` rendering the three figures with labels.
 - [x] Render it above the appointment list in `app/(app)/today/data.tsx` (`TodaySummaryPanel` in `TodaySchedule`).
@@ -22,5 +22,6 @@ Verified on `cursor/issue-553` (2026-11-28): `pnpm build`, full `pnpm vitest run
 
 ### This run
 
-- Re-verified `pnpm build` and full `pnpm vitest run` after local status file was cleared.
-- Added integration coverage that `getTodaySummary` aggregates multiple `paid` payments by `amountCents` on the tenant day.
+- Exported `getTodaySummaryFigures` as the task-facing summary API on top of `getTodaySummary`.
+- Added real-database coverage for the three headline metrics via `getTodaySummaryFigures`.
+- Re-verified `pnpm build` and full `pnpm vitest run`.
