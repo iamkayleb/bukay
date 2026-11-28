@@ -1,6 +1,7 @@
 import { prisma } from "@/app/db/prisma";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 import { resolveSignedInTenantId } from "../services/services-list";
+import { TodaySummaryPanel } from "./summary";
 
 const DEFAULT_TIME_ZONE = "Africa/Lagos";
 
@@ -11,6 +12,13 @@ export type TodayBooking = {
   status: string;
   clientName: string;
   serviceName: string;
+};
+
+export type TodaySummary = {
+  bookingsCount: number;
+  moneyTakenCents: number;
+  unpaidCount: number;
+  currency: string;
 };
 
 type BookingRow = {
@@ -95,6 +103,61 @@ export async function listTodaysBookings(
   };
 }
 
+export async function getTodaySummary(
+  tenantId: string,
+  now = new Date()
+): Promise<{ timeZone: string; summary: TodaySummary }> {
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { timezone: true, currency: true },
+  });
+  const timeZone = tenant?.timezone?.trim() || DEFAULT_TIME_ZONE;
+  const currency = tenant?.currency?.trim() || "NGN";
+  const { start, end } = zonedDayRange(timeZone, now);
+
+  return runWithTenantContext({ tenantId }, async () => {
+    const bookingsCount = await prisma.booking.count({
+      where: {
+        tenantId,
+        startsAt: { gte: start, lt: end },
+      },
+    });
+
+    const paidToday = await prisma.payment.aggregate({
+      where: {
+        tenantId,
+        status: "paid",
+        createdAt: { gte: start, lt: end },
+      },
+      _sum: { amountCents: true },
+    });
+
+    const todaysBookings = await prisma.booking.findMany({
+      where: {
+        tenantId,
+        startsAt: { gte: start, lt: end },
+      },
+      select: {
+        payments: { select: { status: true } },
+      },
+    });
+
+    const unpaidCount = todaysBookings.filter(
+      (booking) => !booking.payments.some((payment) => payment.status === "paid")
+    ).length;
+
+    return {
+      timeZone,
+      summary: {
+        bookingsCount,
+        moneyTakenCents: paidToday._sum.amountCents ?? 0,
+        unpaidCount,
+        currency,
+      },
+    };
+  });
+}
+
 function formatBookingTime(value: Date, timeZone: string): string {
   return new Intl.DateTimeFormat("en-NG", {
     timeZone,
@@ -108,7 +171,19 @@ export async function TodaySchedule({ now = new Date() }: { now?: Date } = {}) {
   const schedule = tenantId
     ? await listTodaysBookings(tenantId, now)
     : { timeZone: DEFAULT_TIME_ZONE, bookings: [] };
+  const summaryResult = tenantId
+    ? await getTodaySummary(tenantId, now)
+    : {
+        timeZone: DEFAULT_TIME_ZONE,
+        summary: {
+          bookingsCount: 0,
+          moneyTakenCents: 0,
+          unpaidCount: 0,
+          currency: "NGN",
+        },
+      };
   const { timeZone, bookings } = schedule;
+  const { summary } = summaryResult;
 
   return (
     <section className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10 sm:px-6 sm:py-14">
@@ -119,6 +194,8 @@ export async function TodaySchedule({ now = new Date() }: { now?: Date } = {}) {
           Appointments scheduled for this business today.
         </p>
       </div>
+
+      <TodaySummaryPanel summary={summary} />
 
       {bookings.length === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-800 bg-slate-900/40 px-5 py-8 text-center">

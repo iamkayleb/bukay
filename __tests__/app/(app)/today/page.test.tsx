@@ -29,6 +29,23 @@ vi.mock("@/app/db/prisma", () => ({
   prisma: {
     booking: {
       findMany: (...args: unknown[]) => state.findMany(...args),
+      count: async (args: { where?: { tenantId?: string; startsAt?: { gte?: Date; lt?: Date } } }) => {
+        const tenantId = args?.where?.tenantId;
+        const gte = args?.where?.startsAt?.gte;
+        const lt = args?.where?.startsAt?.lt;
+        if (!tenantId || !gte || !lt) {
+          return 0;
+        }
+        return state.bookings.filter(
+          (row) =>
+            row.tenantId === tenantId &&
+            row.startsAt.getTime() >= gte.getTime() &&
+            row.startsAt.getTime() < lt.getTime()
+        ).length;
+      },
+    },
+    payment: {
+      aggregate: async () => ({ _sum: { amountCents: 0 } }),
     },
     tenant: {
       findUnique: (...args: unknown[]) => state.tenantFindUnique(...args),
@@ -62,7 +79,10 @@ beforeEach(() => {
   state.timezone = "Africa/Lagos";
   state.findMany.mockReset();
   state.tenantFindUnique.mockReset();
-  state.tenantFindUnique.mockImplementation(async () => ({ timezone: state.timezone }));
+  state.tenantFindUnique.mockImplementation(async () => ({
+    timezone: state.timezone,
+    currency: "NGN",
+  }));
   state.findMany.mockImplementation(
     async (args: { where?: { tenantId?: string; startsAt?: { gte?: Date; lt?: Date } } }) => {
       const tenantId = args?.where?.tenantId;
@@ -79,7 +99,13 @@ beforeEach(() => {
             row.startsAt.getTime() >= gte.getTime() &&
             row.startsAt.getTime() < lt.getTime()
         )
-        .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+        .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
+        .map((row) => ({
+          ...row,
+          payments: Array.isArray((row as { payments?: unknown }).payments)
+            ? (row as { payments: { status: string }[] }).payments
+            : [],
+        }));
     }
   );
 });
@@ -129,6 +155,7 @@ describe("today bookings", () => {
     expect(schedule.bookings.map((row) => row.clientName)).toEqual(["Ada Okonkwo", "Bola Adeyemi"]);
 
     const html = renderToStaticMarkup(await TodaySchedule({ now }));
+    expect(html).toContain("Bookings today");
     expect(html).toContain("Ada Okonkwo");
     expect(html).toContain("Classic Haircut");
     expect(html).toContain("Bola Adeyemi");
