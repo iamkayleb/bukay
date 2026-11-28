@@ -197,6 +197,21 @@ describe("computeTodaySummaryFigures", () => {
   });
 });
 
+describe("getTodaySummary", () => {
+  const now = new Date("2026-10-04T12:00:00.000Z");
+
+  it("returns bookingsCount, moneyTakenCents, and unpaidCount on the summary object", async () => {
+    const { summary } = await getTodaySummary(seed.tenantId, now);
+
+    expect(summary).toEqual({
+      bookingsCount: 0,
+      moneyTakenCents: 0,
+      unpaidCount: 0,
+      currency: "NGN",
+    });
+  });
+});
+
 describe("today summary", () => {
   const now = new Date("2026-10-04T12:00:00.000Z");
 
