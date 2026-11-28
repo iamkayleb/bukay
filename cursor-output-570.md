@@ -1,6 +1,6 @@
 ## Keepalive run summary
 
-Verified on `cursor/issue-553` (2026-11-28): `pnpm build`, full `pnpm vitest run` (509 tests), and `__tests__/app/(app)/today/summary.test.ts` (17 tests) against SQLite (`prisma migrate deploy`).
+Verified on `cursor/issue-553` (2026-11-28): clean `pnpm build`, full `pnpm vitest run` (509 tests), and `__tests__/app/(app)/today/summary.test.ts` (18 tests) against SQLite (`prisma migrate deploy`).
 
 ### Tasks
 
@@ -22,6 +22,5 @@ Verified on `cursor/issue-553` (2026-11-28): `pnpm build`, full `pnpm vitest run
 
 ### This run
 
-- Exported `getTodaySummaryFigures` as the task-facing summary API on top of `getTodaySummary`.
-- Added real-database coverage for the three headline metrics via `getTodaySummaryFigures`.
-- Re-verified `pnpm build` and full `pnpm vitest run`.
+- Added real-database `getTodaySummaryFigures` coverage for a fully paid same-day booking.
+- Re-verified `pnpm build` (clean `.next`) and full `pnpm vitest run`.
