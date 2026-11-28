@@ -83,6 +83,23 @@ async function resetTenantData(tenantId: string) {
   });
 }
 
+async function createBookingOnly(startsAt: Date) {
+  const endsAt = new Date(startsAt.getTime() + 30 * 60_000);
+  return runWithTenantContext({ tenantId: seed.tenantId }, async () =>
+    prisma.booking.create({
+      data: {
+        tenantId: seed.tenantId,
+        clientId: seed.clientId,
+        serviceId: seed.serviceId,
+        startsAt,
+        endsAt,
+        status: "confirmed",
+        slotLock: `${seed.serviceId}|${startsAt.toISOString()}`,
+      },
+    })
+  );
+}
+
 async function createBookingWithPayment(options: {
   startsAt: Date;
   paymentStatus: "paid" | "pending";
@@ -134,6 +151,19 @@ afterAll(async () => {
 
 describe("today summary", () => {
   const now = new Date("2026-10-04T12:00:00.000Z");
+
+  it("returns a bookingsCount of 1 for a single booking scheduled today", async () => {
+    await createBookingWithPayment({
+      startsAt: new Date("2026-10-04T10:00:00.000Z"),
+      paymentStatus: "paid",
+      amountCents: 5_000_00,
+      paymentCreatedAt: new Date("2026-10-04T10:15:00.000Z"),
+    });
+
+    const { summary } = await getTodaySummary(seed.tenantId, now);
+
+    expect(summary.bookingsCount).toBe(1);
+  });
 
   it("returns counts for bookings and payments in the tenant day window", async () => {
     const paidStart = new Date("2026-10-04T10:00:00.000Z");
@@ -208,6 +238,16 @@ describe("today summary", () => {
     expect(summary.bookingsCount).toBe(1);
     expect(summary.moneyTakenCents).toBe(5_000_00);
     expect(summary.unpaidCount).toBe(0);
+  });
+
+  it("counts bookings with no payment toward unpaid", async () => {
+    await createBookingOnly(new Date("2026-10-04T11:00:00.000Z"));
+
+    const { summary } = await getTodaySummary(seed.tenantId, now);
+
+    expect(summary.bookingsCount).toBe(1);
+    expect(summary.moneyTakenCents).toBe(0);
+    expect(summary.unpaidCount).toBe(1);
   });
 
   it("counts pending payments toward unpaid, not money taken", async () => {
