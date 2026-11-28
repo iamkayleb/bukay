@@ -1,7 +1,7 @@
 import { prisma } from "@/app/db/prisma";
 import { runWithTenantContext } from "@/app/tenancy/tenant-context";
 import { resolveSignedInTenantId } from "../services/services-list";
-import { TodaySummaryPanel } from "./summary";
+import { TodaySummaryPanel, type TodaySummaryFigures } from "./summary";
 
 const DEFAULT_TIME_ZONE = "Africa/Lagos";
 
@@ -14,12 +14,7 @@ export type TodayBooking = {
   serviceName: string;
 };
 
-export type TodaySummary = {
-  bookingsCount: number;
-  moneyTakenCents: number;
-  unpaidCount: number;
-  currency: string;
-};
+export type TodaySummary = TodaySummaryFigures;
 
 type BookingRow = {
   id: string;

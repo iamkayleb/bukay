@@ -1,6 +1,6 @@
 ## Keepalive run summary
 
-Verified: `pnpm build`, `pnpm vitest run` (497 tests), and `__tests__/app/(app)/today/summary.test.ts` + `page.test.tsx` against SQLite with `prisma migrate deploy`.
+Verified: `pnpm build`, `pnpm vitest run` (497 tests), and targeted `__tests__/app/(app)/today/summary.test.ts` + `page.test.tsx` against SQLite with `prisma migrate deploy`.
 
 ### Tasks
 
@@ -22,6 +22,5 @@ Verified: `pnpm build`, `pnpm vitest run` (497 tests), and `__tests__/app/(app)/
 
 ### This run
 
-- Confirmed `getTodaySummary` + `TodaySummaryPanel` already on branch; build and full vitest green.
-- Added DB test that money taken follows payment `createdAt` day window, not booking `startsAt`.
-- Tightened `page.test.tsx` payment aggregate mock to respect tenant day `createdAt` bounds.
+- Re-verified build and full vitest locally after `prisma migrate deploy` + seed.
+- Unified `TodaySummary` with `TodaySummaryFigures` so data and `TodaySummaryPanel` share one type.
