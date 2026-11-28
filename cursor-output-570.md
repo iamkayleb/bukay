@@ -4,7 +4,7 @@ Verified: `pnpm build`, full `pnpm vitest run` (507 tests), and `__tests__/app/(
 
 ### Tasks
 
-- [x] In `app/(app)/today/data.tsx`, add a function returning the count of today's bookings, the sum of `amountCents` for payments with status `paid` created today, and the count of today's bookings with no paid payment (`getTodaySummary` / `computeTodaySummaryFigures`).
+- [x] In `app/(app)/today/data.tsx`, add a function returning the count of today's bookings, the sum of `amountCents` for payments with status `paid` created today, and the count of today's bookings with no paid payment (`getTodaySummary` / `queryTodaySummaryFigures` / `computeTodaySummaryFigures`).
 - [x] Use the existing `zonedDayRange` in `app/(app)/today/data.tsx` for the day boundary so the figures match the list below them.
 - [x] Add `app/(app)/today/summary.tsx` rendering the three figures with labels.
 - [x] Render it above the appointment list in `app/(app)/today/data.tsx` (`TodaySummaryPanel` in `TodaySchedule`).
@@ -23,4 +23,4 @@ Verified: `pnpm build`, full `pnpm vitest run` (507 tests), and `__tests__/app/(
 ### This run
 
 - Re-verified `pnpm build` and full `pnpm vitest run` on `cursor/issue-553`.
-- Added `[AC-5]` real-DB test asserting `getTodaySummary` booking count rises by one after `createBookingOnly`.
+- Extracted `queryTodaySummaryFigures` in `data.tsx` so the three headline metrics load through one dedicated helper used by `getTodaySummary`.

@@ -130,6 +130,26 @@ export function zonedDayRange(timeZone: string, now: Date): { start: Date; end: 
   return { start, end };
 }
 
+/** Loads today's booking count, paid cents (by payment `createdAt`), and unpaid booking count. */
+async function queryTodaySummaryFigures(
+  tenantId: string,
+  start: Date,
+  end: Date,
+  currency: string
+): Promise<TodaySummaryFigures> {
+  const [bookingRows, moneyTakenCents] = await Promise.all([
+    prisma.booking.findMany({
+      where: bookingsInDayWhere(tenantId, start, end),
+      select: {
+        payments: { select: { status: true } },
+      },
+    }),
+    sumPaidTodayCents(tenantId, start, end),
+  ]);
+
+  return computeTodaySummaryFigures(bookingRows, moneyTakenCents, currency);
+}
+
 async function loadTodayScheduleData(
   tenantId: string,
   now = new Date()
@@ -137,7 +157,7 @@ async function loadTodayScheduleData(
   const { timeZone, currency, start, end } = await resolveTenantDayContext(tenantId, now);
 
   return runWithTenantContext({ tenantId }, async () => {
-    const [bookingRows, moneyTakenCents] = await Promise.all([
+    const [bookingRows, summary] = await Promise.all([
       prisma.booking.findMany({
         where: bookingsInDayWhere(tenantId, start, end),
         orderBy: { startsAt: "asc" },
@@ -151,13 +171,13 @@ async function loadTodayScheduleData(
           payments: { select: { status: true } },
         },
       }),
-      sumPaidTodayCents(tenantId, start, end),
+      queryTodaySummaryFigures(tenantId, start, end, currency),
     ]);
 
     return {
       timeZone,
       bookings: mapBookingRows(bookingRows),
-      summary: computeTodaySummaryFigures(bookingRows, moneyTakenCents, currency),
+      summary,
     };
   });
 }
